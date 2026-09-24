@@ -5,7 +5,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
-    "./node": "./src/node.ts"
+    "./node": "./src/node.ts",
+    "./orm": "./src/orm.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -2,9 +2,15 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "@fontsource-variable/manrope";
 import "./globals.css";
-import { BottomNav, SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
+import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
 import { ThemeScript } from "@/components/theme-script";
+import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
+import { isTomTomConfigured } from "@/lib/livepoint/config";
+import { toLatestHeadline } from "@/lib/livepoint/serialize";
+import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
+import { getLatest } from "@/lib/queries";
 
 export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
@@ -19,7 +25,8 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const [weather, latestArticles] = await Promise.all([getWeatherForecast(), getLatest(1)]);
   return (
     <html lang="bg" suppressHydrationWarning>
       <head>
@@ -32,10 +39,16 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           Към съдържанието
         </a>
-        <SiteHeader />
-        <main id="main">{children}</main>
-        <SiteFooter />
-        <BottomNav />
+        <LivePointProvider
+          weather={weather}
+          trafficConnected={isTomTomConfigured()}
+          camerasLiveLabel={hasVerifiedLiveCamera()}
+          latest={toLatestHeadline(latestArticles[0])}
+        >
+          <SiteHeader />
+          <SiteBody>{children}</SiteBody>
+          <BottomNav />
+        </LivePointProvider>
         <LiveUpdates />
       </body>
     </html>

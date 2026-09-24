@@ -1,0 +1,34 @@
+import type { Metadata } from "next";
+import { ArticleEditor } from "@/components/article-editor";
+import { listRecentMedia, listSections } from "@/lib/articles";
+import { requireStaff } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Нов материал" };
+export const dynamic = "force-dynamic";
+
+export default async function NewArticlePage() {
+  const staff = await requireStaff();
+  const [sections, media] = await Promise.all([listSections(), listRecentMedia()]);
+  return (
+    <ArticleEditor
+      article={{
+        id: null,
+        sourceSystem: "studio",
+        isPublic: false,
+        path: "",
+        authorName: staff.name,
+        publishedAt: null,
+        publishedRevision: null,
+        revision: 0,
+        revisionSavedAt: null,
+        revisionSavedBy: null,
+        editableBody: true,
+        canEdit: true,
+      }}
+      draft={{ title: "", slug: "", excerpt: "", bodyText: "", primaryCategoryId: null, heroMediaId: null }}
+      sections={sections}
+      media={media}
+      webUrl={process.env.WEB_URL ?? "http://localhost:3000"}
+    />
+  );
+}

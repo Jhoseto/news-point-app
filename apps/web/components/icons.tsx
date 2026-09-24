@@ -65,6 +65,19 @@ export const ChevronRightIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const ChevronLeftIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m15 6-6 6 6 6" />
+  </Icon>
+);
+
+export const SearchIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.2-4.2" />
+  </Icon>
+);
+
 export const HomeIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5Z" />
@@ -80,9 +93,143 @@ export const GridIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const PinIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 21s6-5.2 6-10a6 6 0 1 0-12 0c0 4.8 6 10 6 10Z" />
+    <circle cx="12" cy="11" r="2" />
+  </Icon>
+);
+
+export const MapIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m9 4 6 2 5-2v14l-5 2-6-2-5 2V6l5-2Z" />
+    <path d="M9 4v14M15 6v14" />
+  </Icon>
+);
+
+export const FlagIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M6 21V4" />
+    <path d="M6 5h11l-2 3.5L17 12H6" />
+  </Icon>
+);
+
+export const ColumnsIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5 20V9M9.7 20V9M14.3 20V9M19 20V9M3.5 20h17M4 9h16L12 4 4 9Z" />
+  </Icon>
+);
+
+export const BadgeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 3 5 6v5.2c0 4.2 2.9 7.2 7 8.8 4.1-1.6 7-4.6 7-8.8V6l-7-3Z" />
+    <path d="m9 12 2 2 4-4" />
+  </Icon>
+);
+
+export const PenIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 20h4l10-10-4-4L4 16v4Z" />
+    <path d="m13 7 4 4" />
+  </Icon>
+);
+
+export const GlobeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M4 12h16M12 4c2.2 2.4 3.3 5.1 3.3 8S14.2 17.6 12 20c-2.2-2.4-3.3-5.1-3.3-8S9.8 6.4 12 4Z" />
+  </Icon>
+);
+
+export const TrophyIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0V4Z" />
+    <path d="M8 6H5.5A2.5 2.5 0 0 0 8 10M16 6h2.5A2.5 2.5 0 0 1 16 10M12 13v3M9 20h6M10 16h4" />
+  </Icon>
+);
+
+export const ChipIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="7" y="7" width="10" height="10" rx="2" />
+    <path d="M9 3v4M12 3v4M15 3v4M9 17v4M12 17v4M15 17v4M3 9h4M3 12h4M3 15h4M17 9h4M17 12h4M17 15h4" />
+  </Icon>
+);
+
+export const BriefcaseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7M3 13h18" />
+  </Icon>
+);
+
+export const HeartIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 19s-7-4.4-7-9a4 4 0 0 1 7-2 4 4 0 0 1 7 2c0 4.6-7 9-7 9Z" />
+  </Icon>
+);
+
+export const PaletteIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 4a8 8 0 1 0 0 16h1.2a2 2 0 0 0 1.5-3.3 2 2 0 0 1 1.6-3.2H17a5 5 0 0 0 5-5.2A8 8 0 0 0 12 4Z" />
+    <circle cx="8" cy="10" r="0.8" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="7" r="0.8" fill="currentColor" stroke="none" />
+    <circle cx="14" cy="7.5" r="0.8" fill="currentColor" stroke="none" />
+  </Icon>
+);
+
+export const CupIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M6 4h10v6a5 5 0 0 1-10 0V4Z" />
+    <path d="M16 6h2.5A2.5 2.5 0 0 1 16 11M8 19h8M9 15.5c.4 1.2 1.5 3.5 3 3.5s2.6-2.3 3-3.5" />
+  </Icon>
+);
+
+export const BallotIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="5" y="3" width="14" height="18" rx="2" />
+    <path d="m8.5 9 1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5" />
+  </Icon>
+);
+
 export const BoltIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />
+  </Icon>
+);
+
+export const CloudSunIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M8 6.5a3.5 3.5 0 0 1 6.6 1.6M5.4 4.4l.9.9M4 9h1.3M8 3v1.3" />
+    <path d="M17 19H8.5a3.5 3.5 0 0 1-.4-7 5 5 0 0 1 9.5 1.2 3 3 0 0 1-.6 5.8Z" />
+  </Icon>
+);
+
+export const CarIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M5 16.5V19a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1v-2.5M19 16.5V19a1 1 0 0 0 1 1h.5a1 1 0 0 0 1-1v-2.5" />
+    <path d="M4.5 16.5h15a1 1 0 0 0 1-1v-3a2 2 0 0 0-1.5-1.9l-1.2-3.3A2 2 0 0 0 15.9 6H8.1a2 2 0 0 0-1.9 1.3L5 10.6a2 2 0 0 0-1.5 1.9v3a1 1 0 0 0 1 1Z" />
+    <path d="M7 13.5h.01M17 13.5h.01" />
+  </Icon>
+);
+
+export const CameraIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 8.5A1.5 1.5 0 0 1 4.5 7h9A1.5 1.5 0 0 1 15 8.5v7A1.5 1.5 0 0 1 13.5 17h-9A1.5 1.5 0 0 1 3 15.5v-7Z" />
+    <path d="m15 11 4.6-2.6a.8.8 0 0 1 1.2.7v5.8a.8.8 0 0 1-1.2.7L15 13" />
+  </Icon>
+);
+
+export const MegaphoneIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M3 10.5v3a1.5 1.5 0 0 0 1.5 1.5H7l7 4V6.5l-7 4H4.5A1.5 1.5 0 0 0 3 12Z" />
+    <path d="M17.5 9.5a3.5 3.5 0 0 1 0 5M7 15v4.5" />
+  </Icon>
+);
+
+export const FeatherIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M19.5 4.5a6 6 0 0 0-8.5 0L5 10.5V19h8.5l6-6a6 6 0 0 0 0-8.5Z" />
+    <path d="M5 19 12 12M15 9h-3v3" />
   </Icon>
 );
 

@@ -48,6 +48,71 @@ export const mediaAssets = pgTable("media_assets", {
   ...timestamps,
 });
 
+// Better Auth core tables (DEC-110, migration 07). Property names are the ones
+// Better Auth expects; the adapter maps them through this schema.
+// Confirmed by Koce on 24.09.2026 (migration 08).
+export const staffRoles = ["editor", "admin", "master_admin"] as const;
+export type StaffRole = (typeof staffRoles)[number];
+
+export const staffUsers = pgTable("staff_users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  role: text("role", { enum: staffRoles }).notNull().default("editor"),
+  ...timestamps,
+});
+
+export const staffSessions = pgTable(
+  "staff_sessions",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    token: text("token").notNull().unique(),
+    ...timestamps,
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => staffUsers.id, { onDelete: "cascade" }),
+  },
+  (table) => [index("staff_sessions_user_idx").on(table.userId)],
+);
+
+export const staffAccounts = pgTable(
+  "staff_accounts",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => staffUsers.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    password: text("password"),
+    ...timestamps,
+  },
+  (table) => [index("staff_accounts_user_idx").on(table.userId)],
+);
+
+export const staffVerifications = pgTable(
+  "staff_verifications",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ...timestamps,
+  },
+  (table) => [index("staff_verifications_identifier_idx").on(table.identifier)],
+);
+
 export const articles = pgTable(
   "articles",
   {
@@ -70,6 +135,8 @@ export const articles = pgTable(
     sourceModifiedAt: timestamp("source_modified_at", { withTimezone: true }),
     importedAt: timestamp("imported_at", { withTimezone: true }),
     version: integer("version").notNull().default(1),
+    publishedRevision: integer("published_revision"),
+    createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
     ...timestamps,
   },
   (table) => [
@@ -120,4 +187,71 @@ export const outboxEvents = pgTable(
 
 export const OUTBOX_CHANNEL = "np_outbox";
 
-export const schemaTables = { categories, mediaAssets, articles, articleCategories, outboxEvents };
+export const articleRevisions = pgTable(
+  "article_revisions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    articleId: uuid("article_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    body: jsonb("body").notNull(),
+    primaryCategoryId: uuid("primary_category_id").references(() => categories.id, { onDelete: "set null" }),
+    heroMediaId: uuid("hero_media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+    createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("article_revisions_article_id_number_key").on(table.articleId, table.number)],
+);
+
+export const publishRequests = pgTable("publish_requests", {
+  idempotencyKey: uuid("idempotency_key").primaryKey(),
+  articleId: uuid("article_id")
+    .notNull()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull(),
+  requestedBy: text("requested_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  outcome: jsonb("outcome").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const livepointSubmissionKinds = ["report", "my_news"] as const;
+export type LivepointSubmissionKind = (typeof livepointSubmissionKinds)[number];
+
+export const livepointSubmissionStatuses = ["received", "in_review", "verified", "rejected", "published"] as const;
+export type LivepointSubmissionStatus = (typeof livepointSubmissionStatuses)[number];
+
+/** Citizen signals and story tips (LivePoint). Public only after editorial approval. */
+export const livepointSubmissions = pgTable(
+  "livepoint_submissions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind", { enum: livepointSubmissionKinds }).notNull(),
+    status: text("status", { enum: livepointSubmissionStatuses }).notNull().default("received"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    contact: text("contact"),
+    ipHash: text("ip_hash"),
+    userAgent: text("user_agent"),
+    articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [index("livepoint_submissions_kind_status_idx").on(table.kind, table.status, table.createdAt.desc())],
+);
+
+export const schemaTables = {
+  categories,
+  mediaAssets,
+  staffUsers,
+  staffSessions,
+  staffAccounts,
+  staffVerifications,
+  articles,
+  articleCategories,
+  outboxEvents,
+  articleRevisions,
+  publishRequests,
+  livepointSubmissions,
+};

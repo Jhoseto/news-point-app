@@ -62,7 +62,7 @@ export function LiveUpdates() {
       <div
         role="status"
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 top-[7.25rem] z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[25rem] lg:right-6 lg:top-[8rem]"
+        className="pointer-events-none fixed inset-x-4 top-[calc(var(--np-header-h)+1rem)] z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[25rem] lg:right-6"
       >
         {toasts.map((event) => (
           <div key={event.eventId} className="w-full">

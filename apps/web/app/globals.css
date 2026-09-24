@@ -17,6 +17,7 @@
   --np-muted: #5d6b96;
   --np-faint: #95a3cc;
   --np-brand: #142299;
+  --np-logo: #00308f;
   --np-accent: #3818d6;
   --np-accent-2: #990fec;
   --np-magenta: #d63df2;
@@ -38,6 +39,7 @@
   --np-muted: #a1abc0;
   --np-faint: #6c7794;
   --np-brand: #f4f7f9;
+  --np-logo: #6d9bff;
   --np-accent: #6a3cf0;
   --np-accent-2: #b43cf5;
   --np-magenta: #ce06f8;
@@ -46,6 +48,10 @@
   --np-shadow: 0 0 0 1px rgb(118 104 255 / 0.14), 0 12px 32px -16px rgb(106 60 240 / 0.45);
   --np-gradient: linear-gradient(90deg, #6a3cf0 0%, #b43cf5 55%, #ce06f8 100%);
   color-scheme: dark;
+}
+
+@theme {
+  --breakpoint-3xl: 112.5rem;
 }
 
 @theme inline {
@@ -58,6 +64,7 @@
   --color-muted: var(--np-muted);
   --color-faint: var(--np-faint);
   --color-brand: var(--np-brand);
+  --color-logo: var(--np-logo);
   --color-accent: var(--np-accent);
   --color-accent-2: var(--np-accent-2);
   --color-magenta: var(--np-magenta);
@@ -69,6 +76,10 @@
 
 @layer base {
   html {
+    /* Height of the sticky header. The desktop rail starts directly below it. */
+    --np-header-h: 6.5rem;
+    --np-bar-h: 4rem;
+    --np-rail-w: 0px;
     background: var(--np-page);
     -webkit-text-size-adjust: 100%;
   }
@@ -77,6 +88,51 @@
     @apply bg-page font-sans text-body antialiased;
     /* Manrope swaps in Bulgarian letterforms for lang="bg"; the mockups use the standard ones. */
     font-feature-settings: "locl" 0;
+  }
+
+  /* Thin rounded thumb in the muted colour; the brand violet only while hovering it. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--np-muted) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+    background-color: var(--np-muted);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--np-accent);
+  }
+
+  @media (min-width: 64rem) {
+    html {
+      --np-header-h: 7.75rem;
+      --np-bar-h: 4.75rem;
+      --np-rail-w: 16.5rem;
+    }
+    html[data-rubrics-closed] {
+      --np-rail-w: 4.25rem;
+    }
+  }
+
+  /* Compact masthead after scroll; disabled while a LivePoint panel is open. */
+  html[data-np-compact] {
+    --np-header-h: 5.25rem;
+    --np-bar-h: 3.25rem;
+  }
+  @media (min-width: 64rem) {
+    html[data-np-compact] {
+      --np-header-h: 6.25rem;
+      --np-bar-h: 3.75rem;
+    }
   }
 
   :focus-visible {
@@ -97,6 +153,78 @@
 }
 
 @layer components {
+  /* Page width. Grows with large screens; article text keeps its own measure. */
+  .np-container {
+    width: 100%;
+    max-width: 160rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 40rem) {
+    .np-container {
+      padding-inline: 1.5rem;
+    }
+  }
+  @media (min-width: 64rem) {
+    .np-container {
+      padding-inline: 2rem;
+    }
+  }
+  @media (min-width: 96rem) {
+    .np-container {
+      padding-inline: 2.75rem;
+    }
+  }
+  @media (min-width: 112.5rem) {
+    .np-container {
+      padding-inline: 3.5rem;
+    }
+  }
+
+  /* Search: a thin logo-gradient line that grows in only while the field has focus. */
+  .np-search-line {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: -1px;
+    height: 2px;
+    border-radius: 9999px;
+    background: var(--np-gradient);
+    transform: scaleX(0);
+    opacity: 0;
+    transition:
+      transform 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 200ms ease;
+  }
+  .np-search:focus-within .np-search-line {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  .np-sheet-backdrop {
+    animation: np-fade-in 180ms ease both;
+  }
+  .np-sheet-left {
+    animation: np-sheet-left 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .np-sheet-top {
+    animation: np-sheet-top 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Rubrics panel beside the desktop rail. */
+  .np-rubrics-panel {
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease,
+      visibility 0s linear 220ms;
+  }
+  .np-rubrics-panel[data-open] {
+    transition:
+      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 180ms ease,
+      visibility 0s;
+  }
+
   .np-gradient-bg {
     background-image: var(--np-gradient);
   }
@@ -107,14 +235,12 @@
     color: transparent;
   }
 
-  /* Section marker: gradient ring from the logo. */
+  /* Section marker: the brand spiral, one cached SVG, no extra weight per use. */
   .np-ring {
     display: inline-block;
-    width: 1.05rem;
-    height: 1.05rem;
-    border-radius: 9999px;
-    background: var(--np-ring-gradient);
-    mask: radial-gradient(circle, transparent 42%, #000 45%);
+    width: 1.15rem;
+    height: 1.15rem;
+    background: url("/brand/mark.svg") center / contain no-repeat;
     flex: none;
   }
 
@@ -122,8 +248,57 @@
     @apply rounded-2xl border border-line bg-surface shadow-card;
   }
 
+  .np-carousel-viewport {
+    scrollbar-width: none;
+    overscroll-behavior-inline: contain;
+    touch-action: pan-x pan-y;
+    mask-image: linear-gradient(to right, transparent 0, #000 2rem, #000 calc(100% - 2rem), transparent 100%);
+  }
+  .np-carousel-viewport::-webkit-scrollbar {
+    display: none;
+  }
+  .np-carousel-button {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--np-line);
+    border-radius: 9999px;
+    background: color-mix(in oklab, var(--np-surface) 88%, transparent);
+    color: var(--np-ink);
+    box-shadow: var(--np-shadow);
+    backdrop-filter: blur(12px);
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+  .np-carousel-button:hover {
+    border-color: var(--np-accent);
+    color: var(--np-accent);
+    transform: translateY(-1px);
+  }
+
   .np-img {
     @apply bg-surface-2 object-cover;
+  }
+  /* Article without a photo: a quiet brand mark instead of an empty box. */
+  .np-img-empty {
+    position: relative;
+    background:
+      radial-gradient(circle at 30% 20%, color-mix(in oklab, var(--np-link) 14%, transparent), transparent 60%),
+      var(--color-surface-2);
+  }
+  .np-img-empty::after {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: clamp(1.75rem, 18%, 4rem);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    background: url("/brand/mark.svg") center / contain no-repeat;
+    opacity: 0.45;
   }
 
   .np-prose {
@@ -232,6 +407,133 @@
     border-radius: inherit;
     background: var(--np-magenta);
     animation: np-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  /* LivePoint: editorial utility line and a card that hangs under the header. */
+  .np-lp-strip {
+    scrollbar-width: none;
+  }
+  .np-lp-strip::-webkit-scrollbar {
+    display: none;
+  }
+  .np-lp-item {
+    position: relative;
+  }
+  .np-lp-item[data-active]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0.35rem 0.35rem;
+    height: 2px;
+    border-radius: 9999px;
+    background: var(--np-gradient);
+  }
+
+  .np-lp-scrim {
+    background: color-mix(in oklab, var(--np-page) 55%, transparent);
+    animation: np-fade-in 160ms ease both;
+  }
+  [data-theme="dark"] .np-lp-scrim {
+    background: rgb(0 5 22 / 0.42);
+  }
+  .np-lp-panel {
+    animation: np-lp-panel-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Weather window: real Plovdiv aerial, veil tinted by the forecast mood. */
+  .np-lp-window {
+    --np-veil: rgb(12 79 190 / 0.52);
+  }
+  .np-lp-window[data-mood="clear"] {
+    --np-veil: rgb(12 79 190 / 0.4);
+  }
+  .np-lp-window[data-mood="fair"] {
+    --np-veil: rgb(12 79 190 / 0.5);
+  }
+  .np-lp-window[data-mood="cloudy"],
+  .np-lp-window[data-mood="fog"] {
+    --np-veil: rgb(26 39 68 / 0.58);
+  }
+  .np-lp-window[data-mood="rain"] {
+    --np-veil: rgb(21 32 51 / 0.64);
+  }
+  .np-lp-window[data-mood="snow"] {
+    --np-veil: rgb(70 90 120 / 0.5);
+  }
+  .np-lp-window[data-mood="night"] {
+    --np-veil: rgb(5 11 34 / 0.72);
+  }
+  .np-lp-window-veil {
+    background:
+      linear-gradient(180deg, rgb(5 11 34 / 0.15) 0%, var(--np-veil) 55%, rgb(5 11 34 / 0.55) 100%),
+      var(--np-veil);
+  }
+
+  [data-np-header] .np-masthead,
+  [data-np-header] .np-lp-row,
+  [data-np-header] .np-masthead img {
+    transition:
+      height 180ms ease,
+      max-height 180ms ease;
+  }
+  [data-np-header][data-compact] .np-masthead {
+    height: 3.25rem;
+  }
+  @media (min-width: 64rem) {
+    [data-np-header][data-compact] .np-masthead {
+      height: 3.75rem;
+    }
+  }
+  [data-np-header][data-compact] .np-lp-row {
+    height: 2rem;
+  }
+  [data-np-header][data-compact] .np-masthead img {
+    height: 2rem;
+  }
+  [data-np-header][data-compact] .np-clock-day,
+  [data-np-header][data-compact] .np-lp-latest {
+    display: none;
+  }
+
+  /* Inner list scroll: the site scrollbar, one step quieter. */
+  .np-scroll-soft {
+    scrollbar-width: thin;
+    scrollbar-color: var(--np-line) transparent;
+  }
+  .np-scroll-soft::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--np-muted) 45%, transparent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .np-lp-panel,
+    .np-lp-scrim {
+      animation: none !important;
+    }
+  }
+}
+
+@keyframes np-lp-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 0.75rem, 0) scale(0.985);
+  }
+}
+
+@keyframes np-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes np-sheet-left {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+}
+
+@keyframes np-sheet-top {
+  from {
+    transform: translate3d(0, -1.5rem, 0);
+    opacity: 0;
   }
 }
 

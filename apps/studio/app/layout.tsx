@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "@fontsource-variable/manrope";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "NewsPoint Studio",
+  title: { default: "NewsPoint Studio", template: "%s · NewsPoint Studio" },
   robots: { index: false, follow: false },
 };
 

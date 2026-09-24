@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
   turbopack: { root: repoRoot },
   // WordPress URLs end with a slash; imported paths are kept exactly (DEC-105).
   trailingSlash: true,
+  // Studio (apps/studio, basePath /admin) is served through this host at /admin.
+  // Pages keep the trailing slash; static files have none.
+  async rewrites() {
+    const studio = (process.env.STUDIO_URL ?? "http://localhost:3001").replace(/\/+$/, "");
+    return {
+      beforeFiles: [
+        { source: "/admin/", destination: `${studio}/admin/` },
+        { source: "/admin/:path*/", destination: `${studio}/admin/:path*/` },
+        { source: "/admin/:path*", destination: `${studio}/admin/:path*` },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
   async headers() {
     // Local preview must never be indexed (DEC-111).
     return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];

@@ -7,7 +7,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter \"./apps/*\" dev",
+    "dev": "pnpm --parallel --filter ./apps/* dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
@@ -15,7 +15,8 @@
     "db:verify": "pnpm --filter @newspoint/db db:verify",
     "import:wp": "pnpm --filter @newspoint/wp-import run wp:import",
     "sync:once": "pnpm --filter @newspoint/worker run sync:once",
-    "live:simulate": "pnpm --filter @newspoint/worker run live:simulate"
+    "live:simulate": "pnpm --filter @newspoint/worker run live:simulate",
+    "studio:user": "pnpm --filter @newspoint/studio run studio:user"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

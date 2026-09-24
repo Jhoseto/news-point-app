@@ -105,7 +105,7 @@ export function NewArticleToast({ event, onDone }: { event: LiveEvent; onDone: (
             <Link
               href={event.path}
               onClick={() => setLeaving(true)}
-              className="mt-1 line-clamp-3 text-[0.9375rem] leading-snug font-extrabold text-ink transition-colors hover:text-accent dark:hover:text-link"
+              className="mt-1 line-clamp-3 text-[0.9375rem] leading-snug font-extrabold text-ink transition-colors hover:text-logo"
             >
               {event.title}
             </Link>

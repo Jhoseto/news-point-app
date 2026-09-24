@@ -4,32 +4,66 @@ import { formatClock, isoDate } from "@/lib/format";
 import { ArrowRightIcon } from "./icons";
 import { ArticleImage, CategoryLabel, CategoryPill, TimeMeta } from "./ui";
 
-/** Large lead story with the title over the photo. */
-export function HeroCard({ article, headingLevel = "h2" }: { article: ArticleSummary; headingLevel?: "h1" | "h2" }) {
+/**
+ * Story with the title over the photo. "lead" is the top story; "tile" is the
+ * smaller version for supporting stories and mosaic sections.
+ */
+export function HeroCard({
+  article,
+  headingLevel = "h2",
+  size = "lead",
+  fit = "natural",
+  className = "",
+}: {
+  article: ArticleSummary;
+  headingLevel?: "h1" | "h2" | "h3";
+  size?: "lead" | "tile" | "mini";
+  /** "band" fills a parent with a fixed height. The homepage desktop hero uses it. */
+  fit?: "natural" | "band";
+  className?: string;
+}) {
   const Heading = headingLevel;
+  const lead = size === "lead";
+  const mini = size === "mini";
   return (
-    <article className="group relative isolate h-full overflow-hidden rounded-3xl shadow-card">
+    <article className={`group relative isolate h-full overflow-hidden shadow-card ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}>
       <Link href={article.path} className="block h-full">
         <ArticleImage
           media={article.hero}
-          priority
-          sizes="(min-width: 1024px) 66vw, 100vw"
-          className="aspect-[4/5] h-full w-full transition-transform duration-700 group-hover:scale-[1.03] sm:aspect-[16/10] lg:aspect-auto lg:min-h-[30rem]"
+          priority={lead}
+          sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : "(min-width: 1024px) 22vw, 50vw"}
+          className={`w-full object-[center_30%] transition-transform duration-700 group-hover:scale-[1.03] ${
+            fit === "band"
+              ? "absolute inset-0 h-full"
+              : lead
+                ? "aspect-[3/2] h-full"
+                : "aspect-[16/10] h-full lg:aspect-auto lg:min-h-[15rem]"
+          }`}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#020826]/95 via-[#020826]/45 to-transparent" aria-hidden="true" />
-        <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 sm:p-7 lg:p-8">
-          {article.category ? <CategoryPill category={article.category} className="self-start" /> : null}
-          <Heading className="max-w-3xl text-2xl leading-tight font-extrabold tracking-tight text-balance text-white sm:text-3xl lg:text-[2.35rem]">
+        {article.category ? <CategoryPill category={article.category} className={`absolute z-10 ${mini ? "top-2 left-2" : "top-3 left-3"}`} /> : null}
+        <div className={`absolute inset-x-0 bottom-0 flex flex-col ${lead ? "gap-2.5 p-5 sm:p-6 lg:p-6" : mini ? "gap-1.5 p-3" : "gap-2 p-4"}`}>
+          <Heading
+            className={
+              lead
+                ? "max-w-3xl text-2xl leading-[1.15] font-extrabold tracking-tight text-balance text-white sm:text-3xl lg:text-[2.15rem] xl:text-[2.35rem]"
+                : mini
+                  ? "line-clamp-3 text-sm leading-snug font-extrabold tracking-tight text-balance text-white"
+                  : "line-clamp-3 text-lg leading-snug font-extrabold tracking-tight text-balance text-white"
+            }
+          >
             {article.title}
           </Heading>
-          {article.excerpt ? (
+          {lead && article.excerpt ? (
             <p className="hidden max-w-2xl text-[0.95rem] leading-relaxed text-white/85 sm:line-clamp-2">{article.excerpt}</p>
           ) : null}
           <div className="flex items-center justify-between gap-4">
             <TimeMeta date={article.publishedAt} className="text-white/80" />
-            <span className="flex size-10 items-center justify-center rounded-full bg-white text-[#0a1454] transition-transform group-hover:translate-x-1">
-              <ArrowRightIcon width={18} height={18} />
-            </span>
+            {lead ? (
+              <span className="flex size-10 items-center justify-center rounded-full bg-white text-[#0a1454] transition-transform group-hover:translate-x-1">
+                <ArrowRightIcon width={18} height={18} />
+              </span>
+            ) : null}
           </div>
         </div>
       </Link>
@@ -51,7 +85,7 @@ export function ArticleCard({ article, showExcerpt = false }: { article: Article
         </div>
         <div className="flex flex-1 flex-col gap-2 p-4">
           {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="line-clamp-3 text-[0.98rem] leading-snug font-bold text-ink group-hover:text-accent dark:group-hover:text-link">
+          <h3 className="line-clamp-3 text-[0.98rem] leading-snug font-bold text-ink group-hover:text-logo">
             {article.title}
           </h3>
           {showExcerpt && article.excerpt ? (
@@ -78,7 +112,7 @@ export function FeatureCard({ article }: { article: ArticleSummary }) {
         </div>
         <div className="flex flex-col gap-3 p-5">
           {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="text-xl leading-snug font-extrabold text-ink group-hover:text-accent dark:group-hover:text-link">
+          <h3 className="text-xl leading-snug font-extrabold text-ink group-hover:text-logo">
             {article.title}
           </h3>
           {article.excerpt ? <p className="line-clamp-3 text-sm leading-relaxed text-muted">{article.excerpt}</p> : null}
@@ -97,7 +131,7 @@ export function CompactCard({ article }: { article: ArticleSummary }) {
         <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 shrink-0 rounded-lg sm:w-28" />
         <div className="flex min-w-0 flex-col gap-1.5">
           {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink group-hover:text-accent dark:group-hover:text-link">
+          <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink group-hover:text-logo">
             {article.title}
           </h3>
           <TimeMeta date={article.publishedAt} />
@@ -108,15 +142,15 @@ export function CompactCard({ article }: { article: ArticleSummary }) {
 }
 
 /** Timeline row for the "Последни новини" list. */
-export function TimelineItem({ article }: { article: ArticleSummary }) {
+export function TimelineItem({ article, className = "" }: { article: ArticleSummary; className?: string }) {
   return (
-    <li className="group relative pl-16">
+    <li className={`group relative pl-16 ${className}`}>
       <time dateTime={isoDate(article.publishedAt)} className="absolute top-0.5 left-0 text-xs font-bold text-muted tabular-nums">
         {formatClock(article.publishedAt)}
       </time>
       <span className="np-gradient-bg absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface" aria-hidden="true" />
       <Link href={article.path} className="block">
-        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink group-hover:text-accent dark:group-hover:text-link">
+        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink group-hover:text-logo">
           {article.title}
         </h3>
         {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}

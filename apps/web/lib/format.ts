@@ -12,13 +12,6 @@ const fullFormat = new Intl.DateTimeFormat("bg-BG", {
   hour: "2-digit",
   minute: "2-digit",
 });
-const todayFormat = new Intl.DateTimeFormat("bg-BG", {
-  timeZone: TIME_ZONE,
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
 
 export function formatTime(date: Date): string {
@@ -41,8 +34,11 @@ export function formatFull(date: Date): string {
   return fullFormat.format(date);
 }
 
-export function formatToday(now = new Date()): string {
-  const text = todayFormat.format(now);
+const headerDayFormat = new Intl.DateTimeFormat("bg-BG", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
+
+/** "Четвъртък, 24 септември" for the header. */
+export function formatHeaderDay(now = new Date()): string {
+  const text = headerDayFormat.format(now);
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 

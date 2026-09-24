@@ -3,13 +3,24 @@ import type { ArticleSummary, CategoryRef } from "@/lib/queries";
 import { CompactCard, TimelineItem } from "./article-card";
 import { SectionTitle } from "./ui";
 
-export function LatestList({ articles, id }: { articles: ArticleSummary[]; id?: string }) {
+/**
+ * `compact` is how many items show on phones and tablets; the rest appear from lg,
+ * where the list sits beside the lead story. `fill` lets the list take the height it
+ * is given and scroll inside instead of pushing the band taller.
+ */
+export function LatestList({ articles, id, compact, dense = false, fill = false, className = "" }: { articles: ArticleSummary[]; id?: string; compact?: number; dense?: boolean; fill?: boolean; className?: string }) {
   return (
-    <section aria-labelledby={id ? `${id}-title` : undefined} id={id} className="np-card scroll-mt-32 p-5">
+    <section
+      aria-labelledby={id ? `${id}-title` : undefined}
+      id={id}
+      className={`np-card scroll-mt-32 overflow-hidden ${dense ? "p-4" : "p-5"} ${fill ? "flex min-h-0 flex-col" : ""} ${className}`}
+    >
       <SectionTitle id={id ? `${id}-title` : undefined}>Последни новини</SectionTitle>
-      <ol className="relative flex flex-col gap-4 before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line">
-        {articles.map((article) => (
-          <TimelineItem key={article.id} article={article} />
+      <ol
+        className={`relative flex flex-col before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"} ${fill ? "np-scroll-soft -mr-2 min-h-0 flex-1 overflow-y-auto pr-2" : ""}`}
+      >
+        {articles.map((article, index) => (
+          <TimelineItem key={article.id} article={article} className={compact !== undefined && index >= compact ? "hidden lg:block" : ""} />
         ))}
       </ol>
     </section>

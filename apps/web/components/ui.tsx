@@ -4,11 +4,12 @@ import type { CategoryRef, Media } from "@/lib/queries";
 import { formatShort, isoDate } from "@/lib/format";
 import { ArrowRightIcon, ClockIcon } from "./icons";
 
-export function CategoryPill({ category, className = "" }: { category: CategoryRef; className?: string }) {
+export function CategoryPill({ category, glass = true, className = "" }: { category: CategoryRef; glass?: boolean; className?: string }) {
+  const look = glass
+    ? "border border-white/45 bg-white/15 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.45)] backdrop-blur-md"
+    : "bg-accent text-on-accent";
   return (
-    <span
-      className={`inline-flex items-center rounded-full bg-accent px-2.5 py-1 text-[0.6875rem] font-bold tracking-wide text-on-accent uppercase ${className}`}
-    >
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.6875rem] font-bold tracking-wide uppercase ${look} ${className}`}>
       {category.name}
     </span>
   );
@@ -76,7 +77,7 @@ export function ArticleImage({
   priority?: boolean;
   sizes?: string;
 }) {
-  if (!media) return <div className={`np-img ${className}`} aria-hidden="true" />;
+  if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   return (
     <img
       src={media.url}

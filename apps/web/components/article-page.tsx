@@ -16,17 +16,22 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
     : [{ name: article.title }];
 
   return (
-    <div className="mx-auto flex max-w-[1320px] flex-col gap-6 px-4 pt-5 pb-10 sm:px-6">
+    <div className="np-container flex max-w-[104rem] flex-col gap-6 pt-5 pb-10">
       <Breadcrumbs items={crumbs} />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:gap-10">
         <article className="min-w-0">
-          <div className="relative overflow-hidden rounded-3xl shadow-card">
-            <ArticleImage media={article.hero} priority sizes="(min-width: 1024px) 66vw, 100vw" className="aspect-[16/9] w-full" />
-            {article.category ? <CategoryPill category={article.category} className="absolute top-4 left-4" /> : null}
-          </div>
-          {article.hero?.caption ? <p className="mt-2 text-xs text-muted">{article.hero.caption}</p> : null}
+          {article.hero ? (
+            <>
+              <div className="relative overflow-hidden rounded-3xl shadow-card">
+                <ArticleImage media={article.hero} priority sizes="(min-width: 1536px) 70vw, (min-width: 1024px) 66vw, 100vw" className="aspect-[16/9] w-full" />
+                {article.category ? <CategoryPill category={article.category} className="absolute top-4 left-4" /> : null}
+              </div>
+              {article.hero.caption ? <p className="mt-2 text-xs text-muted">{article.hero.caption}</p> : null}
+            </>
+          ) : null}
 
-          <div className="mx-auto mt-6 flex max-w-[46rem] flex-col gap-5">
+          <div className={`mx-auto flex max-w-[46rem] flex-col gap-5 ${article.hero ? "mt-6" : "mt-2"}`}>
+            {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="self-start" /> : null}
             <h1 className="text-3xl leading-[1.15] font-extrabold tracking-tight text-balance text-ink sm:text-4xl lg:text-[2.6rem]">
               {article.title}
             </h1>

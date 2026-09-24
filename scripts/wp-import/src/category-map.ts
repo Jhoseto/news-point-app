@@ -6,15 +6,22 @@ export interface MenuEntry {
   label: string;
 }
 
+// Same order and labels as apps/web/lib/menu.ts. "tehnologii" is not on the old
+// site; migration 09 inserts it, and a later import leaves it alone.
 export const MENU: readonly MenuEntry[] = [
-  { slug: "balgariya", label: "България" },
   { slug: "plovdiv", label: "Пловдив" },
-  { slug: "svetovni-novini", label: "Свят" },
+  { slug: "regionalni-novini", label: "Регион" },
+  { slug: "balgariya", label: "България" },
   { slug: "politika", label: "Политика" },
-  { slug: "biznes-novini", label: "Икономика" },
+  { slug: "kriminalni-novini", label: "Криминални" },
+  { slug: "ot-soczialnite-mrezhi", label: "Анализи и коментари" },
+  { slug: "svetovni-novini", label: "Свят" },
   { slug: "sportni-novini", label: "Спорт" },
-  { slug: "lajfstajl", label: "Любопитно" },
+  { slug: "biznes-novini", label: "Бизнес" },
+  { slug: "zdrave", label: "Здраве" },
   { slug: "kultura", label: "Култура" },
+  { slug: "lajfstajl", label: "Лайфстайл" },
+  { slug: "izbori", label: "Избори" },
 ];
 
 export const EDITORIAL_LABELS: ReadonlySet<string> = new Set([

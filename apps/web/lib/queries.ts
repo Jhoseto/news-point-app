@@ -3,6 +3,8 @@ import { cache } from "react";
 import { and, asc, desc, eq, inArray, lte, ne, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody } from "@newspoint/content";
 import { articleCategories, articles, categories, getDb, mediaAssets } from "@newspoint/db";
+import { PUBLIC_MENU, menuName } from "./menu";
+import { searchTerms } from "./search";
 
 export interface Media {
   url: string;
@@ -87,7 +89,7 @@ function toSummary(row: SummaryRow): ArticleSummary {
     excerpt: row.excerpt ?? "",
     publishedAt: row.publishedAt!,
     category: row.categoryId
-      ? { id: row.categoryId, slug: row.categorySlug!, name: row.categoryName!, path: row.categoryPath! }
+      ? { id: row.categoryId, slug: row.categorySlug!, name: menuName(row.categorySlug!, row.categoryName!), path: row.categoryPath! }
       : null,
     hero: toMedia({
       provider: row.mediaProvider,
@@ -115,11 +117,16 @@ function summaryQuery() {
 }
 
 export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
-  return getDb()
+  const slugs = PUBLIC_MENU.map((entry) => entry.slug);
+  const rows = await getDb()
     .select({ id: categories.id, slug: categories.slug, name: categories.name, path: categories.path })
     .from(categories)
-    .where(eq(categories.inMenu, true))
-    .orderBy(asc(categories.menuOrder));
+    .where(inArray(categories.slug, slugs));
+  const bySlug = new Map(rows.map((row) => [row.slug, row]));
+  return PUBLIC_MENU.flatMap((entry) => {
+    const row = bySlug.get(entry.slug);
+    return row ? [{ ...row, name: entry.name }] : [];
+  });
 });
 
 export const getLatest = cache(async (limit: number): Promise<ArticleSummary[]> => {
@@ -147,7 +154,7 @@ export const getCategoryByPath = cache(async (path: string): Promise<CategoryRef
     .from(categories)
     .where(eq(categories.path, path))
     .limit(1);
-  return row ?? null;
+  return row ? { ...row, name: menuName(row.slug, row.name) } : null;
 });
 
 export const getArticleByPath = cache(async (path: string): Promise<ArticleDetail | null> => {
@@ -185,9 +192,24 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     sourceUrl: row.sourceUrl,
     body,
     media,
-    categories: linked,
+    categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
   };
 });
+
+/** Case-insensitive search over published titles and excerpts, newest first. */
+export async function searchArticles(query: string, limit: number): Promise<ArticleSummary[]> {
+  const terms = searchTerms(query);
+  if (!terms.length) return [];
+  const matches = terms.map((term) => {
+    const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
+    return sql`(${articles.title} ilike ${pattern} or ${articles.excerpt} ilike ${pattern})`;
+  });
+  const rows = await summaryQuery()
+    .where(and(isPublished(), ...matches))
+    .orderBy(desc(articles.publishedAt))
+    .limit(limit);
+  return rows.map(toSummary);
+}
 
 /** Summaries for live notifications, keyed by article id. Runs outside a request, so no cache(). */
 export async function getSummariesByIds(ids: string[]): Promise<Map<string, ArticleSummary>> {
