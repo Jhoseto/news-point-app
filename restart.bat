@@ -19,7 +19,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [2/2] Startiram pnpm dev (web + studio)...
+echo [2/2] Startiram pnpm dev (web + studio + worker za sync)...
 echo       Web:    http://localhost:3000
 echo       Studio: http://localhost:3001
 echo       Za spirane: Ctrl+C

@@ -22,8 +22,8 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
   const current = useActivePath();
   const all = [{ name: "Начало", path: "/" }, ...items];
   return (
-    <nav aria-label="Основна навигация" className="-mx-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      <ul className="flex min-w-max items-center justify-between gap-0.5">
+    <nav aria-label="Основна навигация" className="hidden lg:block">
+      <ul className="flex items-center gap-0.5">
         {all.map((item) => {
           const active = isActive(current, item.path);
           return (
@@ -31,11 +31,11 @@ export function DesktopNav({ items }: { items: NavItem[] }) {
               <Link
                 href={item.path}
                 aria-current={active ? "page" : undefined}
-                className="relative block px-2 py-3 text-[0.8125rem] font-semibold whitespace-nowrap text-muted transition-colors hover:text-ink aria-[current=page]:text-ink xl:text-sm"
+                className="relative block rounded-lg px-2.5 py-2 text-[0.8125rem] font-semibold whitespace-nowrap text-muted transition-colors hover:text-ink aria-[current=page]:text-ink xl:px-3 xl:text-sm"
               >
                 {item.name}
                 {active ? (
-                  <span className="np-gradient-bg absolute inset-x-2 bottom-0 h-[3px] rounded-full" aria-hidden="true" />
+                  <span className="np-gradient-bg absolute inset-x-2.5 -bottom-[1px] h-[3px] rounded-full xl:inset-x-3" aria-hidden="true" />
                 ) : null}
               </Link>
             </li>

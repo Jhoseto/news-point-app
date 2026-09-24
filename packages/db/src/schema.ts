@@ -69,6 +69,7 @@ export const articles = pgTable(
     publishedAt: timestamp("published_at", { withTimezone: true }),
     sourceModifiedAt: timestamp("source_modified_at", { withTimezone: true }),
     importedAt: timestamp("imported_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
     ...timestamps,
   },
   (table) => [
@@ -93,4 +94,30 @@ export const articleCategories = pgTable(
   ],
 );
 
-export const schemaTables = { categories, mediaAssets, articles, articleCategories };
+export const outboxEventTypes = ["article.published", "article.updated"] as const;
+export type OutboxEventType = (typeof outboxEventTypes)[number];
+
+export interface OutboxPayload {
+  path: string;
+  title: string;
+  topics: string[];
+}
+
+export const outboxEvents = pgTable(
+  "outbox_events",
+  {
+    id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+    type: text("type", { enum: outboxEventTypes }).notNull(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => articles.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    payload: jsonb("payload").$type<OutboxPayload>().notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("outbox_events_entity_idx").on(table.entityId, table.id.desc())],
+);
+
+export const OUTBOX_CHANNEL = "np_outbox";
+
+export const schemaTables = { categories, mediaAssets, articles, articleCategories, outboxEvents };

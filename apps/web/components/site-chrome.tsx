@@ -10,17 +10,14 @@ export async function SiteHeader() {
   const items = menu.map(({ name, path }) => ({ name, path }));
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[1320px] items-center gap-4 px-4 sm:px-6 lg:h-[4.5rem]">
         <Logo className="h-9 lg:h-10" />
-        <div className="flex-1" />
-        <span className="hidden text-xs font-medium text-muted md:block">{formatToday()}</span>
-        <ThemeToggle />
-        <MobileMenu items={items} />
-      </div>
-      <div className="hidden border-t border-line lg:block">
-        <div className="mx-auto max-w-[1320px] px-4 sm:px-6">
+        <div className="flex flex-1 justify-center">
           <DesktopNav items={items} />
         </div>
+        <span className="hidden text-xs font-medium text-muted xl:block">{formatToday()}</span>
+        <ThemeToggle />
+        <MobileMenu items={items} />
       </div>
       {latest ? (
         <div className="border-t border-line">

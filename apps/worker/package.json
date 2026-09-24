@@ -1,0 +1,20 @@
+{
+  "name": "@newspoint/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --use-system-ca --import tsx src/index.ts",
+    "start": "node --use-system-ca --import tsx src/index.ts",
+    "sync:once": "node --use-system-ca --import tsx src/index.ts --once",
+    "live:simulate": "node --import tsx src/simulate.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@newspoint/db": "workspace:*",
+    "@newspoint/wp-import": "workspace:*",
+    "drizzle-orm": "0.45.3"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
+  }
+}

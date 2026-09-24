@@ -189,6 +189,13 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
   };
 });
 
+/** Summaries for live notifications, keyed by article id. Runs outside a request, so no cache(). */
+export async function getSummariesByIds(ids: string[]): Promise<Map<string, ArticleSummary>> {
+  if (!ids.length) return new Map();
+  const rows = await summaryQuery().where(and(isPublished(), inArray(articles.id, ids)));
+  return new Map(rows.map((row) => [row.id!, toSummary(row)]));
+}
+
 export const getRelated = cache(async (article: ArticleSummary, limit: number): Promise<ArticleSummary[]> => {
   if (!article.category) return [];
   const rows = await summaryQuery()

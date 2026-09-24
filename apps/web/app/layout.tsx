@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { BottomNav, SiteFooter, SiteHeader } from "@/components/site-chrome";
+import { LiveUpdates } from "@/components/live-updates";
 import { ThemeScript } from "@/components/theme-script";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <main id="main">{children}</main>
         <SiteFooter />
         <BottomNav />
+        <LiveUpdates />
       </body>
     </html>
   );

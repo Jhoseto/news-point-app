@@ -1,6 +1,14 @@
 import { and, eq, or, sql } from "drizzle-orm";
 import { articleBody, BODY_VERSION, type ArticleBody } from "@newspoint/content";
-import { articleCategories, articles, categories, mediaAssets, type ScriptDb } from "@newspoint/db/node";
+import {
+  articleCategories,
+  articles,
+  categories,
+  mediaAssets,
+  outboxEvents,
+  type OutboxPayload,
+  type ScriptDb,
+} from "@newspoint/db/node";
 import type { DraftBlock } from "./convert";
 
 export interface MediaInput {
@@ -39,7 +47,41 @@ export interface ArticleInput {
 
 type Tx = Parameters<Parameters<ScriptDb["transaction"]>[0]>[0];
 
-export async function upsertCategories(db: ScriptDb, input: CategoryInput[]): Promise<Map<number, { id: string; kind: string; inMenu: boolean }>> {
+export interface CategoryRow {
+  id: string;
+  slug: string;
+  kind: string;
+  inMenu: boolean;
+}
+
+export type CategoryIds = Map<number, CategoryRow>;
+
+export type SaveChange = "created" | "updated" | "unchanged";
+
+export interface SaveResult {
+  id: string;
+  change: SaveChange;
+  version: number;
+  eventId: number | null;
+}
+
+export interface SaveOptions {
+  /** Rewrite even when WordPress reports no modification (re-conversion). */
+  force?: boolean;
+  /** Write an outbox event for public changes (live sync). */
+  emit?: boolean;
+}
+
+/** Same modification time means WordPress has nothing new for us. */
+export function detectChange(
+  existing: { sourceModifiedAt: Date | null } | undefined,
+  incoming: { sourceModifiedAt: Date | null },
+): SaveChange {
+  if (!existing) return "created";
+  return existing.sourceModifiedAt?.getTime() === incoming.sourceModifiedAt?.getTime() ? "unchanged" : "updated";
+}
+
+export async function upsertCategories(db: ScriptDb, input: CategoryInput[]): Promise<CategoryIds> {
   for (const category of input) {
     await db
       .insert(categories)
@@ -56,8 +98,10 @@ export async function upsertCategories(db: ScriptDb, input: CategoryInput[]): Pr
         },
       });
   }
-  const rows = await db.select({ id: categories.id, wpId: categories.wpId, kind: categories.kind, inMenu: categories.inMenu }).from(categories);
-  return new Map(rows.filter((row) => row.wpId !== null).map((row) => [row.wpId!, row]));
+  const rows = await db
+    .select({ id: categories.id, wpId: categories.wpId, slug: categories.slug, kind: categories.kind, inMenu: categories.inMenu })
+    .from(categories);
+  return new Map(rows.filter((row) => row.wpId !== null).map(({ wpId, ...row }) => [wpId!, row]));
 }
 
 async function upsertMedia(tx: Tx, media: MediaInput): Promise<string> {
@@ -105,11 +149,23 @@ export async function saveArticle(
   hero: MediaInput | null,
   inlineImages: MediaInput[],
   blocks: DraftBlock[],
-  categoryIds: Map<number, { id: string; kind: string; inMenu: boolean }>,
-): Promise<void> {
-  await db.transaction(async (tx) => {
+  categoryIds: CategoryIds,
+  options: SaveOptions = {},
+): Promise<SaveResult> {
+  return db.transaction(async (tx) => {
     const [collision] = await tx.select({ id: categories.id }).from(categories).where(eq(categories.path, article.path)).limit(1);
     if (collision) throw new Error(`path ${article.path} is already used by a category`);
+
+    const [existing] = await tx
+      .select({ id: articles.id, version: articles.version, sourceModifiedAt: articles.sourceModifiedAt })
+      .from(articles)
+      .where(and(eq(articles.sourceSystem, "wordpress"), eq(articles.legacyId, article.legacyId)))
+      .limit(1);
+    const change = detectChange(existing, article);
+    if (existing && change === "unchanged" && !options.force) {
+      return { id: existing.id, change, version: existing.version, eventId: null };
+    }
+    const version = !existing ? 1 : change === "updated" ? existing.version + 1 : existing.version;
 
     const heroId = hero ? await upsertMedia(tx, hero) : null;
     const imageIds: string[] = [];
@@ -136,6 +192,7 @@ export async function saveArticle(
       publishedAt: article.publishedAt,
       sourceModifiedAt: article.sourceModifiedAt,
       importedAt: new Date(),
+      version,
     };
     const { sourceSystem: _s, legacyId: _l, ...updatable } = values;
     const [saved] = await tx
@@ -148,6 +205,21 @@ export async function saveArticle(
     if (linked.length) {
       await tx.insert(articleCategories).values(linked.map((row) => ({ articleId: saved!.id, categoryId: row.id })));
     }
+
+    let eventId: number | null = null;
+    if (options.emit && change !== "unchanged" && article.isPublic) {
+      const payload: OutboxPayload = {
+        path: article.path,
+        title: article.title,
+        topics: linked.map((row) => row.slug),
+      };
+      const [event] = await tx
+        .insert(outboxEvents)
+        .values({ type: change === "created" ? "article.published" : "article.updated", entityId: saved!.id, version, payload })
+        .returning({ id: outboxEvents.id });
+      eventId = event!.id;
+    }
+    return { id: saved!.id, change, version, eventId };
   });
 }
 

@@ -3,12 +3,11 @@ import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { findRepoRoot, loadRootEnv } from "@newspoint/db/node";
-import { placeCategory, MENU } from "./category-map";
-import { convertWordPressHtml, type Conversion } from "./convert";
+import { MENU } from "./category-map";
+import { convertWordPressHtml } from "./convert";
+import { heroInput, inlineInputs, toArticleInput, toCategoryInputs } from "./map";
 import { buildReport, type ReportArticle } from "./report";
-import { htmlToPlainText, pathFromLink, wpGmtToDate } from "./text";
-import { featuredMedia, WpClient, type WpPost } from "./wp-client";
-import type { ArticleInput, CategoryInput, MediaInput } from "./persist";
+import { WpClient, type WpPost } from "./wp-client";
 
 const { values: args } = parseArgs({
   options: {
@@ -28,18 +27,7 @@ const dryRun = args["dry-run"];
 const client = new WpClient(baseUrl);
 
 const wpCategories = await client.categories();
-const categoryInputs: CategoryInput[] = wpCategories.map((category) => {
-  const placement = placeCategory(category.slug);
-  return {
-    wpId: category.id,
-    slug: category.slug,
-    name: placement.displayName ?? htmlToPlainText(category.name),
-    path: pathFromLink(category.link),
-    kind: placement.kind,
-    inMenu: placement.inMenu,
-    menuOrder: placement.menuOrder,
-  };
-});
+const categoryInputs = toCategoryInputs(wpCategories);
 
 const posts = new Map<number, WpPost>();
 const addPosts = (list: WpPost[]) => list.forEach((post) => posts.set(post.id, post));
@@ -56,48 +44,6 @@ if (args.since) {
     }
     addPosts(await client.posts({ categories: category.id, per_page: perCategory, orderby: "date", order: "desc" }));
   }
-}
-
-function toArticleInput(post: WpPost): ArticleInput {
-  return {
-    legacyId: post.id,
-    slug: post.slug,
-    path: pathFromLink(post.link),
-    sourceUrl: post.link,
-    title: htmlToPlainText(post.title.rendered),
-    excerpt: htmlToPlainText(post.excerpt.rendered).replace(/\s*\[?(…|&hellip;|\.\.\.)\]?$/, "…"),
-    sourceHtml: post.content.rendered,
-    isPublic: post.status === "publish",
-    publishedAt: wpGmtToDate(post.date_gmt),
-    sourceModifiedAt: wpGmtToDate(post.modified_gmt),
-    categoryWpIds: post.categories,
-  };
-}
-
-function heroInput(post: WpPost): MediaInput | null {
-  const media = featuredMedia(post);
-  if (!media) return null;
-  return {
-    wpId: media.id,
-    sourceUrl: media.source_url,
-    width: media.media_details?.width ?? null,
-    height: media.media_details?.height ?? null,
-    mime: media.mime_type ?? null,
-    alt: htmlToPlainText(media.alt_text ?? ""),
-    caption: htmlToPlainText(media.caption?.rendered ?? ""),
-  };
-}
-
-function inlineInputs(conversion: Conversion): MediaInput[] {
-  return conversion.images.map((image) => ({
-    wpId: null,
-    sourceUrl: image.src,
-    width: image.width,
-    height: image.height,
-    mime: null,
-    alt: image.alt,
-    caption: "",
-  }));
 }
 
 const reportArticles: ReportArticle[] = [];
@@ -120,7 +66,8 @@ for (const post of [...posts.values()].sort((a, b) => b.date_gmt.localeCompare(a
   const entry: ReportArticle = { article, hero, conversion, error: null };
   try {
     if (db) {
-      await db.persist.saveArticle(db.db, article, hero, inlineInputs(conversion), conversion.blocks, db.categoryIds);
+      // The import re-converts every article; live events come only from the sync.
+      await db.persist.saveArticle(db.db, article, hero, inlineInputs(conversion), conversion.blocks, db.categoryIds, { force: true });
     } else {
       const { resolveDraftBlocks } = await import("./persist");
       resolveDraftBlocks(conversion.blocks, conversion.images.map(() => randomUUID()));

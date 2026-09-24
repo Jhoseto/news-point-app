@@ -9,7 +9,7 @@ export const revalidate = 60;
 
 // Section order follows the approved mockup: Пловдив first, then the menu.
 const LEAD_SECTION = "plovdiv";
-const ASIDE_SECTIONS = ["zdrave", "kultura", "lajfstajl"];
+const ASIDE_SECTIONS = ["lajfstajl", "kultura"];
 // Editors on the old site mark headline stories with this label; "top-novina"
 // is used for daily features (horoscope, weather), so it does not lead.
 const LEADING_LABEL = "novini";

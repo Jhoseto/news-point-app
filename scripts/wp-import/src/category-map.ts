@@ -1,6 +1,5 @@
-// DEC-005 (confirmed by Koce, 24.09.2026). Change here, then re-run the
-// import; categories are upserted by WordPress id. WordPress slugs do not
-// always match the names ("ot-soczialnite-mrezhi" is "Анализи и коментари").
+// DEC-005 (proposed, awaiting Koce's review). Change here, then re-run the
+// import; categories are upserted by WordPress id.
 
 export interface MenuEntry {
   slug: string;
@@ -8,19 +7,14 @@ export interface MenuEntry {
 }
 
 export const MENU: readonly MenuEntry[] = [
-  { slug: "plovdiv", label: "Пловдив" },
-  { slug: "regionalni-novini", label: "Регион" },
   { slug: "balgariya", label: "България" },
-  { slug: "politika", label: "Политика" },
-  { slug: "kriminalni-novini", label: "Криминални" },
-  { slug: "ot-soczialnite-mrezhi", label: "Анализи и коментари" },
+  { slug: "plovdiv", label: "Пловдив" },
   { slug: "svetovni-novini", label: "Свят" },
+  { slug: "politika", label: "Политика" },
+  { slug: "biznes-novini", label: "Икономика" },
   { slug: "sportni-novini", label: "Спорт" },
-  { slug: "biznes-novini", label: "Бизнес" },
-  { slug: "zdrave", label: "Здраве" },
+  { slug: "lajfstajl", label: "Любопитно" },
   { slug: "kultura", label: "Култура" },
-  { slug: "lajfstajl", label: "Лайфстайл" },
-  { slug: "izbori", label: "Избори" },
 ];
 
 export const EDITORIAL_LABELS: ReadonlySet<string> = new Set([

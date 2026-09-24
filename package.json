@@ -13,7 +13,9 @@
     "test": "vitest run",
     "db:check": "pnpm --filter @newspoint/db db:check",
     "db:verify": "pnpm --filter @newspoint/db db:verify",
-    "import:wp": "pnpm --filter @newspoint/wp-import run wp:import"
+    "import:wp": "pnpm --filter @newspoint/wp-import run wp:import",
+    "sync:once": "pnpm --filter @newspoint/worker run sync:once",
+    "live:simulate": "pnpm --filter @newspoint/worker run live:simulate"
   },
   "devDependencies": {
     "@types/node": "24.13.6",
