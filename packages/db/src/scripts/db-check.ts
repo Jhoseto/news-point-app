@@ -48,7 +48,7 @@ async function checkTarget(target: DatabaseTarget): Promise<boolean> {
 
   let ok = true;
   try {
-    console.log(`  transaction pooler ${describeConnection(env.DATABASE_URL)}`);
+    console.log(`  app connection (DATABASE_URL) ${describeConnection(env.DATABASE_URL)}`);
     console.log(`    ${await checkTransactionPooler(env.DATABASE_URL)}`);
   } catch (error) {
     ok = false;
@@ -56,7 +56,7 @@ async function checkTarget(target: DatabaseTarget): Promise<boolean> {
   }
 
   try {
-    console.log(`  session pooler ${describeConnection(env.DATABASE_URL_SESSION)}`);
+    console.log(`  session connection (DATABASE_URL_SESSION) ${describeConnection(env.DATABASE_URL_SESSION)}`);
     const notified = await checkListenNotify(env.DATABASE_URL_SESSION);
     console.log(`    LISTEN/NOTIFY: ${notified ? "works" : `no notification within ${NOTIFY_TIMEOUT_MS} ms`}`);
     ok &&= notified;

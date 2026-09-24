@@ -11,7 +11,9 @@
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
-    "db:check": "pnpm --filter @newspoint/db db:check"
+    "db:check": "pnpm --filter @newspoint/db db:check",
+    "db:verify": "pnpm --filter @newspoint/db db:verify",
+    "import:wp": "pnpm --filter @newspoint/wp-import run wp:import"
   },
   "devDependencies": {
     "@types/node": "24.13.6",

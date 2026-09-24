@@ -1,1 +1,176 @@
 @import "tailwindcss";
+
+/* Theme is set on <html data-theme> before first paint (see ThemeScript). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Design tokens sampled from the approved mockups (docs/DESIGN_SYSTEM.md).
+ * Text colours were darkened where the sample failed WCAG AA on its surface.
+ */
+:root {
+  --np-page: #f6f9fe;
+  --np-surface: #ffffff;
+  --np-surface-2: #eef3fc;
+  --np-line: #e2e8f5;
+  --np-ink: #0a1454;
+  --np-body: #2f3d69;
+  --np-muted: #5d6b96;
+  --np-faint: #95a3cc;
+  --np-brand: #142299;
+  --np-accent: #3818d6;
+  --np-accent-2: #990fec;
+  --np-magenta: #d63df2;
+  --np-link: #2660fb;
+  --np-on-accent: #ffffff;
+  --np-shadow: 0 1px 2px rgb(10 20 84 / 0.04), 0 8px 24px -12px rgb(10 20 84 / 0.12);
+  --np-gradient: linear-gradient(90deg, #3818d6 0%, #990fec 55%, #d63df2 100%);
+  --np-ring-gradient: conic-gradient(from 200deg, #2660fb, #3818d6, #990fec, #d63df2, #19c3c3, #2660fb);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --np-page: #000516;
+  --np-surface: #050b22;
+  --np-surface-2: #0c1433;
+  --np-line: rgb(118 104 255 / 0.2);
+  --np-ink: #f4f7f9;
+  --np-body: #c7cfdb;
+  --np-muted: #a1abc0;
+  --np-faint: #6c7794;
+  --np-brand: #f4f7f9;
+  --np-accent: #6a3cf0;
+  --np-accent-2: #b43cf5;
+  --np-magenta: #ce06f8;
+  --np-link: #b596f2;
+  --np-on-accent: #ffffff;
+  --np-shadow: 0 0 0 1px rgb(118 104 255 / 0.14), 0 12px 32px -16px rgb(106 60 240 / 0.45);
+  --np-gradient: linear-gradient(90deg, #6a3cf0 0%, #b43cf5 55%, #ce06f8 100%);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-page: var(--np-page);
+  --color-surface: var(--np-surface);
+  --color-surface-2: var(--np-surface-2);
+  --color-line: var(--np-line);
+  --color-ink: var(--np-ink);
+  --color-body: var(--np-body);
+  --color-muted: var(--np-muted);
+  --color-faint: var(--np-faint);
+  --color-brand: var(--np-brand);
+  --color-accent: var(--np-accent);
+  --color-accent-2: var(--np-accent-2);
+  --color-magenta: var(--np-magenta);
+  --color-link: var(--np-link);
+  --color-on-accent: var(--np-on-accent);
+  --shadow-card: var(--np-shadow);
+  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+}
+
+@layer base {
+  html {
+    background: var(--np-page);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-page font-sans text-body antialiased;
+    /* Manrope swaps in Bulgarian letterforms for lang="bg"; the mockups use the standard ones. */
+    font-feature-settings: "locl" 0;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--np-link);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .np-gradient-bg {
+    background-image: var(--np-gradient);
+  }
+
+  .np-gradient-text {
+    background-image: var(--np-gradient);
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Section marker: gradient ring from the logo. */
+  .np-ring {
+    display: inline-block;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 9999px;
+    background: var(--np-ring-gradient);
+    mask: radial-gradient(circle, transparent 42%, #000 45%);
+    flex: none;
+  }
+
+  .np-card {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+  }
+
+  .np-img {
+    @apply bg-surface-2 object-cover;
+  }
+
+  .np-prose {
+    @apply text-[1.0625rem] leading-[1.75] text-body;
+  }
+  .np-prose > * + * {
+    margin-top: 1.1em;
+  }
+  .np-prose h2,
+  .np-prose h3,
+  .np-prose h4 {
+    @apply font-bold text-ink;
+    line-height: 1.3;
+    margin-top: 1.6em;
+  }
+  .np-prose h2 {
+    font-size: 1.4rem;
+  }
+  .np-prose h3 {
+    font-size: 1.2rem;
+  }
+  .np-prose a {
+    @apply font-semibold text-link underline decoration-1 underline-offset-2;
+  }
+  .np-prose strong,
+  .np-prose b {
+    @apply font-bold text-ink;
+  }
+  .np-prose ul {
+    @apply list-disc pl-6;
+  }
+  .np-prose ol {
+    @apply list-decimal pl-6;
+  }
+  .np-prose > p:first-of-type::first-letter {
+    float: left;
+    font-size: 3.6em;
+    line-height: 0.9;
+    font-weight: 800;
+    margin: 0.06em 0.12em 0 0;
+    background-image: var(--np-gradient);
+    background-clip: text;
+    color: transparent;
+  }
+  .np-prose .np-legacy img,
+  .np-prose .np-legacy iframe {
+    max-width: 100%;
+    height: auto;
+  }
+}

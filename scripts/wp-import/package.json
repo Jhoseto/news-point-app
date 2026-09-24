@@ -1,0 +1,23 @@
+{
+  "name": "@newspoint/wp-import",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "wp:import": "node --use-system-ca --import tsx src/index.ts"
+  },
+  "dependencies": {
+    "@newspoint/content": "workspace:*",
+    "@newspoint/db": "workspace:*",
+    "dom-serializer": "3.1.1",
+    "domhandler": "6.0.1",
+    "drizzle-orm": "0.45.3",
+    "entities": "8.1.0",
+    "htmlparser2": "12.0.0",
+    "sanitize-html": "2.17.7"
+  },
+  "devDependencies": {
+    "@types/sanitize-html": "2.16.1",
+    "tsx": "4.23.15"
+  }
+}

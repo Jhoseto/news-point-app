@@ -59,6 +59,8 @@ docs/TASKS.md
 docs/STATUS.md
 docs/TEST_REPORT.md
 docs/references/
+docs/import-report.md
+docs/review/
 
 # Large media stays outside the repository
 *.mp4
