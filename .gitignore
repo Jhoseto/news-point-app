@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Tests
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Logs and OS files
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# AI development files (kept locally, not part of the product repository)
+.cursor/
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claude/
+.codex/
+.gemini/
+.aider*
+.continue/
+.windsurf/
+.windsurfrules
+.cursorrules
+.cursorignore
+.cursorindexingignore
+.github/copilot-instructions.md
+
+# Internal planning documents
+NEWSPOINT_2_MASTER_PLAN.md
+docs/DECISIONS.md
+docs/adr/
+docs/TASKS.md
+docs/STATUS.md
+docs/TEST_REPORT.md
+docs/references/
+
+# Large media stays outside the repository
+*.mp4
+*.pptx
