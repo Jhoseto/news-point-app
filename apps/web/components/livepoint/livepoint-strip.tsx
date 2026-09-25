@@ -26,7 +26,7 @@ function StripItem({
       aria-haspopup="dialog"
       aria-expanded={on}
       data-active={on || undefined}
-      className="np-lp-item group inline-flex h-full shrink-0 items-center gap-1.5 px-2 text-[0.8125rem] font-semibold whitespace-nowrap text-body transition-colors hover:text-logo data-[active]:text-ink"
+      className="np-lp-item group flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-center text-[0.625rem] leading-tight font-bold text-body transition-colors hover:bg-surface-2 hover:text-logo data-[active]:bg-surface-2 data-[active]:text-ink sm:text-xs lg:h-full lg:flex-row lg:gap-1.5 lg:rounded-none lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold lg:whitespace-nowrap lg:hover:bg-transparent lg:data-[active]:bg-transparent"
     >
       <span className="text-muted transition-colors group-hover:text-logo group-data-[active]:text-logo">{icon}</span>
       {children}
@@ -43,34 +43,34 @@ export function LivePointStrip() {
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
 
   return (
-    <div className="np-lp-row flex h-10 items-center border-t border-line lg:h-12 lg:pl-[var(--np-rail-w)]">
-      <div className="np-lp-strip flex h-full w-full items-center gap-0.5 overflow-x-auto px-2 sm:px-4 lg:px-8 3xl:px-12">
-        <Link
-          href="/livepoint/"
-          className="mr-1 inline-flex shrink-0 items-center gap-2 py-1 pr-2 text-[0.8125rem] font-extrabold tracking-tight text-ink"
-        >
-          <span className="np-ring !size-3.5" aria-hidden="true" />
-          LivePoint
-          <span className="hidden font-semibold text-muted sm:inline">Пловдив</span>
-        </Link>
+    <div className="np-lp-row flex h-20 items-center border-t border-line lg:h-12 lg:pl-[var(--np-rail-w)]">
+      <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-0.5 lg:overflow-x-auto lg:px-8 3xl:px-12">
+        <span className="inline-flex h-7 shrink-0 items-center gap-2 text-[0.75rem] font-extrabold tracking-tight text-ink lg:mr-1 lg:h-auto lg:py-1 lg:pr-2 lg:text-[0.8125rem]">
+          <span className="np-lp-heart" aria-hidden="true">
+            <span className="np-ring !size-4" />
+          </span>
+          <span className="np-lp-word">LivePoint</span>
+        </span>
 
         <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
 
-        <StripItem module="weather" icon={<CloudSunIcon width={15} height={15} />}>
-          {forecast ? formatTempC(forecast.current.temperatureC) : "Време"}
-        </StripItem>
-        <StripItem module="traffic" icon={<CarIcon width={15} height={15} />}>
-          Трафик
-        </StripItem>
-        <StripItem module="cameras" icon={<CameraIcon width={15} height={15} />}>
-          Камери
-        </StripItem>
-        <StripItem module="report" icon={<MegaphoneIcon width={15} height={15} />}>
-          Подай сигнал
-        </StripItem>
-        <StripItem module="my-news" icon={<FeatherIcon width={15} height={15} />}>
-          Моята новина
-        </StripItem>
+        <div className="grid h-[3.125rem] w-full grid-cols-5 gap-0.5 lg:flex lg:h-full lg:w-auto lg:shrink-0">
+          <StripItem module="weather" icon={<CloudSunIcon width={17} height={17} />}>
+            Време{forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}
+          </StripItem>
+          <StripItem module="traffic" icon={<CarIcon width={17} height={17} />}>
+            Трафик
+          </StripItem>
+          <StripItem module="cameras" icon={<CameraIcon width={17} height={17} />}>
+            Камери
+          </StripItem>
+          <StripItem module="report" icon={<MegaphoneIcon width={17} height={17} />}>
+            Подай сигнал
+          </StripItem>
+          <StripItem module="my-news" icon={<FeatherIcon width={17} height={17} />}>
+            Моята новина
+          </StripItem>
+        </div>
 
         {latest ? (
           <Link

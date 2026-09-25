@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { REPORT_KIND_LABELS, reportKinds, type ReportKind } from "@/lib/livepoint/forms/schema";
 import { Choice, Field, SubmitButton, TextArea, TextField } from "./livepoint-field";
@@ -97,9 +96,6 @@ export function ReportPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
         <SubmitButton pending={pending} disabled={!consent}>
           Изпрати сигнала
         </SubmitButton>
-        <Link href="/livepoint/report/" className="text-sm font-semibold text-link">
-          Разширена форма
-        </Link>
       </div>
     </form>
   );

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Field, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
@@ -88,9 +87,6 @@ export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
         <SubmitButton pending={pending} disabled={!rightsAck || !factsAck}>
           Изпрати към редакцията
         </SubmitButton>
-        <Link href="/livepoint/my-news/" className="text-sm font-semibold text-link">
-          Пълна форма
-        </Link>
       </div>
     </form>
   );

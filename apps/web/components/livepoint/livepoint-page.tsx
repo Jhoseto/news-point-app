@@ -5,8 +5,8 @@ export function LivePointPage({ title, lead, wide, children }: { title: string; 
   return (
     <div className={`np-container py-8 ${wide ? "max-w-5xl" : "max-w-3xl"}`}>
       <nav className="mb-5 text-sm">
-        <Link href="/livepoint/" className="font-semibold text-link hover:text-logo">
-          LivePoint
+        <Link href="/" className="font-semibold text-link hover:text-logo">
+          Начало
         </Link>
         <span className="text-muted"> / {title}</span>
       </nav>

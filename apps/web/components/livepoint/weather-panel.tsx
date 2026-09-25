@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DataEnvelope, WeatherForecast } from "@/lib/livepoint/types";
 import { formatTempC, formatWindMs, skyMood, weatherLabel, windDirectionLabel } from "@/lib/livepoint/weather/labels";
 import { formatFull, formatTime } from "@/lib/format";
@@ -23,7 +22,19 @@ const dayLabel = new Intl.DateTimeFormat("bg-BG", {
 const PLOVDIV_VIEW = "/brand/plovdiv-aerial.webp";
 
 export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnvelope<WeatherForecast>; variant?: "panel" | "page" }) {
-  const [data] = useState(initial);
+  const [data, setData] = useState(initial);
+  useEffect(() => {
+    if (variant !== "panel") return;
+    const controller = new AbortController();
+    fetch("/api/livepoint/weather/", { cache: "no-store", signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("weather unavailable");
+        return response.json() as Promise<DataEnvelope<WeatherForecast>>;
+      })
+      .then((next) => setData(next))
+      .catch(() => { /* Keep the server-rendered forecast if refresh fails. */ });
+    return () => controller.abort();
+  }, [variant]);
   const forecast = data.payload;
 
   const mood = useMemo(() => {
@@ -37,11 +48,6 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
       <div className="py-2">
         <p className="text-base font-semibold text-ink">Няма актуална прогноза</p>
         <p className="mt-2 text-sm text-muted">{data.message ?? "Източникът още се свързва."}</p>
-        {variant === "panel" ? (
-          <Link href="/livepoint/weather/" className="mt-4 inline-flex text-sm font-semibold text-link">
-            Отвори страницата за времето
-          </Link>
-        ) : null}
       </div>
     );
   }
@@ -53,31 +59,34 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
     <div className="flex flex-col gap-5">
       {data.status === "stale" && data.message ? <p className="text-sm text-muted">{data.message}</p> : null}
 
-      <div
-        data-mood={mood}
-        className={`np-lp-window relative isolate overflow-hidden rounded-2xl ${tall ? "min-h-72" : "min-h-52"}`}
-      >
-        <img src={PLOVDIV_VIEW} alt="" className="absolute inset-x-0 top-1/2 h-auto w-full -translate-y-1/2" />
-        <div className="np-lp-window-veil absolute inset-0" aria-hidden="true" />
-        <div className={`relative flex flex-col justify-end px-5 py-5 sm:px-6 sm:py-6 ${tall ? "min-h-72" : "min-h-52"}`}>
-          <p className="text-sm font-semibold text-white/80">Пловдив · сега</p>
-          <p className="mt-1 text-6xl font-extrabold tracking-tight text-white">{formatTempC(forecast.current.temperatureC)}</p>
-          <p className="mt-1 text-lg font-bold text-white">{weatherLabel(forecast.current.symbolCode)}</p>
-          <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-white/85">
-            {forecast.current.humidityPct != null ? <li>Влажност {Math.round(forecast.current.humidityPct)}%</li> : null}
-            {forecast.current.windSpeedMs != null ? (
-              <li>
-                Вятър {formatWindMs(forecast.current.windSpeedMs)}
-                {windDir ? ` ${windDir}` : ""}
-              </li>
-            ) : null}
-            {forecast.current.precipitationMm != null ? <li>Валеж {forecast.current.precipitationMm} мм/ч</li> : null}
-            {forecast.current.pressureHpa != null ? <li>Налягане {Math.round(forecast.current.pressureHpa)} hPa</li> : null}
-          </ul>
+      <div className={tall ? "flex flex-col gap-5" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}>
+        <div
+          data-mood={mood}
+          className={`np-lp-window relative isolate overflow-hidden rounded-2xl ${tall ? "min-h-72" : "min-h-52"}`}
+        >
+          <img src={PLOVDIV_VIEW} alt="" className="absolute inset-0 size-full object-cover" />
+          <div className="np-lp-window-veil absolute inset-0" aria-hidden="true" />
+          <div className={`relative flex flex-col justify-end px-5 py-5 sm:px-6 sm:py-6 ${tall ? "min-h-72" : "min-h-52"}`}>
+            <p className="text-sm font-semibold text-white/80">Пловдив · прогноза</p>
+            <p className="mt-1 text-6xl font-extrabold tracking-tight text-white">{formatTempC(forecast.current.temperatureC)}</p>
+            <p className="mt-1 text-lg font-bold text-white">{weatherLabel(forecast.current.symbolCode)}</p>
+            <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium text-white/85">
+              {forecast.current.humidityPct != null ? <li>Влажност {Math.round(forecast.current.humidityPct)}%</li> : null}
+              {forecast.current.windSpeedMs != null ? (
+                <li>
+                  Вятър {formatWindMs(forecast.current.windSpeedMs)}
+                  {windDir ? ` ${windDir}` : ""}
+                </li>
+              ) : null}
+              {forecast.current.precipitationMm != null ? <li>Валеж {forecast.current.precipitationMm} мм/ч</li> : null}
+              {forecast.current.pressureHpa != null ? <li>Налягане {Math.round(forecast.current.pressureHpa)} hPa</li> : null}
+            </ul>
+          </div>
+        </div>
+        <div className={tall ? "" : "rounded-2xl border border-line bg-surface-2 p-4"}>
+          <WeatherChart hours={forecast.hours} />
         </div>
       </div>
-
-      <WeatherChart hours={forecast.hours} />
 
       <div>
         <h3 className="mb-2 text-xs font-bold tracking-[0.12em] text-muted uppercase">Следващи дни</h3>

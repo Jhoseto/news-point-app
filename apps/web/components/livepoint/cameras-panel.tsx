@@ -38,7 +38,7 @@ function CameraTile({ camera, selected, onSelect }: { camera: CameraEntry; selec
   );
 }
 
-export function CamerasPanel() {
+export function CamerasPanel({ variant = "page" }: { variant?: "panel" | "page" }) {
   const [category, setCategory] = useState<CameraCategory | "all">("all");
   const [selected, setSelected] = useState<string | null>(null);
 
@@ -47,6 +47,39 @@ export function CamerasPanel() {
     [category],
   );
   const active: CameraEntry | undefined = cameras.find((c) => c.slug === selected);
+
+  if (variant === "panel") {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-body">Публични камери в Пловдив и региона. Потоковете още не са проверени; отворете избраната камера при източника.</p>
+        <Choice
+          name="Категория"
+          value={category}
+          options={CATEGORIES}
+          onChange={(next) => {
+            setCategory(next);
+            setSelected(null);
+          }}
+        />
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {cameras.map((camera) => (
+            <li key={camera.slug}>
+              <a
+                href={camera.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-20 flex-col justify-center rounded-xl border border-line bg-surface-2 px-4 py-3 transition-colors hover:border-link"
+              >
+                <span className="text-sm font-extrabold text-ink">{camera.name} <span aria-hidden="true">↗</span></span>
+                <span className="mt-1 text-xs text-muted">{camera.place}{camera.direction ? ` · ${camera.direction}` : ""} · {camera.owner}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-muted">Връзките водят към оригиналните публични страници. Няма потвърден поток на живо.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4">

@@ -48,20 +48,39 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 const PANEL_WIDTH: Record<LivePointModule, string> = {
-  weather: "max-w-2xl",
-  traffic: "max-w-3xl",
+  weather: "max-w-3xl",
+  traffic: "max-w-4xl",
   cameras: "max-w-2xl",
-  report: "max-w-lg",
-  "my-news": "max-w-lg",
+  report: "max-w-xl",
+  "my-news": "max-w-xl",
 };
 
-function writeQuery(module: LivePointModule | null) {
+const DETAIL_LABELS: Record<LivePointModule, string> = {
+  weather: "Подробности за времето",
+  traffic: "Подробности за трафика",
+  cameras: "Всички камери",
+  report: "Страница за подаване на сигнал",
+  "my-news": "Страница за моята новина",
+};
+
+const PANEL_SUBTITLES: Record<LivePointModule, string> = {
+  weather: "Пловдив · прогноза",
+  traffic: "Пловдив · пътна обстановка",
+  cameras: "Пловдив и регион",
+  report: "Сигнал до редакцията",
+  "my-news": "Материал за редакцията",
+};
+
+const MODULES: LivePointModule[] = ["weather", "traffic", "cameras", "report", "my-news"];
+
+function writeQuery(module: LivePointModule | null, mode: "push" | "replace" = "replace") {
   const url = new URL(window.location.href);
   if (module) url.searchParams.set("livepoint", module);
   else url.searchParams.delete("livepoint");
   const next = `${url.pathname}${url.search}${url.hash}`;
   if (`${window.location.pathname}${window.location.search}${window.location.hash}` !== next) {
-    window.history.replaceState(window.history.state, "", next);
+    const state = mode === "push" ? { ...window.history.state, npLivePoint: true } : window.history.state;
+    window.history[mode === "push" ? "pushState" : "replaceState"](state, "", next);
   }
 }
 
@@ -123,7 +142,9 @@ export function LivePointProvider({
   const opener = useRef<HTMLElement | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
+  const activeRef = useRef<LivePointModule | null>(null);
   dirtyRef.current = dirty;
+  activeRef.current = active;
 
   useEffect(() => setMounted(true), []);
 
@@ -133,42 +154,46 @@ export function LivePointProvider({
   }, [pathname]);
 
   useEffect(() => {
-    const onPop = () => setActive(queryModule());
+    const onPop = () => {
+      const next = queryModule();
+      if (dirtyRef.current && next !== activeRef.current && !window.confirm("Имате незапазен текст. Да напусна панела?")) {
+        window.history.go(1);
+        return;
+      }
+      activeRef.current = next;
+      setActive(next);
+      setDirty(false);
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   const close = useCallback(() => {
     if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да затворя панела?")) return;
+    const ownedHistoryEntry = window.history.state?.npLivePoint === true;
+    activeRef.current = null;
     setActive(null);
     setDirty(false);
-    writeQuery(null);
+    if (ownedHistoryEntry) window.history.back();
+    else writeQuery(null);
     const back = opener.current;
     opener.current = null;
     if (back?.isConnected) queueMicrotask(() => back.focus({ preventScroll: true }));
   }, []);
 
-  const open = useCallback(
-    (module: LivePointModule) => {
-      setActive((current) => {
-        if (current === module) {
-          if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да затворя панела?")) return current;
-          setDirty(false);
-          writeQuery(null);
-          const back = opener.current;
-          opener.current = null;
-          if (back?.isConnected) queueMicrotask(() => back.focus({ preventScroll: true }));
-          return null;
-        }
-        if (current && dirtyRef.current && !window.confirm("Имате незапазен текст. Да сменя панела?")) return current;
-        setDirty(false);
-        if (current === null) opener.current = document.activeElement as HTMLElement | null;
-        writeQuery(module);
-        return module;
-      });
-    },
-    [],
-  );
+  const open = useCallback((module: LivePointModule) => {
+    const current = activeRef.current;
+    if (current === module) {
+      close();
+      return;
+    }
+    if (current && dirtyRef.current && !window.confirm("Имате незапазен текст. Да сменя панела?")) return;
+    if (current === null) opener.current = document.activeElement as HTMLElement | null;
+    activeRef.current = module;
+    setActive(module);
+    setDirty(false);
+    writeQuery(module, current === null ? "push" : "replace");
+  }, [close]);
 
   useScrollLock(active !== null);
   useHeaderCompact(active !== null);
@@ -215,7 +240,7 @@ export function LivePointProvider({
       {children}
       {active && mounted
         ? createPortal(
-            <div className="np-lp-layer fixed inset-x-0 top-[var(--np-header-h)] bottom-0 z-50 overflow-x-hidden overflow-y-auto overscroll-contain px-3 pt-3 pb-20 sm:px-5 lg:pl-[calc(var(--np-rail-w)+1.5rem)] lg:pr-6">
+            <div className="np-lp-layer fixed inset-x-0 top-[var(--np-header-h)] bottom-0 z-50 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-3 pb-6 sm:px-5 lg:pl-[calc(var(--np-rail-w)+1.5rem)] lg:pr-6">
               <button
                 type="button"
                 aria-label="Затвори LivePoint"
@@ -228,9 +253,9 @@ export function LivePointProvider({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className={`np-lp-panel np-card relative mx-auto mb-auto flex max-h-[min(88dvh,44rem)] w-full min-w-0 flex-col overflow-hidden ${PANEL_WIDTH[active]}`}
+                className={`np-lp-panel np-card relative mx-auto mb-auto flex max-h-[calc(100dvh-var(--np-header-h)-1.5rem)] w-full min-w-0 flex-col overflow-hidden lg:max-h-[min(78dvh,44rem)] ${PANEL_WIDTH[active]}`}
               >
-                <div className="flex shrink-0 items-center gap-3 px-4 pt-3.5 pb-2.5 sm:px-5">
+                <div className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 sm:py-4">
                   <h2
                     id={titleId}
                     data-autofocus
@@ -240,27 +265,48 @@ export function LivePointProvider({
                     <span className="np-ring" aria-hidden="true" />
                     {MODULE_LABELS[active]}
                   </h2>
-                  <Link
-                    href={MODULE_PATHS[active]}
-                    className="hidden rounded-full px-2.5 py-1 text-sm font-semibold text-link hover:bg-surface-2 sm:inline-flex"
-                  >
-                    Страница
-                  </Link>
+                  <span className="hidden text-xs font-semibold text-muted sm:inline">{PANEL_SUBTITLES[active]}</span>
                   <button
                     type="button"
                     aria-label="Затвори"
                     onClick={close}
-                    className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"
                   >
                     <CloseIcon width={18} height={18} />
                   </button>
                 </div>
-                <div className="np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="np-lp-tabs grid shrink-0 grid-cols-5 gap-0.5 border-b border-line px-2 py-1.5 sm:gap-1 sm:px-5" aria-label="Раздели на LivePoint">
+                  {MODULES.map((module) => (
+                    <button
+                      key={module}
+                      type="button"
+                      aria-current={active === module ? "true" : undefined}
+                      onClick={() => open(module)}
+                      className="min-w-0 rounded-lg px-0.5 py-2 text-center text-[0.625rem] leading-tight font-bold text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:bg-surface-2 aria-[current=true]:text-ink sm:px-2.5 sm:text-xs"
+                    >
+                      {MODULE_LABELS[module]}
+                    </button>
+                  ))}
+                </div>
+                <div className="np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
                   {active === "weather" ? <WeatherPanel initial={weather} /> : null}
                   {active === "traffic" ? <TrafficPanel connected={trafficConnected} /> : null}
-                  {active === "cameras" ? <CamerasPanel /> : null}
+                  {active === "cameras" ? <CamerasPanel variant="panel" /> : null}
                   {active === "report" ? <ReportPanel onDirtyChange={setDirty} /> : null}
                   {active === "my-news" ? <MyNewsPanel onDirtyChange={setDirty} /> : null}
+                </div>
+                <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
+                  <Link
+                    href={MODULE_PATHS[active]}
+                    onClick={(event) => {
+                      if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да отворя подробната страница?")) {
+                        event.preventDefault();
+                      }
+                    }}
+                    className="text-sm font-bold text-link transition-colors hover:text-logo"
+                  >
+                    {DETAIL_LABELS[active]} <span aria-hidden="true">→</span>
+                  </Link>
                 </div>
               </div>
             </div>,

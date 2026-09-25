@@ -77,7 +77,7 @@
 @layer base {
   html {
     /* Height of the sticky header. The desktop rail starts directly below it. */
-    --np-header-h: 6.5rem;
+    --np-header-h: 9rem;
     --np-bar-h: 4rem;
     --np-rail-w: 0px;
     background: var(--np-page);
@@ -125,7 +125,7 @@
 
   /* Compact masthead after scroll; disabled while a LivePoint panel is open. */
   html[data-np-compact] {
-    --np-header-h: 5.25rem;
+    --np-header-h: 8.25rem;
     --np-bar-h: 3.25rem;
   }
   @media (min-width: 64rem) {
@@ -416,6 +416,36 @@
   .np-lp-strip::-webkit-scrollbar {
     display: none;
   }
+  .np-lp-heart {
+    position: relative;
+    display: inline-grid;
+    width: 1.5rem;
+    height: 1.5rem;
+    flex: none;
+    place-items: center;
+    isolation: isolate;
+  }
+  .np-lp-heart::before,
+  .np-lp-heart::after {
+    content: "";
+    position: absolute;
+    inset: 0.2rem;
+    z-index: -1;
+    border: 2px solid var(--np-accent);
+    border-radius: 50%;
+    opacity: 0;
+    box-shadow: 0 0 0.75rem var(--np-magenta);
+    animation: np-lp-heart-wave 2.5s ease-out infinite;
+  }
+  .np-lp-heart::after {
+    animation-delay: 0.35s;
+  }
+  .np-lp-heart .np-ring {
+    animation: np-lp-heart-beat 2.5s ease-in-out infinite;
+  }
+  .np-lp-word {
+    animation: np-lp-word-beat 2.5s ease-in-out infinite;
+  }
   .np-lp-item {
     position: relative;
   }
@@ -427,6 +457,11 @@
     border-radius: 9999px;
     background: var(--np-gradient);
   }
+  @media (max-width: 63.999rem) {
+    .np-lp-item[data-active]::after {
+      display: none;
+    }
+  }
 
   .np-lp-scrim {
     background: color-mix(in oklab, var(--np-page) 55%, transparent);
@@ -437,6 +472,12 @@
   }
   .np-lp-panel {
     animation: np-lp-panel-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .np-lp-panel::before {
+    content: "";
+    height: 2px;
+    flex: none;
+    background: var(--np-gradient);
   }
 
   /* Weather window: real Plovdiv aerial, veil tinted by the forecast mood. */
@@ -484,7 +525,12 @@
     }
   }
   [data-np-header][data-compact] .np-lp-row {
-    height: 2rem;
+    height: 5rem;
+  }
+  @media (min-width: 64rem) {
+    [data-np-header][data-compact] .np-lp-row {
+      height: 2.5rem;
+    }
   }
   [data-np-header][data-compact] .np-masthead img {
     height: 2rem;
@@ -505,10 +551,31 @@
 
   @media (prefers-reduced-motion: reduce) {
     .np-lp-panel,
-    .np-lp-scrim {
+    .np-lp-scrim,
+    .np-lp-heart .np-ring,
+    .np-lp-word,
+    .np-lp-heart::before,
+    .np-lp-heart::after {
       animation: none !important;
     }
   }
+}
+
+@keyframes np-lp-heart-beat {
+  0%, 7%, 21%, 38%, 100% { transform: scale(1); }
+  13% { transform: scale(1.23); }
+  28% { transform: scale(1.13); }
+}
+
+@keyframes np-lp-heart-wave {
+  0%, 10% { opacity: 0; transform: scale(0.7); }
+  13% { opacity: 0.8; }
+  40%, 100% { opacity: 0; transform: scale(2.4); }
+}
+
+@keyframes np-lp-word-beat {
+  0%, 8%, 38%, 100% { color: var(--np-ink); }
+  13%, 28% { color: var(--np-accent); }
 }
 
 @keyframes np-lp-panel-in {

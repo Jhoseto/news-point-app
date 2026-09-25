@@ -50,23 +50,23 @@ export function getTomTomQuota() {
 const CATEGORY_LABELS: Record<number, string> = {
   0: "Неизвестно",
   1: "Произшествие",
-  2: "Задръстване",
-  3: "Пътни работи",
-  4: "Затворен участък",
-  5: "Друго",
-  6: "Метеорологично",
-  7: "Опасен участък",
-  8: "Ограничение",
-  9: "Забавяне",
-  10: "Демонстрация",
-  11: "Пътна ситуация",
-  14: "Забележка",
+  2: "Мъгла",
+  3: "Опасни условия",
+  4: "Дъжд",
+  5: "Заледяване",
+  6: "Задръстване",
+  7: "Затворена лента",
+  8: "Затворен път",
+  9: "Пътни работи",
+  10: "Силен вятър",
+  11: "Наводнение",
+  14: "Повредено превозно средство",
 };
 
 function mapIncident(raw: Record<string, unknown>): TrafficIncident | null {
-  const id = typeof raw.id === "string" ? raw.id : null;
-  if (!id) return null;
   const properties = (raw.properties ?? {}) as Record<string, unknown>;
+  const id = typeof properties.id === "string" ? properties.id : null;
+  if (!id) return null;
   const category = typeof properties.iconCategory === "number" ? properties.iconCategory : 0;
   const events = Array.isArray(properties.events) ? properties.events : [];
   const firstEvent = (events[0] ?? {}) as Record<string, unknown>;
@@ -80,6 +80,11 @@ function mapIncident(raw: Record<string, unknown>): TrafficIncident | null {
   if (geometry?.type === "Point" && Array.isArray(geometry.coordinates)) {
     const [lon, lat] = geometry.coordinates as number[];
     if (typeof lat === "number" && typeof lon === "number") position = { lat, lon };
+  } else if (geometry?.type === "LineString" && Array.isArray(geometry.coordinates)) {
+    const first = geometry.coordinates[0];
+    if (Array.isArray(first) && typeof first[0] === "number" && typeof first[1] === "number") {
+      position = { lon: first[0], lat: first[1] };
+    }
   }
 
   return {
@@ -167,7 +172,8 @@ export async function getTrafficIncidents(options?: { force?: boolean }): Promis
   url.searchParams.set("key", key);
   url.searchParams.set("bbox", PLOVDIV_TRAFFIC_BBOX);
   url.searchParams.set("fields", "{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},from,to,startTime,endTime,delay}}}");
-  url.searchParams.set("language", "bg-BG");
+  // TomTom Incident Details does not support bg-BG; it rejects the entire request with HTTP 400.
+  url.searchParams.set("language", "en-GB");
   url.searchParams.set("timeValidityFilter", "present");
 
   try {
