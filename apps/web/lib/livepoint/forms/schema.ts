@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { reportContactSchema } from "./contact";
+import { reportPositionSchema } from "./location";
 
 export const reportKinds = ["road", "city", "other"] as const;
 export type ReportKind = (typeof reportKinds)[number];
@@ -6,8 +8,9 @@ export type ReportKind = (typeof reportKinds)[number];
 export const reportSchema = z.object({
   kind: z.enum(reportKinds),
   place: z.string().trim().min(2).max(200),
+  position: reportPositionSchema,
   description: z.string().trim().min(20).max(4000),
-  contact: z.string().trim().max(200).optional().or(z.literal("")),
+  contact: reportContactSchema,
   consent: z.literal(true),
 });
 

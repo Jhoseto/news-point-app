@@ -199,6 +199,8 @@ export function LivePointProvider({
   useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
+      // The native location dialog is in the top layer and owns focus/Escape while open.
+      if (event.target instanceof Element && event.target.closest("[data-report-location-dialog]")) return;
       if (event.key === "Escape") {
         event.preventDefault();
         close();

@@ -1,12 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import type { ReactNode } from "react";
 import type { LivePointModule } from "@/lib/livepoint/config";
 import { formatTempC } from "@/lib/livepoint/weather/labels";
-import { formatShort } from "@/lib/format";
 import { CameraIcon, CarIcon, CloudSunIcon, FeatherIcon, MegaphoneIcon } from "../icons";
 import { useLivePoint } from "./livepoint-provider";
+import { LatestHeadlineCapsule } from "./latest-headline-capsule";
 
 function StripItem({
   module,
@@ -44,7 +43,7 @@ export function LivePointStrip() {
 
   return (
     <div className="np-lp-row flex h-20 items-center border-t border-line lg:h-12 lg:pl-[var(--np-rail-w)]">
-      <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-0.5 lg:overflow-x-auto lg:px-8 3xl:px-12">
+      <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-0.5 lg:px-8 3xl:px-12">
         <span className="inline-flex h-7 shrink-0 items-center gap-2 text-[0.75rem] font-extrabold tracking-tight text-ink lg:mr-1 lg:h-auto lg:py-1 lg:pr-2 lg:text-[0.8125rem]">
           <span className="np-lp-heart" aria-hidden="true">
             <span className="np-ring !size-4" />
@@ -72,20 +71,7 @@ export function LivePointStrip() {
           </StripItem>
         </div>
 
-        {latest ? (
-          <Link
-            href={latest.path}
-            className="np-lp-latest group ml-auto hidden min-w-0 items-center gap-2.5 pl-4 lg:flex"
-          >
-            <span className="shrink-0 text-[0.625rem] font-extrabold tracking-[0.14em] text-faint uppercase">Последно</span>
-            <span className="truncate text-[0.8125rem] font-semibold text-body transition-colors group-hover:text-logo">
-              {latest.title}
-            </span>
-            <time className="shrink-0 text-xs font-semibold text-muted tabular-nums" dateTime={latest.publishedAt}>
-              {formatShort(new Date(latest.publishedAt))}
-            </time>
-          </Link>
-        ) : null}
+        {latest ? <LatestHeadlineCapsule latest={latest} /> : null}
       </div>
     </div>
   );

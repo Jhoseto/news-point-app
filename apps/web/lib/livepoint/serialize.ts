@@ -9,6 +9,11 @@ export function toLatestHeadline(article: ArticleSummary | undefined): LatestHea
     path: article.path,
     title: article.title,
     publishedAt: article.publishedAt.toISOString(),
+    asOfMs: Date.now(),
+    excerpt: article.excerpt,
+    authorName: article.authorName,
+    category: article.category,
+    hero: article.hero,
   };
 }
 

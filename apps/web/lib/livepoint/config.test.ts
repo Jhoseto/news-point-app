@@ -35,7 +35,8 @@ describe("forms schema", () => {
         kind: "city",
         place: "Капана",
         description: "Има счупен тротоар до входа на улицата и пречи на хора с колички.",
-        contact: "",
+        position: { lat: 42.1354, lon: 24.7453 },
+        contact: "ivan@example.com",
         consent: true,
       }).success,
     ).toBe(true);

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { submissionFormData } from "@/lib/livepoint/forms/photos";
+import { PhotoPicker } from "./photo-picker";
 import { FeatherIcon } from "../icons";
 import { ConsentRow, Field, SubmissionIntro, SubmissionSuccess, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
@@ -12,24 +14,25 @@ export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
   const [contact, setContact] = useState("");
   const [rightsAck, setRightsAck] = useState(false);
   const [factsAck, setFactsAck] = useState(false);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reference, setReference] = useState<string | null>(null);
 
   useEffect(() => {
-    const dirty = Boolean(workingTitle || whatHappened || whereWhen || publishName || contact || rightsAck || factsAck) && !reference;
+    const dirty = Boolean(workingTitle || whatHappened || whereWhen || publishName || contact || rightsAck || factsAck || photos.length) && !reference;
     onDirtyChange(dirty);
-  }, [workingTitle, whatHappened, whereWhen, publishName, contact, rightsAck, factsAck, reference, onDirtyChange]);
+  }, [workingTitle, whatHappened, whereWhen, publishName, contact, rightsAck, factsAck, photos.length, reference, onDirtyChange]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(null);
     try {
       const response = await fetch("/api/livepoint/my-news/", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workingTitle, whatHappened, whereWhen, publishName, contact, rightsAck, factsAck }),
+        body: submissionFormData({ workingTitle, whatHappened, whereWhen, publishName, contact, rightsAck, factsAck }, photos),
       });
       const json = (await response.json()) as { ok?: boolean; reference?: string; error?: string };
       if (!response.ok || !json.ok || !json.reference) {
@@ -92,7 +95,7 @@ export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
             <TextField required minLength={3} maxLength={200} value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Имейл или телефон" />
           </Field>
         </div>
-        <p className="rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-xs leading-relaxed text-muted">Снимки и видео още не се приемат през тази форма.</p>
+        <PhotoPicker photos={photos} onChange={setPhotos} disabled={pending} />
         <div className="space-y-2">
           <ConsentRow checked={factsAck} onChange={setFactsAck}>Описвам факти, които съм видял/а или мога да потвърдя.</ConsentRow>
           <ConsentRow checked={rightsAck} onChange={setRightsAck}>Имам право да споделя материала и приемам редакционен преглед преди публикация.</ConsentRow>

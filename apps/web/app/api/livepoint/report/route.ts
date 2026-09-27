@@ -1,33 +1,12 @@
-import { NextResponse, type NextRequest } from "next/server";
+import type { NextRequest } from "next/server";
 import { reportSchema } from "@/lib/livepoint/forms/schema";
 import { saveReport } from "@/lib/livepoint/forms/store";
-import { hashIp } from "@/lib/livepoint/serialize";
+import { CONTACT_ERROR } from "@/lib/livepoint/forms/contact";
+import { handleSubmission } from "@/lib/livepoint/forms/submission-handler";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
-export async function POST(request: NextRequest) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ ok: false, error: "Невалиден JSON." }, { status: 400 });
-  }
-
-  const parsed = reportSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ ok: false, error: "Проверете полетата на формата." }, { status: 400 });
-  }
-
-  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  const result = await saveReport(parsed.data, {
-    ipHash: hashIp(forwarded),
-    userAgent: request.headers.get("user-agent"),
-  });
-
-  if (!result.ok) {
-    const status = result.code === "unavailable" ? 503 : 500;
-    return NextResponse.json({ ok: false, error: result.error }, { status });
-  }
-
-  return NextResponse.json({ ok: true, reference: result.reference, id: result.id });
+export function POST(request: NextRequest) {
+  return handleSubmission(request, reportSchema, saveReport, path => path === "contact" ? CONTACT_ERROR : path === "position" ? "Посочете точка върху картата." : "Проверете полетата на формата.");
 }

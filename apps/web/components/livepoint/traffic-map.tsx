@@ -2,54 +2,12 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { TrafficIncident } from "@/lib/livepoint/types";
+import { MAP_TILE_SIZE as TILE, fromPixels, toPixels, visibleTiles, type MapPosition as Position, type MapTile as Tile } from "@/lib/livepoint/map-projection";
 import { TrafficIncidentHoverCard } from "./traffic-incident-hover-card";
 
-const TILE = 256;
-type Position = { lat: number; lon: number };
-type Tile = { x: number; y: number; left: number; top: number; center: boolean };
 type MapIncident = Pick<TrafficIncident, "id" | "category" | "position" | "path" | "categoryLabel" | "description" | "from" | "to" | "delaySec">;
 type Cluster = { x: number; y: number; incidents: MapIncident[]; position: Position };
 type MotionPath = { id: string; d: string; duration: number };
-
-function toPixels({ lat, lon }: Position, zoom: number) {
-  const size = TILE * 2 ** zoom;
-  const radians = (Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180;
-  return {
-    x: ((lon + 180) / 360) * size,
-    y: ((1 - Math.log(Math.tan(radians) + 1 / Math.cos(radians)) / Math.PI) / 2) * size,
-  };
-}
-
-function fromPixels(x: number, y: number, zoom: number): Position {
-  const size = TILE * 2 ** zoom;
-  return {
-    lon: (x / size) * 360 - 180,
-    lat: (Math.atan(Math.sinh(Math.PI * (1 - (2 * Math.max(0, Math.min(size, y))) / size))) * 180) / Math.PI,
-  };
-}
-
-function visibleTiles(center: Position, zoom: number, width: number, height: number): Tile[] {
-  const world = toPixels(center, zoom);
-  const firstX = Math.floor((world.x - width / 2) / TILE);
-  const lastX = Math.floor((world.x + width / 2) / TILE);
-  const firstY = Math.floor((world.y - height / 2) / TILE);
-  const lastY = Math.floor((world.y + height / 2) / TILE);
-  const max = 2 ** zoom;
-  const tiles: Tile[] = [];
-  for (let y = firstY; y <= lastY; y += 1) {
-    if (y < 0 || y >= max) continue;
-    for (let x = firstX; x <= lastX; x += 1) {
-      tiles.push({
-        x: ((x % max) + max) % max,
-        y,
-        left: x * TILE - world.x + width / 2,
-        top: y * TILE - world.y + height / 2,
-        center: x === Math.floor(world.x / TILE) && y === Math.floor(world.y / TILE),
-      });
-    }
-  }
-  return tiles;
-}
 
 function visibleClusters(incidents: MapIncident[], center: Position, zoom: number, width: number, height: number): Cluster[] {
   const origin = toPixels(center, zoom);

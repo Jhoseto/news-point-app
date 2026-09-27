@@ -1,6 +1,7 @@
 import "server-only";
 import { getDb, livepointSubmissions } from "@newspoint/db";
 import type { MyNewsInput, ReportInput } from "./schema";
+import type { SubmissionPhoto } from "./photos";
 
 export type SubmissionResult =
   | { ok: true; id: string; reference: string }
@@ -11,7 +12,7 @@ function referenceCode(id: string, kind: "report" | "my_news"): string {
   return `${prefix}-${id.slice(0, 8).toUpperCase()}`;
 }
 
-export async function saveReport(input: ReportInput, meta: { ipHash: string | null; userAgent: string | null }): Promise<SubmissionResult> {
+export async function saveReport(input: ReportInput, meta: { ipHash: string | null; userAgent: string | null }, photos: SubmissionPhoto[] = []): Promise<SubmissionResult> {
   try {
     const [row] = await getDb()
       .insert(livepointSubmissions)
@@ -21,12 +22,12 @@ export async function saveReport(input: ReportInput, meta: { ipHash: string | nu
         payload: {
           kind: input.kind,
           place: input.place,
+          position: input.position,
           description: input.description,
-          contact: input.contact || null,
-          files: null,
-          filesNote: "Прикачването на файлове още не е свързано — няма устойчиво хранилище.",
+          contact: input.contact,
+          files: photos,
         },
-        contact: input.contact || null,
+        contact: input.contact,
         ipHash: meta.ipHash,
         userAgent: meta.userAgent,
       })
@@ -43,7 +44,7 @@ export async function saveReport(input: ReportInput, meta: { ipHash: string | nu
   }
 }
 
-export async function saveMyNews(input: MyNewsInput, meta: { ipHash: string | null; userAgent: string | null }): Promise<SubmissionResult> {
+export async function saveMyNews(input: MyNewsInput, meta: { ipHash: string | null; userAgent: string | null }, photos: SubmissionPhoto[] = []): Promise<SubmissionResult> {
   try {
     const [row] = await getDb()
       .insert(livepointSubmissions)
@@ -56,8 +57,7 @@ export async function saveMyNews(input: MyNewsInput, meta: { ipHash: string | nu
           whereWhen: input.whereWhen,
           publishName: input.publishName,
           contact: input.contact,
-          files: null,
-          filesNote: "Прикачването на файлове още не е свързано — няма устойчиво хранилище.",
+          files: photos,
         },
         contact: input.contact,
         ipHash: meta.ipHash,

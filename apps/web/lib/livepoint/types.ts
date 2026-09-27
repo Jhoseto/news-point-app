@@ -1,3 +1,5 @@
+import type { CategoryRef, Media } from "@/lib/queries";
+
 export type DataStatus = "ok" | "stale" | "unavailable" | "empty" | "not_connected";
 
 export interface DataEnvelope<T> {
@@ -14,6 +16,11 @@ export interface LatestHeadline {
   path: string;
   title: string;
   publishedAt: string;
+  asOfMs: number;
+  excerpt: string;
+  authorName: string;
+  category: CategoryRef | null;
+  hero: Media | null;
 }
 
 export interface WeatherInstant {
