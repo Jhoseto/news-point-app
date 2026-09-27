@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LivePointStrip } from "@/components/livepoint/livepoint-strip";
 import { getMenuCategories } from "@/lib/queries";
 import { HeaderClock } from "./header-clock";
+import { BrandLogoImg } from "./brand-logo-img";
 import { Logo } from "./logo";
 import { BottomNav, MobileSearch, RubricsButton, RubricsNav } from "./nav";
 import { SiteSearch } from "./site-search";
@@ -87,15 +88,7 @@ export function PlovdivBanner() {
       <div className="pointer-events-none absolute -top-10 -right-6 size-36 rounded-full bg-[#7c3aed]/80" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-8 -bottom-12 size-40 rounded-full bg-[#c026d3]/70" aria-hidden="true" />
       <div className="relative flex h-full items-center gap-8 px-8 py-6">
-        <img
-          src="/brand/newspoint-logo.webp"
-          srcSet="/brand/newspoint-logo-512w.webp 512w, /brand/newspoint-logo.webp 980w"
-          sizes="280px"
-          alt="NewsPoint.bg — гласът на истината"
-          width={980}
-          height={312}
-          className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo"
-        />
+        <BrandLogoImg className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo" sizes="280px" />
         <p className="max-w-xs text-2xl leading-tight font-extrabold tracking-tight text-white">
           Защото истината има значение!
         </p>

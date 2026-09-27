@@ -1,9 +1,8 @@
-/** Optimized premium logo (`scripts/optimize-brand-logo.mjs`). */
+/** Same assets as public web (`apps/web/public/brand`, copied on optimize). */
 export const BRAND_LOGO = {
   width: 998,
   height: 326,
   src: "/brand/newspoint-logo.webp",
   srcSet: "/brand/newspoint-logo-512w.webp 512w, /brand/newspoint-logo.webp 998w",
-  sizes: "(max-width: 640px) 180px, (max-width: 1280px) 220px, 248px",
   alt: "NewsPoint.bg — гласът на истината",
 } as const;

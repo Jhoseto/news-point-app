@@ -2,7 +2,7 @@
  * Optimize NewsPoint premium logo for /public/brand.
  * Run: pnpm --filter @newspoint/web exec node scripts/optimize-brand-logo.mjs
  */
-import { writeFile } from "node:fs/promises";
+import { copyFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 
@@ -44,4 +44,10 @@ const manifest = {
   sourceHeight: meta.height,
 };
 await writeFile(join(outDir, "newspoint-logo.manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+
+const studioBrand = join(import.meta.dirname, "../../studio/public/brand");
+for (const name of ["newspoint-logo.webp", "newspoint-logo-512w.webp", "newspoint-logo-dark.webp"]) {
+  await copyFile(join(outDir, name), join(studioBrand, name));
+}
+
 console.log("OK", manifest);

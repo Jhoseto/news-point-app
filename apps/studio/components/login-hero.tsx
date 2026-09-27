@@ -1,4 +1,4 @@
-import { withBase } from "@/lib/paths";
+import { BrandLogoImg } from "@/components/brand-logo-img";
 
 export function LoginHero() {
   return (
@@ -6,7 +6,7 @@ export function LoginHero() {
       <div className="np-login-orb np-login-orb-a" aria-hidden="true" />
       <div className="np-login-orb np-login-orb-b" aria-hidden="true" />
       <div className="np-login-grid" aria-hidden="true" />
-      <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={980} height={312} className="relative h-14 w-auto max-w-[14rem] object-contain object-left self-start" />
+      <BrandLogoImg className="relative h-14 w-auto max-w-[14rem] object-contain object-left self-start" />
       <div className="relative max-w-lg">
         <p className="text-xs font-extrabold tracking-[0.25em] text-white/60 uppercase">Studio · редакция</p>
         <h2 className="mt-4 text-5xl leading-[1.05] font-extrabold tracking-tight">

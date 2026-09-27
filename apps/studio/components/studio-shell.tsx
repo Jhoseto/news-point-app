@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
+import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 
 const NAV = [
@@ -48,7 +49,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
     <div className="min-h-dvh lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-shell text-white/80 lg:flex">
         <div className="flex h-[4.5rem] items-center gap-3 border-b border-white/8 px-5">
-          <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={980} height={312} className="h-9 w-auto max-w-[9rem] object-contain object-left" />
+          <BrandLogoImg className="h-9 w-auto max-w-[9rem] object-contain object-left" />
           <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-[0.15em] text-white uppercase">Studio</span>
         </div>
         <nav className="flex-1 space-y-1 p-3" aria-label="Studio">
@@ -89,7 +90,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       </aside>
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
-        <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={980} height={312} className="h-7 w-auto max-w-[7rem] object-contain" />
+        <BrandLogoImg className="h-7 w-auto max-w-[7rem] object-contain" />
         <nav className="ml-auto flex items-center gap-1" aria-label="Studio">
           {nav.map((item) => (
             <Link

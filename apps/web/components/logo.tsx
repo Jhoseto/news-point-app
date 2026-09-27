@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
-import { BRAND_LOGO } from "@/lib/brand-logo";
+import { BrandLogoImg } from "./brand-logo-img";
 import { useReducedMotion } from "./reader-preferences";
 
 export function Logo({ className = "h-10", variant = "default" }: { className?: string; variant?: "default" | "header" }) {
@@ -25,14 +25,7 @@ export function Logo({ className = "h-10", variant = "default" }: { className?: 
       className={`inline-flex shrink-0 items-center ${isHeader ? "min-w-0 max-lg:flex-1 max-lg:justify-start" : ""}`}
       onClick={onLogoClick}
     >
-      <img
-        src={BRAND_LOGO.src}
-        srcSet={BRAND_LOGO.srcSet}
-        sizes={BRAND_LOGO.sizes}
-        alt="NewsPoint.bg — гласът на истината"
-        width={BRAND_LOGO.width}
-        height={BRAND_LOGO.height}
-        decoding="async"
+      <BrandLogoImg
         fetchPriority="high"
         className={
           isHeader

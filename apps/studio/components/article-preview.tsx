@@ -2,6 +2,7 @@ import type { Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { wordCount } from "@/lib/editor/body";
 import { formatFull } from "@/lib/format";
+import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 
 // Mirrors the article page of apps/web (components/article-page.tsx, article-body.tsx)
@@ -62,13 +63,7 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
     <div data-theme={theme} className="np-site @container min-h-full bg-page font-sans text-body">
       <header className="border-b border-line bg-surface/90">
         <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-4 @2xl:h-16 @2xl:px-6">
-          <img
-            src={withBase("/brand/newspoint-logo.webp")}
-            alt="NewsPoint.bg"
-            width={150}
-            height={42}
-            className="h-8 w-auto @2xl:h-9"
-          />
+          <BrandLogoImg className="h-8 w-auto @2xl:h-9" />
           <span className="np-gradient-bg ml-auto h-1 w-16 rounded-full opacity-70" aria-hidden="true" />
         </div>
       </header>
