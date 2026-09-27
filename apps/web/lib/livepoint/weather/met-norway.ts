@@ -41,7 +41,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
   const cached = slot.current;
   if (cached && cached.expiresAt > Date.now() + 5_000) {
     return {
-      source: "met.no/locationforecast/2.0/compact",
+      source: "livepoint/weather",
       fetchedAt: new Date(cached.fetchedAt).toISOString(),
       expiresAt: new Date(cached.expiresAt).toISOString(),
       status: "ok",
@@ -63,7 +63,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
       const expiresAt = parseExpires(response.headers.get("expires"), 30 * 60_000);
       slot.current = { ...cached, expiresAt };
       return {
-        source: "met.no/locationforecast/2.0/compact",
+        source: "livepoint/weather",
         fetchedAt: new Date(cached.fetchedAt).toISOString(),
         expiresAt: new Date(expiresAt).toISOString(),
         status: "ok",
@@ -74,7 +74,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
     if (!response.ok) {
       if (cached) {
         return {
-          source: "met.no/locationforecast/2.0/compact",
+          source: "livepoint/weather",
           fetchedAt: new Date(cached.fetchedAt).toISOString(),
           expiresAt: new Date(cached.expiresAt).toISOString(),
           status: "stale",
@@ -83,7 +83,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
         };
       }
       return {
-        source: "met.no/locationforecast/2.0/compact",
+        source: "livepoint/weather",
         fetchedAt: null,
         expiresAt: null,
         status: "unavailable",
@@ -106,7 +106,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
     };
 
     return {
-      source: "met.no/locationforecast/2.0/compact",
+      source: "livepoint/weather",
       fetchedAt: new Date(fetchedAt).toISOString(),
       expiresAt: new Date(expiresAt).toISOString(),
       status: "ok",
@@ -115,7 +115,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
   } catch {
     if (cached) {
       return {
-        source: "met.no/locationforecast/2.0/compact",
+        source: "livepoint/weather",
         fetchedAt: new Date(cached.fetchedAt).toISOString(),
         expiresAt: new Date(cached.expiresAt).toISOString(),
         status: "stale",
@@ -124,7 +124,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
       };
     }
     return {
-      source: "met.no/locationforecast/2.0/compact",
+      source: "livepoint/weather",
       fetchedAt: null,
       expiresAt: null,
       status: "unavailable",

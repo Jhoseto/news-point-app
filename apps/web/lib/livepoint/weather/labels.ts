@@ -1,4 +1,4 @@
-/** Bulgarian labels for MET Norway symbol_code values we actually receive. */
+/** Bulgarian labels for symbol_code values we actually receive. */
 const SYMBOL_LABELS: Record<string, string> = {
   clearsky_day: "Ясно",
   clearsky_night: "Ясно",

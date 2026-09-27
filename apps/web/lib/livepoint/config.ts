@@ -33,7 +33,7 @@ export const MODULE_LABELS: Record<LivePointModule, string> = {
   "my-news": "Моята новина",
 };
 
-/** MET Norway requires a descriptive User-Agent (terms of service). */
+/** Location forecast API requires a descriptive User-Agent (provider terms). */
 export function metUserAgent(): string {
   return process.env.MET_NORWAY_USER_AGENT?.trim() || "NewsPoint/2.0 (https://newspoint.bg; livepoint@newspoint.bg)";
 }

@@ -23,6 +23,22 @@ export function formatShort(date: Date, now = new Date()): string {
   return dayKey.format(date) === dayKey.format(now) ? timeFormat.format(date) : dayFormat.format(date);
 }
 
+/** Relative age for the first 24 hours, then the usual local time/date. */
+export function formatCardTime(date: Date, now = new Date()): string {
+  const elapsedMs = now.getTime() - date.getTime();
+  if (elapsedMs < 0 || elapsedMs >= 24 * 60 * 60 * 1000) return formatShort(date, now);
+  const minutes = Math.max(1, Math.floor(elapsedMs / 60_000));
+  if (minutes < 60) return `преди ${minutes} ${minutes === 1 ? "минута" : "минути"}`;
+  const hours = Math.floor(minutes / 60);
+  return `преди ${hours} ${hours === 1 ? "час" : "часа"}`;
+}
+
+/** A factual freshness label for articles published within the last hour. */
+export function isRecentArticle(date: Date, now = new Date()): boolean {
+  const elapsedMs = now.getTime() - date.getTime();
+  return elapsedMs >= 0 && elapsedMs < 60 * 60 * 1000;
+}
+
 const numericDayFormat = new Intl.DateTimeFormat("bg-BG", { timeZone: TIME_ZONE, day: "2-digit", month: "2-digit" });
 
 /** "12:34" for today, "23.09" otherwise; fits a narrow timeline column. */

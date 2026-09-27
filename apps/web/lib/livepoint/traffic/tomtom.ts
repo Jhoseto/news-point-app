@@ -1,6 +1,7 @@
 import "server-only";
 import { isTomTomConfigured, PLOVDIV_TRAFFIC_BBOX, tomtomApiKey } from "../config";
 import type { DataEnvelope, TrafficIncident, TrafficIncidentsPayload } from "../types";
+import { bulgarianIncidentDescription, bulgarianTrafficPlace } from "./labels";
 
 const POLL_MS = 30 * 60_000;
 const INCIDENT_LIMITS = { freeMonthly: 2500, softStopAt: 2200 };
@@ -11,6 +12,7 @@ type QuotaState = {
 };
 
 type IncidentCache = {
+  schemaVersion: number;
   fetchedAt: number;
   expiresAt: number;
   payload: TrafficIncidentsPayload;
@@ -70,34 +72,42 @@ function mapIncident(raw: Record<string, unknown>): TrafficIncident | null {
   const category = typeof properties.iconCategory === "number" ? properties.iconCategory : 0;
   const events = Array.isArray(properties.events) ? properties.events : [];
   const firstEvent = (events[0] ?? {}) as Record<string, unknown>;
-  const description =
+  const sourceDescription =
     (typeof firstEvent.description === "string" && firstEvent.description) ||
     (typeof properties.from === "string" && properties.from) ||
     "Инцидент от TomTom";
+  const categoryLabel = CATEGORY_LABELS[category] ?? "Пътно събитие";
+  const description = bulgarianIncidentDescription(sourceDescription, categoryLabel);
 
   let position: { lat: number; lon: number } | null = null;
+  let path: { lat: number; lon: number }[] | null = null;
   const geometry = raw.geometry as { type?: string; coordinates?: unknown } | undefined;
   if (geometry?.type === "Point" && Array.isArray(geometry.coordinates)) {
     const [lon, lat] = geometry.coordinates as number[];
     if (typeof lat === "number" && typeof lon === "number") position = { lat, lon };
   } else if (geometry?.type === "LineString" && Array.isArray(geometry.coordinates)) {
-    const first = geometry.coordinates[0];
-    if (Array.isArray(first) && typeof first[0] === "number" && typeof first[1] === "number") {
-      position = { lon: first[0], lat: first[1] };
-    }
+    const points = geometry.coordinates.slice(0, 200).flatMap((coordinate) => {
+      if (!Array.isArray(coordinate)) return [];
+      const [lon, lat] = coordinate;
+      return typeof lon === "number" && Number.isFinite(lon) && typeof lat === "number" && Number.isFinite(lat)
+        ? [{ lat, lon }] : [];
+    });
+    if (points.length > 0) position = points[0]!;
+    if (points.length > 1) path = points;
   }
 
   return {
     id,
     category,
-    categoryLabel: CATEGORY_LABELS[category] ?? `Категория ${category}`,
+    categoryLabel,
     description,
-    from: typeof properties.from === "string" ? properties.from : null,
-    to: typeof properties.to === "string" ? properties.to : null,
+    from: bulgarianTrafficPlace(typeof properties.from === "string" ? properties.from : null),
+    to: bulgarianTrafficPlace(typeof properties.to === "string" ? properties.to : null),
     startTime: typeof properties.startTime === "string" ? properties.startTime : null,
     endTime: typeof properties.endTime === "string" ? properties.endTime : null,
     delaySec: typeof properties.delay === "number" ? properties.delay : null,
     position,
+    path,
   };
 }
 
@@ -134,7 +144,7 @@ export async function getTrafficIncidents(options?: { force?: boolean }): Promis
     };
   }
 
-  const cached = globalThis.__npTomTomIncidents;
+  const cached = globalThis.__npTomTomIncidents?.schemaVersion === 5 ? globalThis.__npTomTomIncidents : undefined;
   if (!options?.force && cached && cached.expiresAt > Date.now()) {
     return {
       source: "tomtom/incidentDetails",
@@ -212,6 +222,7 @@ export async function getTrafficIncidents(options?: { force?: boolean }): Promis
       bbox: PLOVDIV_TRAFFIC_BBOX,
     };
     globalThis.__npTomTomIncidents = {
+      schemaVersion: 5,
       fetchedAt,
       expiresAt: fetchedAt + POLL_MS,
       payload,

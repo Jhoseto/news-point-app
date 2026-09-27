@@ -49,7 +49,6 @@ export interface WeatherForecast {
   current: WeatherInstant;
   hours: WeatherHour[];
   days: WeatherDay[];
-  attribution: { name: string; url: string; licenseUrl: string };
 }
 
 export interface TrafficIncident {
@@ -63,6 +62,7 @@ export interface TrafficIncident {
   endTime: string | null;
   delaySec: number | null;
   position: { lat: number; lon: number } | null;
+  path: { lat: number; lon: number }[] | null;
 }
 
 export interface TrafficIncidentsPayload {

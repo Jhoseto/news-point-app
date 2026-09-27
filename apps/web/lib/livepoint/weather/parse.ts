@@ -66,7 +66,7 @@ export function parseMetCompact(raw: unknown, now = new Date()): WeatherForecast
   const currentEntry = series[0]!;
   const details = currentEntry.data.instant.details;
   if (typeof details.air_temperature !== "number") {
-    throw new Error("MET Norway response has no air_temperature");
+    throw new Error("Forecast response has no air_temperature");
   }
 
   const current: WeatherInstant = {
@@ -126,10 +126,5 @@ export function parseMetCompact(raw: unknown, now = new Date()): WeatherForecast
     current,
     hours,
     days,
-    attribution: {
-      name: "MET Norway",
-      url: "https://www.met.no/en",
-      licenseUrl: "https://www.met.no/en/free-meteorological-data/Licensing-and-crediting",
-    },
   };
 }

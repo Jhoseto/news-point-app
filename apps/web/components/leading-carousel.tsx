@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
 import { ArticleCard } from "./article-card";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
@@ -8,7 +9,14 @@ import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
 const SPEED_PX_PER_SECOND = 18;
 const DRAG_THRESHOLD = 5;
 
-export function LeadingCarousel({ articles }: { articles: ArticleSummary[] }) {
+export function LeadingCarousel({
+  articles,
+  shineDelays,
+}: {
+  articles: ArticleSummary[];
+  /** Precomputed on the homepage (server); one delay per article, originals only. */
+  shineDelays?: number[];
+}) {
   const viewport = useRef<HTMLDivElement>(null);
   const firstSet = useRef<HTMLDivElement>(null);
   const paused = useRef(false);
@@ -63,7 +71,7 @@ export function LeadingCarousel({ articles }: { articles: ArticleSummary[] }) {
   if (!articles.length) return null;
 
   const cards = (duplicate: boolean) =>
-    articles.map((article) => (
+    articles.map((article, index) => (
       <div
         key={`${duplicate ? "copy" : "original"}-${article.id}`}
         data-carousel-card
@@ -71,7 +79,7 @@ export function LeadingCarousel({ articles }: { articles: ArticleSummary[] }) {
         inert={duplicate || undefined}
         className="w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"
       >
-        <ArticleCard article={article} />
+        <ArticleCard article={article} {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])} />
       </div>
     ));
 
@@ -86,12 +94,12 @@ export function LeadingCarousel({ articles }: { articles: ArticleSummary[] }) {
         if (!event.currentTarget.contains(event.relatedTarget)) paused.current = false;
       }}
     >
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 id="sec-leading" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink">
+      <div className="np-section-heading mb-5 flex items-center justify-between gap-4">
+        <h2 id="sec-leading" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
           <span className="np-ring" aria-hidden="true" />
           Водещи новини
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="order-2 flex items-center gap-2">
           <button type="button" onClick={() => move(-1)} aria-label="Предишни водещи новини" className="np-carousel-button">
             <ChevronLeftIcon width={18} height={18} />
           </button>

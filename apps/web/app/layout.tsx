@@ -29,10 +29,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const [weather, latestArticles] = await Promise.all([getWeatherForecast(), getLatest(1)]);
   return (
     <html lang="bg" suppressHydrationWarning>
-      <head>
-        <ThemeScript />
-      </head>
       <body className="min-h-dvh">
+        <ThemeScript />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:font-semibold focus:text-ink"

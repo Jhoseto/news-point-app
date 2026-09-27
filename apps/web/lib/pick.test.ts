@@ -7,6 +7,7 @@ const article = (id: string): ArticleSummary => ({
   path: `/${id}/`,
   title: id,
   excerpt: "",
+  authorName: "NewsPoint.bg",
   publishedAt: new Date("2026-09-24T00:00:00Z"),
   category: null,
   hero: null,

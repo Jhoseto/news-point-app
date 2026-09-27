@@ -1,10 +1,15 @@
 import { ArticleCard, CompactCard, FeatureCard, HeroCard } from "@/components/article-card";
+import { HomeShineRoot } from "@/components/home-shine-root";
 import { LeadingCarousel } from "@/components/leading-carousel";
-import { CompactList, LatestList } from "@/components/lists";
+import { LatestNews24h } from "@/components/latest-news-24h";
+import { CompactList } from "@/components/lists";
 import { BrandBanner, PlovdivBanner } from "@/components/site-chrome";
 import { SectionTitle } from "@/components/ui";
+import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
+import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
+import { shineDelayProp } from "@/lib/shine-style";
 import { UniquePicker } from "@/lib/pick";
-import { getByCategory, getLabelled, getLatest, getMenuCategories, type ArticleSummary, type CategoryRef } from "@/lib/queries";
+import { getByCategory, getLabelled, getLatest, getLatest24Hours, getMenuCategories, type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
 export const revalidate = 60;
 
@@ -27,48 +32,67 @@ function sectionCount(layout: Layout, wide: boolean) {
   return wide ? 7 : layout === "grid" ? 5 : 4;
 }
 
-function CategorySection({ category, articles, layout, wide }: { category: CategoryRef; articles: ArticleSummary[]; layout: Layout; wide: boolean }) {
+function CategorySection({
+  category,
+  articles,
+  layout,
+  wide,
+  shine,
+}: {
+  category: CategoryRef;
+  articles: ArticleSummary[];
+  layout: Layout;
+  wide: boolean;
+  shine?: HomeShineAllocator;
+}) {
   const [first, ...rest] = articles;
   if (!first) return null;
+  shine?.sectionBreak();
   // The mosaic needs every slot filled; with fewer stories the plain row avoids holes.
   const mosaic = articles.length >= sectionCount("grid", wide);
   // Two list columns only when both columns would be full.
   const twoLists = wide && rest.length >= 6;
   return (
-    <section aria-labelledby={`sec-${category.slug}`}>
-      <SectionTitle id={`sec-${category.slug}`} href={category.path}>
+    <section className="min-w-0" aria-labelledby={`sec-${category.slug}`}>
+      <SectionTitle id={`sec-${category.slug}`} href={category.path} accentSlug={category.slug}>
         {category.name}
       </SectionTitle>
       {layout === "feature" ? (
         <div
           className={`grid gap-5 ${rest.length ? `lg:grid-cols-[1.6fr_1fr] ${twoLists ? "2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : "3xl:grid-cols-[1.9fr_1fr]"}` : ""}`}
         >
-          <FeatureCard article={first} />
+          <FeatureCard article={first} {...shineDelayProp(shine?.nextCard())} />
           {rest.length ? (
             <div className={`np-card grid content-start gap-4 p-4 ${twoLists ? "2xl:grid-cols-2 2xl:gap-x-6" : ""}`}>
               {rest.map((article, index) => (
                 <div key={article.id} className={index >= 3 ? (twoLists ? "hidden 2xl:block" : "hidden") : ""}>
-                  <CompactCard article={article} />
+                  <CompactCard article={article} {...shineDelayProp(shine?.nextCard())} />
                 </div>
               ))}
             </div>
           ) : null}
         </div>
       ) : !mosaic ? (
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {articles.slice(0, 4).map((article) => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard key={article.id} article={article} {...shineDelayProp(shine?.nextCard())} />
           ))}
         </div>
       ) : (
-        <div className={`grid gap-5 sm:grid-cols-2 xl:grid-cols-4 ${wide ? "2xl:grid-cols-5" : ""}`}>
+        <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 ${wide ? "2xl:grid-cols-5" : ""}`}>
           <div className="contents 2xl:hidden">
-            <ArticleCard article={first} />
+            <ArticleCard article={first} {...shineDelayProp(shine?.nextCard())} />
           </div>
-          <HeroCard article={first} size="tile" headingLevel="h3" className="hidden 2xl:col-span-2 2xl:row-span-2 2xl:block" />
+          <HeroCard
+            article={first}
+            size="tile"
+            headingLevel="h3"
+            className="hidden 2xl:col-span-2 2xl:row-span-2 2xl:block"
+            {...shineDelayProp(shine?.nextCard())}
+          />
           {rest.map((article, index) => (
             <div key={article.id} className={index >= 3 ? "hidden 2xl:contents" : "contents"}>
-              <ArticleCard article={article} />
+              <ArticleCard article={article} {...shineDelayProp(shine?.nextCard())} />
             </div>
           ))}
         </div>
@@ -78,7 +102,13 @@ function CategorySection({ category, articles, layout, wide }: { category: Categ
 }
 
 export default async function HomePage() {
-  const [latest, featured, menu] = await Promise.all([getLatest(50), getLabelled(LEADING_LABEL, 13), getMenuCategories()]);
+  const asOfMs = Date.now();
+  const [latest, latest24h, featured, menu] = await Promise.all([
+    getLatest(50),
+    getLatest24Hours(asOfMs),
+    getLabelled(LEADING_LABEL, 13),
+    getMenuCategories(),
+  ]);
   const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
   const menuIds = new Set(menu.map((category) => category.id));
 
@@ -91,9 +121,6 @@ export default async function HomePage() {
   leading.push(...picker.take(latest, 13 - leading.length));
   // Three headline stories of different sizes sit beside the lead; the rest open the next section.
   const support = leading.splice(0, 3);
-  const timeline = picker.take(latest, 8);
-  const newest = latest[0];
-  const latestWithNewest = newest && timeline.every((article) => article.id !== newest.id) ? [newest, ...timeline] : timeline;
 
   const ordered = [
     ...sections.filter((s) => s.category.slug === LEAD_SECTION),
@@ -108,63 +135,104 @@ export default async function HomePage() {
     .filter((s) => ASIDE_SECTIONS.includes(s.category.slug))
     .map((section) => ({ ...section, articles: picker.take(section.pool, 4) }));
 
+  const shine = createHomeShine();
+  const bandHero = hero ? shine.nextCard() : undefined;
+  const bandSupport0 = support[0] ? shine.nextCard() : undefined;
+  const bandSupport1 = support[1] ? shine.nextCard() : undefined;
+  const bandSupport2 = support[2] ? shine.nextCard() : undefined;
+  shine.sectionBreak();
+  const carouselArticles = leading.slice(0, 10);
+  const carouselShineDelays = carouselArticles.map(() => shine.nextCard());
+
+  const narrowMain = mainSections.filter((section) => !section.wide);
+  const wideMain = mainSections.filter((section) => section.wide);
+  const shineCycleSec = estimateHomeShineCycleSec(
+    shine,
+    [...narrowMain, ...wideMain],
+    asideSections.map((section) => section.articles.length),
+  );
+
   return (
-    <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
-      <h1 className="sr-only">NewsPoint.bg – новини</h1>
-      {/* Phone: lead, then a larger theme, two compact ones and the latest list. */}
-      <div className="flex flex-col gap-4 lg:hidden">
-        {hero ? <HeroCard article={hero} /> : null}
-        {support[0] ? <HeroCard article={support[0]} size="tile" /> : null}
-        {support.length > 1 ? (
-          <div className="np-card flex flex-col gap-4 p-4">
-            {support.slice(1).map((article) => (
-              <CompactCard key={article.id} article={article} />
-            ))}
-          </div>
-        ) : null}
-        <LatestList articles={latestWithNewest.slice(0, 6)} id="posledni" />
-      </div>
-      {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
+    <HomeShineRoot cycleSec={shineCycleSec}>
+      <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
+        <h1 className="sr-only">NewsPoint.bg – новини</h1>
+        {/* Phone: lead, then a larger theme, two compact ones and the latest list. */}
+        <div className="flex flex-col gap-4 lg:hidden">
+          {hero ? <HeroCard article={hero} {...shineDelayProp(bandHero)} /> : null}
+          {support[0] ? <HeroCard article={support[0]} size="tile" {...shineDelayProp(bandSupport0)} /> : null}
+          {support.length > 1 ? (
+            <div className="np-card flex flex-col gap-4 p-4">
+              {support.slice(1).map((article, index) => (
+                <CompactCard
+                  key={article.id}
+                  article={article}
+                  {...shineDelayProp(index === 0 ? bandSupport1 : bandSupport2)}
+                />
+              ))}
+            </div>
+          ) : null}
+          <LatestNews24h articles={latest24h} asOfMs={asOfMs} className="h-[30rem]" />
+        </div>
+        {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
-      <div className="hidden h-[min(56vh,34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(54vh,36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
-        {hero ? <HeroCard article={hero} fit="band" className="min-h-0" /> : null}
-        <div className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-4">
-          {support[0] ? <HeroCard article={support[0]} size="tile" fit="band" headingLevel="h3" className="min-h-0" /> : null}
-          <div className="grid min-h-0 grid-cols-2 gap-4">
-            {support.slice(1).map((article) => (
-              <HeroCard key={article.id} article={article} size="mini" fit="band" headingLevel="h3" className="min-h-0" />
-            ))}
+        <div className="hidden h-[min(56vh,34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(54vh,36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
+          {hero ? <HeroCard article={hero} fit="band" className="min-h-0" {...shineDelayProp(bandHero)} /> : null}
+          <div className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-4">
+            {support[0] ? (
+              <HeroCard article={support[0]} size="tile" fit="band" headingLevel="h3" className="min-h-0" {...shineDelayProp(bandSupport0)} />
+            ) : null}
+            <div className="grid min-h-0 grid-cols-2 gap-4">
+              {support.slice(1).map((article, index) => (
+                <HeroCard
+                  key={article.id}
+                  article={article}
+                  size="mini"
+                  fit="band"
+                  headingLevel="h3"
+                  className="min-h-0"
+                  {...shineDelayProp(index === 0 ? bandSupport1 : bandSupport2)}
+                />
+              ))}
+            </div>
           </div>
+          <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="min-h-0" />
         </div>
-        <LatestList articles={latestWithNewest.slice(0, 8)} dense fill className="min-h-0" />
-      </div>
 
-      {leading.length ? <LeadingCarousel articles={leading.slice(0, 10)} /> : null}
+        {carouselArticles.length ? (
+          <LeadingCarousel articles={carouselArticles} shineDelays={carouselShineDelays} />
+        ) : null}
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
-        <div className="flex h-full min-h-0 min-w-0 flex-col gap-10 3xl:gap-12">
-          {mainSections
-            .filter((section) => !section.wide)
-            .map((section) => (
-              <CategorySection key={section.category.id} {...section} />
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
+          <div className="flex h-full min-h-0 min-w-0 flex-col gap-10 3xl:gap-12">
+            {narrowMain.map((section) => (
+              <CategorySection key={section.category.id} {...section} shine={shine} />
             ))}
-          <PlovdivBanner />
+            <PlovdivBanner />
+          </div>
+
+          <aside className="flex flex-col gap-6" aria-label="Още новини">
+            {asideSections.map((section) => {
+              shine.sectionBreak();
+              return (
+                <CompactList
+                  key={section.category.id}
+                  title={section.category.name}
+                  accentSlug={section.category.slug}
+                  articles={section.articles}
+                  href={section.category.path}
+                  shine={shine}
+                />
+              );
+            })}
+          </aside>
         </div>
 
-        <aside className="flex flex-col gap-6" aria-label="Още новини">
-          {asideSections.map((section) => (
-            <CompactList key={section.category.id} title={section.category.name} articles={section.articles} href={section.category.path} />
-          ))}
-        </aside>
-      </div>
-
-      {mainSections
-        .filter((section) => section.wide)
-        .map((section) => (
-          <CategorySection key={section.category.id} {...section} />
+        {wideMain.map((section) => (
+          <CategorySection key={section.category.id} {...section} shine={shine} />
         ))}
 
-      <BrandBanner />
-    </div>
+        <BrandBanner />
+      </div>
+    </HomeShineRoot>
   );
 }

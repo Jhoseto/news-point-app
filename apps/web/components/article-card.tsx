@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { ArticleSummary } from "@/lib/queries";
-import { formatClock, isoDate } from "@/lib/format";
+import { formatClock, isRecentArticle, isoDate } from "@/lib/format";
+import { categoryAccentStyle } from "@/lib/category-accent";
+import { cardShineStyle } from "@/lib/shine-style";
 import { ArrowRightIcon } from "./icons";
-import { ArticleImage, CategoryLabel, CategoryPill, TimeMeta } from "./ui";
+import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
 
 /**
  * Story with the title over the photo. "lead" is the top story; "tile" is the
@@ -14,6 +16,7 @@ export function HeroCard({
   size = "lead",
   fit = "natural",
   className = "",
+  shineDelaySec,
 }: {
   article: ArticleSummary;
   headingLevel?: "h1" | "h2" | "h3";
@@ -21,47 +24,74 @@ export function HeroCard({
   /** "band" fills a parent with a fixed height. The homepage desktop hero uses it. */
   fit?: "natural" | "band";
   className?: string;
+  /** Homepage orchestrated shine delay (seconds into the cycle). */
+  shineDelaySec?: number;
 }) {
   const Heading = headingLevel;
   const lead = size === "lead";
   const mini = size === "mini";
+  const tile = size === "tile";
+  const fullBleedPhoto = fit === "band" || tile;
+  const shine = cardShineStyle(shineDelaySec);
+  const imageFitClass = fullBleedPhoto
+    ? "h-full w-full object-cover object-[center_28%]"
+    : lead
+      ? "aspect-[3/2] h-full w-full object-cover object-[center_30%]"
+      : "aspect-[16/10] h-full w-full object-cover object-[center_30%]";
   return (
-    <article className={`group relative isolate h-full overflow-hidden shadow-card ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}>
-      <Link href={article.path} className="block h-full">
-        <ArticleImage
-          media={article.hero}
-          priority={lead}
-          sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : "(min-width: 1024px) 22vw, 50vw"}
-          className={`w-full object-[center_30%] transition-transform duration-700 group-hover:scale-[1.03] ${
-            fit === "band"
-              ? "absolute inset-0 h-full"
-              : lead
-                ? "aspect-[3/2] h-full"
-                : "aspect-[16/10] h-full lg:aspect-auto lg:min-h-[15rem]"
+    <article
+      className={`group np-news-card relative isolate h-full overflow-hidden border border-white/10 bg-[#020826] shadow-[0_18px_55px_-26px_rgb(10_20_84/0.65)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_65px_-26px_rgb(56_24_214/0.55)] ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}
+      style={categoryAccentStyle(article.category?.slug)}
+    >
+      <Link
+        href={article.path}
+        className={`relative block h-full ${tile && fit === "natural" ? "min-h-[14rem] sm:min-h-[16rem] 2xl:min-h-0" : ""}`}
+      >
+        <div className={`${shine.className} ${fullBleedPhoto ? "absolute inset-0" : "relative"}`} style={shine.style}>
+          <ArticleImage
+            media={article.hero}
+            priority={lead}
+            sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : "(min-width: 1024px) 22vw, 50vw"}
+            className={`transition-transform duration-700 group-hover:scale-[1.03] ${imageFitClass}`}
+          />
+        </div>
+        <div
+          className={`pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t to-transparent ${
+            lead
+              ? "h-[70%] from-[#020826]/88 via-[#020826]/45"
+              : mini
+                ? "h-[76%] from-black/85 via-black/35"
+                : "h-[80%] from-[#020826]/95 via-[#020826]/55"
           }`}
+          aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#020826]/95 via-[#020826]/45 to-transparent" aria-hidden="true" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/65 to-transparent opacity-75" aria-hidden="true" />
         {article.category ? <CategoryPill category={article.category} className={`absolute z-10 ${mini ? "top-2 left-2" : "top-3 left-3"}`} /> : null}
-        <div className={`absolute inset-x-0 bottom-0 flex flex-col ${lead ? "gap-2.5 p-5 sm:p-6 lg:p-6" : mini ? "gap-1.5 p-3" : "gap-2 p-4"}`}>
+        {!mini && isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
+        <div className={`absolute inset-x-0 bottom-0 flex flex-col ${lead ? "gap-3 p-5 sm:p-7 lg:p-8" : mini ? "gap-1.5 p-3" : "gap-2.5 p-4 sm:p-5"}`}>
           <Heading
             className={
               lead
-                ? "max-w-3xl text-2xl leading-[1.15] font-extrabold tracking-tight text-balance text-white sm:text-3xl lg:text-[2.15rem] xl:text-[2.35rem]"
+                ? "line-clamp-3 max-w-3xl text-xl leading-[1.18] font-extrabold tracking-tight text-balance text-white [text-shadow:0_2px_8px_rgb(0_0_0/0.9),0_1px_2px_rgb(0_0_0/0.95)] sm:line-clamp-4 sm:text-2xl lg:text-[1.85rem] xl:text-[2rem]"
                 : mini
-                  ? "line-clamp-3 text-sm leading-snug font-extrabold tracking-tight text-balance text-white"
-                  : "line-clamp-3 text-lg leading-snug font-extrabold tracking-tight text-balance text-white"
+                  ? "line-clamp-3 text-sm leading-snug font-extrabold tracking-tight text-balance text-white [text-shadow:0_2px_6px_rgb(0_0_0/0.85)]"
+                  : "line-clamp-3 text-lg leading-snug font-extrabold tracking-tight text-balance text-white [text-shadow:0_2px_8px_rgb(0_0_0/0.9),0_1px_2px_rgb(0_0_0/0.95)]"
             }
           >
             {article.title}
           </Heading>
           {lead && article.excerpt ? (
-            <p className="hidden max-w-2xl text-[0.95rem] leading-relaxed text-white/85 sm:line-clamp-2">{article.excerpt}</p>
+            <p className="hidden max-w-2xl text-[0.95rem] leading-relaxed text-white/82 sm:line-clamp-2">{article.excerpt}</p>
           ) : null}
-          <div className="flex items-center justify-between gap-4">
-            <TimeMeta date={article.publishedAt} className="text-white/80" />
+          <div className={`flex items-center justify-between gap-4 ${lead ? "mt-1 border-t border-white/15 pt-3" : ""}`}>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-white/75 [text-shadow:0_1px_4px_rgb(0_0_0/0.75)]">
+              <TimeMeta date={article.publishedAt} relative={!mini} className="text-white/75" />
+              {!mini ? <><span className="text-white/35" aria-hidden="true">•</span><span className="truncate text-xs font-medium">{article.authorName}</span></> : null}
+            </div>
             {lead ? (
-              <span className="flex size-10 items-center justify-center rounded-full bg-white text-[#0a1454] transition-transform group-hover:translate-x-1">
-                <ArrowRightIcon width={18} height={18} />
+              <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium tracking-wide text-[#0a1454] shadow-lg [text-shadow:none] antialiased transition-transform group-hover:translate-x-1">
+                <span className="hidden sm:inline">Прочети</span>
+                <ArrowRightIcon width={18} height={18} strokeWidth={2} />
               </span>
             ) : null}
           </div>
@@ -72,26 +102,43 @@ export function HeroCard({
 }
 
 /** Standard grid card: photo on top, label, title, time. */
-export function ArticleCard({ article, showExcerpt = false }: { article: ArticleSummary; showExcerpt?: boolean }) {
+export function ArticleCard({
+  article,
+  showExcerpt = false,
+  shineDelaySec,
+}: {
+  article: ArticleSummary;
+  showExcerpt?: boolean;
+  shineDelaySec?: number;
+}) {
+  const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card flex flex-col overflow-hidden">
+    <article className="group np-card np-news-card relative flex flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-[0_22px_48px_-24px_rgb(56_24_214/0.42)]" style={categoryAccentStyle(article.category?.slug)}>
+      <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
       <Link href={article.path} className="flex h-full flex-col">
-        <div className="overflow-hidden">
+        <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="aspect-[16/10] w-full transition-transform duration-500 group-hover:scale-[1.04]"
           />
+          {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>
-        <div className="flex flex-1 flex-col gap-2 p-4">
-          {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="line-clamp-3 text-[0.98rem] leading-snug font-bold text-ink group-hover:text-logo">
+        <div className="flex flex-1 flex-col gap-2.5 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            {article.category ? <CategoryLabel category={article.category} /> : <span />}
+            <TimeMeta date={article.publishedAt} relative className="shrink-0" />
+          </div>
+          <h3 className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors group-hover:text-logo">
             {article.title}
           </h3>
           {showExcerpt && article.excerpt ? (
             <p className="line-clamp-2 text-sm leading-relaxed text-muted">{article.excerpt}</p>
           ) : null}
-          <TimeMeta date={article.publishedAt} className="mt-auto pt-1" />
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+            <span className="truncate text-xs font-semibold text-muted">{article.authorName}</span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-logo transition-all group-hover:bg-accent group-hover:text-on-accent group-hover:translate-x-0.5" aria-hidden="true"><ArrowRightIcon width={14} height={14} /></span>
+          </div>
         </div>
       </Link>
     </article>
@@ -99,24 +146,32 @@ export function ArticleCard({ article, showExcerpt = false }: { article: Article
 }
 
 /** Horizontal feature: big photo left, text right. */
-export function FeatureCard({ article }: { article: ArticleSummary }) {
+export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummary; shineDelaySec?: number }) {
+  const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card overflow-hidden">
+    <article className="group np-card np-news-card relative overflow-hidden transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[0_24px_55px_-26px_rgb(56_24_214/0.42)]" style={categoryAccentStyle(article.category?.slug)}>
+      <span className="np-category-accent-line absolute inset-y-8 left-0 z-10 w-px opacity-70" aria-hidden="true" />
       <Link href={article.path} className="grid h-full sm:grid-cols-[1.15fr_1fr]">
-        <div className="overflow-hidden">
+        <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 33vw, 100vw"
             className="aspect-[16/10] h-full w-full transition-transform duration-500 group-hover:scale-[1.04]"
           />
+          {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>
-        <div className="flex flex-col gap-3 p-5">
-          {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="text-xl leading-snug font-extrabold text-ink group-hover:text-logo">
+        <div className="flex flex-col gap-3 p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            {article.category ? <CategoryLabel category={article.category} /> : <span />}
+            <TimeMeta date={article.publishedAt} relative className="shrink-0" />
+          </div>
+          <h3 className="text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors group-hover:text-logo">
             {article.title}
           </h3>
-          {article.excerpt ? <p className="line-clamp-3 text-sm leading-relaxed text-muted">{article.excerpt}</p> : null}
-          <TimeMeta date={article.publishedAt} className="mt-auto" />
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+            <span className="truncate text-xs font-semibold text-muted">{article.authorName}</span>
+            <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-link">Прочети <ArrowRightIcon width={14} height={14} /></span>
+          </div>
         </div>
       </Link>
     </article>
@@ -124,11 +179,14 @@ export function FeatureCard({ article }: { article: ArticleSummary }) {
 }
 
 /** Compact row: small thumbnail and title. */
-export function CompactCard({ article }: { article: ArticleSummary }) {
+export function CompactCard({ article, shineDelaySec }: { article: ArticleSummary; shineDelaySec?: number }) {
+  const shine = cardShineStyle(shineDelaySec);
   return (
     <article className="group">
-      <Link href={article.path} className="flex items-start gap-3 rounded-xl p-1.5 -m-1.5 hover:bg-surface-2">
-        <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 shrink-0 rounded-lg sm:w-28" />
+      <Link href={article.path} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 hover:bg-surface-2">
+        <div className={`${shine.className} shrink-0 rounded-lg`} style={shine.style}>
+          <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 rounded-lg sm:w-28" />
+        </div>
         <div className="flex min-w-0 flex-col gap-1.5">
           {article.category ? <CategoryLabel category={article.category} /> : null}
           <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink group-hover:text-logo">

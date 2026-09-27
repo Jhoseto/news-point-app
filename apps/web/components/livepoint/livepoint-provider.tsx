@@ -49,10 +49,10 @@ const FOCUSABLE =
 
 const PANEL_WIDTH: Record<LivePointModule, string> = {
   weather: "max-w-3xl",
-  traffic: "max-w-4xl",
+  traffic: "max-w-[76rem]",
   cameras: "max-w-2xl",
-  report: "max-w-xl",
-  "my-news": "max-w-xl",
+  report: "max-w-4xl",
+  "my-news": "max-w-4xl",
 };
 
 const DETAIL_LABELS: Record<LivePointModule, string> = {
@@ -70,8 +70,6 @@ const PANEL_SUBTITLES: Record<LivePointModule, string> = {
   report: "Сигнал до редакцията",
   "my-news": "Материал за редакцията",
 };
-
-const MODULES: LivePointModule[] = ["weather", "traffic", "cameras", "report", "my-news"];
 
 function writeQuery(module: LivePointModule | null, mode: "push" | "replace" = "replace") {
   const url = new URL(window.location.href);
@@ -225,6 +223,7 @@ export function LivePointProvider({
 
   useEffect(() => {
     if (!active || !panel.current) return;
+    panel.current.querySelector<HTMLElement>("[data-lp-panel-body]")?.scrollTo({ top: 0 });
     const target =
       panel.current.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current.querySelector<HTMLElement>(FOCUSABLE);
     target?.focus({ preventScroll: true });
@@ -253,9 +252,9 @@ export function LivePointProvider({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className={`np-lp-panel np-card relative mx-auto mb-auto flex max-h-[calc(100dvh-var(--np-header-h)-1.5rem)] w-full min-w-0 flex-col overflow-hidden lg:max-h-[min(78dvh,44rem)] ${PANEL_WIDTH[active]}`}
+                className={`np-lp-panel np-card relative mx-auto mb-auto flex w-full min-w-0 flex-col overflow-hidden ${active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel max-h-[calc(100dvh-var(--np-header-h)-1.5rem)]" : "max-h-[calc(100dvh-var(--np-header-h)-1.5rem)] lg:max-h-[min(78dvh,44rem)]"} ${PANEL_WIDTH[active]}`}
               >
-                <div className="flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 sm:py-4">
+                <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
                   <h2
                     id={titleId}
                     data-autofocus
@@ -266,6 +265,7 @@ export function LivePointProvider({
                     {MODULE_LABELS[active]}
                   </h2>
                   <span className="hidden text-xs font-semibold text-muted sm:inline">{PANEL_SUBTITLES[active]}</span>
+                  {active === "traffic" && <Link href={MODULE_PATHS.traffic} aria-label="Подробности за трафика" className="inline-flex shrink-0 rounded-full border border-accent/30 bg-surface-2 px-3 py-2 text-xs font-extrabold text-link transition-colors hover:border-accent hover:bg-accent hover:text-on-accent sm:px-4"><span className="sm:hidden">Още ↗</span><span className="hidden sm:inline">Подробности за трафика ↗</span></Link>}
                   <button
                     type="button"
                     aria-label="Затвори"
@@ -275,27 +275,14 @@ export function LivePointProvider({
                     <CloseIcon width={18} height={18} />
                   </button>
                 </div>
-                <div className="np-lp-tabs grid shrink-0 grid-cols-5 gap-0.5 border-b border-line px-2 py-1.5 sm:gap-1 sm:px-5" aria-label="Раздели на LivePoint">
-                  {MODULES.map((module) => (
-                    <button
-                      key={module}
-                      type="button"
-                      aria-current={active === module ? "true" : undefined}
-                      onClick={() => open(module)}
-                      className="min-w-0 rounded-lg px-0.5 py-2 text-center text-[0.625rem] leading-tight font-bold text-muted transition-colors hover:bg-surface-2 hover:text-ink aria-[current=true]:bg-surface-2 aria-[current=true]:text-ink sm:px-2.5 sm:text-xs"
-                    >
-                      {MODULE_LABELS[module]}
-                    </button>
-                  ))}
-                </div>
-                <div className="np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5">
+                <div data-lp-panel-body className={`${active === "traffic" ? "min-h-0 flex-1 overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-3" : "np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"}`}>
                   {active === "weather" ? <WeatherPanel initial={weather} /> : null}
                   {active === "traffic" ? <TrafficPanel connected={trafficConnected} /> : null}
                   {active === "cameras" ? <CamerasPanel variant="panel" /> : null}
                   {active === "report" ? <ReportPanel onDirtyChange={setDirty} /> : null}
                   {active === "my-news" ? <MyNewsPanel onDirtyChange={setDirty} /> : null}
                 </div>
-                <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
+                {active !== "traffic" && <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
                   <Link
                     href={MODULE_PATHS[active]}
                     onClick={(event) => {
@@ -307,7 +294,7 @@ export function LivePointProvider({
                   >
                     {DETAIL_LABELS[active]} <span aria-hidden="true">→</span>
                   </Link>
-                </div>
+                </div>}
               </div>
             </div>,
             document.body,

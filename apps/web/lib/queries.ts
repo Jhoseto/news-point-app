@@ -1,9 +1,10 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody } from "@newspoint/content";
 import { articleCategories, articles, categories, getDb, mediaAssets } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
+import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
 
 export interface Media {
@@ -26,6 +27,7 @@ export interface ArticleSummary {
   path: string;
   title: string;
   excerpt: string;
+  authorName: string;
   publishedAt: Date;
   category: CategoryRef | null;
   hero: Media | null;
@@ -44,6 +46,7 @@ const summaryColumns = {
   path: articles.path,
   title: articles.title,
   excerpt: articles.excerpt,
+  authorName: articles.authorName,
   publishedAt: articles.publishedAt,
   categoryId: categories.id,
   categorySlug: categories.slug,
@@ -87,6 +90,7 @@ function toSummary(row: SummaryRow): ArticleSummary {
     path: row.path!,
     title: row.title!,
     excerpt: row.excerpt ?? "",
+    authorName: row.authorName ?? "NewsPoint.bg",
     publishedAt: row.publishedAt!,
     category: row.categoryId
       ? { id: row.categoryId, slug: row.categorySlug!, name: menuName(row.categorySlug!, row.categoryName!), path: row.categoryPath! }
@@ -131,6 +135,14 @@ export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
 
 export const getLatest = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const rows = await summaryQuery().where(isPublished()).orderBy(desc(articles.publishedAt)).limit(limit);
+  return rows.map(toSummary);
+});
+
+/** Complete rolling 24-hour feed; the public published-at index supports the range scan. */
+export const getLatest24Hours = cache(async (asOfMs: number): Promise<ArticleSummary[]> => {
+  const rows = await summaryQuery()
+    .where(and(isPublished(), gt(articles.publishedAt, new Date(asOfMs - LATEST_WINDOW_MS))))
+    .orderBy(desc(articles.publishedAt));
   return rows.map(toSummary);
 });
 

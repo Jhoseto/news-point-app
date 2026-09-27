@@ -15,7 +15,6 @@ describe("parseMetCompact", () => {
     expect(forecast.current.symbolCode).toBeTruthy();
     expect(forecast.hours.length).toBeGreaterThan(0);
     expect(forecast.days.length).toBeGreaterThan(0);
-    expect(forecast.attribution.name).toBe("MET Norway");
     // Compact does not advertise feels-like / UV — they must stay absent.
     expect(forecast.current).not.toHaveProperty("feelsLikeC");
     expect(forecast.current).not.toHaveProperty("uvIndex");

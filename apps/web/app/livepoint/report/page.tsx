@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function LivePointReportPage() {
   return (
-    <LivePointPage title="Подай сигнал" lead="Редакцията преглежда всеки сигнал. Публично става само одобрен материал.">
+    <LivePointPage title="Подай сигнал" lead="Редакцията преглежда всеки сигнал. Публично става само одобрен материал." wide>
       <ReportPanel onDirtyChange={() => {}} />
     </LivePointPage>
   );

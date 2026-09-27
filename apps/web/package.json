@@ -3,8 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
+    "dev": "node scripts/sync-cesium-assets.mjs && next dev --port 3000",
+    "build": "node scripts/sync-cesium-assets.mjs && next build",
     "start": "next start --port 3000",
     "typecheck": "next typegen && tsc -p tsconfig.json"
   },
@@ -12,6 +12,7 @@
     "@fontsource-variable/manrope": "5.3.0",
     "@newspoint/content": "workspace:*",
     "@newspoint/db": "workspace:*",
+    "cesium": "1.145.0",
     "drizzle-orm": "0.45.3",
     "next": "16.3.6",
     "react": "19.3.0",

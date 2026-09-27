@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { HomeShineAllocator } from "@/lib/home-shine";
+import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary, CategoryRef } from "@/lib/queries";
 import { CompactCard, TimelineItem } from "./article-card";
 import { SectionTitle } from "./ui";
@@ -27,16 +29,28 @@ export function LatestList({ articles, id, compact, dense = false, fill = false,
   );
 }
 
-export function CompactList({ title, articles, href }: { title: string; articles: ArticleSummary[]; href?: string }) {
+export function CompactList({
+  title,
+  accentSlug,
+  articles,
+  href,
+  shine,
+}: {
+  title: string;
+  accentSlug?: string;
+  articles: ArticleSummary[];
+  href?: string;
+  shine?: HomeShineAllocator;
+}) {
   if (!articles.length) return null;
   return (
     <section className="np-card p-5">
-      <SectionTitle as="h2" {...(href ? { href } : {})}>
+      <SectionTitle as="h2" accentSlug={accentSlug} {...(href ? { href } : {})}>
         {title}
       </SectionTitle>
       <div className="flex flex-col gap-4">
         {articles.map((article) => (
-          <CompactCard key={article.id} article={article} />
+          <CompactCard key={article.id} article={article} {...shineDelayProp(shine?.nextCard())} />
         ))}
       </div>
     </section>

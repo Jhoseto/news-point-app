@@ -1,7 +1,8 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { CategoryRef, Media } from "@/lib/queries";
-import { formatShort, isoDate } from "@/lib/format";
+import { formatCardTime, formatShort, isoDate } from "@/lib/format";
+import { categoryAccentStyle } from "@/lib/category-accent";
 import { ArrowRightIcon, ClockIcon } from "./icons";
 
 export function CategoryPill({ category, glass = true, className = "" }: { category: CategoryRef; glass?: boolean; className?: string }) {
@@ -18,9 +19,19 @@ export function CategoryPill({ category, glass = true, className = "" }: { categ
 /** Small category label with a gradient dot, used on cards. */
 export function CategoryLabel({ category }: { category: CategoryRef }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[0.6875rem] font-bold tracking-wide text-accent uppercase dark:text-link">
-      <span className="np-gradient-bg size-1.5 rounded-full" aria-hidden="true" />
+    <span className="inline-flex items-center gap-1.5 text-[0.6875rem] font-bold tracking-wide text-accent uppercase dark:text-link" style={categoryAccentStyle(category.slug)}>
+      <span className="np-category-dot size-1.5 rounded-full" aria-hidden="true" />
       {category.name}
+    </span>
+  );
+}
+
+export function NewBadge({ publishedAt }: { publishedAt: Date }) {
+  const remainingSeconds = Math.max(0, (publishedAt.getTime() + 60 * 60 * 1000 - Date.now()) / 1000);
+  return (
+    <span className="np-new-badge inline-flex items-center gap-1.5 rounded-full border border-white/55 bg-[#0b1552]/85 px-2.5 py-1 text-[0.625rem] font-extrabold tracking-[0.1em] text-white shadow-[0_3px_14px_rgb(0_0_0/0.24)] backdrop-blur-sm" style={{ "--np-new-ttl": `${remainingSeconds}s` } as CSSProperties}>
+      <span className="np-new-dot size-1.5 rounded-full bg-[#ffdc80]" aria-hidden="true" />
+      НОВО
     </span>
   );
 }
@@ -31,37 +42,39 @@ export function SectionTitle({
   linkLabel = "Всички",
   as: Heading = "h2",
   id,
+  accentSlug,
 }: {
   children: ReactNode;
   href?: string | undefined;
   linkLabel?: string;
   as?: "h1" | "h2" | "h3";
   id?: string | undefined;
+  accentSlug?: string | undefined;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-4">
-      <Heading id={id} className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink">
+    <div className="np-section-heading mb-5 flex items-center justify-between gap-4" style={categoryAccentStyle(accentSlug)}>
+      <Heading id={id} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
         <span className="np-ring" aria-hidden="true" />
         {children}
       </Heading>
       {href ? (
         <Link
           href={href}
-          className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm font-semibold text-link hover:bg-surface-2"
+          className="np-section-link group inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 py-1.5 text-xs font-bold text-link shadow-[0_3px_12px_-8px_rgb(10_20_84/0.2)] transition-[border-color,background-color,box-shadow] hover:border-accent/30 hover:bg-surface hover:shadow-card sm:text-sm"
         >
           {linkLabel}
-          <ArrowRightIcon width={15} height={15} />
+          <ArrowRightIcon width={15} height={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
       ) : null}
     </div>
   );
 }
 
-export function TimeMeta({ date, className = "" }: { date: Date; className?: string }) {
+export function TimeMeta({ date, className = "", relative = false }: { date: Date; className?: string; relative?: boolean }) {
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-medium text-muted ${className}`}>
       <ClockIcon width={13} height={13} />
-      <time dateTime={isoDate(date)}>{formatShort(date)}</time>
+      <time dateTime={isoDate(date)}>{relative ? formatCardTime(date) : formatShort(date)}</time>
     </span>
   );
 }

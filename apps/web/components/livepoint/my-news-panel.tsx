@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Field, SubmitButton, TextArea, TextField } from "./livepoint-field";
+import { FeatherIcon } from "../icons";
+import { ConsentRow, Field, SubmissionIntro, SubmissionSuccess, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
 export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
   const [workingTitle, setWorkingTitle] = useState("");
@@ -16,9 +17,9 @@ export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
   const [reference, setReference] = useState<string | null>(null);
 
   useEffect(() => {
-    const dirty = Boolean(workingTitle || whatHappened || whereWhen || publishName || contact) && !reference;
+    const dirty = Boolean(workingTitle || whatHappened || whereWhen || publishName || contact || rightsAck || factsAck) && !reference;
     onDirtyChange(dirty);
-  }, [workingTitle, whatHappened, whereWhen, publishName, contact, reference, onDirtyChange]);
+  }, [workingTitle, whatHappened, whereWhen, publishName, contact, rightsAck, factsAck, reference, onDirtyChange]);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -46,47 +47,61 @@ export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
 
   if (reference) {
     return (
-      <div className="py-2">
-        <p className="text-base font-extrabold text-ink">Материалът е приет за преглед</p>
-        <p className="mt-2 text-sm text-body">
-          Номер: <span className="font-bold">{reference}</span>. Публикуване има само след редакционно одобрение.
-        </p>
-      </div>
+      <SubmissionSuccess
+        title="Материалът е приет за преглед"
+        reference={reference}
+        description="Редакцията ще прегледа разказа ви. Публикуване има само след редакционно одобрение."
+      />
     );
   }
 
   return (
-    <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-      <p className="text-sm text-body">Разкажете какво сте видели или заснели. Това не се публикува автоматично.</p>
-      <Field label="Работно заглавие">
-        <TextField required value={workingTitle} onChange={(e) => setWorkingTitle(e.target.value)} />
-      </Field>
-      <Field label="Какво се е случило">
-        <TextArea required value={whatHappened} onChange={(e) => setWhatHappened(e.target.value)} rows={5} />
-      </Field>
-      <Field label="Къде и кога">
-        <TextField required value={whereWhen} onChange={(e) => setWhereWhen(e.target.value)} />
-      </Field>
-      <Field label="Име или псевдоним за публикуване">
-        <TextField required value={publishName} onChange={(e) => setPublishName(e.target.value)} />
-      </Field>
-      <Field label="Предпочитан контакт">
-        <TextField required value={contact} onChange={(e) => setContact(e.target.value)} />
-      </Field>
-      <p className="text-xs text-muted">Медийни файлове още не се приемат през тази форма.</p>
-      <label className="flex items-start gap-2.5 text-sm text-body">
-        <input type="checkbox" checked={factsAck} onChange={(e) => setFactsAck(e.target.checked)} required className="mt-1" />
-        Описвам факти, които съм видял/а или мога да потвърдя.
-      </label>
-      <label className="flex items-start gap-2.5 text-sm text-body">
-        <input type="checkbox" checked={rightsAck} onChange={(e) => setRightsAck(e.target.checked)} required className="mt-1" />
-        Имам право да споделя материала и приемам редакционен преглед преди публикация.
-      </label>
-      {error ? <p className="text-sm font-semibold text-logo">{error}</p> : null}
-      <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton pending={pending} disabled={!rightsAck || !factsAck}>
-          Изпрати към редакцията
-        </SubmitButton>
+    <form className="grid items-start gap-5 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:gap-6" onSubmit={onSubmit}>
+      <SubmissionIntro
+        tone="story"
+        icon={<FeatherIcon width={24} height={24} />}
+        eyebrow="Вашият разказ"
+        title="Разкажете историята така, както я видяхте."
+        description="Изпратете предложение за новина с проверими подробности. Редакцията решава дали и как да го публикува."
+        points={["Дайте кратко работно заглавие.", "Опишете фактите, мястото и времето.", "Оставете контакт за въпроси от редакцията."]}
+        footer={
+          <p className="rounded-xl border border-accent/15 bg-surface/85 p-3.5 text-xs leading-relaxed text-body">
+            Публикацията е възможна само след редакционен преглед и одобрение.
+          </p>
+        }
+      />
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="border-b border-line pb-3">
+          <p className="text-base font-extrabold tracking-tight text-ink">Вашият материал</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted">Напишете фактите ясно. Заглавието може да е работно.</p>
+        </div>
+        <Field label="Работно заглавие">
+          <TextField required minLength={3} maxLength={160} value={workingTitle} onChange={(event) => setWorkingTitle(event.target.value)} placeholder="Накратко за какво е новината" />
+        </Field>
+        <Field label="Какво се е случило?" hint="Поне 40 знака. Разкажете само това, което можете да потвърдите.">
+          <TextArea required minLength={40} maxLength={8000} value={whatHappened} onChange={(event) => setWhatHappened(event.target.value)} rows={5} placeholder="Разкажете историята в няколко ясни изречения…" />
+        </Field>
+        <Field label="Къде и кога?">
+          <TextField required minLength={3} maxLength={400} value={whereWhen} onChange={(event) => setWhereWhen(event.target.value)} placeholder="Място, дата и приблизителен час" />
+        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Име или псевдоним">
+            <TextField required minLength={2} maxLength={120} value={publishName} onChange={(event) => setPublishName(event.target.value)} placeholder="Как да ви представим" />
+          </Field>
+          <Field label="Контакт за редакцията">
+            <TextField required minLength={3} maxLength={200} value={contact} onChange={(event) => setContact(event.target.value)} placeholder="Имейл или телефон" />
+          </Field>
+        </div>
+        <p className="rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-xs leading-relaxed text-muted">Снимки и видео още не се приемат през тази форма.</p>
+        <div className="space-y-2">
+          <ConsentRow checked={factsAck} onChange={setFactsAck}>Описвам факти, които съм видял/а или мога да потвърдя.</ConsentRow>
+          <ConsentRow checked={rightsAck} onChange={setRightsAck}>Имам право да споделя материала и приемам редакционен преглед преди публикация.</ConsentRow>
+        </div>
+        {error ? <p role="alert" className="rounded-xl border border-accent/25 bg-accent/5 px-3.5 py-3 text-sm font-semibold text-ink">{error}</p> : null}
+        <div className="np-lp-form-actions flex flex-wrap items-center justify-between gap-3 border-t border-line py-3">
+          <p className="text-xs leading-relaxed text-muted">Не се публикува автоматично.</p>
+          <SubmitButton pending={pending} disabled={!rightsAck || !factsAck}>Изпрати към редакцията</SubmitButton>
+        </div>
       </div>
     </form>
   );

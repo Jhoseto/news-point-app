@@ -65,3 +65,6 @@ docs/review/
 # Large media stays outside the repository
 *.mp4
 *.pptx
+
+# Generated CesiumJS workers, widgets and assets (copied from the pinned package).
+/apps/web/public/cesium/

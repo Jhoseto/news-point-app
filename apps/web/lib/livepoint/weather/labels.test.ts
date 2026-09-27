@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { skyMood, weatherLabel, windDirectionLabel } from "./labels";
 
 describe("weatherLabel", () => {
-  it("maps known MET symbol codes", () => {
+  it("maps known symbol codes", () => {
     expect(weatherLabel("fair_day")).toBe("Предимно ясно");
     expect(weatherLabel("clearsky_night")).toBe("Ясно");
   });

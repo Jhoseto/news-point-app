@@ -9,10 +9,7 @@ export const metadata: Metadata = {
 
 export default function LivePointCamerasPage() {
   return (
-    <LivePointPage
-      title="Камери"
-      lead="Ръчно проверен каталог. Първо линк към оригиналната страница. Поток се зарежда само за избраната камера."
-    >
+    <LivePointPage title="Камери · Пловдив" full compact>
       <CamerasPanel />
     </LivePointPage>
   );

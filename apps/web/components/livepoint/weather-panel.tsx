@@ -5,6 +5,7 @@ import type { DataEnvelope, WeatherForecast } from "@/lib/livepoint/types";
 import { formatTempC, formatWindMs, skyMood, weatherLabel, windDirectionLabel } from "@/lib/livepoint/weather/labels";
 import { formatFull, formatTime } from "@/lib/format";
 import { WeatherChart } from "./weather-chart";
+import { WeatherPageView } from "./weather-page-view";
 
 const hourInSofia = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Sofia",
@@ -55,18 +56,20 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
   const windDir = windDirectionLabel(forecast.current.windFromDegrees);
   const tall = variant === "page";
 
+  if (tall) {
+    const stale = data.status === "stale" && data.message ? data.message : null;
+    return <WeatherPageView forecast={forecast} {...(stale ? { staleMessage: stale } : {})} />;
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {data.status === "stale" && data.message ? <p className="text-sm text-muted">{data.message}</p> : null}
 
-      <div className={tall ? "flex flex-col gap-5" : "grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"}>
-        <div
-          data-mood={mood}
-          className={`np-lp-window relative isolate overflow-hidden rounded-2xl ${tall ? "min-h-72" : "min-h-52"}`}
-        >
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        <div data-mood={mood} className="np-lp-window relative isolate min-h-52 overflow-hidden rounded-2xl">
           <img src={PLOVDIV_VIEW} alt="" className="absolute inset-0 size-full object-cover" />
           <div className="np-lp-window-veil absolute inset-0" aria-hidden="true" />
-          <div className={`relative flex flex-col justify-end px-5 py-5 sm:px-6 sm:py-6 ${tall ? "min-h-72" : "min-h-52"}`}>
+          <div className="relative flex min-h-52 flex-col justify-end px-5 py-5 sm:px-6 sm:py-6">
             <p className="text-sm font-semibold text-white/80">Пловдив · прогноза</p>
             <p className="mt-1 text-6xl font-extrabold tracking-tight text-white">{formatTempC(forecast.current.temperatureC)}</p>
             <p className="mt-1 text-lg font-bold text-white">{weatherLabel(forecast.current.symbolCode)}</p>
@@ -83,7 +86,7 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
             </ul>
           </div>
         </div>
-        <div className={tall ? "" : "rounded-2xl border border-line bg-surface-2 p-4"}>
+        <div className="rounded-2xl border border-line bg-surface-2 p-4">
           <WeatherChart hours={forecast.hours} />
         </div>
       </div>
@@ -105,16 +108,7 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
       </div>
 
       <p className="text-xs text-muted">
-        Прогноза · обновена {formatFull(new Date(forecast.updatedAt))} ·{" "}
-        <a href={forecast.attribution.url} className="font-semibold text-link" target="_blank" rel="noreferrer">
-          {forecast.attribution.name}
-        </a>
-        {" · "}
-        <a href={forecast.attribution.licenseUrl} className="text-link" target="_blank" rel="noreferrer">
-          лиценз
-        </a>
-        {" · "}
-        {formatTime(new Date(forecast.current.time))}
+        Обновена {formatFull(new Date(forecast.updatedAt))} · текущ час {formatTime(new Date(forecast.current.time))}
       </p>
     </div>
   );
