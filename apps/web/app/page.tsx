@@ -199,7 +199,9 @@ export default async function HomePage() {
         </div>
 
         {carouselArticles.length ? (
-          <LeadingCarousel articles={carouselArticles} shineDelays={carouselShineDelays} />
+          <div className="-mt-6 3xl:-mt-8">
+            <LeadingCarousel articles={carouselArticles} shineDelays={carouselShineDelays} />
+          </div>
         ) : null}
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">

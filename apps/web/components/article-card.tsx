@@ -40,7 +40,7 @@ export function HeroCard({
       : "aspect-[16/10] h-full w-full object-cover object-[center_30%]";
   return (
     <article
-      className={`group np-news-card relative isolate h-full overflow-hidden border border-white/10 bg-[#020826] shadow-[0_18px_55px_-26px_rgb(10_20_84/0.65)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 hover:shadow-[0_24px_65px_-26px_rgb(56_24_214/0.55)] ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}
+      className={`group np-news-card relative isolate h-full overflow-hidden border border-white/10 bg-[#020826] shadow-[0_18px_55px_-26px_rgb(10_20_84/0.65)] transition-[transform,box-shadow] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_26px_65px_-28px_rgb(56_24_214/0.45)] ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}
       style={categoryAccentStyle(article.category?.slug)}
     >
       <Link
@@ -52,7 +52,7 @@ export function HeroCard({
             media={article.hero}
             priority={lead}
             sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : "(min-width: 1024px) 22vw, 50vw"}
-            className={`transition-transform duration-700 group-hover:scale-[1.03] ${imageFitClass}`}
+            className={`transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] ${imageFitClass}`}
           />
         </div>
         <div
@@ -89,7 +89,7 @@ export function HeroCard({
               {!mini ? <><span className="text-white/35" aria-hidden="true">•</span><span className="truncate text-xs font-medium">{article.authorName}</span></> : null}
             </div>
             {lead ? (
-              <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium tracking-wide text-[#0a1454] shadow-lg [text-shadow:none] antialiased transition-transform group-hover:translate-x-1">
+              <span className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-medium tracking-wide text-[#0a1454] shadow-lg [text-shadow:none] antialiased transition-transform duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-1">
                 <span className="hidden sm:inline">Прочети</span>
                 <ArrowRightIcon width={18} height={18} strokeWidth={2} />
               </span>
@@ -113,14 +113,14 @@ export function ArticleCard({
 }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card np-news-card relative flex flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 hover:border-accent/25 hover:shadow-[0_22px_48px_-24px_rgb(56_24_214/0.42)]" style={categoryAccentStyle(article.category?.slug)}>
-      <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
+    <article className="group np-card np-news-card relative flex h-full w-full flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-accent/25 hover:shadow-[0_26px_60px_-28px_rgb(56_24_214/0.34)]" style={categoryAccentStyle(article.category?.slug)}>
+      <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100" aria-hidden="true" />
       <Link href={article.path} className="flex h-full flex-col">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className="aspect-[16/10] w-full transition-transform duration-500 group-hover:scale-[1.04]"
+            className="aspect-[16/10] w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
           />
           {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>
@@ -129,7 +129,7 @@ export function ArticleCard({
             {article.category ? <CategoryLabel category={article.category} /> : <span />}
             <TimeMeta date={article.publishedAt} relative className="shrink-0" />
           </div>
-          <h3 className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors group-hover:text-logo">
+          <h3 className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </h3>
           {showExcerpt && article.excerpt ? (
@@ -137,7 +137,7 @@ export function ArticleCard({
           ) : null}
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
             <span className="truncate text-xs font-semibold text-muted">{article.authorName}</span>
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-logo transition-all group-hover:bg-accent group-hover:text-on-accent group-hover:translate-x-0.5" aria-hidden="true"><ArrowRightIcon width={14} height={14} /></span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-logo transition-[background-color,color,transform] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:bg-accent group-hover:text-on-accent" aria-hidden="true"><ArrowRightIcon width={14} height={14} /></span>
           </div>
         </div>
       </Link>
@@ -149,14 +149,14 @@ export function ArticleCard({
 export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummary; shineDelaySec?: number }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card np-news-card relative overflow-hidden transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[0_24px_55px_-26px_rgb(56_24_214/0.42)]" style={categoryAccentStyle(article.category?.slug)}>
+    <article className="group np-card np-news-card relative overflow-hidden transition-[transform,box-shadow,border-color] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[0_26px_58px_-28px_rgb(56_24_214/0.34)]" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-y-8 left-0 z-10 w-px opacity-70" aria-hidden="true" />
       <Link href={article.path} className="grid h-full sm:grid-cols-[1.15fr_1fr]">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 33vw, 100vw"
-            className="aspect-[16/10] h-full w-full transition-transform duration-500 group-hover:scale-[1.04]"
+            className="aspect-[16/10] h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
           />
           {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>
@@ -165,7 +165,7 @@ export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummar
             {article.category ? <CategoryLabel category={article.category} /> : <span />}
             <TimeMeta date={article.publishedAt} relative className="shrink-0" />
           </div>
-          <h3 className="text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors group-hover:text-logo">
+          <h3 className="text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </h3>
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
@@ -183,13 +183,13 @@ export function CompactCard({ article, shineDelaySec }: { article: ArticleSummar
   const shine = cardShineStyle(shineDelaySec);
   return (
     <article className="group">
-      <Link href={article.path} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 hover:bg-surface-2">
+      <Link href={article.path} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-surface-2">
         <div className={`${shine.className} shrink-0 rounded-lg`} style={shine.style}>
           <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 rounded-lg sm:w-28" />
         </div>
         <div className="flex min-w-0 flex-col gap-1.5">
           {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink group-hover:text-logo">
+          <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </h3>
           <TimeMeta date={article.publishedAt} />
@@ -208,7 +208,7 @@ export function TimelineItem({ article, className = "" }: { article: ArticleSumm
       </time>
       <span className="np-gradient-bg absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface" aria-hidden="true" />
       <Link href={article.path} className="block">
-        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink group-hover:text-logo">
+        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
           {article.title}
         </h3>
         {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
