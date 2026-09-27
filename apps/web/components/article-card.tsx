@@ -42,7 +42,8 @@ export function HeroCard({
       : "aspect-[16/10] h-full w-full object-cover object-[center_30%]";
   return (
     <article
-      className={`group np-news-card relative isolate h-full overflow-hidden border border-white/10 bg-[#020826] shadow-[0_18px_55px_-26px_rgb(10_20_84/0.65)] transition-[transform,box-shadow] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:shadow-[0_26px_65px_-28px_rgb(56_24_214/0.45)] ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}
+      className={`group np-news-card np-card-ring np-card-ring-onphoto np-spotlight np-spotlight-onphoto relative isolate h-full overflow-hidden border border-white/10 bg-[#020826] shadow-[0_18px_55px_-26px_rgb(10_20_84/0.65)] ${lead ? "rounded-3xl" : "rounded-2xl"} ${className}`}
+      data-spotlight
       style={categoryAccentStyle(article.category?.slug)}
     >
       <Link
@@ -54,7 +55,7 @@ export function HeroCard({
             media={article.hero}
             priority={priority}
             sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : mini ? "(min-width: 1024px) 22vw, 50vw" : "(min-width: 1024px) 22vw, 100vw"}
-            className={`transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] ${imageFitClass}`}
+            className={`transition-[scale,filter] duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:brightness-[1.04] ${imageFitClass}`}
           />
         </div>
         <div
@@ -115,14 +116,14 @@ export function ArticleCard({
 }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card np-news-card relative flex h-full w-full flex-col overflow-hidden transition-[transform,box-shadow,border-color] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-accent/25 hover:shadow-[0_26px_60px_-28px_rgb(56_24_214/0.34)]" style={categoryAccentStyle(article.category?.slug)}>
+    <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative flex h-full w-full flex-col overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100" aria-hidden="true" />
       <Link href={article.path} className="flex h-full flex-col">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className="aspect-[16/10] w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            className="aspect-[16/10] w-full transition-[scale,filter] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045] group-hover:brightness-[1.03]"
           />
           {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>
@@ -139,7 +140,7 @@ export function ArticleCard({
           ) : null}
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
             <span className="truncate text-xs font-semibold text-muted">{article.authorName}</span>
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-logo transition-[background-color,color,transform] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:bg-accent group-hover:text-on-accent" aria-hidden="true"><ArrowRightIcon width={14} height={14} /></span>
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-2 text-logo transition-[background-color,color,translate] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-x-0.5 group-hover:bg-accent group-hover:text-on-accent" aria-hidden="true"><ArrowRightIcon width={14} height={14} /></span>
           </div>
         </div>
       </Link>
@@ -151,14 +152,14 @@ export function ArticleCard({
 export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummary; shineDelaySec?: number }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
-    <article className="group np-card np-news-card relative overflow-hidden transition-[transform,box-shadow,border-color] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-accent/25 hover:shadow-[0_26px_58px_-28px_rgb(56_24_214/0.34)]" style={categoryAccentStyle(article.category?.slug)}>
+    <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-y-8 left-0 z-10 w-px opacity-70" aria-hidden="true" />
       <Link href={article.path} className="grid h-full sm:grid-cols-[1.15fr_1fr]">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
             sizes="(min-width: 1024px) 33vw, 100vw"
-            className="aspect-[16/10] h-full w-full transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
+            className="aspect-[16/10] h-full w-full transition-[scale,filter] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045] group-hover:brightness-[1.03]"
           />
           {isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         </div>

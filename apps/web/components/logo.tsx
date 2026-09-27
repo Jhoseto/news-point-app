@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MouseEvent } from "react";
+import { useReducedMotion } from "./reader-preferences";
 
 const LOGO_WIDTH = 1261;
 const LOGO_HEIGHT = 343;
 
 export function Logo({ className = "h-10" }: { className?: string }) {
   const pathname = usePathname();
+  const reduceMotion = useReducedMotion();
 
   function onLogoClick(event: MouseEvent<HTMLAnchorElement>) {
     if (pathname !== "/") return;
     event.preventDefault();
-    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const smooth = !reduceMotion;
     window.scrollTo({ top: 0, behavior: smooth ? "smooth" : "instant" });
   }
 

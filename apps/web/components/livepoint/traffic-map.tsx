@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import type { TrafficIncident } from "@/lib/livepoint/types";
 import { MAP_TILE_SIZE as TILE, fromPixels, toPixels, visibleTiles, type MapPosition as Position, type MapTile as Tile } from "@/lib/livepoint/map-projection";
 import { TrafficIncidentHoverCard } from "./traffic-incident-hover-card";
+import { useReducedMotion } from "../reader-preferences";
 
 type MapIncident = Pick<TrafficIncident, "id" | "category" | "position" | "path" | "categoryLabel" | "description" | "from" | "to" | "delaySec">;
 type Cluster = { x: number; y: number; incidents: MapIncident[]; position: Position };
@@ -71,6 +72,7 @@ export function TrafficMap({ className = "", focusPosition, incidents = [], onSe
   mapStyle?: "auto" | "day" | "night";
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
   const drag = useRef<{ x: number; y: number; center: Position } | null>(null);
   const [key, setKey] = useState<string | null>(null);
   const [center, setCenter] = useState<Position>({ lat: 42.1354, lon: 24.7453 });
@@ -126,7 +128,7 @@ export function TrafficMap({ className = "", focusPosition, incidents = [], onSe
 
   const tiles = key ? visibleTiles(center, zoom, size.width, size.height) : [];
   const clusters = showMarkers ? visibleClusters(incidents, center, zoom, size.width, size.height) : [];
-  const motionPaths = showMotion && ready ? visibleMotionPaths(incidents, center, zoom, size.width, size.height) : [];
+  const motionPaths = showMotion && ready && !reduceMotion ? visibleMotionPaths(incidents, center, zoom, size.width, size.height) : [];
   const hoveredIncident = hovered ? incidents.find((item) => item.id === hovered.id) : null;
   const url = (tile: Tile, layer: "base" | "flow") => {
     const path = layer === "base"

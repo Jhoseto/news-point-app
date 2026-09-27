@@ -116,7 +116,7 @@ function DayCard({ day, scaleMin, scaleMax }: { day: WeatherDay; scaleMin: numbe
   const mood = skyMood(day.symbolCode, 14);
 
   return (
-    <li className="group rounded-2xl border border-line bg-surface p-3 shadow-card transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+    <li className="np-card-ring group rounded-2xl border border-line bg-surface p-3 shadow-card transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-accent/30">
       <div className="flex items-start justify-between gap-2">
         <p className="text-xs font-bold text-muted capitalize">{dayLabel.format(new Date(`${day.date}T12:00:00Z`))}</p>
         <WeatherSymbolIcon symbolCode={day.symbolCode} mood={mood} className="size-9 opacity-90" />

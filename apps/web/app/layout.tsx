@@ -5,6 +5,7 @@ import "./globals.css";
 import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
+import { SpotlightField } from "@/components/spotlight-field";
 import { ThemeScript } from "@/components/theme-script";
 import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
@@ -16,6 +17,11 @@ export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   description: "Новини от Пловдив, България и света.",
   robots: { index: false, follow: false },
+  icons: {
+    icon: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
+  },
 };
 
 export const viewport: Viewport = {
@@ -48,6 +54,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <BottomNav />
         </LivePointProvider>
         <LiveUpdates />
+        <SpotlightField />
       </body>
     </html>
   );

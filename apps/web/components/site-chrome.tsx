@@ -6,6 +6,7 @@ import { Logo } from "./logo";
 import { BottomNav, MobileSearch, RubricsButton, RubricsNav } from "./nav";
 import { SiteSearch } from "./site-search";
 import { ThemeToggle } from "./theme";
+import { SettingsModal } from "./settings-modal";
 
 /**
  * Desktop bar: logo on the left, search in the exact centre of the viewport
@@ -15,10 +16,10 @@ import { ThemeToggle } from "./theme";
 export function SiteHeader() {
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
-      <div className="np-masthead flex h-16 items-center gap-1 px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)] 3xl:px-12">
+      <div className="np-masthead flex h-16 items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)] 3xl:px-12">
         <div className="flex min-w-0 items-center gap-1">
           <RubricsButton />
-          <Logo className="h-9 sm:h-10 lg:h-12 3xl:h-[3.25rem]" />
+          <Logo className="h-7 min-[360px]:h-9 sm:h-10 lg:h-12 3xl:h-[3.25rem]" />
         </div>
         <div className="hidden lg:block">
           <SiteSearch />
@@ -29,7 +30,10 @@ export function SiteHeader() {
           </div>
           <MobileSearch />
           <span className="hidden h-8 w-px bg-line lg:block" aria-hidden="true" />
-          <ThemeToggle />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <ThemeToggle />
+            <SettingsModal />
+          </div>
         </div>
       </div>
       <LivePointStrip />
@@ -111,6 +115,7 @@ export async function SiteFooter() {
         <div className="flex flex-col gap-3">
           <Logo className="h-10" />
           <p className="max-w-xs text-sm text-muted">Новини от Пловдив, България и света.</p>
+          <Link href="/settings/" prefetch={false} className="w-fit text-sm font-semibold text-accent hover:underline dark:text-link">Настройки на четене</Link>
         </div>
         <nav aria-label="Рубрики във футъра">
           <ul className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">

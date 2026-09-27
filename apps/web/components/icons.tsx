@@ -34,6 +34,13 @@ export const MoonIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const SettingsIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="m9.5 3-.6 2.3-2 .9-2.2-.6-2.5 4.3 1.6 1.7v2.3l-1.6 1.7 2.5 4.3 2.2-.6 2 .9.6 2.3h5l.6-2.3 2-.9 2.2.6 2.5-4.3-1.6-1.7v-2.3l1.6-1.7-2.5-4.3-2.2.6-2-.9-.6-2.3z" />
+    <circle cx="12" cy="12" r="3" />
+  </Icon>
+);
+
 export const MenuIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M4 7h16M4 12h16M10 17h10" />
@@ -68,6 +75,20 @@ export const ChevronRightIcon = (props: IconProps) => (
 export const ChevronLeftIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="m15 6-6 6 6 6" />
+  </Icon>
+);
+
+export const PanelLeftCloseIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <path d="M9 4v16M16.5 10.5 14 12l2.5 1.5" />
+  </Icon>
+);
+
+export const PanelLeftOpenIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <rect x="3" y="4" width="18" height="16" rx="2.5" />
+    <path d="M9 4v16M13.5 10.5 16 12l-2.5 1.5" />
   </Icon>
 );
 

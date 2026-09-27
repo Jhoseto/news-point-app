@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { startTransition, useEffect, useState } from "react";
 import { formatClock } from "@/lib/format";
 import { LIVE_EVENT_NAME, type LiveEvent } from "@/lib/live/events";
+import { createLiveRefreshScheduler } from "@/lib/live/refresh";
 import { NewArticleToast } from "./live-toast";
 
 // Several events in a row produce one refresh.
@@ -22,7 +23,12 @@ export function LiveUpdates() {
 
   useEffect(() => {
     const source = new EventSource("/api/live/");
-    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+    // Archive readers explicitly navigate their fixed set. Keep the toast,
+    // but don't change their cards, sidebar, scroll or focused link via SSE.
+    const refresh = createLiveRefreshScheduler(() => {
+      startTransition(() => router.refresh());
+      setRefreshedAt(new Date());
+    }, () => !!document.querySelector("[data-np-category-archive], [data-np-search-archive]"), REFRESH_DEBOUNCE_MS);
 
     const onEvent = (message: MessageEvent<string>) => {
       let event: LiveEvent;
@@ -36,16 +42,12 @@ export function LiveUpdates() {
           [event, ...current.filter((toast) => toast.entityId !== event.entityId)].slice(0, MAX_TOASTS),
         );
       }
-      clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => {
-        startTransition(() => router.refresh());
-        setRefreshedAt(new Date());
-      }, REFRESH_DEBOUNCE_MS);
+      refresh.schedule();
     };
 
     source.addEventListener(LIVE_EVENT_NAME, onEvent as EventListener);
     return () => {
-      clearTimeout(refreshTimer);
+      refresh.cancel();
       source.removeEventListener(LIVE_EVENT_NAME, onEvent as EventListener);
       source.close();
     };

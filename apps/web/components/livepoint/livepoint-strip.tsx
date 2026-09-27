@@ -42,7 +42,7 @@ export function LivePointStrip() {
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
 
   return (
-    <div className="np-lp-row flex h-20 items-center border-t border-line lg:h-12 lg:pl-[var(--np-rail-w)]">
+    <div className="np-lp-row flex h-20 items-center lg:h-12 lg:pl-[var(--np-rail-w)]">
       <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-0.5 lg:px-8 3xl:px-12">
         <span className="inline-flex h-7 shrink-0 items-center gap-2 text-[0.75rem] font-extrabold tracking-tight text-ink lg:mr-1 lg:h-auto lg:py-1 lg:pr-2 lg:text-[0.8125rem]">
           <span className="np-lp-heart" aria-hidden="true">

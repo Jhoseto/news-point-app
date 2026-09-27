@@ -9,6 +9,7 @@ import {
 import { CesiumTrafficLayer } from "@/lib/livepoint/traffic/cesium-traffic-layer";
 import { TrafficIncidentHoverCard } from "./traffic-incident-hover-card";
 import "cesium/Build/Cesium/Widgets/widgets.css";
+import { useReducedMotion } from "../reader-preferences";
 
 type Position = { lat: number; lon: number };
 type MapIncident = Pick<TrafficIncident, "id" | "category" | "position" | "path" | "categoryLabel" | "description" | "from" | "to" | "delaySec">;
@@ -26,6 +27,7 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
   onSelectIncident?: (id: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion();
   const viewer = useRef<import("cesium").Viewer | null>(null);
   const cesium = useRef<typeof import("cesium") | null>(null);
   const entityIds = useRef<string[]>([]);
@@ -182,13 +184,13 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
     }
 
     const layer = trafficLayer.current;
-    layer.setEnabled(showMotion);
-    if (showMotion) void layer.refreshRoads(incidents);
+    layer.setEnabled(showMotion && !reduceMotion);
+    if (showMotion && !reduceMotion) void layer.refreshRoads(incidents);
 
     return () => {
       layer.setEnabled(false);
     };
-  }, [incidents, showMotion, ready]);
+  }, [incidents, showMotion, ready, reduceMotion]);
 
   useEffect(() => {
     const C = cesium.current;
@@ -216,8 +218,8 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
     const C = cesium.current;
     const map = viewer.current;
     if (!C || !map || !focusPosition) return;
-    map.camera.flyTo({ destination: C.Cartesian3.fromDegrees(focusPosition.lon, focusPosition.lat - (photoMode ? 0.006 : 0), photoMode ? 850 : 950), orientation: { heading: 0, pitch: C.Math.toRadians(photoMode ? -55 : -70), roll: 0 }, duration: 0.7 });
-  }, [focusPosition, ready, photoMode]);
+    map.camera.flyTo({ destination: C.Cartesian3.fromDegrees(focusPosition.lon, focusPosition.lat - (photoMode ? 0.006 : 0), photoMode ? 850 : 950), orientation: { heading: 0, pitch: C.Math.toRadians(photoMode ? -55 : -70), roll: 0 }, duration: reduceMotion ? 0 : 0.7 });
+  }, [focusPosition, ready, photoMode, reduceMotion]);
 
   const hoveredIncident = hover ? incidents.find((item) => item.id === hover.id) : null;
 

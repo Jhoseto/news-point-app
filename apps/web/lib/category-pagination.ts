@@ -3,14 +3,14 @@ import { z } from "zod";
 
 export const CATEGORY_PAGE_SIZE = 30;
 // Keep PostgreSQL microseconds: a JS Date would truncate ties within a millisecond.
-const timestamp = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/)
+export const archiveTimestampSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/)
   .refine(value => Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 19) === value.slice(0, 19));
 const cursorSchema = z.object({
   v: z.literal(1),
   category: z.uuid(),
-  anchor: timestamp,
+  anchor: archiveTimestampSchema,
   direction: z.enum(["older", "newer"]),
-  boundary: z.object({ at: timestamp, id: z.uuid() }).strict(),
+  boundary: z.object({ at: archiveTimestampSchema, id: z.uuid() }).strict(),
 }).strict();
 export type CategoryCursor = z.infer<typeof cursorSchema>;
 

@@ -1,18 +1,20 @@
-import { getByCategory, getLatest, getMenuCategories, type CategoryRef } from "@/lib/queries";
+import Link from "next/link";
+import { getCategoryArchive, getLatest, getMenuCategories, type CategoryRef } from "@/lib/queries";
+import type { CategoryCursor } from "@/lib/category-pagination";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips, LatestList } from "./lists";
 import { ArticleImage, SectionTitle } from "./ui";
+import { ArrowRightIcon } from "./icons";
 
-const CATEGORY_LIMIT = 30;
-
-export async function CategoryPage({ category }: { category: CategoryRef }) {
-  const [articles, menu, latest] = await Promise.all([getByCategory(category.id, CATEGORY_LIMIT), getMenuCategories(), getLatest(8)]);
+export async function CategoryPage({ category, cursor }: { category: CategoryRef; cursor: CategoryCursor | null }) {
+  const [archive, menu, latest] = await Promise.all([getCategoryArchive(category, cursor), getMenuCategories(), getLatest(8)]);
+  const { articles } = archive;
   const [lead, ...rest] = articles;
   const latestElsewhere = latest.filter((article) => !articles.some((own) => own.id === article.id)).slice(0, 6);
 
   return (
-    <div className="np-container flex flex-col gap-8 pt-5 pb-10">
+    <div data-np-category-archive className="np-container flex flex-col gap-8 pt-5 pb-10">
       <Breadcrumbs items={[{ name: category.name, path: category.path }]} />
 
       <header className="relative isolate overflow-hidden rounded-3xl shadow-card">
@@ -26,8 +28,15 @@ export async function CategoryPage({ category }: { category: CategoryRef }) {
 
       <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" />
 
+      {archive.anchored ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
+          <span>Разглеждате по-ранни публикации</span>
+          <Link href={category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</Link>
+        </div>
+      ) : null}
+
       {articles.length === 0 ? (
-        <p className="np-card p-6 text-body">Все още няма публикувани статии в тази рубрика.</p>
+        <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
       ) : (
         <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
           <div className="flex min-w-0 flex-col gap-6">
@@ -41,6 +50,20 @@ export async function CategoryPage({ category }: { category: CategoryRef }) {
                   ))}
                 </div>
               </section>
+            ) : null}
+            {archive.previous || archive.next ? (
+              <nav aria-label={`Страници на рубрика ${category.name}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+                {archive.previous ? (
+                  <Link href={archive.previous} prefetch={false} rel="prev" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-surface-2">
+                    <ArrowRightIcon className="rotate-180" /> Назад
+                  </Link>
+                ) : <span />}
+                {archive.next ? (
+                  <Link href={archive.next} prefetch={false} rel="next" className="np-gradient-bg inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-on-accent shadow-card transition hover:brightness-110">
+                    Още новини <ArrowRightIcon />
+                  </Link>
+                ) : <span className="text-sm text-muted">Стигнахте края на наличния архив</span>}
+              </nav>
             ) : null}
           </div>
           <aside className="flex flex-col gap-6 lg:sticky lg:top-[calc(var(--np-header-h)+1.5rem)] lg:self-start" aria-label="Последни новини">

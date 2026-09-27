@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
 import { ArticleCard } from "./article-card";
 import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { useReducedMotion } from "./reader-preferences";
 
 const SPEED_PX_PER_SECOND = 18;
 const DRAG_THRESHOLD = 5;
@@ -22,15 +23,7 @@ export function LeadingCarousel({
   const paused = useRef(false);
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
   const suppressClick = useRef(false);
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    const media = matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => setReduceMotion(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     const element = viewport.current;
@@ -65,8 +58,8 @@ export function LeadingCarousel({
     const step = card.offsetWidth + gap;
     const width = firstSet.current!.offsetWidth;
     if (direction < 0 && element.scrollLeft < step) element.scrollLeft += width;
-    element.scrollBy({ left: direction * step, behavior: "smooth" });
-  }, []);
+    element.scrollBy({ left: direction * step, behavior: reduceMotion ? "instant" : "smooth" });
+  }, [reduceMotion]);
 
   if (!articles.length) return null;
 

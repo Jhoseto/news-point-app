@@ -6,6 +6,11 @@ import { articleCategories, articles, categories, getDb, hasMediaPresentations, 
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
+import { CATEGORY_PAGE_SIZE, categoryCursorUrl, type CategoryCursor } from "./category-pagination";
+import { archiveBoundary, archiveFilter, archiveNow, archiveOrder, archiveTimestamp } from "./category-archive-query";
+import { searchArchiveFilter, searchMatches } from "./search-query";
+import { searchCursorUrl, type SearchCursor } from "./search-pagination";
+import type { SearchFilters } from "./search";
 
 export interface Media {
   url: string;
@@ -132,11 +137,11 @@ function isPublished() {
   return and(eq(articles.isPublic, true), lte(articles.publishedAt, sql`now()`))!;
 }
 
-async function summaryQuery() {
+async function summaryQuery(archive = false) {
   const db = getDb();
   const ready = await hasMediaPresentations(db);
   const query = db
-    .select(summaryColumns(ready))
+    .select({ ...summaryColumns(ready), archivePublishedAt: archive ? archiveTimestamp : sql<string | null>`null::text` })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
@@ -179,6 +184,51 @@ export const getByCategory = cache(async (categoryId: string, limit: number): Pr
     .limit(limit);
   return rows.map(toSummary);
 });
+
+export interface CategoryArchive {
+  articles: ArticleSummary[];
+  previous: string | null;
+  next: string | null;
+  anchored: boolean;
+}
+
+/** Keyset navigation: one bounded page, one small opposite-direction probe. No COUNT/OFFSET. */
+export async function getCategoryArchive(category: CategoryRef, cursor: CategoryCursor | null): Promise<CategoryArchive> {
+  const db = getDb();
+  const anchor = cursor?.anchor ?? (await db.select({ at: archiveNow }).from(articles).limit(1))[0]?.at;
+  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  const direction = cursor?.direction ?? "older";
+  const filter = archiveFilter(category.id, anchor);
+  const rows = await (await summaryQuery(true)).query
+    .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
+    .where(and(filter, cursor ? archiveBoundary(cursor.boundary, direction) : undefined))
+    .orderBy(...archiveOrder(direction))
+    .limit(CATEGORY_PAGE_SIZE + 1);
+  // Preserve the exact DB timestamp separately from the display Date.
+  const pageRows = rows.slice(0, CATEGORY_PAGE_SIZE);
+  if (direction === "newer") pageRows.reverse();
+  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  const first = { id: pageRows[0]!.id!, at: pageRows[0]!.archivePublishedAt! };
+  const last = { id: pageRows.at(-1)!.id!, at: pageRows.at(-1)!.archivePublishedAt! };
+  let previous = direction === "newer" && rows.length > CATEGORY_PAGE_SIZE;
+  let next = direction === "older" && rows.length > CATEGORY_PAGE_SIZE;
+  if (cursor) {
+    const opposite = direction === "older" ? "newer" : "older";
+    const probe = await db.select({ id: articles.id }).from(articles)
+      .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
+      .where(and(filter, archiveBoundary(opposite === "newer" ? first : last, opposite)))
+      .limit(1);
+    if (opposite === "newer") previous = probe.length > 0;
+    else next = probe.length > 0;
+  }
+  const link = (boundary: CategoryCursor["boundary"], dir: CategoryCursor["direction"]) =>
+    categoryCursorUrl(category.path, { v: 1, category: category.id, anchor, boundary, direction: dir });
+  return {
+    articles: pageRows.map(toSummary), anchored: !!cursor,
+    previous: previous ? link(first, "newer") : null,
+    next: next ? link(last, "older") : null,
+  };
+}
 
 export const getLabelled = cache(async (labelSlug: string, limit: number): Promise<ArticleSummary[]> => {
   const [label] = await getDb().select({ id: categories.id }).from(categories).where(eq(categories.slug, labelSlug)).limit(1);
@@ -242,15 +292,42 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
 export async function searchArticles(query: string, limit: number): Promise<ArticleSummary[]> {
   const terms = searchTerms(query);
   if (!terms.length) return [];
-  const matches = terms.map((term) => {
-    const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
-    return sql`(${articles.title} ilike ${pattern} or ${articles.excerpt} ilike ${pattern})`;
-  });
+  const matches = searchMatches(query);
   const rows = await (await summaryQuery()).query
     .where(and(isPublished(), ...matches))
     .orderBy(desc(articles.publishedAt))
     .limit(limit);
   return rows.map(toSummary);
+}
+
+/** Search snapshots use the same ordering and public cutoffs as category archives. */
+export async function getSearchArchive(filters: SearchFilters, categoryId: string | null, cursor: SearchCursor | null): Promise<CategoryArchive> {
+  if (!searchTerms(filters.query).length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  const db = getDb();
+  const anchor = cursor?.anchor ?? (await db.select({ at: archiveNow }).from(articles).limit(1))[0]?.at;
+  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  const direction = cursor?.direction ?? "older";
+  const filter = searchArchiveFilter(filters.query, anchor, categoryId, filters.period);
+  const rows = await (await summaryQuery(true)).query
+    .where(and(filter, cursor ? archiveBoundary(cursor.boundary, direction) : undefined))
+    .orderBy(...archiveOrder(direction)).limit(CATEGORY_PAGE_SIZE + 1);
+  const pageRows = rows.slice(0, CATEGORY_PAGE_SIZE);
+  if (direction === "newer") pageRows.reverse();
+  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  const first = { id: pageRows[0]!.id!, at: pageRows[0]!.archivePublishedAt! };
+  const last = { id: pageRows.at(-1)!.id!, at: pageRows.at(-1)!.archivePublishedAt! };
+  let previous = direction === "newer" && rows.length > CATEGORY_PAGE_SIZE;
+  let next = direction === "older" && rows.length > CATEGORY_PAGE_SIZE;
+  if (cursor) {
+    const opposite = direction === "older" ? "newer" : "older";
+    const probe = await db.select({ id: articles.id }).from(articles)
+      .where(and(filter, archiveBoundary(opposite === "newer" ? first : last, opposite))).limit(1);
+    if (opposite === "newer") previous = probe.length > 0;
+    else next = probe.length > 0;
+  }
+  const link = (boundary: SearchCursor["boundary"], dir: SearchCursor["direction"]) =>
+    searchCursorUrl({ v: 1, ...filters, anchor, boundary, direction: dir });
+  return { articles: pageRows.map(toSummary), previous: previous ? link(first, "newer") : null, next: next ? link(last, "older") : null, anchored: !!cursor };
 }
 
 /** Summaries for live notifications, keyed by article id. Runs outside a request, so no cache(). */

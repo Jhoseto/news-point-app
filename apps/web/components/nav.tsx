@@ -10,10 +10,10 @@ import {
   BallotIcon,
   BoltIcon,
   BriefcaseIcon,
-  ChevronLeftIcon,
   ChipIcon,
   CloseIcon,
   ColumnsIcon,
+  ChevronRightIcon,
   CupIcon,
   FlagIcon,
   GlobeIcon,
@@ -22,6 +22,8 @@ import {
   HomeIcon,
   MapIcon,
   PaletteIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   PenIcon,
   PinIcon,
   SearchIcon,
@@ -56,16 +58,74 @@ function RubricIcon({ slug, ...props }: { slug: string } & SVGProps<SVGSVGElemen
   return <Icon {...props} />;
 }
 
-/** Bare icon. The active one takes the brand violet; nothing draws a box around it. */
-function RubricMark({ slug, active }: { slug: string; active: boolean }) {
+/** A quiet inset tile keeps the category icons consistent in both menu sizes. */
+function RubricMark({ slug }: { slug: string }) {
   return (
     <span
-      className={`flex size-8 shrink-0 items-center justify-center transition-colors ${
-        active ? "text-accent dark:text-link" : "text-muted group-hover:text-accent dark:group-hover:text-link"
-      }`}
+      className="np-rubric-mark flex size-8 shrink-0 items-center justify-center rounded-[0.625rem] text-muted"
     >
       {slug ? <RubricIcon slug={slug} width={18} height={18} /> : <HomeIcon width={18} height={18} />}
     </span>
+  );
+}
+
+/** „Близо до вас“ are the two local rubrics; everything the menu supplies beyond them goes under „Всички теми“. */
+const LOCAL_SLUGS = new Set(["plovdiv", "regionalni-novini"]);
+
+function groupRubrics(items: NavItem[]) {
+  const local = items.filter((item) => LOCAL_SLUGS.has(item.slug));
+  const rest = items.filter((item) => !LOCAL_SLUGS.has(item.slug));
+  return [
+    { label: "Близо до вас", items: local },
+    { label: "Всички теми", items: rest },
+  ].filter((group) => group.items.length > 0);
+}
+
+/**
+ * One rubric row, shared by the desktop rail and the phone/tablet sheet so the
+ * list is never duplicated. `compact` centres the icon for the collapsed rail.
+ */
+function RubricRow({
+  item,
+  current,
+  onNavigate,
+  compact,
+}: {
+  item: NavItem;
+  current: string;
+  onNavigate?: () => void;
+  compact?: boolean;
+}) {
+  const active = isActive(current, item.path);
+  return (
+    <Link
+      href={item.path}
+      {...(onNavigate ? { onClick: onNavigate } : {})}
+      aria-current={active ? "page" : undefined}
+      title={item.name}
+      aria-label={compact ? item.name : undefined}
+      className={`np-rubric-row group relative flex h-11 shrink-0 items-center rounded-xl ${
+        compact ? "justify-center" : "gap-2.5 px-2.5"
+      }`}
+    >
+      <span
+        className={`np-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full transition-[scale,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          active ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
+        }`}
+        aria-hidden="true"
+      />
+      <RubricMark slug={item.slug} />
+      {compact ? null : (
+        <span
+          className={`min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
+            active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
+          }`}
+        >
+          {item.name}
+        </span>
+      )}
+      {compact ? null : <ChevronRightIcon className="np-rubric-chevron shrink-0" width={13} height={13} aria-hidden="true" />}
+    </Link>
   );
 }
 
@@ -147,45 +207,49 @@ function Sheet({ open, onClose, label, side, children }: { open: boolean; onClos
 }
 
 function RubricLinks({ items, current, onNavigate, autoFocusActive }: { items: NavItem[]; current: string; onNavigate: () => void; autoFocusActive?: boolean }) {
-  const list = useRef<HTMLUListElement>(null);
+  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!autoFocusActive) return;
-    const target = list.current?.querySelector<HTMLElement>('[aria-current="page"]') ?? list.current?.querySelector<HTMLElement>("a");
+    const target = root.current?.querySelector<HTMLElement>('[aria-current="page"]') ?? root.current?.querySelector<HTMLElement>("a");
     target?.focus({ preventScroll: true });
   }, [autoFocusActive]);
 
+  const home: NavItem = { name: "Начало", path: "/", slug: "" };
   return (
-    <ul ref={list} className="flex flex-col">
-      {[{ name: "Начало", path: "/", slug: "" }, ...items].map((item) => {
-        const active = isActive(current, item.path);
-        return (
-          <li key={item.path}>
-            <Link
-              href={item.path}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className="group relative flex h-10 items-center gap-1 rounded-lg pr-2 pl-1 text-[0.9375rem] font-semibold text-body transition-colors hover:bg-surface-2 hover:text-ink aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"
-            >
-              <RubricMark slug={item.slug} active={active} />
-              {item.name}
-            </Link>
-          </li>
-        );
-      })}
-    </ul>
+    <div ref={root} className="flex flex-col">
+      <ul className="flex flex-col gap-1">
+        <li key={home.path}>
+          <RubricRow item={home} current={current} onNavigate={onNavigate} />
+        </li>
+      </ul>
+      {groupRubrics(items).map((group) => (
+        <div key={group.label} className="mt-3">
+          <p className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.625rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</p>
+          <ul className="flex flex-col gap-1">
+            {group.items.map((item) => (
+              <li key={item.path}>
+                <RubricRow item={item} current={current} onNavigate={onNavigate} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
   );
 }
 
 /**
  * Rubrics navigation.
- * Desktop: a narrow rail with a "Рубрики" button; the list opens as a panel beside
- * it and does not move the page. Phone and tablet: a sheet from the left.
+ * Desktop: an in-flow rail with an icon-only collapsed state.
+ * Phone and tablet: a sheet from the left.
  */
 export function RubricsNav({ items }: { items: NavItem[] }) {
   const current = usePathname() ?? "/";
   const [expanded, setExpanded] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
+  const collapseBtn = useRef<HTMLButtonElement>(null);
+  const expandBtn = useRef<HTMLButtonElement>(null);
+  const focusCollapse = useRef(false);
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
@@ -194,6 +258,18 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   useEffect(() => {
     document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
     return () => document.documentElement.removeAttribute("data-rubrics-closed");
+  }, [expanded]);
+
+  // Focus follows the toggle so keyboard users never land on an unmounted button.
+  useEffect(() => {
+    if (expanded) {
+      if (focusCollapse.current) {
+        focusCollapse.current = false;
+        collapseBtn.current?.focus({ preventScroll: true });
+      }
+    } else {
+      expandBtn.current?.focus({ preventScroll: true });
+    }
   }, [expanded]);
 
   useEffect(() => {
@@ -208,75 +284,94 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   useEffect(() => {
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setExpanded(false);
-        trigger.current?.focus({ preventScroll: true });
-      }
+      if (event.key === "Escape") setExpanded(false);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [expanded]);
 
+  const groups = groupRubrics(items);
+
   return (
     <>
       <aside
         aria-label="Рубрики"
-        className={`sticky top-[var(--np-bar-h)] z-40 -mt-12 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col border-r border-line bg-[linear-gradient(to_bottom,transparent_1px,var(--np-surface)_1px)] backdrop-blur transition-[width] duration-200 ease-out lg:flex ${
+        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 -mt-12 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
           expanded ? "w-[16.5rem]" : "w-[4.25rem]"
         }`}
       >
-        <div className={`flex h-12 shrink-0 items-center ${expanded ? "gap-2.5 px-3" : "justify-center"}`}>
-          <button
-            ref={trigger}
-            type="button"
-            data-rubrics-trigger
-            aria-expanded={expanded}
-            onClick={() => setExpanded((open) => !open)}
-            aria-label={expanded ? "Сгъни рубриките" : "Разгъни рубриките"}
-            className="group inline-flex items-center gap-2.5 rounded-lg text-ink"
-          >
-            <span className="flex size-8 items-center justify-center text-accent dark:text-link">
-              <ChevronLeftIcon width={16} height={16} className={`transition-transform duration-200 ${expanded ? "" : "rotate-180"}`} />
-            </span>
-            {expanded ? (
-              <span className="flex items-center gap-2 text-[0.65rem] font-extrabold tracking-[0.18em] text-muted uppercase">
-                <span className="np-ring !size-3" aria-hidden="true" />
-                Рубрики
-              </span>
-            ) : null}
-          </button>
-        </div>
-        <nav aria-label="Рубрики" className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-1.5 py-1.5">
-          {items.map((item) => {
-            const active = isActive(current, item.path);
-            return (
-              <Link
-                key={item.path}
-                href={item.path}
-                aria-current={active ? "page" : undefined}
-                title={item.name}
-                aria-label={expanded ? undefined : item.name}
-                className={`group relative flex h-9 shrink-0 items-center rounded-lg transition-colors hover:bg-surface-2 aria-[current=page]:bg-surface-2 ${
-                  expanded ? "gap-1 pr-2 pl-1" : "justify-center"
-                }`}
+        {expanded ? (
+          <div className="np-rubrics-heading mx-4 shrink-0 pt-4 pb-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h2 className="text-[1.375rem] leading-tight font-bold tracking-tight text-ink">Рубрики</h2>
+                <p className="mt-1 text-[0.6875rem] font-medium tracking-wide text-muted">Новините по теми</p>
+              </div>
+              <button
+                ref={collapseBtn}
+                type="button"
+                data-rubrics-trigger
+                aria-expanded={expanded}
+                onClick={() => setExpanded(false)}
+                aria-label="Свий менюто"
+                title="Свий менюто"
+                className="np-rubrics-toggle mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-[0.625rem] text-muted"
               >
-                <span className={`np-gradient-bg absolute top-1.5 bottom-1.5 left-0 w-0.5 rounded-full ${active ? "" : "hidden"}`} aria-hidden="true" />
-                <RubricMark slug={item.slug} active={active} />
-                {expanded ? <span className="truncate text-[0.8125rem] font-semibold tracking-tight text-ink">{item.name}</span> : null}
-              </Link>
-            );
-          })}
+                <PanelLeftCloseIcon width={17} height={17} />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex shrink-0 justify-center pt-3 pb-1">
+            <button
+              ref={expandBtn}
+              type="button"
+              data-rubrics-trigger
+              aria-expanded={expanded}
+              onClick={() => {
+                focusCollapse.current = true;
+                setExpanded(true);
+              }}
+              aria-label="Разгъни менюто"
+              title="Разгъни менюто"
+              className="np-rubrics-toggle inline-flex size-9 items-center justify-center rounded-[0.625rem] text-muted"
+            >
+              <PanelLeftOpenIcon width={18} height={18} />
+            </button>
+          </div>
+        )}
+        <nav aria-label="Рубрики" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-2.5 pb-3">
+          {groups.map((group, groupIndex) => (
+            <section key={group.label} className={groupIndex > 0 ? "mt-4" : undefined}>
+              {expanded ? (
+                <h3 className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.625rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</h3>
+              ) : groupIndex > 0 ? (
+                <div className="mx-auto my-2.5 h-px w-5 bg-line" aria-hidden="true" />
+              ) : null}
+              <ul className="flex flex-col gap-0.5">
+                {group.items.map((item) => (
+                  <li key={item.path}>
+                    <RubricRow item={item} current={current} compact={!expanded} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </nav>
       </aside>
 
       <Sheet open={sheetOpen} onClose={closeSheet} label="Рубрики" side="left">
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
-          <span className="text-xs font-extrabold tracking-[0.14em] text-muted uppercase">Рубрики</span>
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 pt-5 pb-4">
+          <div className="min-w-0">
+            <h2 className="text-[1.375rem] leading-tight font-bold tracking-tight text-ink">Рубрики</h2>
+            <p className="mt-1 text-[0.6875rem] font-medium text-muted">Новините по теми</p>
+            <span className="np-gradient-bg mt-3 block h-[2px] w-9 rounded-full" aria-hidden="true" />
+          </div>
           <button
             type="button"
             onClick={closeSheet}
             aria-label="Затвори менюто"
-            className="inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-surface-2"
+            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
             data-autofocus
           >
             <CloseIcon width={22} height={22} />

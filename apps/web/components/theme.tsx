@@ -1,56 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { MoonIcon, SunIcon } from "./icons";
+import { chooseReaderPreferences, useReaderPreferences } from "./reader-preferences";
 
-import { THEME_STORAGE_KEY as STORAGE_KEY } from "./theme-script";
-
-type Theme = "light" | "dark";
-type Preference = Theme | "system";
-
-function systemTheme(): Theme {
-  return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-}
-
-function readPreference(): Preference {
-  try {
-    const value = localStorage.getItem(STORAGE_KEY);
-    return value === "light" || value === "dark" ? value : "system";
-  } catch {
-    return "system";
-  }
-}
-
-function apply(preference: Preference) {
-  const theme = preference === "system" ? systemTheme() : preference;
-  const root = document.documentElement;
-  root.dataset.theme = theme;
-  root.style.colorScheme = theme;
-  try {
-    if (preference === "system") localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, preference);
-  } catch {}
-}
-
+type Preference = "light" | "dark" | "system";
 function useThemePreference() {
-  const [preference, setPreference] = useState<Preference>("system");
-
-  useEffect(() => {
-    setPreference(readPreference());
-    const media = matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => {
-      if (readPreference() === "system") apply("system");
-    };
-    media.addEventListener("change", onChange);
-    return () => media.removeEventListener("change", onChange);
-  }, []);
-
-  const choose = useCallback((next: Preference) => {
-    apply(next);
-    setPreference(next);
-  }, []);
-
-  return [preference, choose] as const;
+  const preferences = useReaderPreferences();
+  return [preferences.theme, (theme: Preference) => chooseReaderPreferences({ theme })] as const;
 }
 
 /** Switch in the header, as in the mockups. */

@@ -1,11 +1,12 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { PREFERENCE_KEYS, READER_PREFERENCES_SCRIPT } from "@/lib/reader-preferences";
 
-export const THEME_STORAGE_KEY = "np-theme";
+export const THEME_STORAGE_KEY = PREFERENCE_KEYS.theme;
 
 // Runs before first paint so the page never flashes the wrong theme.
-const THEME_SCRIPT = `(function(){try{var p=localStorage.getItem("${THEME_STORAGE_KEY}");var d=p==="dark"||(p!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);var e=document.documentElement;e.dataset.theme=d?"dark":"light";e.style.colorScheme=d?"dark":"light"}catch(_){}})();`;
+const THEME_SCRIPT = READER_PREFERENCES_SCRIPT;
 
 const emptySubscribe = () => () => {};
 

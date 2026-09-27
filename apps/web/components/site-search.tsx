@@ -121,7 +121,7 @@ export function SiteSearch({ variant = "header", autoFocus = false, onNavigate }
           event.preventDefault();
           if (ready) go(searchPageUrl(query));
         }}
-        className={`np-search group relative flex items-center gap-2.5 rounded-2xl border border-line bg-surface-2/70 px-3.5 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-accent/60 focus-within:bg-surface focus-within:shadow-[0_0_0_4px_rgb(56_24_214/0.10)] hover:border-accent/30 dark:focus-within:shadow-[0_0_0_4px_rgb(106_60_240/0.22)] ${sheet ? "h-14" : "h-11"}`}
+        className={`np-search group relative flex items-center gap-2.5 rounded-2xl border border-line bg-surface-2/70 pl-3.5 transition-[border-color,background-color,box-shadow] duration-200 focus-within:border-accent/60 focus-within:bg-surface focus-within:shadow-[0_0_0_4px_rgb(56_24_214/0.10)] hover:border-accent/30 dark:focus-within:shadow-[0_0_0_4px_rgb(106_60_240/0.22)] ${sheet ? "h-14" : "h-11"}`}
       >
         <SearchIcon width={19} height={19} className="shrink-0 text-muted transition-colors group-focus-within:text-accent dark:group-focus-within:text-link" />
         <label htmlFor={`${listId}-input`} className="sr-only">
@@ -164,11 +164,16 @@ export function SiteSearch({ variant = "header", autoFocus = false, onNavigate }
           >
             <CloseIcon width={16} height={16} />
           </button>
-        ) : variant === "header" ? (
-          <kbd className="hidden shrink-0 rounded-md border border-line bg-surface px-1.5 py-0.5 font-sans text-[0.6875rem] font-bold text-muted xl:block" aria-hidden="true">
-            /
-          </kbd>
         ) : null}
+        <button
+          type="submit"
+          disabled={!ready}
+          aria-label="Търси в новините"
+          title="Търси"
+          className={`inline-flex shrink-0 self-stretch items-center justify-center rounded-r-[calc(1rem-1px)] border-l border-line bg-accent/5 text-accent transition-colors hover:bg-accent/10 disabled:cursor-default disabled:text-muted disabled:opacity-60 dark:text-link ${sheet ? "w-14" : "w-12"}`}
+        >
+          <ArrowRightIcon width={19} height={19} />
+        </button>
         <span className="np-search-line" aria-hidden="true" />
       </form>
 
