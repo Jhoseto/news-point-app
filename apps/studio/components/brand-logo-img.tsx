@@ -11,7 +11,7 @@ export function BrandLogoImg({ className, sizes }: Props) {
   return (
     <img
       src={withBase(BRAND_LOGO.src)}
-      srcSet={`${withBase("/brand/newspoint-logo-512w.webp")} 512w, ${withBase(BRAND_LOGO.src)} 998w`}
+      srcSet={`${withBase("/brand/newspoint-logo-512w.webp")} 512w, ${withBase(BRAND_LOGO.src)} ${BRAND_LOGO.width}w`}
       sizes={sizes}
       alt={BRAND_LOGO.alt}
       width={BRAND_LOGO.width}

@@ -2,12 +2,21 @@
  * Optimize NewsPoint premium logo for /public/brand.
  * Run: pnpm --filter @newspoint/web exec node scripts/optimize-brand-logo.mjs
  */
-import { copyFile, writeFile } from "node:fs/promises";
+import { access, copyFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import sharp from "sharp";
 
 const outDir = join(import.meta.dirname, "../public/brand");
-const source = join(import.meta.dirname, "brand/newspoint-logo-source.jpg");
+const brandDir = join(import.meta.dirname, "brand");
+const pngSource = join(brandDir, "newspoint-logo-source.png");
+const jpgSource = join(brandDir, "newspoint-logo-source.jpg");
+let source = jpgSource;
+try {
+  await access(pngSource);
+  source = pngSource;
+} catch {
+  /* jpg fallback */
+}
 
 async function knockOutBlack(image) {
   const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
