@@ -17,6 +17,7 @@ export function HeroCard({
   fit = "natural",
   className = "",
   shineDelaySec,
+  priority = false,
 }: {
   article: ArticleSummary;
   headingLevel?: "h1" | "h2" | "h3";
@@ -26,6 +27,7 @@ export function HeroCard({
   className?: string;
   /** Homepage orchestrated shine delay (seconds into the cycle). */
   shineDelaySec?: number;
+  priority?: boolean;
 }) {
   const Heading = headingLevel;
   const lead = size === "lead";
@@ -50,8 +52,8 @@ export function HeroCard({
         <div className={`${shine.className} ${fullBleedPhoto ? "absolute inset-0" : "relative"}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
-            priority={lead}
-            sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : "(min-width: 1024px) 22vw, 50vw"}
+            priority={priority}
+            sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : mini ? "(min-width: 1024px) 22vw, 50vw" : "(min-width: 1024px) 22vw, 100vw"}
             className={`transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.03] ${imageFitClass}`}
           />
         </div>

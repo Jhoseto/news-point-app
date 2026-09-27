@@ -16,3 +16,4 @@ export type ScriptDb = ReturnType<typeof createScriptDb>["db"];
 
 export { loadRootEnv, findRepoRoot } from "./env";
 export * from "./schema";
+export { hasMediaPresentations } from "./media-presentation";

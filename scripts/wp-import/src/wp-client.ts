@@ -14,7 +14,7 @@ export interface WpMedia {
   mime_type?: string;
   alt_text?: string;
   caption?: { rendered: string };
-  media_details?: { width?: number; height?: number };
+  media_details?: { width?: number; height?: number; sizes?: Record<string, { source_url?: string; width?: number; height?: number }> };
 }
 
 export interface WpPost {
@@ -58,6 +58,10 @@ export class WpClient {
 
   posts(params: Record<string, string | number>): Promise<WpPost[]> {
     return this.get("posts", { status: "publish", _embed: "wp:featuredmedia", ...params });
+  }
+
+  media(ids: number[]): Promise<WpMedia[]> {
+    return this.get("media", { include: ids.join(","), per_page: ids.length, _fields: "id,source_url,media_details" });
   }
 }
 

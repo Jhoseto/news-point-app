@@ -1,10 +1,12 @@
 import { and, eq, or, sql } from "drizzle-orm";
-import { articleBody, BODY_VERSION, type ArticleBody } from "@newspoint/content";
+import { articleBody, BODY_VERSION, imageVariantsSchema, type ImageVariant, type ArticleBody } from "@newspoint/content";
 import {
   articleCategories,
   articles,
   categories,
   mediaAssets,
+  mediaPresentations,
+  hasMediaPresentations,
   outboxEvents,
   type OutboxPayload,
   type ScriptDb,
@@ -19,6 +21,7 @@ export interface MediaInput {
   mime: string | null;
   alt: string;
   caption: string;
+  variants?: ImageVariant[];
 }
 
 export interface CategoryInput {
@@ -104,7 +107,7 @@ export async function upsertCategories(db: ScriptDb, input: CategoryInput[]): Pr
   return new Map(rows.filter((row) => row.wpId !== null).map(({ wpId, ...row }) => [wpId!, row]));
 }
 
-async function upsertMedia(tx: Tx, media: MediaInput): Promise<string> {
+async function upsertMedia(tx: Tx, media: MediaInput, presentationReady: boolean): Promise<string> {
   const match = media.wpId === null
     ? eq(mediaAssets.sourceUrl, media.sourceUrl)
     : or(eq(mediaAssets.wpId, media.wpId), eq(mediaAssets.sourceUrl, media.sourceUrl));
@@ -125,13 +128,23 @@ async function upsertMedia(tx: Tx, media: MediaInput): Promise<string> {
   };
   if (existing) {
     await tx.update(mediaAssets).set(values).where(eq(mediaAssets.id, existing.id));
+    await saveVariants(tx, existing.id, media, presentationReady);
     return existing.id;
   }
   const [inserted] = await tx
     .insert(mediaAssets)
     .values({ provider: "wordpress_origin", ...values })
     .returning({ id: mediaAssets.id });
+  await saveVariants(tx, inserted!.id, media, presentationReady);
   return inserted!.id;
+}
+
+async function saveVariants(tx: Tx, id: string, media: MediaInput, ready: boolean) {
+  if (!ready || !media.variants) return;
+  const variants = imageVariantsSchema.parse(media.variants);
+  await tx.insert(mediaPresentations).values({ mediaAssetId: id, variants })
+    .onConflictDoUpdate({ target: mediaPresentations.mediaAssetId, set: { variants } });
+  // WordPress refresh never changes an editor's focal point.
 }
 
 export function resolveDraftBlocks(blocks: DraftBlock[], imageIds: string[]): ArticleBody {
@@ -152,6 +165,7 @@ export async function saveArticle(
   categoryIds: CategoryIds,
   options: SaveOptions = {},
 ): Promise<SaveResult> {
+  const presentationReady = await hasMediaPresentations(db);
   return db.transaction(async (tx) => {
     const [collision] = await tx.select({ id: categories.id }).from(categories).where(eq(categories.path, article.path)).limit(1);
     if (collision) throw new Error(`path ${article.path} is already used by a category`);
@@ -167,9 +181,9 @@ export async function saveArticle(
     }
     const version = !existing ? 1 : change === "updated" ? existing.version + 1 : existing.version;
 
-    const heroId = hero ? await upsertMedia(tx, hero) : null;
+    const heroId = hero ? await upsertMedia(tx, hero, presentationReady) : null;
     const imageIds: string[] = [];
-    for (const image of inlineImages) imageIds.push(await upsertMedia(tx, image));
+    for (const image of inlineImages) imageIds.push(await upsertMedia(tx, image, presentationReady));
     const body = resolveDraftBlocks(blocks, imageIds);
 
     const linked = article.categoryWpIds.map((wpId) => categoryIds.get(wpId)).filter((row) => row !== undefined);

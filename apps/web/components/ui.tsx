@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { imagePresentation } from "@newspoint/content";
 import type { CSSProperties, ReactNode } from "react";
 import type { CategoryRef, Media } from "@/lib/queries";
 import { formatCardTime, formatShort, isoDate } from "@/lib/format";
@@ -91,6 +92,7 @@ export function ArticleImage({
   sizes?: string;
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
+  const presentation = imagePresentation(media);
   return (
     <img
       src={media.url}
@@ -98,6 +100,8 @@ export function ArticleImage({
       width={media.width ?? undefined}
       height={media.height ?? undefined}
       sizes={sizes}
+      srcSet={presentation.srcSet}
+      style={presentation.objectPosition ? { objectPosition: presentation.objectPosition } : undefined}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}
       decoding="async"

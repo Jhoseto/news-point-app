@@ -5,6 +5,7 @@ import { loadRootEnv, readDatabaseEnv } from "./env";
 import * as schema from "./schema";
 
 export * from "./schema";
+export { hasMediaPresentations } from "./media-presentation";
 export { loadRootEnv } from "./env";
 
 function readEnv() {

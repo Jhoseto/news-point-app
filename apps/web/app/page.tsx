@@ -158,7 +158,7 @@ export default async function HomePage() {
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
         {/* Phone: lead, then a larger theme, two compact ones and the latest list. */}
         <div className="flex flex-col gap-4 lg:hidden">
-          {hero ? <HeroCard article={hero} {...shineDelayProp(bandHero)} /> : null}
+          {hero ? <HeroCard article={hero} priority {...shineDelayProp(bandHero)} /> : null}
           {support[0] ? <HeroCard article={support[0]} size="tile" {...shineDelayProp(bandSupport0)} /> : null}
           {support.length > 1 ? (
             <div className="np-card flex flex-col gap-4 p-4">
@@ -176,7 +176,7 @@ export default async function HomePage() {
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
         <div className="hidden h-[min(56vh,34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(54vh,36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
-          {hero ? <HeroCard article={hero} fit="band" className="min-h-0" {...shineDelayProp(bandHero)} /> : null}
+          {hero ? <HeroCard article={hero} priority fit="band" className="min-h-0" {...shineDelayProp(bandHero)} /> : null}
           <div className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-4">
             {support[0] ? (
               <HeroCard article={support[0]} size="tile" fit="band" headingLevel="h3" className="min-h-0" {...shineDelayProp(bandSupport0)} />

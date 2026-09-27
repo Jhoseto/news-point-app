@@ -3,6 +3,7 @@ import type { Conversion } from "./convert";
 import type { ArticleInput, CategoryInput, MediaInput } from "./persist";
 import { htmlToPlainText, pathFromLink, wpGmtToDate } from "./text";
 import { featuredMedia, type WpCategory, type WpPost } from "./wp-client";
+import { wordpressVariants } from "./media-variants";
 
 export function toCategoryInputs(wpCategories: WpCategory[]): CategoryInput[] {
   return wpCategories.map((category) => {
@@ -46,6 +47,7 @@ export function heroInput(post: WpPost): MediaInput | null {
     mime: media.mime_type ?? null,
     alt: htmlToPlainText(media.alt_text ?? ""),
     caption: htmlToPlainText(media.caption?.rendered ?? ""),
+    variants: wordpressVariants(media),
   };
 }
 

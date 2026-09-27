@@ -9,6 +9,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  real,
   smallint,
   text,
   timestamp,
@@ -45,6 +46,15 @@ export const mediaAssets = pgTable("media_assets", {
   caption: text("caption").notNull().default(""),
   credit: text("credit").notNull().default(""),
   wpId: integer("wp_id").unique(),
+  ...timestamps,
+});
+
+/** Optional media presentation extension (migration 12); original locations stay intact. */
+export const mediaPresentations = pgTable("media_presentations", {
+  mediaAssetId: uuid("media_asset_id").primaryKey().references(() => mediaAssets.id, { onDelete: "cascade" }),
+  variants: jsonb("variants").$type<{ url: string; width: number; height: number }[]>().notNull().default(sql`'[]'::jsonb`),
+  focalX: real("focal_x"),
+  focalY: real("focal_y"),
   ...timestamps,
 });
 
@@ -244,6 +254,7 @@ export const livepointSubmissions = pgTable(
 export const schemaTables = {
   categories,
   mediaAssets,
+  mediaPresentations,
   staffUsers,
   staffSessions,
   staffAccounts,

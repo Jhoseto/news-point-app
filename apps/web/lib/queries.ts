@@ -1,8 +1,8 @@
 import "server-only";
 import { cache } from "react";
 import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
-import { articleBody, resolveMediaUrl, type ArticleBody } from "@newspoint/content";
-import { articleCategories, articles, categories, getDb, mediaAssets } from "@newspoint/db";
+import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
+import { articleCategories, articles, categories, getDb, hasMediaPresentations, mediaAssets, mediaPresentations } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -13,6 +13,8 @@ export interface Media {
   height: number | null;
   alt: string;
   caption: string;
+  variants?: ImageVariant[];
+  focalPoint?: FocalPoint | null;
 }
 
 export interface CategoryRef {
@@ -41,7 +43,7 @@ export interface ArticleDetail extends ArticleSummary {
   categories: CategoryRef[];
 }
 
-const summaryColumns = {
+const baseSummaryColumns = {
   id: articles.id,
   path: articles.path,
   title: articles.title,
@@ -62,8 +64,16 @@ const summaryColumns = {
 };
 
 type SummaryRow = {
-  [K in keyof typeof summaryColumns]: (typeof summaryColumns)[K]["_"]["data"] | null;
-};
+  [K in keyof typeof baseSummaryColumns]: (typeof baseSummaryColumns)[K]["_"]["data"] | null;
+} & { mediaVariants: unknown; mediaFocalX: number | null; mediaFocalY: number | null };
+
+function summaryColumns(ready: boolean) {
+  return { ...baseSummaryColumns,
+    mediaVariants: ready ? mediaPresentations.variants : sql<unknown>`'[]'::jsonb`,
+    mediaFocalX: ready ? mediaPresentations.focalX : sql<number | null>`null::real`,
+    mediaFocalY: ready ? mediaPresentations.focalY : sql<number | null>`null::real`,
+  };
+}
 
 function toMedia(row: {
   provider: "wordpress_origin" | "object_storage" | null;
@@ -73,10 +83,17 @@ function toMedia(row: {
   height: number | null;
   alt: string | null;
   caption: string | null;
+  variants?: unknown;
+  focalX?: number | null;
+  focalY?: number | null;
 }): Media | null {
   if (!row.provider) return null;
+  const url = resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey });
+  const focal = focalPointSchema.safeParse({ x: row.focalX, y: row.focalY });
   return {
-    url: resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
+    url,
+    variants: responsiveImageVariants(row.variants, { url, width: row.width, height: row.height }),
+    focalPoint: focal.success ? focal.data : null,
     width: row.width,
     height: row.height,
     alt: row.alt ?? "",
@@ -103,6 +120,9 @@ function toSummary(row: SummaryRow): ArticleSummary {
       height: row.mediaHeight,
       alt: row.mediaAlt,
       caption: row.mediaCaption,
+      variants: row.mediaVariants,
+      focalX: row.mediaFocalX,
+      focalY: row.mediaFocalY,
     }),
   };
 }
@@ -112,12 +132,17 @@ function isPublished() {
   return and(eq(articles.isPublic, true), lte(articles.publishedAt, sql`now()`))!;
 }
 
-function summaryQuery() {
-  return getDb()
-    .select(summaryColumns)
+async function summaryQuery() {
+  const db = getDb();
+  const ready = await hasMediaPresentations(db);
+  const query = db
+    .select(summaryColumns(ready))
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
+  // Wrap the thenable builder so an async return does not execute it before
+  // the caller adds the public-content filter and limit.
+  return { query: ready ? query.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id)) : query };
 }
 
 export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
@@ -134,20 +159,20 @@ export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
 });
 
 export const getLatest = cache(async (limit: number): Promise<ArticleSummary[]> => {
-  const rows = await summaryQuery().where(isPublished()).orderBy(desc(articles.publishedAt)).limit(limit);
+  const rows = await (await summaryQuery()).query.where(isPublished()).orderBy(desc(articles.publishedAt)).limit(limit);
   return rows.map(toSummary);
 });
 
 /** Complete rolling 24-hour feed; the public published-at index supports the range scan. */
 export const getLatest24Hours = cache(async (asOfMs: number): Promise<ArticleSummary[]> => {
-  const rows = await summaryQuery()
+  const rows = await (await summaryQuery()).query
     .where(and(isPublished(), gt(articles.publishedAt, new Date(asOfMs - LATEST_WINDOW_MS))))
     .orderBy(desc(articles.publishedAt));
   return rows.map(toSummary);
 });
 
 export const getByCategory = cache(async (categoryId: string, limit: number): Promise<ArticleSummary[]> => {
-  const rows = await summaryQuery()
+  const rows = await (await summaryQuery()).query
     .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
     .where(and(isPublished(), eq(articleCategories.categoryId, categoryId)))
     .orderBy(desc(articles.publishedAt))
@@ -171,11 +196,13 @@ export const getCategoryByPath = cache(async (path: string): Promise<CategoryRef
 
 export const getArticleByPath = cache(async (path: string): Promise<ArticleDetail | null> => {
   const db = getDb();
-  const [row] = await db
-    .select({ ...summaryColumns, authorName: articles.authorName, sourceUrl: articles.sourceUrl, body: articles.body })
+  const ready = await hasMediaPresentations(db);
+  const query = db
+    .select({ ...summaryColumns(ready), authorName: articles.authorName, sourceUrl: articles.sourceUrl, body: articles.body })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
-    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
+  const [row] = await (ready ? query.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id)) : query)
     .where(and(eq(articles.path, path), isPublished()))
     .limit(1);
   if (!row) return null;
@@ -185,9 +212,12 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
   const mediaRows = imageIds.length
     ? await db.select().from(mediaAssets).where(inArray(mediaAssets.id, imageIds))
     : [];
+  const presentations = ready && imageIds.length
+    ? await db.select().from(mediaPresentations).where(inArray(mediaPresentations.mediaAssetId, imageIds)) : [];
+  const presentationMap = new Map(presentations.map(item => [item.mediaAssetId, item]));
   const media = new Map<string, Media>();
   for (const asset of mediaRows) {
-    const resolved = toMedia(asset);
+    const resolved = toMedia({ ...asset, ...presentationMap.get(asset.id) });
     if (resolved) media.set(asset.id, resolved);
   }
 
@@ -216,7 +246,7 @@ export async function searchArticles(query: string, limit: number): Promise<Arti
     const pattern = `%${term.replace(/[\\%_]/g, "\\$&")}%`;
     return sql`(${articles.title} ilike ${pattern} or ${articles.excerpt} ilike ${pattern})`;
   });
-  const rows = await summaryQuery()
+  const rows = await (await summaryQuery()).query
     .where(and(isPublished(), ...matches))
     .orderBy(desc(articles.publishedAt))
     .limit(limit);
@@ -226,13 +256,13 @@ export async function searchArticles(query: string, limit: number): Promise<Arti
 /** Summaries for live notifications, keyed by article id. Runs outside a request, so no cache(). */
 export async function getSummariesByIds(ids: string[]): Promise<Map<string, ArticleSummary>> {
   if (!ids.length) return new Map();
-  const rows = await summaryQuery().where(and(isPublished(), inArray(articles.id, ids)));
+  const rows = await (await summaryQuery()).query.where(and(isPublished(), inArray(articles.id, ids)));
   return new Map(rows.map((row) => [row.id!, toSummary(row)]));
 }
 
 export const getRelated = cache(async (article: ArticleSummary, limit: number): Promise<ArticleSummary[]> => {
   if (!article.category) return [];
-  const rows = await summaryQuery()
+  const rows = await (await summaryQuery()).query
     .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
     .where(
       and(
