@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatCardTime, formatClock, formatShort, isRecentArticle, readingMinutes } from "./format";
+import {
+  formatCardTime,
+  formatClock,
+  formatShort,
+  formatTimelineDayHeading,
+  isRecentArticle,
+  readingMinutes,
+  timelineDayBreak,
+} from "./format";
 
 // 2026-09-24 07:40 in Sofia (UTC+3).
 const now = new Date("2026-09-24T04:40:00Z");
@@ -19,9 +27,30 @@ describe("formatShort", () => {
   });
 });
 
+describe("formatTimelineDayHeading", () => {
+  it("labels yesterday within the rolling window", () => {
+    expect(formatTimelineDayHeading(new Date("2026-09-23T19:45:00Z"), now)).toBe("Вчера");
+  });
+
+  it("labels today when the day matches", () => {
+    expect(formatTimelineDayHeading(new Date("2026-09-24T04:40:00Z"), now)).toBe("Днес");
+  });
+});
+
+describe("timelineDayBreak", () => {
+  it("detects a calendar-day change in Sofia", () => {
+    expect(timelineDayBreak(new Date("2026-09-24T04:40:00Z"), new Date("2026-09-23T19:45:00Z"))).toBe(true);
+    expect(timelineDayBreak(new Date("2026-09-24T04:40:00Z"), new Date("2026-09-24T03:00:00Z"))).toBe(false);
+  });
+});
+
 describe("formatClock", () => {
-  it("shows a numeric date for earlier days", () => {
-    expect(formatClock(new Date("2026-09-23T19:45:00Z"), now)).toBe("23.09");
+  it("shows Sofia time for articles within the last 24 hours", () => {
+    expect(formatClock(new Date("2026-09-23T19:45:00Z"), now)).toBe("22:45");
+  });
+
+  it("shows a numeric date after 24 hours", () => {
+    expect(formatClock(new Date("2026-09-23T04:39:00Z"), now)).toBe("23.09");
   });
 });
 

@@ -6,7 +6,9 @@
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
     "./node": "./src/node.ts",
-    "./orm": "./src/orm.ts"
+    "./orm": "./src/orm.ts",
+    "./polls": "./src/polls.ts",
+    "./poll-types": "./src/poll-types.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

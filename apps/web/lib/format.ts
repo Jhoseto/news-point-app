@@ -14,6 +14,16 @@ const fullFormat = new Intl.DateTimeFormat("bg-BG", {
 });
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: TIME_ZONE });
 
+function parseDayKey(key: string): Date {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(Date.UTC(year!, month! - 1, day!));
+}
+
+/** Calendar day in Europe/Sofia (`YYYY-MM-DD`). */
+export function sofiaDayKey(date: Date): string {
+  return dayKey.format(date);
+}
+
 export function formatTime(date: Date): string {
   return timeFormat.format(date);
 }
@@ -41,9 +51,26 @@ export function isRecentArticle(date: Date, now = new Date()): boolean {
 
 const numericDayFormat = new Intl.DateTimeFormat("bg-BG", { timeZone: TIME_ZONE, day: "2-digit", month: "2-digit" });
 
-/** "12:34" for today, "23.09" otherwise; fits a narrow timeline column. */
+/** Heading when the timeline crosses into an earlier calendar day (Sofia). */
+export function formatTimelineDayHeading(date: Date, now = new Date()): string {
+  const key = sofiaDayKey(date);
+  const todayKey = sofiaDayKey(now);
+  if (key === todayKey) return "Днес";
+  const dayDiff = Math.round((parseDayKey(todayKey).getTime() - parseDayKey(key).getTime()) / 86_400_000);
+  if (dayDiff === 1) return "Вчера";
+  return dayFormat.format(date);
+}
+
+export function timelineDayBreak(previous: Date | undefined, current: Date): boolean {
+  if (!previous) return false;
+  return sofiaDayKey(previous) !== sofiaDayKey(current);
+}
+
+/** "12:34" within the last 24 hours, "23.09" otherwise; fits a narrow timeline column. */
 export function formatClock(date: Date, now = new Date()): string {
-  return dayKey.format(date) === dayKey.format(now) ? timeFormat.format(date) : numericDayFormat.format(date).replace(/\.$/, "");
+  const elapsedMs = now.getTime() - date.getTime();
+  if (elapsedMs >= 0 && elapsedMs < 24 * 60 * 60 * 1000) return timeFormat.format(date);
+  return numericDayFormat.format(date).replace(/\.$/, "");
 }
 
 export function formatFull(date: Date): string {

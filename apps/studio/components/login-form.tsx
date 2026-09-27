@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { authClient } from "@/lib/auth-client";
@@ -105,6 +106,11 @@ export function LoginForm() {
           </button>
         </div>
         {capsLock ? <p className="mt-2 text-xs font-bold text-warning">Caps Lock е включен.</p> : null}
+        <p className="mt-2 text-right text-sm">
+          <Link href="/login/forgot/" className="font-semibold text-link hover:underline">
+            Забравена парола?
+          </Link>
+        </p>
       </div>
 
       {error ? (

@@ -11,6 +11,7 @@ import {
   outboxEvents,
   publishRequests,
   staffUsers,
+  type ArticleAuthorKind,
 } from "@newspoint/db";
 import { bodyToText, textToBody } from "./editor/body";
 import type { DraftInput } from "./editor/input";
@@ -41,6 +42,9 @@ export interface Draft {
   bodyText: string;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
+  authorKind: ArticleAuthorKind;
+  authorUserId: string | null;
+  authorName: string;
 }
 
 export interface EditorArticle {
@@ -86,13 +90,12 @@ export async function listArticles(limit = 40): Promise<ArticleListItem[]> {
       publishedAt: articles.publishedAt,
       updatedAt: articles.updatedAt,
       categoryName: categories.name,
-      authorName: sql<string | null>`coalesce(${staffUsers.name}, ${articles.authorName})`,
+      authorName: articles.authorName,
       publishedRevision: articles.publishedRevision,
       latestRevision,
     })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
-    .leftJoin(staffUsers, eq(staffUsers.id, articles.createdBy))
     .orderBy(desc(articles.updatedAt))
     .limit(limit);
   return rows.map(({ publishedRevision, latestRevision: latest, ...row }) => ({
@@ -136,9 +139,13 @@ function toDraft(row: {
   body: unknown;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
+  authorKind: ArticleAuthorKind;
+  authorUserId: string | null;
+  authorName: string;
 }): { draft: Draft; editableBody: boolean } {
   const parsed = articleBody.safeParse(row.body);
   const text = parsed.success ? bodyToText(parsed.data) : null;
+  const authorKind = row.authorKind === "staff" && !row.authorUserId ? "manual" : row.authorKind;
   return {
     draft: {
       title: row.title,
@@ -147,6 +154,9 @@ function toDraft(row: {
       bodyText: text ?? "",
       primaryCategoryId: row.primaryCategoryId,
       heroMediaId: row.heroMediaId,
+      authorKind,
+      authorUserId: authorKind === "staff" ? row.authorUserId : null,
+      authorName: row.authorName,
     },
     editableBody: text !== null,
   };
@@ -184,7 +194,21 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
   };
 }
 
-function revisionValues(draft: DraftInput, body: ArticleBody) {
+interface Authorship {
+  authorKind: ArticleAuthorKind;
+  authorUserId: string | null;
+  authorName: string;
+}
+
+function resolveAuthorship(staff: Staff, draft: DraftInput, preserved?: Authorship): Authorship {
+  if (draft.authorKind === "newsroom") return { authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" };
+  if (draft.authorKind === "manual") return { authorKind: "manual", authorUserId: null, authorName: draft.authorName.trim() };
+  if (draft.authorUserId === staff.id) return { authorKind: "staff", authorUserId: staff.id, authorName: staff.name };
+  if (preserved?.authorKind === "staff" && preserved.authorUserId === draft.authorUserId) return preserved;
+  throw new EditorError(422, "invalid_author", "Изберете валиден авторски профил.");
+}
+
+function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Authorship) {
   return {
     title: draft.title,
     slug: draft.slug,
@@ -192,11 +216,13 @@ function revisionValues(draft: DraftInput, body: ArticleBody) {
     body,
     primaryCategoryId: draft.primaryCategoryId,
     heroMediaId: draft.heroMediaId,
+    ...authorship,
   };
 }
 
 export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ id: string; revision: number }> {
   const body = textToBody(draft.bodyText);
+  const authorship = resolveAuthorship(staff, draft);
   return getDb().transaction(async (tx) => {
     const id = crypto.randomUUID();
     await tx.insert(articles).values({
@@ -206,14 +232,14 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       path: draftPath(id),
       title: draft.title,
       excerpt: draft.excerpt,
-      authorName: staff.name,
+      ...authorship,
       body,
       primaryCategoryId: draft.primaryCategoryId,
       heroMediaId: draft.heroMediaId,
       isPublic: false,
       createdBy: staff.id,
     });
-    await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body) });
+    await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     return { id, revision: 1 };
   });
 }
@@ -255,7 +281,8 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
     const number = current + 1;
-    await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body) });
+    const authorship = resolveAuthorship(staff, draft, latest?.revision);
+    await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
     await tx
       .update(articles)
@@ -268,6 +295,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
               body,
               primaryCategoryId: draft.primaryCategoryId,
               heroMediaId: draft.heroMediaId,
+              ...authorship,
               updatedAt: new Date(),
             },
       )
@@ -347,6 +375,9 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         excerpt: rev.excerpt,
         body,
         heroMediaId: rev.heroMediaId,
+        authorKind: rev.authorKind,
+        authorUserId: rev.authorUserId,
+        authorName: rev.authorName,
         primaryCategoryId: category.id,
         isPublic: true,
         publishedAt: article.publishedAt ?? sql`now()`,
@@ -395,7 +426,7 @@ export async function getPreview(id: string, revision?: number) {
     body: body.success ? body.data : [],
     category: category?.name ?? null,
     hero: hero ?? null,
-    authorName: article.authorName,
+    authorName: source.authorName,
     publishedAt: article.publishedAt,
     revision: rev?.number ?? null,
     isPublic: article.isPublic,

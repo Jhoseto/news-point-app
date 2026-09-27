@@ -15,6 +15,7 @@ interface UserRow {
   role: StaffRole;
   createdAt: string;
   lastActiveAt: string | null;
+  profileBio: string;
 }
 
 interface Actor {
@@ -266,6 +267,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
                     {isSelf ? <span className="ml-2 text-xs font-semibold text-faint">(вие)</span> : null}
                   </p>
                   <p className="truncate text-sm text-muted">{user.email}</p>
+                  {user.profileBio ? <p className="mt-1 line-clamp-2 text-xs text-faint">{user.profileBio}</p> : null}
                 </div>
                 <p className="hidden w-40 text-xs text-muted md:block">{user.lastActiveAt ? `Активен ${formatWhen(user.lastActiveAt)}` : "Още не е влизал"}</p>
                 {editableRole ? (

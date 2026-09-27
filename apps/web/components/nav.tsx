@@ -129,6 +129,52 @@ function RubricRow({
   );
 }
 
+/** Desktop expanded rail: «Начало» + «Свий» as one row (split control). */
+function HomeRubricBar({
+  current,
+  collapseBtn,
+  onCollapse,
+}: {
+  current: string;
+  collapseBtn: RefObject<HTMLButtonElement | null>;
+  onCollapse: () => void;
+}) {
+  const home: NavItem = { name: "Начало", path: "/", slug: "" };
+  const active = isActive(current, home.path);
+  return (
+    <div className="np-rubric-home-bar np-rubric-row flex h-11 w-full rounded-xl lg:h-[var(--np-home-bar-h)]" aria-current={active ? "page" : undefined}>
+      <Link href={home.path} title={home.name} className="np-rubric-home-link group relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5">
+        <span
+          className={`np-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full transition-[scale,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            active ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
+          }`}
+          aria-hidden="true"
+        />
+        <RubricMark slug={home.slug} />
+        <span
+          className={`min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
+            active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
+          }`}
+        >
+          {home.name}
+        </span>
+      </Link>
+      <button
+        ref={collapseBtn}
+        type="button"
+        data-rubrics-trigger
+        aria-expanded={true}
+        onClick={onCollapse}
+        aria-label="Свий менюто с рубрики"
+        title="Свий менюто"
+        className="np-rubric-home-collapse inline-flex w-11 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
+      >
+        <PanelLeftCloseIcon width={17} height={17} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
 const RUBRICS_EVENT = "np:rubrics";
 const SEARCH_EVENT = "np:search";
 const DESKTOP = "(min-width: 64rem)";
@@ -296,51 +342,40 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
     <>
       <aside
         aria-label="Рубрики"
-        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 -mt-12 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
+        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
           expanded ? "w-[16.5rem]" : "w-[4.25rem]"
         }`}
       >
-        {expanded ? (
-          <div className="np-rubrics-heading mx-4 shrink-0 pt-4 pb-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h2 className="text-[1.375rem] leading-tight font-bold tracking-tight text-ink">Рубрики</h2>
-                <p className="mt-1 text-[0.6875rem] font-medium tracking-wide text-muted">Новините по теми</p>
-              </div>
+        <nav aria-label="Рубрики" className="np-rubrics-nav flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-3 pb-3 lg:pt-0">
+          {expanded ? (
+            <div className="np-rubric-home-slot">
+              <HomeRubricBar current={current} collapseBtn={collapseBtn} onCollapse={() => setExpanded(false)} />
+            </div>
+          ) : (
+            <div className="mb-2 flex flex-col items-center gap-2 lg:min-h-[var(--np-lp-row-h)] lg:justify-center lg:pb-2">
               <button
-                ref={collapseBtn}
+                ref={expandBtn}
                 type="button"
                 data-rubrics-trigger
                 aria-expanded={expanded}
-                onClick={() => setExpanded(false)}
-                aria-label="Свий менюто"
-                title="Свий менюто"
-                className="np-rubrics-toggle mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-[0.625rem] text-muted"
+                onClick={() => {
+                  focusCollapse.current = true;
+                  setExpanded(true);
+                }}
+                aria-label="Разгъни менюто"
+                title="Разгъни менюто"
+                className="np-rubrics-toggle inline-flex size-9 items-center justify-center rounded-[0.625rem] text-muted"
               >
-                <PanelLeftCloseIcon width={17} height={17} />
+                <PanelLeftOpenIcon width={18} height={18} />
               </button>
+              <ul className="flex w-full flex-col gap-0.5">
+                <li>
+                  <RubricRow item={{ name: "Начало", path: "/", slug: "" }} current={current} compact />
+                </li>
+              </ul>
             </div>
-          </div>
-        ) : (
-          <div className="flex shrink-0 justify-center pt-3 pb-1">
-            <button
-              ref={expandBtn}
-              type="button"
-              data-rubrics-trigger
-              aria-expanded={expanded}
-              onClick={() => {
-                focusCollapse.current = true;
-                setExpanded(true);
-              }}
-              aria-label="Разгъни менюто"
-              title="Разгъни менюто"
-              className="np-rubrics-toggle inline-flex size-9 items-center justify-center rounded-[0.625rem] text-muted"
-            >
-              <PanelLeftOpenIcon width={18} height={18} />
-            </button>
-          </div>
-        )}
-        <nav aria-label="Рубрики" className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-2.5 pb-3">
+          )}
+          <div className="np-rubrics-nav-body min-h-0 flex-1">
           {groups.map((group, groupIndex) => (
             <section key={group.label} className={groupIndex > 0 ? "mt-4" : undefined}>
               {expanded ? (
@@ -357,16 +392,12 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
               </ul>
             </section>
           ))}
+          </div>
         </nav>
       </aside>
 
       <Sheet open={sheetOpen} onClose={closeSheet} label="Рубрики" side="left">
-        <div className="flex items-start justify-between gap-3 border-b border-line px-5 pt-5 pb-4">
-          <div className="min-w-0">
-            <h2 className="text-[1.375rem] leading-tight font-bold tracking-tight text-ink">Рубрики</h2>
-            <p className="mt-1 text-[0.6875rem] font-medium text-muted">Новините по теми</p>
-            <span className="np-gradient-bg mt-3 block h-[2px] w-9 rounded-full" aria-hidden="true" />
-          </div>
+        <div className="flex shrink-0 items-center justify-end border-b border-line px-3 py-2">
           <button
             type="button"
             onClick={closeSheet}
@@ -377,7 +408,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
             <CloseIcon width={22} height={22} />
           </button>
         </div>
-        <nav aria-label="Рубрики" className="flex-1 p-3">
+        <nav aria-label="Рубрики" className="flex-1 overflow-y-auto p-3 pt-4">
           <RubricLinks items={items} current={current} onNavigate={closeSheet} />
         </nav>
         <div className="flex flex-col gap-2 border-t border-line p-5">

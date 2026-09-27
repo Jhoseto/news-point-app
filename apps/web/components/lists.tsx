@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { HomeShineAllocator } from "@/lib/home-shine";
+import { timelineDayBreak } from "@/lib/format";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary, CategoryRef } from "@/lib/queries";
 import { CompactCard, TimelineItem } from "./article-card";
+import { TimelineDayBreak } from "./timeline-day-break";
 import { SectionTitle } from "./ui";
 
 /**
@@ -22,7 +25,12 @@ export function LatestList({ articles, id, compact, dense = false, fill = false,
         className={`relative flex flex-col before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"} ${fill ? "np-scroll-soft -mr-2 min-h-0 flex-1 overflow-y-auto pr-2" : ""}`}
       >
         {articles.map((article, index) => (
-          <TimelineItem key={article.id} article={article} className={compact !== undefined && index >= compact ? "hidden lg:block" : ""} />
+          <Fragment key={article.id}>
+            {timelineDayBreak(articles[index - 1]?.publishedAt, article.publishedAt) ? (
+              <TimelineDayBreak date={article.publishedAt} />
+            ) : null}
+            <TimelineItem article={article} className={compact !== undefined && index >= compact ? "hidden lg:block" : ""} />
+          </Fragment>
         ))}
       </ol>
     </section>

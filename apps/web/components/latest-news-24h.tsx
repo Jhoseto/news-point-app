@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
-import { formatCardTime, formatClock, isoDate } from "@/lib/format";
+import { formatCardTime, formatClock, isoDate, timelineDayBreak } from "@/lib/format";
+import { TimelineDayBreak } from "./timeline-day-break";
 import { inLatestWindow, nextLatestExpiryMs } from "@/lib/latest-window";
 import { ArticleImage, CategoryLabel, CategoryPill, SectionTitle } from "./ui";
 
@@ -22,7 +23,7 @@ function NewsPreview({ article, position }: { article: ArticleSummary; position:
     <>
       <span
         aria-hidden="true"
-        className="np-latest-backdrop pointer-events-none absolute inset-y-0 z-20 hidden rounded-3xl lg:block"
+        className="np-latest-backdrop pointer-events-none absolute inset-y-0 z-20 hidden lg:block"
         style={{ left: position.backdropLeft, width: position.backdropWidth }}
       />
       <span
@@ -32,10 +33,10 @@ function NewsPreview({ article, position }: { article: ArticleSummary; position:
       />
       <aside
         aria-hidden="true"
-        className="pointer-events-none absolute inset-y-0 z-30 hidden lg:block"
+        className="np-latest-preview-shell pointer-events-none absolute inset-y-0 z-30 hidden lg:block"
         style={{ left: position.left, width: position.width, ...categoryAccentStyle(article.category?.slug) }}
       >
-        <div key={article.id} className="np-latest-preview relative flex h-full flex-col overflow-hidden rounded-[1.4rem] border border-line bg-surface shadow-[0_26px_70px_-23px_rgb(10_20_84/0.42)] dark:shadow-[0_30px_80px_-25px_rgb(1_3_20/0.8)]">
+        <div key={article.id} className="np-latest-preview relative flex h-full flex-col overflow-hidden rounded-[1.4rem] border border-line bg-surface">
           <span className="np-category-accent-line absolute inset-x-6 top-0 z-10 h-0.5" />
           <div className="relative h-[42%] shrink-0 overflow-hidden">
             {article.hero ? (
@@ -159,8 +160,12 @@ export function LatestNews24h({
             setActive(null);
           }}
         >
-          {visible.map((article) => (
-            <li key={article.id} className={`group relative pl-16 pr-1 ${active?.id === article.id ? "np-latest-row-active" : ""}`} style={categoryAccentStyle(article.category?.slug)}>
+          {visible.map((article, index) => (
+            <Fragment key={article.id}>
+              {timelineDayBreak(visible[index - 1]?.publishedAt, article.publishedAt) ? (
+                <TimelineDayBreak date={article.publishedAt} />
+              ) : null}
+              <li className={`group relative pl-16 pr-1 ${active?.id === article.id ? "np-latest-row-active" : ""}`} style={categoryAccentStyle(article.category?.slug)}>
               <time dateTime={isoDate(article.publishedAt)} className="absolute top-0.5 left-0 text-xs font-bold text-muted tabular-nums">
                 {formatClock(article.publishedAt)}
               </time>
@@ -177,6 +182,7 @@ export function LatestNews24h({
                 {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
               </Link>
             </li>
+            </Fragment>
           ))}
         </ol>
       ) : (

@@ -248,7 +248,12 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
   const db = getDb();
   const ready = await hasMediaPresentations(db);
   const query = db
-    .select({ ...summaryColumns(ready), authorName: articles.authorName, sourceUrl: articles.sourceUrl, body: articles.body })
+    .select({
+      ...summaryColumns(ready),
+      authorName: articles.authorName,
+      sourceUrl: articles.sourceUrl,
+      body: articles.body,
+    })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));

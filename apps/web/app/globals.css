@@ -88,6 +88,7 @@
     --np-header-h: 9rem;
     --np-bar-h: 4rem;
     --np-rail-w: 0px;
+    --np-logo-h: 2rem;
     background: var(--np-page);
     -webkit-text-size-adjust: 100%;
   }
@@ -122,9 +123,14 @@
 
   @media (min-width: 64rem) {
     html {
-      --np-header-h: 7.75rem;
       --np-bar-h: 4.75rem;
+      --np-lp-row-h: 2.5rem;
+      --np-home-bar-h: 2.25rem;
+      --np-header-h: calc(var(--np-bar-h) + var(--np-lp-row-h));
       --np-rail-w: 16.5rem;
+      /* Logo stays sized for the expanded rail; only the list column narrows when collapsed. */
+      --np-rail-w-logo: 16.5rem;
+      --np-logo-h: 2.5rem;
     }
     html[data-rubrics-closed] {
       --np-rail-w: 4.25rem;
@@ -135,11 +141,15 @@
   html[data-np-compact] {
     --np-header-h: 8.25rem;
     --np-bar-h: 3.25rem;
+    --np-logo-h: 1.875rem;
   }
   @media (min-width: 64rem) {
     html[data-np-compact] {
-      --np-header-h: 6.25rem;
       --np-bar-h: 3.75rem;
+      --np-lp-row-h: 2.25rem;
+      --np-home-bar-h: 2rem;
+      --np-header-h: calc(var(--np-bar-h) + var(--np-lp-row-h));
+      --np-logo-h: 2.125rem;
     }
   }
 
@@ -161,6 +171,14 @@
 }
 
 @layer components {
+  .np-brand-logo {
+    filter: drop-shadow(0 1px 2px rgb(10 20 84 / 0.06)) drop-shadow(0 8px 20px rgb(56 24 214 / 0.12));
+  }
+
+  [data-theme="dark"] .np-brand-logo {
+    filter: drop-shadow(0 2px 10px rgb(0 0 0 / 0.5)) drop-shadow(0 0 22px rgb(106 60 240 / 0.18));
+  }
+
   /* Page width. Grows with large screens; article text keeps its own measure. */
   .np-container {
     width: 100%;
@@ -298,12 +316,45 @@
 
   .np-latest-preview {
     animation: np-latest-preview-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    box-shadow:
+      0 3px 8px rgb(5 11 34 / 0.24),
+      0 22px 48px -10px rgb(5 11 34 / 0.52),
+      0 52px 100px -24px rgb(10 20 84 / 0.58),
+      0 0 34px -12px color-mix(in oklab, var(--np-category-accent) 62%, transparent);
+  }
+
+  /* A dark, heavily blurred silhouette sits directly behind the flyout. Its
+     centre is covered by the card, leaving only a soft depth halo outside. */
+  .np-latest-preview-shell::before {
+    content: "";
+    position: absolute;
+    inset: 0.3rem -0.65rem -0.85rem;
+    border-radius: 1.75rem;
+    background: rgb(5 11 34 / 0.58);
+    box-shadow: 0 16px 38px color-mix(in oklab, var(--np-category-accent) 26%, transparent);
+    filter: blur(18px);
+    opacity: 0.82;
+    animation: np-latest-halo-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  [data-theme="dark"] .np-latest-preview {
+    box-shadow:
+      0 3px 10px rgb(0 0 0 / 0.88),
+      0 24px 52px -8px rgb(0 0 0 / 0.94),
+      0 54px 105px -24px rgb(0 0 0 / 0.9),
+      0 0 38px -10px color-mix(in oklab, var(--np-category-accent) 70%, transparent);
+  }
+
+  [data-theme="dark"] .np-latest-preview-shell::before {
+    background: rgb(0 0 0 / 0.82);
+    opacity: 0.92;
   }
 
   .np-latest-backdrop {
-    background: color-mix(in oklab, var(--np-surface) 48%, transparent);
-    border: 1px solid color-mix(in oklab, var(--np-surface) 55%, transparent);
-    backdrop-filter: blur(2px) saturate(0.85);
+    background: radial-gradient(ellipse at center, color-mix(in oklab, var(--np-surface) 35%, transparent), transparent 76%);
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 42%, rgb(0 0 0 / 0.72) 62%, transparent 84%);
+    mask-image: radial-gradient(ellipse at center, #000 42%, rgb(0 0 0 / 0.72) 62%, transparent 84%);
+    backdrop-filter: blur(2px) saturate(0.88);
     animation: np-latest-backdrop-in 200ms ease-out both;
   }
 
@@ -1002,6 +1053,10 @@
   }
 }
 
+@keyframes np-latest-halo-in {
+  from { opacity: 0; transform: scale(0.96); }
+}
+
 @keyframes np-latest-connector-in {
   from { opacity: 0; transform: translateY(-50%) scaleX(0); }
   to { opacity: 1; transform: translateY(-50%) scaleX(1); }
@@ -1217,18 +1272,33 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
  * The rail and masthead use the same timing so their boundary stays aligned. */
 [data-np-header] .np-masthead,
 [data-np-header] .np-lp-row,
-[data-np-header] .np-masthead img {
-  transition: height 180ms ease, max-height 180ms ease;
+[data-np-header] .np-header-logo {
+  transition:
+    height 180ms ease,
+    max-height 180ms ease;
 }
 [data-np-header][data-compact] .np-masthead { height: 3.25rem; }
 [data-np-header][data-compact] .np-lp-row { height: 5rem; }
-[data-np-header][data-compact] .np-masthead img { height: 2rem; }
-@media (max-width: 359px) {
-  [data-np-header][data-compact] .np-masthead img { height: 1.75rem; }
-}
 @media (min-width: 64rem) {
   [data-np-header][data-compact] .np-masthead { height: 3.75rem; }
-  [data-np-header][data-compact] .np-lp-row { height: 2.5rem; }
+  [data-np-header][data-compact] .np-lp-row { height: var(--np-lp-row-h); }
+}
+
+/* Header logo: sized with --np-logo-h, width capped to the rubrics rail column. */
+.np-header-logo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-height: var(--np-logo-h);
+  max-width: min(calc(var(--np-rail-w-logo, var(--np-rail-w, 100%)) - 0.75rem), 15.5rem);
+  object-fit: contain;
+  object-position: center;
+}
+
+@media (max-width: 63.999rem) {
+  .np-header-logo {
+    max-width: min(100%, 14rem);
+  }
 }
 
 .np-rubrics-rail {
@@ -1244,9 +1314,6 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
   background: linear-gradient(180deg, transparent, var(--np-line) 3rem, var(--np-line) 85%, transparent);
   pointer-events: none;
 }
-.np-rubrics-heading {
-  border-bottom: 1px solid color-mix(in oklab, var(--np-accent) 12%, var(--np-line));
-}
 .np-rubrics-group::after {
   content: "";
   height: 1px;
@@ -1256,6 +1323,111 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
 .np-rubric-row {
   border: 1px solid transparent;
   transition: background-color 160ms ease, border-color 160ms ease;
+}
+@media (min-width: 64rem) {
+  .np-lp-row {
+    height: var(--np-lp-row-h);
+  }
+
+  .np-rubrics-rail {
+    margin-top: calc(-1 * var(--np-lp-row-h));
+  }
+
+  /* «Начало» sits in the LivePoint band; list keeps normal row height below with gap. */
+  .np-rubric-home-slot {
+    display: flex;
+    min-height: var(--np-lp-row-h);
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+
+  .np-rubric-home-bar {
+    width: 100%;
+    height: var(--np-home-bar-h);
+    margin-bottom: 0;
+    border-radius: 0.5rem;
+  }
+
+  .np-rubric-home-bar .np-rubric-home-link {
+    gap: 0.5rem;
+    padding-inline: 0.5rem;
+  }
+
+  .np-rubric-home-bar .np-rubric-mark {
+    width: 1.625rem;
+    height: 1.625rem;
+    border-radius: 0.4375rem;
+  }
+
+  .np-rubric-home-bar .np-rubric-mark svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+  }
+
+  .np-rubric-home-bar .np-rubric-home-link span:last-of-type {
+    font-size: 0.8125rem;
+  }
+
+  .np-rubric-home-collapse {
+    width: var(--np-home-bar-h);
+  }
+
+  .np-rubric-home-collapse svg {
+    width: 0.9375rem;
+    height: 0.9375rem;
+  }
+
+  .np-rubrics-nav-body {
+    padding-top: 0.125rem;
+  }
+}
+
+.np-rubric-home-bar {
+  padding: 0;
+  overflow: hidden;
+}
+.np-rubric-home-link {
+  border-radius: 0.75rem 0 0 0.75rem;
+}
+.np-rubric-home-link:focus-visible {
+  outline: none;
+}
+.np-rubric-home-bar:focus-within {
+  background: color-mix(in oklab, var(--np-accent) 4%, var(--np-surface));
+  border-color: color-mix(in oklab, var(--np-accent) 10%, var(--np-line));
+}
+.np-rubric-home-bar:focus-within .np-rubric-mark {
+  color: var(--np-link);
+  background: color-mix(in oklab, var(--np-accent) 9%, var(--np-surface));
+}
+.np-rubric-home-bar[aria-current="page"] .np-rubric-mark {
+  color: var(--np-link);
+  background: color-mix(in oklab, var(--np-accent) 9%, var(--np-surface));
+}
+.np-rubric-home-collapse {
+  border: 0;
+  border-left: 1px solid color-mix(in oklab, var(--np-line) 85%, transparent);
+  border-radius: 0 0.75rem 0.75rem 0;
+  background: transparent;
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+.np-rubric-home-bar:hover .np-rubric-home-collapse,
+.np-rubric-home-bar:focus-within .np-rubric-home-collapse {
+  color: var(--np-link);
+  background: color-mix(in oklab, var(--np-accent) 6%, transparent);
+  border-left-color: color-mix(in oklab, var(--np-accent) 18%, var(--np-line));
+}
+.np-rubric-home-collapse:hover {
+  color: var(--np-link);
+  background: color-mix(in oklab, var(--np-accent) 10%, var(--np-surface));
+}
+.np-rubric-home-collapse:focus-visible {
+  outline: 2px solid var(--np-link);
+  outline-offset: -2px;
+}
+.np-rubric-home-bar[aria-current="page"] .np-rubric-home-collapse {
+  border-left-color: color-mix(in oklab, var(--np-accent) 22%, var(--np-line));
 }
 .np-rubric-mark {
   background: color-mix(in oklab, var(--np-surface-2) 65%, var(--np-surface));

@@ -2,7 +2,7 @@ import "server-only";
 import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { asc, eq, sql } from "@newspoint/db/orm";
-import { getDb, staffAccounts, staffSessions, staffUsers, type StaffRole } from "@newspoint/db";
+import { authorProfiles, getDb, staffAccounts, staffSessions, staffUsers, type StaffRole } from "@newspoint/db";
 import { EditorError } from "./articles";
 import { assignableRoles, canChangeRole, canDeleteAccount, canManageAccounts, canManageRoles } from "./editor/roles";
 import { PASSWORD_MAX, passwordProblems } from "./password-policy";
@@ -15,6 +15,7 @@ export interface StaffListItem {
   role: StaffRole;
   createdAt: Date;
   lastActiveAt: Date | null;
+  profileBio: string;
 }
 
 const assignable = z.enum(["editor", "admin"]);
@@ -39,8 +40,10 @@ export async function listStaff(): Promise<StaffListItem[]> {
       lastActiveAt: sql<Date | null>`(select max(s.updated_at) from ${staffSessions} s where s.user_id = ${staffUsers.id})`.mapWith(
         (value: string | null) => (value ? new Date(value) : null),
       ),
+      profileBio: sql<string>`coalesce(${authorProfiles.bio}, '')`,
     })
     .from(staffUsers)
+    .leftJoin(authorProfiles, eq(authorProfiles.staffUserId, staffUsers.id))
     .orderBy(asc(staffUsers.name));
 }
 

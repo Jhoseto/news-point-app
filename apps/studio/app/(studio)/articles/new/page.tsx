@@ -11,6 +11,7 @@ export default async function NewArticlePage() {
   const [sections, media] = await Promise.all([listSections(), listRecentMedia()]);
   return (
     <ArticleEditor
+      staff={{ id: staff.id, name: staff.name }}
       article={{
         id: null,
         sourceSystem: "studio",
@@ -25,7 +26,17 @@ export default async function NewArticlePage() {
         editableBody: true,
         canEdit: true,
       }}
-      draft={{ title: "", slug: "", excerpt: "", bodyText: "", primaryCategoryId: null, heroMediaId: null }}
+      draft={{
+        title: "",
+        slug: "",
+        excerpt: "",
+        bodyText: "",
+        primaryCategoryId: null,
+        heroMediaId: null,
+        authorKind: "staff",
+        authorUserId: staff.id,
+        authorName: staff.name,
+      }}
       sections={sections}
       media={media}
       webUrl={process.env.WEB_URL ?? "http://localhost:3000"}

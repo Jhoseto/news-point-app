@@ -5,7 +5,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } f
 import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/articles";
 import { callApi } from "@/lib/client-api";
 import { textToBody, wordCount } from "@/lib/editor/body";
-import { EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
+import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
 import { slugify } from "@/lib/editor/slug";
 import { formatWhen } from "@/lib/format";
 import { withBase } from "@/lib/paths";
@@ -13,6 +13,7 @@ import { ArticlePreview, type PreviewTheme } from "./article-preview";
 import { MediaPicker } from "./media-picker";
 
 export interface EditorProps {
+  staff: { id: string; name: string };
   article: {
     id: string | null;
     sourceSystem: "wordpress" | "studio";
@@ -56,7 +57,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
   );
 }
 
-export function ArticleEditor({ article, draft: initialDraft, sections, media, webUrl }: EditorProps) {
+export function ArticleEditor({ article, draft: initialDraft, staff, sections, media, webUrl }: EditorProps) {
   const [articleId, setArticleId] = useState(article.id);
   const idRef = useRef(article.id);
   const [draft, setDraft] = useState(initialDraft);
@@ -90,6 +91,16 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
       const next = { ...current, [key]: value };
       if (key === "title" && !slugTouched && !published.isPublic) next.slug = slugify(String(value));
       return next;
+    });
+    setProblems([]);
+    if (notice?.tone === "success") setNotice(null);
+  };
+
+  const selectAuthor = (authorKind: Draft["authorKind"]) => {
+    setDraft((current) => {
+      if (authorKind === "staff") return { ...current, authorKind, authorUserId: staff.id, authorName: staff.name };
+      if (authorKind === "newsroom") return { ...current, authorKind, authorUserId: null, authorName: "NewsPoint.bg" };
+      return { ...current, authorKind, authorUserId: null, authorName: current.authorKind === "manual" ? current.authorName : "" };
     });
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);
@@ -208,7 +219,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
   return (
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
       <div className="sticky top-14 z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2 sm:px-5">
           <Link href="/" className="text-sm font-bold text-muted hover:text-ink">
             ← Материали
           </Link>
@@ -239,11 +250,11 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
           {hasUnpublished ? <span className="hidden text-xs font-bold text-warning xl:inline">Има промени, които не са на сайта</span> : null}
 
           {!readOnly ? (
-            <div className="ml-auto flex items-center gap-2">
-              <button type="button" disabled={busy || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary">
+            <div className="ml-auto flex items-center gap-1.5">
+              <button type="button" disabled={busy || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
                 {phase === "saving" ? "Записване…" : "Запиши"}
               </button>
-              <button type="button" disabled={busy || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-5">
+              <button type="button" disabled={busy || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
                 {phase === "publishing" ? "Публикуване…" : published.isPublic ? "Обнови публикацията" : "Публикувай"}
               </button>
             </div>
@@ -273,7 +284,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
       </div>
 
       <div className="grid flex-1 lg:grid-cols-2">
-        <div className={`min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:block lg:py-8 xl:px-10 ${mobileTab === "edit" ? "" : "hidden"}`}>
+        <div className={`min-w-0 space-y-3 px-3 py-4 sm:px-5 lg:block lg:py-5 xl:px-7 ${mobileTab === "edit" ? "" : "hidden"}`}>
           {readOnly ? (
             <p className="rounded-2xl border border-line bg-surface-2 px-5 py-3.5 text-sm font-semibold text-body">
               Статията е импортирана от WordPress и засега е само за преглед. Редакцията на архива идва с новия редактор.
@@ -332,7 +343,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
             </div>
           ) : null}
 
-          <div className="np-card p-5 sm:p-6">
+          <div className="np-card p-4">
             <label htmlFor="title" className="np-label">
               Заглавие
             </label>
@@ -344,9 +355,9 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
               disabled={readOnly}
               onChange={(event) => update("title", event.target.value.replace(/\n/g, " "))}
               placeholder="Заглавие на материала"
-              className="w-full resize-none bg-transparent text-2xl leading-tight font-extrabold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint sm:text-[1.75rem]"
+              className="w-full resize-none bg-transparent text-xl leading-tight font-extrabold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint sm:text-[1.4rem]"
             />
-            <div className="mt-3 flex flex-wrap items-center gap-1 border-t border-line pt-3 text-sm text-muted">
+            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-line pt-2 text-xs text-muted">
               <span className="font-semibold">Адрес:</span>
               <span className="text-faint">newspoint.bg/</span>
               <input
@@ -364,8 +375,8 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
             </div>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <div className="np-card p-5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="np-card p-4">
               <label htmlFor="category" className="np-label">
                 Рубрика
               </label>
@@ -385,11 +396,11 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
               </select>
             </div>
 
-            <div className="np-card flex items-center gap-4 p-5">
+            <div className="np-card flex items-center gap-3 p-4">
               {hero ? (
-                <img src={hero.url} alt={hero.alt} className="aspect-[4/3] w-24 shrink-0 rounded-xl bg-surface-2 object-cover" />
+                <img src={hero.url} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
               ) : (
-                <div className="flex aspect-[4/3] w-24 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-line text-[0.6875rem] font-bold text-faint">
+                <div className="flex aspect-[4/3] w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-[0.625rem] font-bold text-faint">
                   Няма
                 </div>
               )}
@@ -413,7 +424,50 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
             </div>
           </div>
 
-          <div className="np-card p-5 sm:p-6">
+          <fieldset className="np-card p-4" disabled={readOnly}>
+            <legend className="np-label px-1">Публичен автор</legend>
+            <div className="grid gap-1.5 sm:grid-cols-3">
+              {([
+                ["staff", draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`],
+                ["newsroom", "NewsPoint.bg"],
+                ["manual", "Друг автор"],
+              ] as const).map(([kind, label]) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={draft.authorKind === kind}
+                  onClick={() => selectAuthor(kind)}
+                  className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-left text-xs font-bold text-body transition hover:border-accent/50 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent/5 aria-pressed:text-accent disabled:cursor-default"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-current">
+                      {draft.authorKind === kind ? <span className="size-1.5 rounded-full bg-current" /> : null}
+                    </span>
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {draft.authorKind === "manual" ? (
+              <div className="mt-3 grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                <div>
+                <label htmlFor="manual-author" className="np-label">Име на автора</label>
+                <input
+                  id="manual-author"
+                  value={draft.authorName}
+                  maxLength={AUTHOR_NAME_MAX}
+                  onChange={(event) => update("authorName", event.target.value)}
+                  placeholder="Име и фамилия"
+                  className="np-input"
+                  autoComplete="off"
+                />
+                </div>
+                <p className="pb-2.5 text-xs text-faint">Текстов подпис без авторски профил.</p>
+              </div>
+            ) : null}
+          </fieldset>
+
+          <div className="np-card p-4">
             <label htmlFor="excerpt" className="np-label">
               Кратко резюме
             </label>
@@ -428,7 +482,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
               className="np-input resize-none [field-sizing:content]"
             />
 
-            <div className="mt-6 flex items-end justify-between gap-3">
+            <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-4">
               <label htmlFor="body" className="np-label mb-0">
                 Текст
               </label>
@@ -441,7 +495,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
               disabled={readOnly}
               onChange={(event) => update("bodyText", event.target.value)}
               placeholder={"Пишете тук. Празен ред започва нов абзац.\n\n## Подзаглавие\n\n> Цитат"}
-              className="mt-2 min-h-[24rem] w-full resize-y rounded-xl border border-line bg-surface px-4 py-3.5 text-[1.0625rem] leading-[1.75] text-body outline-none [field-sizing:content] placeholder:text-faint focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:bg-surface-2"
+              className="mt-2 min-h-[17rem] w-full resize-y rounded-lg border border-line bg-surface px-3.5 py-3 text-base leading-[1.65] text-body outline-none [field-sizing:content] placeholder:text-faint focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:bg-surface-2"
             />
             <p className="mt-2 text-xs text-faint">Празен ред = нов абзац · „## “ = подзаглавие · „&gt; “ = цитат · Ctrl+S записва</p>
           </div>
@@ -451,7 +505,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
           aria-label="Как ще изглежда на сайта"
           className={`min-w-0 flex-col border-line bg-surface-2/70 lg:sticky lg:top-[3.75rem] lg:flex lg:h-[calc(100dvh-3.75rem)] lg:border-l ${mobileTab === "preview" ? "flex" : "hidden"}`}
         >
-          <div className="flex flex-wrap items-center gap-2 border-b border-line bg-surface/80 px-4 py-2.5 sm:px-6">
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surface/80 px-4 py-2 sm:px-5">
             <span className="mr-auto inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-ink uppercase">
               <span className="relative flex size-2">
                 <span className="absolute inset-0 animate-ping rounded-full bg-success/60" aria-hidden="true" />
@@ -488,7 +542,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4">
             {device === "desktop" ? (
               <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
                 <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
@@ -501,7 +555,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
                 </div>
                 <ArticlePreview
                   theme={theme}
-                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: article.authorName, publishedAt: published.at }}
+                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: previewSource.authorName, publishedAt: published.at }}
                 />
               </div>
             ) : (
@@ -512,7 +566,7 @@ export function ArticleEditor({ article, draft: initialDraft, sections, media, w
                 <div className="max-h-[760px] overflow-y-auto rounded-[2rem]">
                   <ArticlePreview
                     theme={theme}
-                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: article.authorName, publishedAt: published.at }}
+                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: previewSource.authorName, publishedAt: published.at }}
                   />
                 </div>
               </div>

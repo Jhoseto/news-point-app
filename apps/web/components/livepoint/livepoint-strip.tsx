@@ -42,16 +42,18 @@ export function LivePointStrip() {
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
 
   return (
-    <div className="np-lp-row flex h-20 items-center lg:h-12 lg:pl-[var(--np-rail-w)]">
-      <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-0.5 lg:px-8 3xl:px-12">
-        <span className="inline-flex h-7 shrink-0 items-center gap-2 text-[0.75rem] font-extrabold tracking-tight text-ink lg:mr-1 lg:h-auto lg:py-1 lg:pr-2 lg:text-[0.8125rem]">
-          <span className="np-lp-heart" aria-hidden="true">
-            <span className="np-ring !size-4" />
+    <div className="np-lp-row flex h-20 items-center lg:pl-[var(--np-rail-w)]">
+      <div className="np-lp-strip flex h-full w-full min-w-0 flex-col px-4 lg:flex-row lg:items-center lg:gap-1 lg:pl-3 lg:pr-8 3xl:pl-4 3xl:pr-12">
+        <div className="np-lp-brand flex shrink-0 items-center lg:h-full">
+          <span className="hidden h-4 w-px shrink-0 bg-line lg:block" aria-hidden="true" />
+          <span className="inline-flex h-7 items-center gap-2 px-3 text-[0.75rem] font-extrabold tracking-tight text-ink lg:h-full lg:px-4 lg:py-0 lg:text-[0.8125rem]">
+            <span className="np-lp-heart" aria-hidden="true">
+              <span className="np-ring !size-4" />
+            </span>
+            <span className="np-lp-word">LivePoint</span>
           </span>
-          <span className="np-lp-word">LivePoint</span>
-        </span>
-
-        <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
+          <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
+        </div>
 
         <div className="grid h-[3.125rem] w-full grid-cols-5 gap-0.5 lg:flex lg:h-full lg:w-auto lg:shrink-0">
           <StripItem module="weather" icon={<CloudSunIcon width={17} height={17} />}>

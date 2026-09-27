@@ -74,6 +74,18 @@ export const staffUsers = pgTable("staff_users", {
   ...timestamps,
 });
 
+/** Public presentation data only; authentication fields stay in staff_users. */
+export const authorProfiles = pgTable("author_profiles", {
+  staffUserId: text("staff_user_id")
+    .primaryKey()
+    .references(() => staffUsers.id, { onDelete: "cascade" }),
+  slug: text("slug").notNull().unique(),
+  bio: text("bio").notNull().default(""),
+  avatarMediaId: uuid("avatar_media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+  isPublic: boolean("is_public").notNull().default(false),
+  ...timestamps,
+});
+
 export const staffSessions = pgTable(
   "staff_sessions",
   {
@@ -123,6 +135,9 @@ export const staffVerifications = pgTable(
   (table) => [index("staff_verifications_identifier_idx").on(table.identifier)],
 );
 
+export const articleAuthorKinds = ["staff", "newsroom", "manual"] as const;
+export type ArticleAuthorKind = (typeof articleAuthorKinds)[number];
+
 export const articles = pgTable(
   "articles",
   {
@@ -135,6 +150,8 @@ export const articles = pgTable(
     title: text("title").notNull(),
     excerpt: text("excerpt").notNull().default(""),
     authorName: text("author_name").notNull().default("NewsPoint.bg"),
+    authorKind: text("author_kind", { enum: articleAuthorKinds }).notNull().default("newsroom"),
+    authorUserId: text("author_user_id").references(() => staffUsers.id, { onDelete: "set null" }),
     heroMediaId: uuid("hero_media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
     primaryCategoryId: uuid("primary_category_id").references(() => categories.id, { onDelete: "set null" }),
     body: jsonb("body").notNull().default(sql`'[]'::jsonb`),
@@ -211,6 +228,9 @@ export const articleRevisions = pgTable(
     body: jsonb("body").notNull(),
     primaryCategoryId: uuid("primary_category_id").references(() => categories.id, { onDelete: "set null" }),
     heroMediaId: uuid("hero_media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+    authorKind: text("author_kind", { enum: articleAuthorKinds }).notNull().default("newsroom"),
+    authorUserId: text("author_user_id").references(() => staffUsers.id, { onDelete: "set null" }),
+    authorName: text("author_name").notNull().default("NewsPoint.bg"),
     createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -251,11 +271,34 @@ export const livepointSubmissions = pgTable(
   (table) => [index("livepoint_submissions_kind_status_idx").on(table.kind, table.status, table.createdAt.desc())],
 );
 
+export const polls = pgTable("polls", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  question: text("question").notNull(), description: text("description").notNull().default(""),
+  options: jsonb("options").$type<{id:string;label:string}[]>().notNull(),
+  status: text("status").notNull().default("draft"), featured: boolean("featured").notNull().default(false),
+  startsAt: timestamp("starts_at",{withTimezone:true}), endsAt: timestamp("ends_at",{withTimezone:true}),
+  adjustments: jsonb("adjustments").$type<Record<string,number>>().notNull().default({}),
+  version: integer("version").notNull().default(1), createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+});
+export const pollVotes = pgTable("poll_votes", {
+  id: bigint("id",{mode:"number"}).primaryKey().generatedAlwaysAsIdentity(),
+  pollId: uuid("poll_id").notNull().references(()=>polls.id), optionId: uuid("option_id").notNull(),
+  visitorHash: text("visitor_hash").notNull(), ipHash: text("ip_hash").notNull(),
+  createdAt: timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[unique().on(t.pollId,t.visitorHash),index("poll_votes_ip").on(t.pollId,t.ipHash),index("poll_votes_option").on(t.pollId,t.optionId)]);
+export const pollRevisions = pgTable("poll_revisions", {
+  id: bigint("id",{mode:"number"}).primaryKey().generatedAlwaysAsIdentity(),pollId: uuid("poll_id").notNull().references(()=>polls.id),
+  actorId: text("actor_id").notNull(),actorName: text("actor_name").notNull(),reason:text("reason").notNull(),
+  snapshot:jsonb("snapshot").notNull(),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+});
+
 export const schemaTables = {
+  polls, pollVotes, pollRevisions,
   categories,
   mediaAssets,
   mediaPresentations,
   staffUsers,
+  authorProfiles,
   staffSessions,
   staffAccounts,
   staffVerifications,

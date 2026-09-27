@@ -6,15 +6,38 @@ import { SLUG_MAX, SLUG_PATTERN } from "./slug";
 export const TITLE_MAX = 200;
 export const EXCERPT_MAX = 400;
 export const BODY_TEXT_MAX = 100_000;
+export const AUTHOR_NAME_MAX = 120;
 
-export const draftInput = z.strictObject({
-  title: z.string().trim().max(TITLE_MAX),
-  slug: z.string().trim().max(SLUG_MAX).refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
-  excerpt: z.string().trim().max(EXCERPT_MAX),
-  bodyText: z.string().max(BODY_TEXT_MAX),
-  primaryCategoryId: z.uuid().nullable(),
-  heroMediaId: z.uuid().nullable(),
-});
+const authorName = z
+  .string()
+  .trim()
+  .min(2, "Въведете име на автора")
+  .max(AUTHOR_NAME_MAX, `Името е до ${AUTHOR_NAME_MAX} знака`)
+  .refine((value) => !/[<>\u0000-\u001f\u007f]/u.test(value), "Името съдържа непозволени знаци");
+
+export const draftInput = z
+  .strictObject({
+    title: z.string().trim().max(TITLE_MAX),
+    slug: z.string().trim().max(SLUG_MAX).refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
+    excerpt: z.string().trim().max(EXCERPT_MAX),
+    bodyText: z.string().max(BODY_TEXT_MAX),
+    primaryCategoryId: z.uuid().nullable(),
+    heroMediaId: z.uuid().nullable(),
+    authorKind: z.enum(["staff", "newsroom", "manual"]),
+    authorUserId: z.string().min(1).nullable(),
+    authorName,
+  })
+  .superRefine((draft, context) => {
+    if (draft.authorKind === "staff" && !draft.authorUserId) {
+      context.addIssue({ code: "custom", path: ["authorUserId"], message: "Липсва авторски профил" });
+    }
+    if (draft.authorKind !== "staff" && draft.authorUserId !== null) {
+      context.addIssue({ code: "custom", path: ["authorUserId"], message: "Този подпис не използва профил" });
+    }
+    if (draft.authorKind === "newsroom" && draft.authorName !== "NewsPoint.bg") {
+      context.addIssue({ code: "custom", path: ["authorName"], message: "Редакционният подпис е NewsPoint.bg" });
+    }
+  });
 export type DraftInput = z.infer<typeof draftInput>;
 
 export const saveRequest = z.strictObject({
@@ -34,6 +57,8 @@ export function publishProblems(draft: {
   bodyBlocks: number;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
+  authorKind: "staff" | "newsroom" | "manual";
+  authorName: string;
 }): string[] {
   const problems: string[] = [];
   if (draft.title.trim().length < 5) problems.push("Заглавието е твърде кратко.");
@@ -41,5 +66,6 @@ export function publishProblems(draft: {
   if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
   if (!draft.primaryCategoryId) problems.push("Изберете рубрика.");
   if (!draft.heroMediaId) problems.push("Изберете основна снимка.");
+  if (draft.authorKind === "manual" && !authorName.safeParse(draft.authorName).success) problems.push("Въведете валидно име на автора.");
   return problems;
 }

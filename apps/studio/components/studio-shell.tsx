@@ -9,6 +9,8 @@ import { withBase } from "@/lib/paths";
 const NAV = [
   { href: "/", label: "Материали", icon: "M4 6h16M4 12h16M4 18h10" },
   { href: "/articles/new", label: "Нов материал", icon: "M12 5v14M5 12h14" },
+  { href: "/polls", label: "Анкети", icon: "M5 20V10M12 20V4M19 20v-7" },
+  { href: "/profile", label: "Моят профил", icon: "M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 
@@ -46,7 +48,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
     <div className="min-h-dvh lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-shell text-white/80 lg:flex">
         <div className="flex h-[4.5rem] items-center gap-3 border-b border-white/8 px-5">
-          <img src={withBase("/brand/newspoint-logo-dark.webp")} alt="NewsPoint.bg" width={140} height={40} className="h-9 w-auto" />
+          <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={980} height={312} className="h-9 w-auto max-w-[9rem] object-contain object-left" />
           <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-[0.15em] text-white uppercase">Studio</span>
         </div>
         <nav className="flex-1 space-y-1 p-3" aria-label="Studio">
@@ -87,20 +89,24 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       </aside>
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
-        <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={110} height={30} className="h-7 w-auto" />
+        <img src={withBase("/brand/newspoint-logo.webp")} alt="NewsPoint.bg" width={980} height={312} className="h-7 w-auto max-w-[7rem] object-contain" />
         <nav className="ml-auto flex items-center gap-1" aria-label="Studio">
           {nav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
-              className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"
+              aria-label={item.label}
+              title={item.label}
+              className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
             >
-              {item.label}
+              <Icon d={item.icon} />
+              <span className="sr-only sm:not-sr-only">{item.label}</span>
             </Link>
           ))}
-          <button type="button" onClick={signOut} className="rounded-lg px-2.5 py-1.5 text-sm font-bold text-muted">
-            Изход
+          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:px-2.5 sm:py-1.5">
+            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" /></svg>
+            <span className="sr-only sm:not-sr-only sm:ml-1.5">Изход</span>
           </button>
         </nav>
       </header>

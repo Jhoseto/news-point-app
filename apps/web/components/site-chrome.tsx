@@ -9,22 +9,26 @@ import { ThemeToggle } from "./theme";
 import { SettingsModal } from "./settings-modal";
 
 /**
- * Desktop bar: logo on the left, search in the exact centre of the viewport
- * (equal side columns), date/time and the theme switch on the right.
+ * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
+ * The logo sits in an overlay aligned to the expanded rubrics column (--np-rail-w-logo), not in the grid.
  * The LivePoint utility line is the second row (DEC-119).
  */
 export function SiteHeader() {
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
-      <div className="np-masthead flex h-16 items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-8 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)] 3xl:px-12">
-        <div className="flex min-w-0 items-center gap-1">
+      <div className="np-masthead relative flex h-16 items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
+        <div className="flex min-w-0 items-center gap-1 lg:hidden">
           <RubricsButton />
-          <Logo className="h-7 min-[360px]:h-9 sm:h-10 lg:h-12 3xl:h-[3.25rem]" />
+          <Logo variant="header" />
         </div>
-        <div className="hidden lg:block">
+
+        <div className="hidden min-w-0 lg:block" aria-hidden="true" />
+
+        <div className="hidden min-w-0 lg:block">
           <SiteSearch />
         </div>
-        <div className="ml-auto flex items-center justify-end gap-1 sm:gap-2 lg:ml-0 lg:min-w-0 xl:gap-5">
+
+        <div className="ml-auto flex items-center justify-end gap-1 pr-0 sm:gap-2 sm:pr-4 lg:ml-0 lg:min-w-0 lg:pr-8 xl:gap-5 3xl:pr-12">
           <div className="hidden lg:block">
             <HeaderClock />
           </div>
@@ -33,6 +37,12 @@ export function SiteHeader() {
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle />
             <SettingsModal />
+          </div>
+        </div>
+
+        <div className="np-masthead-rail-logo pointer-events-none absolute inset-y-0 left-0 z-10 hidden items-center justify-center lg:flex lg:w-[var(--np-rail-w-logo)]">
+          <div className="pointer-events-auto flex max-w-full justify-center px-1">
+            <Logo variant="header" />
           </div>
         </div>
       </div>
@@ -77,7 +87,15 @@ export function PlovdivBanner() {
       <div className="pointer-events-none absolute -top-10 -right-6 size-36 rounded-full bg-[#7c3aed]/80" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-8 -bottom-12 size-40 rounded-full bg-[#c026d3]/70" aria-hidden="true" />
       <div className="relative flex h-full items-center gap-8 px-8 py-6">
-        <img src="/brand/newspoint-logo-dark.webp" alt="NewsPoint.bg" width={1261} height={343} className="h-14 w-auto shrink-0" />
+        <img
+          src="/brand/newspoint-logo.webp"
+          srcSet="/brand/newspoint-logo-512w.webp 512w, /brand/newspoint-logo.webp 980w"
+          sizes="280px"
+          alt="NewsPoint.bg — гласът на истината"
+          width={980}
+          height={312}
+          className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo"
+        />
         <p className="max-w-xs text-2xl leading-tight font-extrabold tracking-tight text-white">
           Защото истината има значение!
         </p>

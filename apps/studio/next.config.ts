@@ -7,9 +7,14 @@ loadEnvConfig(repoRoot);
 
 const studioDevOrigin = (process.env.STUDIO_URL ?? "http://localhost:3001").replace(/\/+$/, "");
 
+const studioPublicUrl = (process.env.STUDIO_PUBLIC_URL ?? "http://localhost:3000/admin").replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
+  env: {
+    NEXT_PUBLIC_STUDIO_PUBLIC_URL: studioPublicUrl,
+  },
   // Reached through the public host at /admin (apps/web rewrites); slashes match the web app.
   basePath: "/admin",
   trailingSlash: true,

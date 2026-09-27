@@ -82,7 +82,17 @@ describe("text body", () => {
 });
 
 describe("draft input", () => {
-  const draft = { title: "Заглавие", slug: "zaglavie", excerpt: "", bodyText: "Текст", primaryCategoryId: null, heroMediaId: null };
+  const draft = {
+    title: "Заглавие",
+    slug: "zaglavie",
+    excerpt: "",
+    bodyText: "Текст",
+    primaryCategoryId: null,
+    heroMediaId: null,
+    authorKind: "staff" as const,
+    authorUserId: "staff-1",
+    authorName: "Иван Иванов",
+  };
 
   it("accepts an empty slug for a new draft and rejects a bad one", () => {
     expect(draftInput.safeParse({ ...draft, slug: "" }).success).toBe(true);
@@ -90,8 +100,18 @@ describe("draft input", () => {
     expect(draftInput.safeParse({ ...draft, extra: 1 }).success).toBe(false);
   });
 
+  it("validates the three author modes without accepting markup or mismatched profile data", () => {
+    expect(draftInput.safeParse({ ...draft, authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, authorKind: "manual", authorUserId: null, authorName: "Мария Петрова" }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, authorKind: "manual", authorUserId: null, authorName: "<script>" }).success).toBe(false);
+    expect(draftInput.safeParse({ ...draft, authorKind: "staff", authorUserId: null }).success).toBe(false);
+    expect(draftInput.safeParse({ ...draft, authorKind: "newsroom", authorUserId: "staff-1", authorName: "NewsPoint.bg" }).success).toBe(false);
+  });
+
   it("lists what blocks publication", () => {
-    expect(publishProblems({ title: "Заг", slug: "", bodyBlocks: 0, primaryCategoryId: null, heroMediaId: null })).toHaveLength(5);
+    expect(
+      publishProblems({ title: "Заг", slug: "", bodyBlocks: 0, primaryCategoryId: null, heroMediaId: null, authorKind: "manual", authorName: "" }),
+    ).toHaveLength(6);
     expect(
       publishProblems({
         title: "Нормално заглавие",
@@ -99,6 +119,8 @@ describe("draft input", () => {
         bodyBlocks: 2,
         primaryCategoryId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a10",
         heroMediaId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a11",
+        authorKind: "newsroom",
+        authorName: "NewsPoint.bg",
       }),
     ).toEqual([]);
   });

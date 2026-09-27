@@ -24,7 +24,7 @@ export const getStaff = cache(async (): Promise<Staff | null> => sessionFrom(awa
 
 export async function requireStaff(): Promise<Staff> {
   const staff = await getStaff();
-  if (!staff) redirect("/login");
+  if (!staff) redirect("/login/");
   return staff;
 }
 

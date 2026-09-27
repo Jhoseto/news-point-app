@@ -1,5 +1,8 @@
 import { ArticleCard, CompactCard, FeatureCard, HeroCard } from "@/components/article-card";
 import { HomeShineRoot } from "@/components/home-shine-root";
+import { Fragment } from "react";
+import { HomePoll } from "@/components/home-poll";
+import { featuredPoll } from "@newspoint/db/polls";
 import { LeadingCarousel } from "@/components/leading-carousel";
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
@@ -103,11 +106,12 @@ function CategorySection({
 
 export default async function HomePage() {
   const asOfMs = Date.now();
-  const [latest, latest24h, featured, menu] = await Promise.all([
+  const [latest, latest24h, featured, menu, poll] = await Promise.all([
     getLatest(50),
     getLatest24Hours(asOfMs),
     getLabelled(LEADING_LABEL, 13),
     getMenuCategories(),
+    featuredPoll().catch(error => { console.error("[polls] homepage unavailable", error instanceof Error ? error.message : "unknown"); return null; }),
   ]);
   const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
   const menuIds = new Set(menu.map((category) => category.id));
@@ -230,7 +234,10 @@ export default async function HomePage() {
         </div>
 
         {wideMain.map((section) => (
-          <CategorySection key={section.category.id} {...section} shine={shine} />
+          <Fragment key={section.category.id}>
+            {section.category.slug === "balgariya" && poll ? <HomePoll initial={poll} /> : null}
+            <CategorySection {...section} shine={shine} />
+          </Fragment>
         ))}
 
         <BrandBanner />
