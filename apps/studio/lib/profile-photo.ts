@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "@newspoint/db/orm";
 import { getDb, staffUsers } from "@newspoint/db";
 import type { Staff } from "./session";
+import { mediaRoot, readMediaFile, removeMediaFile, writeMediaFile } from "./media-disk";
 import { prepareProfilePhoto } from "./profile-photo-processing";
 
 export const PROFILE_PHOTO_BUCKET = "studio-profile-images";
@@ -31,12 +32,30 @@ async function privateBucket() {
 
 async function removeObject(path: string | null) {
   if (!path) return;
+  if (mediaRoot() && path.startsWith("users/profiles/")) {
+    await removeMediaFile(path);
+    return;
+  }
   const config = storage();
   await fetch(`${config.base}/object/${PROFILE_PHOTO_BUCKET}`, { method: "DELETE", headers: { ...config.headers, "content-type": "application/json" }, body: JSON.stringify({ prefixes: [path] }), cache: "no-store", signal: AbortSignal.timeout(15_000) });
 }
 
 export async function uploadProfilePhoto(staff: Staff, file: File) {
   const buffer = await prepareProfilePhoto(file);
+  if (mediaRoot()) {
+    const path = `users/profiles/${staff.id}/${randomUUID()}.webp`;
+    await writeMediaFile(path, buffer);
+    const db = getDb();
+    const [current] = await db.select({ image: staffUsers.image }).from(staffUsers).where(eq(staffUsers.id, staff.id)).limit(1);
+    try {
+      await db.update(staffUsers).set({ image: path, updatedAt: new Date() }).where(eq(staffUsers.id, staff.id));
+    } catch (error) {
+      await removeObject(path);
+      throw error;
+    }
+    if (current?.image && current.image !== path) void removeObject(current.image).catch(() => undefined);
+    return { bytes: buffer.length };
+  }
   const config = await privateBucket();
   const path = `${staff.id}/${randomUUID()}.webp`;
   const response = await fetch(`${config.base}/object/${PROFILE_PHOTO_BUCKET}/${path}`, {
@@ -58,6 +77,11 @@ export async function uploadProfilePhoto(staff: Staff, file: File) {
 export async function readProfilePhoto(staffId: string): Promise<Response | null> {
   const [user] = await getDb().select({ image: staffUsers.image }).from(staffUsers).where(eq(staffUsers.id, staffId)).limit(1);
   if (!user?.image) return null;
+  if (mediaRoot() && user.image.startsWith("users/profiles/")) {
+    const bytes = await readMediaFile(user.image);
+    if (!bytes) return null;
+    return new Response(new Uint8Array(bytes), { headers: { "content-type": "image/webp", "cache-control": "private, no-store", "x-content-type-options": "nosniff" } });
+  }
   const config = await privateBucket();
   const response = await fetch(`${config.base}/object/authenticated/${PROFILE_PHOTO_BUCKET}/${user.image}`, { headers: config.headers, cache: "no-store", signal: AbortSignal.timeout(15_000) });
   if (!response.ok) return null;

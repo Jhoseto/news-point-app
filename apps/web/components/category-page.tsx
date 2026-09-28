@@ -1,17 +1,18 @@
 import Link from "next/link";
-import { getCategoryArchive, getLatest, getMenuCategories, type CategoryRef } from "@/lib/queries";
+import { getCategoryArchive, getLatest24Hours, getMenuCategories, type CategoryRef } from "@/lib/queries";
 import type { CategoryCursor } from "@/lib/category-pagination";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
-import { CategoryChips, LatestList } from "./lists";
+import { CategoryChips } from "./lists";
+import { LatestNews24h } from "./latest-news-24h";
 import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
 export async function CategoryPage({ category, cursor }: { category: CategoryRef; cursor: CategoryCursor | null }) {
-  const [archive, menu, latest] = await Promise.all([getCategoryArchive(category, cursor), getMenuCategories(), getLatest(8)]);
+  const asOfMs = Date.now();
+  const [archive, menu, latest24h] = await Promise.all([getCategoryArchive(category, cursor), getMenuCategories(), getLatest24Hours(asOfMs)]);
   const { articles } = archive;
   const [lead, ...rest] = articles;
-  const latestElsewhere = latest.filter((article) => !articles.some((own) => own.id === article.id)).slice(0, 6);
 
   return (
     <div data-np-category-archive className="np-container flex flex-col gap-8 pt-5 pb-10">
@@ -35,11 +36,12 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
         </div>
       ) : null}
 
-      {articles.length === 0 ? (
-        <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
-      ) : (
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
-          <div className="flex min-w-0 flex-col gap-6">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
+        <div className="flex min-w-0 flex-col gap-6">
+          {articles.length === 0 ? (
+            <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
+          ) : (
+            <>
             {lead ? <FeatureCard article={lead} /> : null}
             {rest.length ? (
               <section aria-labelledby="sec-more">
@@ -65,12 +67,11 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
                 ) : <span className="text-sm text-muted">Стигнахте края на наличния архив</span>}
               </nav>
             ) : null}
-          </div>
-          <aside className="flex flex-col gap-6 lg:sticky lg:top-[calc(var(--np-header-h)+1.5rem)] lg:self-start" aria-label="Последни новини">
-            {latestElsewhere.length ? <LatestList articles={latestElsewhere} /> : null}
-          </aside>
+            </>
+          )}
         </div>
-      )}
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport" />
+      </div>
     </div>
   );
 }

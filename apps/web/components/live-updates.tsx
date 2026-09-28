@@ -42,6 +42,9 @@ export function LiveUpdates() {
           [event, ...current.filter((toast) => toast.entityId !== event.entityId)].slice(0, MAX_TOASTS),
         );
       }
+      // Category archives keep their fixed card snapshot, but their shared
+      // latest-news desk can refresh separately from a public endpoint.
+      window.dispatchEvent(new Event("np:public-content-updated"));
       refresh.schedule();
     };
 

@@ -1,9 +1,16 @@
 import postgres from "postgres";
 
-export function createTransactionClient(url: string, max = 5) {
-  return postgres(url, { prepare: false, max, connect_timeout: 10 });
+const poolerOptions = {
+  prepare: false,
+  connect_timeout: 10,
+  idle_timeout: 20,
+  max_lifetime: 60,
+} as const;
+
+export function createTransactionClient(url: string, max = 15) {
+  return postgres(url, { ...poolerOptions, max });
 }
 
 export function createSessionClient(url: string, max = 1) {
-  return postgres(url, { max, connect_timeout: 10 });
+  return postgres(url, { ...poolerOptions, max });
 }

@@ -24,7 +24,6 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
     getLatest24Hours(asOfMs),
   ]);
   const sections = articleSections(article.body);
-  const nextStory = timeline.newer[0] ?? timeline.older[0] ?? null;
   const timelineIds = new Set([...timeline.older, article, ...timeline.newer].map((item) => item.id));
   const moreFromRubric = related.filter((item) => !timelineIds.has(item.id)).slice(0, 3);
   const shareUrl = article.sourceUrl ?? article.path;
@@ -51,15 +50,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
       <Breadcrumbs items={crumbs} />
 
       <article className="np-article-story">
-        {article.hero ? (
-          <div className="np-article-top">
+        <div className="np-article-main">
+          {article.hero ? (
             <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={lightboxImages} />
-            {/* Direct sibling of the hero: the panel's hover preview anchors to previousElementSibling. */}
-            <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-article-latest hidden lg:flex" />
-          </div>
-        ) : null}
+          ) : null}
 
-        <header className="np-article-header">
+          <header className="np-article-header">
           {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
           <div className="np-article-heading-accent" aria-hidden="true" />
           <h1>{article.title}</h1>
@@ -72,13 +68,13 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             </div>
             <ShareButtons url={shareUrl} title={article.title} />
           </div>
-        </header>
+          </header>
 
-        <div className={`np-article-reading-layout ${sections.length >= 2 || nextStory ? "has-rail" : ""}`}>
-          <div className="np-article-reading-column">
-            {sections.length >= 2 ? <div className="np-article-mobile-toc"><ArticleRail sections={sections} /></div> : null}
-            <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
-            <footer className="np-article-footer">
+          <div className="np-article-reading-layout">
+            <div className="np-article-reading-column">
+              {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
+              <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
+              <footer className="np-article-footer">
               {article.categories.length ? (
                 <div className="np-article-footer-rubrics">
                   <span>Рубрики</span>
@@ -90,25 +86,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
                   Оригинална публикация на newspoint.bg <ExternalIcon width={14} height={14} />
                 </a>
               ) : null}
-            </footer>
+              </footer>
+            </div>
           </div>
-
-          {sections.length >= 2 || nextStory ? (
-            <aside className="np-article-side" aria-label="Ориентация в статията">
-              <div className="np-article-side-sticky">
-                <ArticleRail sections={sections} />
-                {nextStory ? (
-                  <Link href={nextStory.path} className="np-article-next-story">
-                    <span className="np-article-rail-kicker">След четенето</span>
-                    <span className="np-article-rail-title">Още в {article.category?.name}</span>
-                    <span className="np-article-next-title">{nextStory.title}</span>
-                    <span className="np-article-next-action">Към статията <span aria-hidden="true">↗</span></span>
-                  </Link>
-                ) : null}
-              </div>
-            </aside>
-          ) : null}
         </div>
+        {/* Direct sibling of the main column: the shared preview uses its geometry. */}
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest" />
       </article>
 
       <ArticleTimeline current={article} older={timeline.older} newer={timeline.newer} />

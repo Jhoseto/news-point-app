@@ -13,6 +13,8 @@ type ActivePreview = {
   id: string;
   anchorY: number;
   left: number;
+  top: number;
+  height: number;
   width: number;
   backdropLeft: number;
   backdropWidth: number;
@@ -33,8 +35,8 @@ function NewsPreview({ article, position }: { article: ArticleSummary; position:
       />
       <aside
         aria-hidden="true"
-        className="np-latest-preview-shell pointer-events-none absolute inset-y-0 z-30 hidden lg:block"
-        style={{ left: position.left, width: position.width, ...categoryAccentStyle(article.category?.slug) }}
+        className="np-latest-preview-shell pointer-events-none absolute z-30 hidden lg:block"
+        style={{ left: position.left, top: position.top, width: position.width, height: position.height, ...categoryAccentStyle(article.category?.slug) }}
       >
         <div key={article.id} className="np-latest-preview relative flex h-full flex-col overflow-hidden rounded-[1.4rem] border border-line bg-surface">
           <span className="np-category-accent-line absolute inset-x-6 top-0 z-10 h-0.5" />
@@ -68,20 +70,61 @@ export function LatestNews24h({
   articles,
   asOfMs,
   dense = false,
+  liveRefresh = false,
   className = "",
 }: {
   articles: ArticleSummary[];
   asOfMs: number;
   dense?: boolean;
+  liveRefresh?: boolean;
   className?: string;
 }) {
   const [nowMs, setNowMs] = useState(asOfMs);
+  const [feed, setFeed] = useState(articles);
   const [active, setActive] = useState<ActivePreview | null>(null);
   const sectionId = dense ? "posledni-desktop" : "posledni";
-  const visible = useMemo(() => inLatestWindow(articles, nowMs), [articles, nowMs]);
+  const visible = useMemo(() => inLatestWindow(feed, nowMs), [feed, nowMs]);
   const activeArticle = visible.find((article) => article.id === active?.id);
 
   useEffect(() => setNowMs(Date.now()), [asOfMs]);
+  useEffect(() => setFeed(articles), [articles]);
+
+  useEffect(() => {
+    if (!liveRefresh) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let controller: AbortController | undefined;
+    const sync = async () => {
+      controller?.abort();
+      controller = new AbortController();
+      try {
+        const response = await fetch("/api/latest-news", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) return;
+        const payload = await response.json() as { articles?: Array<Omit<ArticleSummary, "publishedAt"> & { publishedAt: string }> };
+        if (!Array.isArray(payload.articles)) return;
+        const next = payload.articles.flatMap((item) => {
+          if (typeof item.id !== "string" || typeof item.path !== "string" || typeof item.title !== "string") return [];
+          const publishedAt = new Date(item.publishedAt);
+          return Number.isFinite(publishedAt.getTime()) ? [{ ...item, publishedAt }] : [];
+        });
+        setFeed(next);
+        setNowMs(Date.now());
+        setActive(null);
+      } catch { /* Keep the last valid public feed when temporarily offline. */ }
+    };
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { void sync(); }, 500);
+    };
+    const whenVisible = () => { if (!document.hidden) schedule(); };
+    window.addEventListener("np:public-content-updated", schedule);
+    document.addEventListener("visibilitychange", whenVisible);
+    return () => {
+      if (timer) clearTimeout(timer);
+      controller?.abort();
+      window.removeEventListener("np:public-content-updated", schedule);
+      document.removeEventListener("visibilitychange", whenVisible);
+    };
+  }, [liveRefresh]);
 
   useEffect(() => {
     const delay = nextLatestExpiryMs(visible, nowMs);
@@ -116,12 +159,19 @@ export function LatestNews24h({
     }
     const linkRect = link.getBoundingClientRect();
     const anchorY = Math.max(24, Math.min(sectionRect.height - 24, linkRect.top + linkRect.height / 2 - sectionRect.top));
-    const width = Math.min(380, Math.max(240, supportRect.width - 24));
-    const right = Math.min(supportRect.right - 12, supportRect.left + (supportRect.width + width) / 2);
+    // The home preview is naturally compact because its panel lives in the
+    // shallow lead band. Viewport-height panels must keep that same card scale
+    // instead of stretching the preview to the full article/category rail.
+    const height = Math.min(sectionRect.height, window.innerHeight * 0.56, 544);
+    const top = Math.max(0, Math.min(sectionRect.height - height, anchorY - height / 2));
+    const width = Math.min(320, Math.max(240, Math.min(supportRect.width - 24, sectionRect.width * 0.78)));
+    const gap = 12;
     setActive({
       id,
       anchorY,
-      left: right - width - sectionRect.left,
+      left: -width - gap,
+      top,
+      height,
       width,
       backdropLeft: supportRect.left - sectionRect.left,
       backdropWidth: supportRect.width,
@@ -132,7 +182,7 @@ export function LatestNews24h({
     <section
       aria-labelledby={`${sectionId}-title`}
       id={sectionId}
-      className={`np-card relative z-20 flex min-h-0 flex-col overflow-visible scroll-mt-32 ${dense ? "p-4" : "p-5"} ${className}`}
+      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col overflow-visible scroll-mt-32 ${dense ? "p-4" : "p-5"} ${className}`}
       onMouseLeave={() => setActive(null)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null);

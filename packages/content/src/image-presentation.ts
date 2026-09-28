@@ -4,6 +4,7 @@ export const focalPointSchema = z.object({ x: z.number().finite().min(0).max(1),
 export type FocalPoint = z.infer<typeof focalPointSchema>;
 
 const imageUrl = z.string().max(2048).refine(value => {
+  if (value.startsWith("/media/news/") && !value.includes("..") && !value.includes("\\") && !value.includes("?") && !value.includes("#")) return true;
   try {
     const url = new URL(value);
     return url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash

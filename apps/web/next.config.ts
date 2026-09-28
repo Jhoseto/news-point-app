@@ -5,6 +5,19 @@ import type { NextConfig } from "next";
 const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
 
+function mediaOrigin(): string {
+  const value = (process.env.MEDIA_ORIGIN ?? "").trim().replace(/\/+$/, "");
+  if (!value) return "";
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return "";
+    if (url.username || url.password) return "";
+    return url.origin;
+  } catch {
+    return "";
+  }
+}
+
 const nextConfig: NextConfig = {
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
@@ -26,7 +39,9 @@ const nextConfig: NextConfig = {
         { source: "/admin/:path*/", destination: `${studio}/admin/:path*/` },
         { source: "/admin/:path*", destination: `${studio}/admin/:path*` },
       ],
-      afterFiles: [],
+      afterFiles: mediaOrigin()
+        ? [{ source: "/media/:path*", destination: `${mediaOrigin()}/media/:path*` }]
+        : [],
       fallback: [],
     };
   },

@@ -340,6 +340,19 @@
       0 0 34px -12px color-mix(in oklab, var(--np-category-accent) 62%, transparent);
   }
 
+  .np-latest-panel { position: relative; }
+
+  /* Shared category/article news desk: fixed viewport presence, own scrolling list. */
+  .np-latest-viewport { height: 30rem; }
+  @media (min-width: 64rem) {
+    .np-latest-viewport {
+      position: sticky;
+      top: calc(var(--np-header-h) + 0.75rem);
+      align-self: start;
+      height: calc(100dvh - var(--np-header-h) - 1.5rem);
+    }
+  }
+
   /* A dark, heavily blurred silhouette sits directly behind the flyout. Its
      centre is covered by the card, leaving only a soft depth halo outside. */
   .np-latest-preview-shell::before {

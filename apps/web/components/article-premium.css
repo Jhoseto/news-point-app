@@ -7,6 +7,15 @@
 .np-article-story {
   margin-top: 1.5rem;
 }
+.np-article-main { min-width: 0; }
+@media (min-width: 64rem) {
+  .np-article-story {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 22rem;
+    align-items: start;
+    gap: 1.25rem;
+  }
+}
 
 .np-article-hero { margin: 0; }
 .np-article-hero-frame {
@@ -35,23 +44,9 @@
   line-height: 1.5;
 }
 
-/* Top band: a contained hero beside the live „Последни новини“ panel instead of a full-bleed image. */
-.np-article-top { display: block; }
-.np-article-latest { min-height: 0; }
-@media (min-width: 64rem) {
-  .np-article-top {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 22rem;
-    gap: 1.25rem;
-    height: min(48vh, 26rem);
-    align-items: stretch;
-  }
-  .np-article-hero { display: flex; min-height: 0; flex-direction: column; }
-  .np-article-hero-frame { flex: 1; min-height: 0; }
-  .np-article-hero-image { height: 100%; aspect-ratio: auto; }
-  .np-article-hero figcaption { flex: none; }
-  .np-article-header { margin-top: clamp(1.75rem, 3vw, 2.75rem); }
-}
+/* The same viewport-height news desk follows the article rather than ending at the hero. */
+.np-article-latest { margin-top: 3rem; }
+@media (min-width: 64rem) { .np-article-latest { margin-top: 0; } }
 
 .np-article-header {
   width: min(100%, 61rem);
@@ -59,10 +54,7 @@
 }
 @media (min-width: 64rem) {
   .np-article-header {
-    width: calc(100% - 22rem - 1.25rem);
-    max-width: none;
-    margin-left: 0;
-    margin-right: auto;
+    width: min(100%, 61rem);
   }
 }
 .np-article-no-hero-category { margin-bottom: 1.25rem; }
@@ -123,14 +115,6 @@
   min-width: 0;
   margin-inline: auto;
 }
-.np-article-side { min-width: 0; }
-.np-article-side-sticky {
-  position: sticky;
-  top: calc(var(--np-header-h, 6rem) + 1.75rem);
-  max-height: calc(100vh - var(--np-header-h, 6rem) - 3rem);
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
 .np-article-rail-kicker {
   color: var(--np-link);
   font-size: 0.67rem;
@@ -179,21 +163,24 @@
   background: var(--np-accent);
 }
 .np-article-toc-sub { padding-left: 0.65rem !important; }
-.np-article-next-story {
-  display: flex;
-  flex-direction: column;
-  margin-top: 2rem;
-  padding: 1.2rem;
-  border: 1px solid var(--np-line);
-  border-radius: 1rem;
-  background: var(--np-surface);
-  box-shadow: 0 14px 32px -28px color-mix(in oklab, var(--np-ink) 40%, transparent);
-  transition: border-color 160ms ease, transform 160ms ease;
+.np-article-inline-toc { display: block; margin-bottom: 2.3rem; }
+.np-article-inline-toc .np-article-toc { padding-left: 1rem; }
+.np-article-inline-toc .np-article-toc ol { display: flex; gap: 0.45rem 1rem; overflow-x: auto; scrollbar-width: thin; }
+.np-article-inline-toc .np-article-toc li { flex: 0 0 auto; max-width: 14rem; margin: 0; }
+.np-article-inline-toc .np-article-toc a[aria-current]::before { display: none; }
+@media (min-width: 64rem) {
+  .np-article-inline-toc {
+    position: sticky;
+    z-index: 10;
+    top: calc(var(--np-header-h) + 0.5rem);
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--np-line);
+    border-radius: 0.85rem;
+    background: var(--np-surface);
+    box-shadow: var(--np-shadow);
+  }
+  .np-article-inline-toc .np-article-toc ol { margin-top: 0.35rem; }
 }
-.np-article-next-story:hover { border-color: var(--np-accent); transform: translateY(-2px); }
-.np-article-next-title { margin-top: 1.1rem; color: var(--np-body); font-size: 0.9rem; font-weight: 700; line-height: 1.5; }
-.np-article-next-action { margin-top: 1.3rem; color: var(--np-link); font-size: 0.76rem; font-weight: 800; }
-.np-article-mobile-toc { display: none; }
 
 .np-article-page .np-prose {
   color: var(--np-body);
@@ -304,18 +291,6 @@ a.np-article-timeline-item:hover .np-article-timeline-card { border-color: var(-
 .np-article-more-card time { color: var(--np-muted); font-size: 0.72rem; font-weight: 650; }
 .np-article-more-card strong { color: var(--np-ink); font-size: 1rem; line-height: 1.45; }
 
-@media (min-width: 80rem) {
-  .np-article-reading-layout.has-rail { display: grid; grid-template-columns: minmax(0, 1fr) 15rem; gap: clamp(2.5rem, 6vw, 6rem); }
-  .np-article-reading-layout.has-rail .np-article-reading-column { margin-right: 0; }
-}
-@media (max-width: 79.999rem) {
-  .np-article-side { display: none; }
-  .np-article-mobile-toc { display: block; margin-bottom: 2.3rem; }
-  .np-article-mobile-toc .np-article-toc { padding-left: 1rem; }
-  .np-article-mobile-toc .np-article-toc ol { display: flex; gap: 0.45rem 1rem; overflow-x: auto; scrollbar-width: thin; }
-  .np-article-mobile-toc .np-article-toc li { flex: 0 0 auto; max-width: 14rem; margin: 0; }
-  .np-article-mobile-toc .np-article-toc a[aria-current]::before { display: none; }
-}
 @media (max-width: 48rem) {
   .np-article-page { padding-bottom: 3.5rem; }
   .np-article-story { margin-top: 1rem; }

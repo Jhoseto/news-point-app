@@ -12,6 +12,7 @@ import {
   type ScriptDb,
 } from "@newspoint/db/node";
 import type { DraftBlock } from "./convert";
+import { mirrorNewsImage } from "./mirror-image";
 
 export interface MediaInput {
   wpId: number | null;
@@ -117,31 +118,33 @@ async function upsertMedia(tx: Tx, media: MediaInput, presentationReady: boolean
     .where(and(eq(mediaAssets.provider, "wordpress_origin"), match))
     .limit(1);
 
+  const mirrored = await mirrorNewsImage(media.sourceUrl);
   const values = {
     sourceUrl: media.sourceUrl,
-    width: media.width,
-    height: media.height,
-    mime: media.mime,
+    width: mirrored?.width ?? media.width,
+    height: mirrored?.height ?? media.height,
+    mime: mirrored ? "image/webp" : media.mime,
     alt: media.alt,
     caption: media.caption,
+    ...(mirrored ? { storageKey: mirrored.key } : {}),
     ...(media.wpId === null ? {} : { wpId: media.wpId }),
   };
   if (existing) {
     await tx.update(mediaAssets).set(values).where(eq(mediaAssets.id, existing.id));
-    await saveVariants(tx, existing.id, media, presentationReady);
+    await saveCard(tx, existing.id, mirrored?.card ?? null, presentationReady);
     return existing.id;
   }
   const [inserted] = await tx
     .insert(mediaAssets)
     .values({ provider: "wordpress_origin", ...values })
     .returning({ id: mediaAssets.id });
-  await saveVariants(tx, inserted!.id, media, presentationReady);
+  await saveCard(tx, inserted!.id, mirrored?.card ?? null, presentationReady);
   return inserted!.id;
 }
 
-async function saveVariants(tx: Tx, id: string, media: MediaInput, ready: boolean) {
-  if (!ready || !media.variants) return;
-  const variants = imageVariantsSchema.parse(media.variants);
+async function saveCard(tx: Tx, id: string, card: { key: string; width: number; height: number } | null, ready: boolean) {
+  if (!ready || !card) return;
+  const variants = imageVariantsSchema.parse([{ url: `/media/${card.key}`, width: card.width, height: card.height }]);
   await tx.insert(mediaPresentations).values({ mediaAssetId: id, variants })
     .onConflictDoUpdate({ target: mediaPresentations.mediaAssetId, set: { variants } });
   // WordPress refresh never changes an editor's focal point.
