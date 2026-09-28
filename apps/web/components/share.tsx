@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { FacebookIcon, LinkedInIcon, LinkIcon, XIcon } from "./icons";
 
-const buttonClass =
-  "inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition hover:border-accent hover:text-accent dark:hover:text-link";
+const buttonClass = "np-article-share-button";
 
 export function ShareButtons({ url, title }: { url: string; title: string }) {
   const [copied, setCopied] = useState(false);
@@ -20,8 +19,8 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs font-semibold text-muted">Сподели</span>
+    <div className="np-article-share">
+      <span className="np-article-share-label"><small>Споделете</small><strong>Историята</strong></span>
       <a className={buttonClass} href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noopener noreferrer" aria-label="Сподели във Facebook">
         <FacebookIcon />
       </a>
@@ -34,7 +33,7 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
       <button type="button" onClick={copy} className={buttonClass} aria-label={copied ? "Връзката е копирана" : "Копирай връзката"}>
         <LinkIcon width={16} height={16} />
       </button>
-      <span role="status" className="text-xs font-semibold text-accent dark:text-link">
+      <span role="status" className="np-article-share-status">
         {copied ? "Копирано" : ""}
       </span>
     </div>

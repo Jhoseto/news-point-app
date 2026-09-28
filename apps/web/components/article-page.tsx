@@ -5,6 +5,7 @@ import { getArticleTimeline, getLatest24Hours, getRelated, type ArticleDetail } 
 import { ArticleBody } from "./article-body";
 import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
+import { ArticleReadCount } from "./article-read-count";
 import { ArticleTimeline } from "./article-timeline";
 import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
@@ -47,7 +48,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
   return (
     <div className="np-container np-article-page">
       <ReadingProgress />
-      <Breadcrumbs items={crumbs} />
+      <div className="np-article-breadcrumb"><Breadcrumbs items={crumbs} /></div>
 
       <article className="np-article-story">
         <div className="np-article-main">
@@ -56,18 +57,22 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
           ) : null}
 
           <header className="np-article-header">
-          {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
-          <div className="np-article-heading-accent" aria-hidden="true" />
-          <h1>{article.title}</h1>
-          {article.excerpt ? <p className="np-article-deck">{article.excerpt}</p> : null}
-          <div className="np-article-meta">
-            <div className="np-article-meta-facts">
-              <span className="np-article-byline"><span className="np-ring" aria-hidden="true" />{article.authorName}</span>
-              <span><ClockIcon width={15} height={15} /><time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time></span>
-              <span><BookIcon width={15} height={15} />{readingMinutes(article.body)} мин. четене</span>
+            {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
+            <div className="np-article-heading-accent" aria-hidden="true" />
+            <h1>{article.title}</h1>
+            {article.excerpt ? <p className="np-article-deck">{article.excerpt}</p> : null}
+            <div className="np-article-meta">
+              <div className="np-article-byline">
+                <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
+                <span><small>Автор</small><strong>{article.authorName}</strong></span>
+              </div>
+              <div className="np-article-meta-facts">
+                <span><ClockIcon width={16} height={16} /><span><strong>Публикувано</strong><time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time></span></span>
+                <span><BookIcon width={16} height={16} /><span><strong>Време за четене</strong>{readingMinutes(article.body)} минути</span></span>
+                <ArticleReadCount articleId={article.id} initialCount={article.readCount} />
+              </div>
+              <ShareButtons url={shareUrl} title={article.title} />
             </div>
-            <ShareButtons url={shareUrl} title={article.title} />
-          </div>
           </header>
 
           <div className="np-article-reading-layout">
@@ -94,10 +99,11 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
         <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest" />
       </article>
 
-      <ArticleTimeline current={article} older={timeline.older} newer={timeline.newer} />
+      <div className="np-article-after">
+        <ArticleTimeline current={article} older={timeline.older} newer={timeline.newer} />
 
-      {moreFromRubric.length ? (
-        <section className="np-article-more" aria-labelledby="np-article-more-title">
+        {moreFromRubric.length ? (
+          <section className="np-article-more" aria-labelledby="np-article-more-title">
           <div className="np-article-more-heading">
             <div>
               <p className="np-article-rail-kicker">Продължете с NewsPoint</p>
@@ -116,8 +122,9 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
               </Link>
             ))}
           </div>
-        </section>
-      ) : null}
+          </section>
+        ) : null}
+      </div>
     </div>
   );
 }

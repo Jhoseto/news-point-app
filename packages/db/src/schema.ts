@@ -172,6 +172,15 @@ export const articles = pgTable(
   ],
 );
 
+/** Aggregate public reads. No reader identifiers or browsing history are stored. */
+export const articleReadCounts = pgTable("article_read_counts", {
+  articleId: uuid("article_id")
+    .primaryKey()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  readCount: bigint("read_count", { mode: "number" }).notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const articleCategories = pgTable(
   "article_categories",
   {

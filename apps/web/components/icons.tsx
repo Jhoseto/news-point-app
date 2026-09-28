@@ -260,6 +260,13 @@ export const BookIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const EyeIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6S2.5 12 2.5 12Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </Icon>
+);
+
 export const LinkIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />

@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
-import { articleCategories, articles, authorProfiles, categories, getDb, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
+import { articleCategories, articleReadCounts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -47,6 +47,7 @@ export interface ArticleDetail extends ArticleSummary {
   body: ArticleBody;
   media: Map<string, Media>;
   categories: CategoryRef[];
+  readCount: number | null;
 }
 
 export const getPublicTeam = cache(async (): Promise<{ id: string; name: string; bio: string }[]> => {
@@ -259,7 +260,7 @@ export const getCategoryByPath = cache(async (path: string): Promise<CategoryRef
 
 export const getArticleByPath = cache(async (path: string): Promise<ArticleDetail | null> => {
   const db = getDb();
-  const ready = await hasMediaPresentations(db);
+  const [ready, readsReady] = await Promise.all([hasMediaPresentations(db), hasArticleReadCounts(db)]);
   const query = db
     .select({
       ...summaryColumns(ready),
@@ -296,6 +297,11 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     .where(and(eq(articleCategories.articleId, row.id), eq(categories.kind, "section")))
     .orderBy(asc(categories.name));
 
+  const readCount = readsReady
+    ? (await db.select({ value: articleReadCounts.readCount }).from(articleReadCounts)
+      .where(eq(articleReadCounts.articleId, row.id)).limit(1))[0]?.value ?? 0
+    : null;
+
   return {
     ...toSummary(row),
     authorName: row.authorName,
@@ -303,6 +309,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     body,
     media,
     categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
+    readCount,
   };
 });
 

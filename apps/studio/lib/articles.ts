@@ -78,32 +78,6 @@ export interface ArticleListItem {
   hasUnpublishedChanges: boolean;
 }
 
-export async function listArticles(limit = 40): Promise<ArticleListItem[]> {
-  const latestRevision = sql<number | null>`(select max(r.number) from ${articleRevisions} r where r.article_id = ${articles.id})`;
-  const rows = await getDb()
-    .select({
-      id: articles.id,
-      title: articles.title,
-      sourceSystem: articles.sourceSystem,
-      isPublic: articles.isPublic,
-      path: articles.path,
-      publishedAt: articles.publishedAt,
-      updatedAt: articles.updatedAt,
-      categoryName: categories.name,
-      authorName: articles.authorName,
-      publishedRevision: articles.publishedRevision,
-      latestRevision,
-    })
-    .from(articles)
-    .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
-    .orderBy(desc(articles.updatedAt))
-    .limit(limit);
-  return rows.map(({ publishedRevision, latestRevision: latest, ...row }) => ({
-    ...row,
-    hasUnpublishedChanges: row.isPublic && latest !== null && latest !== publishedRevision,
-  }));
-}
-
 export async function listSections() {
   return getDb()
     .select({ id: categories.id, name: categories.name, slug: categories.slug })

@@ -56,7 +56,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
-              className="group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-white/6 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white"
+              className="group relative flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition hover:bg-white/6 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white"
             >
               {isActive(item.href) ? <span className="np-gradient-bg absolute inset-y-2 left-0 w-1 rounded-full" aria-hidden="true" /> : null}
               <Icon d={item.icon} />
@@ -67,7 +67,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
             href={webUrl}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition hover:bg-white/6 hover:text-white"
+            className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition hover:bg-white/6 hover:text-white"
           >
             <Icon d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
             Към сайта
@@ -116,7 +116,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
         </nav>
       </header>
 
-      <main className={wide ? "" : "mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8"}>{children}</main>
+      <main className={wide ? "" : "mx-auto max-w-[1400px] px-3 py-3 sm:px-4 lg:px-5 lg:py-3"}>{children}</main>
     </div>
   );
 }
