@@ -1,8 +1,5 @@
-# Cloud Build: build + deploy temporary investor demo (web + Studio on Cloud Run).
-# Connect this repo in GCP Console -> Cloud Build -> Repositories, then create a trigger
-# on your branch with config file: deploy/gcp-demo/cloudbuild.yaml
-#
-# First-time GCP setup: docs/gcp-demo/SETUP.md (secrets, services, substitutions).
+# Entry point for Cloud Build triggers that expect cloudbuild.yaml at repo root.
+# Canonical copy + docs: deploy/gcp-demo/cloudbuild.yaml
 
 options:
   logging: CLOUD_LOGGING_ONLY
