@@ -6,6 +6,7 @@ const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
 
 const nextConfig: NextConfig = {
+  ...(process.env.NP_DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
   // WordPress URLs end with a slash; imported paths are kept exactly (DEC-105).

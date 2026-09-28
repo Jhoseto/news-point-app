@@ -1,0 +1,19 @@
+# Used only by deploy/gcp-demo Docker builds.
+.git
+.github
+.cursor
+**/.next
+**/node_modules
+**/.turbo
+**/.env
+**/.env.*
+!**/.env.example
+apps/studio/.next
+apps/web/.next
+docs/review
+docs/references
+**/*.md
+!deploy/gcp-demo/**
+packages/db/migrations
+apps/studio/.next/dev
+apps/web/.next/dev

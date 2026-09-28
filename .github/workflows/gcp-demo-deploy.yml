@@ -1,0 +1,60 @@
+# Optional: deploy temporary GCP demo via GitHub Actions (alternative to Cloud Build trigger).
+# Prefer Cloud Build + deploy/gcp-demo/cloudbuild.yaml if the repo is already linked in GCP Console.
+# Secrets in GitHub: GCP_PROJECT_ID, GCP_REGION, GCP_WIF_PROVIDER, GCP_SERVICE_ACCOUNT
+
+name: GCP demo deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - ".cursor/**"
+
+concurrency:
+  group: gcp-demo-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+      AR_REPO: newspoint-demo
+      WEB_SERVICE: newspoint-web-demo
+      STUDIO_SERVICE: newspoint-studio-demo
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ env.REGION }}-docker.pkg.dev" --quiet
+
+      - name: Build and push images
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          WEB_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${IMAGE_TAG}"
+          STUDIO_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/studio:${IMAGE_TAG}"
+          docker build -f deploy/gcp-demo/docker/web.Dockerfile -t "${WEB_IMAGE}" -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:latest" .
+          docker build -f deploy/gcp-demo/docker/studio.Dockerfile -t "${STUDIO_IMAGE}" -t "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/studio:latest" .
+          docker push --all-tags "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web"
+          docker push --all-tags "${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/studio"
+
+      - name: Deploy Cloud Run
+        env:
+          PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: bash deploy/gcp-demo/scripts/deploy-cloudrun.sh

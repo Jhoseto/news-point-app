@@ -2,6 +2,7 @@ import type { Block } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
 import { ExternalIcon } from "./icons";
 import { ArticleImage } from "./ui";
+import { articleSectionId } from "@/lib/article-reading";
 
 const EMBED_LABEL: Record<string, string> = {
   youtube: "YouTube",
@@ -13,29 +14,28 @@ const EMBED_LABEL: Record<string, string> = {
 };
 
 // Stored HTML is sanitized by the importer and re-checked by the block schema.
-function BlockView({ block, media }: { block: Block; media: Map<string, Media> }) {
+function BlockView({ block, media, index }: { block: Block; media: Map<string, Media>; index: number }) {
   switch (block.type) {
     case "paragraph":
       return <p dangerouslySetInnerHTML={{ __html: block.html }} />;
     case "heading": {
       const Heading = `h${block.level}` as "h2" | "h3" | "h4";
-      return <Heading>{block.text}</Heading>;
+      return <Heading id={block.level <= 3 ? articleSectionId(index) : undefined}>{block.text}</Heading>;
     }
     case "image": {
       const asset = media.get(block.mediaAssetId) ?? null;
       const caption = block.caption || asset?.caption;
       const credit = asset?.credit;
       return (
-        <figure className="!mt-8 !mb-8">
-          <ArticleImage media={asset} sizes="(min-width: 1024px) 720px, 100vw" className="w-full rounded-2xl" />
+        <figure className="np-article-figure">
+          <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" />
           {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>
       );
     }
     case "quote":
       return (
-        <blockquote className="relative rounded-2xl border border-line bg-surface-2 px-6 py-5 text-lg leading-relaxed font-semibold text-ink">
-          <span className="np-gradient-bg absolute inset-y-4 left-0 w-1 rounded-full" aria-hidden="true" />
+        <blockquote className="np-article-quote">
           <div dangerouslySetInnerHTML={{ __html: block.html }} />
           {block.cite ? <footer className="mt-2 text-sm font-medium text-muted">— {block.cite}</footer> : null}
         </blockquote>
@@ -56,7 +56,7 @@ function BlockView({ block, media }: { block: Block; media: Map<string, Media> }
           href={block.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="!no-underline flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface-2 px-5 py-4 font-semibold text-ink"
+          className="np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink"
         >
           <span>Виж публикацията в {EMBED_LABEL[block.provider]}</span>
           <ExternalIcon width={18} height={18} />
@@ -71,7 +71,7 @@ export function ArticleBody({ blocks, media }: { blocks: Block[]; media: Map<str
   return (
     <div className="np-prose">
       {blocks.map((block, index) => (
-        <BlockView key={index} block={block} media={media} />
+        <BlockView key={index} block={block} media={media} index={index} />
       ))}
     </div>
   );

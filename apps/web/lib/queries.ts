@@ -371,20 +371,20 @@ export const getRelated = cache(async (article: ArticleSummary, limit: number): 
   return rows.map(toSummary);
 });
 
-/** Chronological neighbours in the primary rubric, with the database's full timestamp precision. */
-export const getArticleNeighbors = cache(async (article: ArticleSummary): Promise<{ older: ArticleSummary | null; newer: ArticleSummary | null }> => {
-  if (!article.category) return { older: null, newer: null };
+/** Up to two articles on either side in the primary rubric, nearest first. */
+export const getArticleTimeline = cache(async (article: ArticleSummary): Promise<{ older: ArticleSummary[]; newer: ArticleSummary[] }> => {
+  if (!article.category) return { older: [], newer: [] };
   const inRubric = eq(articleCategories.categoryId, article.category.id);
   const at = sql`(select published_at from articles where id = ${article.id})`;
   const [olderRows, newerRows] = await Promise.all([
     summaryQuery().then(({ query }) => query
       .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
       .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) < (${at}, ${article.id})`))
-      .orderBy(desc(articles.publishedAt), desc(articles.id)).limit(1)),
+      .orderBy(desc(articles.publishedAt), desc(articles.id)).limit(2)),
     summaryQuery().then(({ query }) => query
       .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
       .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) > (${at}, ${article.id})`))
-      .orderBy(asc(articles.publishedAt), asc(articles.id)).limit(1)),
+      .orderBy(asc(articles.publishedAt), asc(articles.id)).limit(2)),
   ]);
-  return { older: olderRows[0] ? toSummary(olderRows[0]) : null, newer: newerRows[0] ? toSummary(newerRows[0]) : null };
+  return { older: olderRows.map(toSummary), newer: newerRows.map(toSummary) };
 });

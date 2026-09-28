@@ -1,113 +1,140 @@
 import Link from "next/link";
+import { articleSections } from "@/lib/article-reading";
 import { formatFull, isoDate, readingMinutes } from "@/lib/format";
-import { getArticleNeighbors, getLatest, getRelated, type ArticleDetail } from "@/lib/queries";
+import { getArticleTimeline, getLatest24Hours, getRelated, type ArticleDetail } from "@/lib/queries";
 import { ArticleBody } from "./article-body";
+import { ArticleHeroZoom } from "./article-hero-zoom";
+import { ArticleRail } from "./article-rail";
+import { ArticleTimeline } from "./article-timeline";
+import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon, ExternalIcon } from "./icons";
-import { CategoryChips, CompactList, LatestList } from "./lists";
+import { LatestNews24h } from "./latest-news-24h";
+import { CategoryChips } from "./lists";
 import { ShareButtons } from "./share";
 import { ReadingProgress } from "./reading-progress";
 import { ArticleImage, CategoryPill } from "./ui";
+import "./article-premium.css";
 
 export async function ArticlePage({ article }: { article: ArticleDetail }) {
-  const [latest, related, neighbors] = await Promise.all([getLatest(7), getRelated(article, 4), getArticleNeighbors(article)]);
-  const latestOthers = latest.filter((item) => item.id !== article.id).slice(0, 6);
+  const asOfMs = Date.now();
+  const [timeline, related, latest24h] = await Promise.all([
+    getArticleTimeline(article),
+    getRelated(article, 8),
+    getLatest24Hours(asOfMs),
+  ]);
+  const sections = articleSections(article.body);
+  const nextStory = timeline.newer[0] ?? timeline.older[0] ?? null;
+  const timelineIds = new Set([...timeline.older, article, ...timeline.newer].map((item) => item.id));
+  const moreFromRubric = related.filter((item) => !timelineIds.has(item.id)).slice(0, 3);
   const shareUrl = article.sourceUrl ?? article.path;
   const crumbs = article.category
     ? [{ name: article.category.name, path: article.category.path }, { name: article.title }]
     : [{ name: article.title }];
 
+  // Lightbox gallery: hero first, then every body image in document order.
+  const lightboxImages: LightboxImage[] = article.hero
+    ? [
+        { src: article.hero.url, alt: article.hero.alt, caption: article.hero.caption, credit: article.hero.credit },
+        ...Array.from(article.media.values()).map((m) => ({
+          src: m.url,
+          alt: m.alt,
+          caption: m.caption,
+          credit: m.credit,
+        })),
+      ].filter((img) => img.src)
+    : [];
+
   return (
-    <div className="np-container flex max-w-[104rem] flex-col gap-6 pt-5 pb-10">
+    <div className="np-container np-article-page">
       <ReadingProgress />
       <Breadcrumbs items={crumbs} />
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:gap-10">
-        <article className="min-w-0">
-          {article.hero ? (
-            <>
-              <div className="relative overflow-hidden rounded-3xl shadow-card">
-                <ArticleImage media={article.hero} priority sizes="(min-width: 1536px) 70vw, (min-width: 1024px) 66vw, 100vw" className="aspect-[16/9] w-full" />
-                {article.category ? <CategoryPill category={article.category} className="absolute top-4 left-4" /> : null}
-              </div>
-              {article.hero.caption || article.hero.credit ? (
-                <p className="mt-2 text-xs text-muted">
-                  {article.hero.caption}{article.hero.caption && article.hero.credit ? " · " : ""}
-                  {article.hero.credit ? `Снимка: ${article.hero.credit}` : ""}
-                </p>
-              ) : null}
-            </>
-          ) : null}
 
-          <div className={`mx-auto flex max-w-[46rem] flex-col gap-5 ${article.hero ? "mt-6" : "mt-2"}`}>
-            {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="self-start" /> : null}
-            <h1 className="text-3xl leading-[1.15] font-extrabold tracking-tight text-balance text-ink sm:text-4xl lg:text-[2.6rem]">
-              {article.title}
-            </h1>
-            {article.excerpt ? <p className="text-lg leading-relaxed text-body">{article.excerpt}</p> : null}
-
-            <div className="flex flex-wrap items-center justify-between gap-4 border-y border-line py-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-muted">
-                <span className="inline-flex items-center gap-2 font-bold text-ink">
-                  <span className="np-ring !size-5" aria-hidden="true" />
-                  {article.authorName}
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <ClockIcon width={14} height={14} />
-                  <time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time>
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <BookIcon width={14} height={14} />
-                  {readingMinutes(article.body)} мин. четене
-                </span>
-              </div>
-              <ShareButtons url={shareUrl} title={article.title} />
-            </div>
-
-            <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
-
-            {article.categories.length ? (
-              <div className="mt-4 flex flex-col gap-3 border-t border-line pt-5">
-                <span className="text-sm font-bold text-ink">Рубрики</span>
-                <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
-              </div>
-            ) : null}
-
-            {article.sourceUrl ? (
-              <a
-                href={article.sourceUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-h-11 items-center gap-1.5 self-start text-xs font-semibold text-muted hover:text-ink"
-              >
-                Оригинална публикация на newspoint.bg
-                <ExternalIcon width={13} height={13} />
-              </a>
-            ) : null}
-
-            {neighbors.older || neighbors.newer ? (
-              <nav aria-label="Съседни статии" className="mt-4 grid gap-3 border-t border-line pt-6 sm:grid-cols-2">
-                {neighbors.older ? (
-                  <Link href={neighbors.older.path} rel="prev" className="np-card group flex min-h-24 flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:shadow-card">
-                    <span className="text-xs font-bold text-muted">← По-ранна в {article.category?.name}</span>
-                    <span className="line-clamp-2 text-sm font-extrabold text-ink group-hover:text-accent">{neighbors.older.title}</span>
-                  </Link>
-                ) : <span />}
-                {neighbors.newer ? (
-                  <Link href={neighbors.newer.path} rel="next" className="np-card group flex min-h-24 flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:text-right">
-                    <span className="text-xs font-bold text-muted">По-нова в {article.category?.name} →</span>
-                    <span className="line-clamp-2 text-sm font-extrabold text-ink group-hover:text-accent">{neighbors.newer.title}</span>
-                  </Link>
-                ) : <span />}
-              </nav>
-            ) : null}
+      <article className="np-article-story">
+        {article.hero ? (
+          <div className="np-article-top">
+            <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={lightboxImages} />
+            {/* Direct sibling of the hero: the panel's hover preview anchors to previousElementSibling. */}
+            <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-article-latest hidden lg:flex" />
           </div>
-        </article>
+        ) : null}
 
-        <aside className="flex flex-col gap-6" aria-label="Още новини">
-          <LatestList articles={latestOthers} />
-          <CompactList title="Свързани статии" articles={related} {...(article.category ? { href: article.category.path } : {})} />
-        </aside>
-      </div>
+        <header className="np-article-header">
+          {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
+          <div className="np-article-heading-accent" aria-hidden="true" />
+          <h1>{article.title}</h1>
+          {article.excerpt ? <p className="np-article-deck">{article.excerpt}</p> : null}
+          <div className="np-article-meta">
+            <div className="np-article-meta-facts">
+              <span className="np-article-byline"><span className="np-ring" aria-hidden="true" />{article.authorName}</span>
+              <span><ClockIcon width={15} height={15} /><time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time></span>
+              <span><BookIcon width={15} height={15} />{readingMinutes(article.body)} мин. четене</span>
+            </div>
+            <ShareButtons url={shareUrl} title={article.title} />
+          </div>
+        </header>
+
+        <div className={`np-article-reading-layout ${sections.length >= 2 || nextStory ? "has-rail" : ""}`}>
+          <div className="np-article-reading-column">
+            {sections.length >= 2 ? <div className="np-article-mobile-toc"><ArticleRail sections={sections} /></div> : null}
+            <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
+            <footer className="np-article-footer">
+              {article.categories.length ? (
+                <div className="np-article-footer-rubrics">
+                  <span>Рубрики</span>
+                  <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
+                </div>
+              ) : null}
+              {article.sourceUrl ? (
+                <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="np-article-source">
+                  Оригинална публикация на newspoint.bg <ExternalIcon width={14} height={14} />
+                </a>
+              ) : null}
+            </footer>
+          </div>
+
+          {sections.length >= 2 || nextStory ? (
+            <aside className="np-article-side" aria-label="Ориентация в статията">
+              <div className="np-article-side-sticky">
+                <ArticleRail sections={sections} />
+                {nextStory ? (
+                  <Link href={nextStory.path} className="np-article-next-story">
+                    <span className="np-article-rail-kicker">След четенето</span>
+                    <span className="np-article-rail-title">Още в {article.category?.name}</span>
+                    <span className="np-article-next-title">{nextStory.title}</span>
+                    <span className="np-article-next-action">Към статията <span aria-hidden="true">↗</span></span>
+                  </Link>
+                ) : null}
+              </div>
+            </aside>
+          ) : null}
+        </div>
+      </article>
+
+      <ArticleTimeline current={article} older={timeline.older} newer={timeline.newer} />
+
+      {moreFromRubric.length ? (
+        <section className="np-article-more" aria-labelledby="np-article-more-title">
+          <div className="np-article-more-heading">
+            <div>
+              <p className="np-article-rail-kicker">Продължете с NewsPoint</p>
+              <h2 id="np-article-more-title">Още от {article.category?.name}</h2>
+            </div>
+            {article.category ? <Link href={article.category.path}>Всички в рубриката <span aria-hidden="true">↗</span></Link> : null}
+          </div>
+          <div className="np-article-more-grid">
+            {moreFromRubric.map((item) => (
+              <Link key={item.id} href={item.path} className="np-article-more-card">
+                {item.hero ? <ArticleImage media={item.hero} sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" className="np-article-more-image" /> : null}
+                <span className="np-article-more-card-content">
+                  <time dateTime={isoDate(item.publishedAt)}>{formatFull(item.publishedAt)}</time>
+                  <strong>{item.title}</strong>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

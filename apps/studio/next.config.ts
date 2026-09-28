@@ -10,6 +10,7 @@ const studioDevOrigin = (process.env.STUDIO_URL ?? "http://localhost:3001").repl
 const studioPublicUrl = (process.env.STUDIO_PUBLIC_URL ?? "http://localhost:3000/admin").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
+  ...(process.env.NP_DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
   env: {

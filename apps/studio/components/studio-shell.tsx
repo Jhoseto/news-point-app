@@ -48,7 +48,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-shell text-white/80 lg:flex">
         <div className="flex h-[4.5rem] shrink-0 items-center gap-2.5 border-b border-line bg-surface px-4">
           <BrandLogoImg className="h-9 w-auto max-w-[8.5rem] shrink object-contain object-left" />
-          <span className="np-studio-wordmark shrink-0 pt-0.5">Studio</span>
+          <span className="np-studio-wordmark shrink-0">Studio</span>
         </div>
         <nav className="flex-1 space-y-1 p-3" aria-label="Studio">
           {nav.map((item) => (

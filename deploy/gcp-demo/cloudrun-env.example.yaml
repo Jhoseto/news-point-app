@@ -1,0 +1,31 @@
+# Example Cloud Run env + secrets for FIRST deploy (gcloud run deploy ...).
+# Replace PROJECT_ID, REGION, service names. Do not commit real values.
+# After the first deploy, Cloud Build only updates images; env/secrets stay on the service.
+#
+# gcloud run deploy newspoint-studio-demo \
+#   --image=... \
+#   --region=europe-west1 \
+#   --set-secrets=DATABASE_URL=np-demo-database-url:latest,STUDIO_SESSION_SECRET=np-demo-studio-session-secret:latest \
+#   --set-env-vars=NODE_ENV=production,POLL_TRUSTED_IP_HEADER=x-forwarded-for
+
+# --- Web service (newspoint-web-demo) ---
+# Secrets:
+#   DATABASE_URL              -> np-demo-database-url
+#   STUDIO_SESSION_SECRET     -> np-demo-studio-session-secret (poll signing fallback)
+#   SUPABASE_SECRET_KEY       -> np-demo-supabase-secret-key (LivePoint photo uploads)
+# Plain env (deploy script syncs WEB_URL / STUDIO_* after each build):
+#   NODE_ENV=production
+#   WP_SOURCE_URL=https://newspoint.bg
+#   POLL_TRUSTED_IP_HEADER=x-forwarded-for
+# Optional:
+#   REVALIDATE_SECRET, TOMTOM_API_KEY, CESIUM_ION_TOKEN, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY
+
+# --- Studio service (newspoint-studio-demo) ---
+# Secrets:
+#   DATABASE_URL              -> np-demo-database-url
+#   STUDIO_SESSION_SECRET     -> np-demo-studio-session-secret
+#   RESEND_API_KEY            -> np-demo-resend-api-key (password reset mail; optional)
+# Plain env:
+#   NODE_ENV=production
+#   STUDIO_EMAIL_FROM=NewsPoint Studio <noreply@your-domain>
+#   STUDIO_PASSWORD_RESET_LOG=1   # log reset links until mail is verified
