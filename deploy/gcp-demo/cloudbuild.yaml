@@ -13,30 +13,41 @@ substitutions:
   _WEB_SERVICE: newspoint-web-demo
   _STUDIO_SERVICE: newspoint-studio-demo
 
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/np-demo-database-url/versions/latest
+      env: DATABASE_URL
+    - versionName: projects/$PROJECT_ID/secrets/np-demo-database-url-session/versions/latest
+      env: DATABASE_URL_SESSION
+
 steps:
   - id: build-web
     name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - -f
-      - deploy/gcp-demo/docker/web.Dockerfile
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$COMMIT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:latest
-      - .
+      - -ceu
+      - |
+        docker build -f deploy/gcp-demo/docker/web.Dockerfile \
+          --build-arg "DATABASE_URL=$$DATABASE_URL" \
+          --build-arg "DATABASE_URL_SESSION=$$DATABASE_URL_SESSION" \
+          -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:$COMMIT_SHA" \
+          -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:latest" \
+          .
+    secretEnv: [DATABASE_URL, DATABASE_URL_SESSION]
 
   - id: build-studio
     name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - build
-      - -f
-      - deploy/gcp-demo/docker/studio.Dockerfile
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/studio:$COMMIT_SHA
-      - -t
-      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/studio:latest
-      - .
+      - -ceu
+      - |
+        docker build -f deploy/gcp-demo/docker/studio.Dockerfile \
+          --build-arg "DATABASE_URL=$$DATABASE_URL" \
+          --build-arg "DATABASE_URL_SESSION=$$DATABASE_URL_SESSION" \
+          -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/studio:$COMMIT_SHA" \
+          -t "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/studio:latest" \
+          .
+    secretEnv: [DATABASE_URL, DATABASE_URL_SESSION]
 
   - id: push-web
     name: gcr.io/cloud-builders/docker

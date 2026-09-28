@@ -41,7 +41,7 @@ echo "=== IAM: Cloud Build ==="
 PROJECT_NUMBER=$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')
 CB_SA="${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com"
 RUN_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-for ROLE in roles/run.admin roles/iam.serviceAccountUser roles/artifactregistry.writer; do
+for ROLE in roles/run.admin roles/iam.serviceAccountUser roles/artifactregistry.writer roles/secretmanager.secretAccessor; do
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${CB_SA}" \
     --role="${ROLE}" \
@@ -59,6 +59,13 @@ if ! gcloud secrets describe np-demo-database-url --project="${PROJECT_ID}" >/de
   printf '%s' "${DBURL}" | gcloud secrets create np-demo-database-url --data-file=-
 else
   echo "np-demo-database-url exists — skip or: gcloud secrets versions add np-demo-database-url --data-file=-"
+fi
+if ! gcloud secrets describe np-demo-database-url-session --project="${PROJECT_ID}" >/dev/null 2>&1; then
+  read -rsp "DATABASE_URL_SESSION (Supabase session pooler :5432): " DBSESSION
+  echo
+  printf '%s' "${DBSESSION}" | gcloud secrets create np-demo-database-url-session --data-file=-
+else
+  echo "np-demo-database-url-session exists"
 fi
 if ! gcloud secrets describe np-demo-studio-session-secret --project="${PROJECT_ID}" >/dev/null 2>&1; then
   read -rsp "STUDIO_SESSION_SECRET (>=32 chars): " SESS

@@ -14,7 +14,7 @@ WEB_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${IMAGE_TAG}"
 STUDIO_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/studio:${IMAGE_TAG}"
 
 # Secret names in GCP Secret Manager (create in docs/gcp-demo/WALKTHROUGH-BG.md step 5).
-SECRET_BINDINGS="DATABASE_URL=np-demo-database-url:latest,STUDIO_SESSION_SECRET=np-demo-studio-session-secret:latest"
+SECRET_BINDINGS="DATABASE_URL=np-demo-database-url:latest,DATABASE_URL_SESSION=np-demo-database-url-session:latest,STUDIO_SESSION_SECRET=np-demo-studio-session-secret:latest"
 
 common_run_flags=(
   --project="${PROJECT_ID}"
