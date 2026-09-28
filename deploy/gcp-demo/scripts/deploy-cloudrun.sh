@@ -13,7 +13,14 @@ set -euo pipefail
 WEB_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/web:${IMAGE_TAG}"
 STUDIO_IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}/studio:${IMAGE_TAG}"
 
-# Secret names in GCP Secret Manager (create in docs/gcp-demo/WALKTHROUGH-BG.md step 5).
+for REQUIRED in np-demo-database-url np-demo-database-url-session np-demo-studio-session-secret; do
+  if ! gcloud secrets describe "${REQUIRED}" --project="${PROJECT_ID}" >/dev/null 2>&1; then
+    echo "ERROR: Secret ${REQUIRED} missing in project ${PROJECT_ID}."
+    echo "Cloud Shell: bash deploy/gcp-demo/scripts/gcp-bootstrap.sh ~/upload/.env.local"
+    exit 1
+  fi
+done
+
 SECRET_BINDINGS="DATABASE_URL=np-demo-database-url:latest,DATABASE_URL_SESSION=np-demo-database-url-session:latest,STUDIO_SESSION_SECRET=np-demo-studio-session-secret:latest"
 
 common_run_flags=(

@@ -1,6 +1,8 @@
 # Временен demo deploy в Google Cloud
 
-**Започни тук:** **[WALKTHROUGH-BG.md](./WALKTHROUGH-BG.md)** — пълен ред на стъпките (Docker → Cloud Build → Cloud Run ×2).
+**Започни тук:** **[TVOI-SAMO-2-STAPKI.md](./TVOI-SAMO-2-STAPKI.md)** — само 2 неща в GCP от теб.
+
+Пълен ред: **[WALKTHROUGH-BG.md](./WALKTHROUGH-BG.md)** (Docker → Cloud Build → Cloud Run ×2).
 
 | Документ | За какво |
 |----------|----------|

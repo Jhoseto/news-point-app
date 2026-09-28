@@ -11,6 +11,16 @@ substitutions:
   _STUDIO_SERVICE: newspoint-studio-demo
 
 steps:
+  - id: verify-config
+    name: ubuntu
+    entrypoint: bash
+    args:
+      - -ceu
+      - |
+        echo "NewsPoint demo build — no Secret Manager at build time (commit $COMMIT_SHA)"
+        test -f deploy/gcp-demo/docker/web.Dockerfile
+        ! grep -q availableSecrets cloudbuild.yaml
+
   - id: build-web
     name: gcr.io/cloud-builders/docker
     args:
@@ -22,6 +32,7 @@ steps:
       - -t
       - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/web:latest
       - .
+    waitFor: [verify-config]
 
   - id: build-studio
     name: gcr.io/cloud-builders/docker
