@@ -13,7 +13,7 @@ import { toLatestHeadline } from "@/lib/livepoint/serialize";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 import { getLatest } from "@/lib/queries";
 
-/** Live DB in layout; skip static prerender during Docker/Cloud Build (runtime uses Cloud Run secrets). */
+/** Root layout reads live DB (header, LivePoint). */
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
