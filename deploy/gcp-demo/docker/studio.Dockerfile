@@ -25,11 +25,9 @@ RUN pnpm install -r --offline --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app .
-ARG DATABASE_URL
-ARG DATABASE_URL_SESSION
 ENV NP_DOCKER_BUILD=1 \
-  DATABASE_URL=${DATABASE_URL} \
-  DATABASE_URL_SESSION=${DATABASE_URL_SESSION} \
+  DATABASE_URL=postgresql://build:build@127.0.0.1:5432/postgres \
+  DATABASE_URL_SESSION=postgresql://build:build@127.0.0.1:5432/postgres \
   STUDIO_PUBLIC_URL=https://demo-placeholder.example/admin \
   STUDIO_URL=https://demo-placeholder.example
 RUN pnpm --filter @newspoint/studio build

@@ -13,6 +13,9 @@ import { toLatestHeadline } from "@/lib/livepoint/serialize";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 import { getLatest } from "@/lib/queries";
 
+/** Live DB in layout; skip static prerender during Docker/Cloud Build (runtime uses Cloud Run secrets). */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   description: "Новини от Пловдив, България и света.",

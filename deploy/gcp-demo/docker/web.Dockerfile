@@ -25,11 +25,10 @@ RUN pnpm install -r --offline --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app .
-ARG DATABASE_URL
-ARG DATABASE_URL_SESSION
+# Placeholders only for `next build` (see apps/web/app/layout.tsx force-dynamic).
 ENV NP_DOCKER_BUILD=1 \
-  DATABASE_URL=${DATABASE_URL} \
-  DATABASE_URL_SESSION=${DATABASE_URL_SESSION}
+  DATABASE_URL=postgresql://build:build@127.0.0.1:5432/postgres \
+  DATABASE_URL_SESSION=postgresql://build:build@127.0.0.1:5432/postgres
 RUN pnpm --filter @newspoint/web build
 
 FROM base AS runner
