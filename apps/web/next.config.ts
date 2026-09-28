@@ -6,9 +6,14 @@ const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
 
 const nextConfig: NextConfig = {
-  ...(process.env.NP_DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
+  // Cloudflare quick tunnel (trycloudflare.com): without this, dev blocks /_next and client UI breaks.
+  ...(process.env.NODE_ENV === "development"
+    ? {
+        allowedDevOrigins: ["localhost", "127.0.0.1", ".trycloudflare.com"],
+      }
+    : {}),
   // WordPress URLs end with a slash; imported paths are kept exactly (DEC-105).
   trailingSlash: true,
   // Studio (apps/studio, basePath /admin) is served through this host at /admin.

@@ -10,7 +10,6 @@ const studioDevOrigin = (process.env.STUDIO_URL ?? "http://localhost:3001").repl
 const studioPublicUrl = (process.env.STUDIO_PUBLIC_URL ?? "http://localhost:3000/admin").replace(/\/+$/, "");
 
 const nextConfig: NextConfig = {
-  ...(process.env.NP_DOCKER_BUILD === "1" ? { output: "standalone" as const } : {}),
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
   env: {
@@ -19,11 +18,14 @@ const nextConfig: NextConfig = {
   // Reached through the public host at /admin (apps/web rewrites); slashes match the web app.
   basePath: "/admin",
   trailingSlash: true,
-  // Page at localhost:3000/admin is proxied from web; dev chunks and HMR must hit Studio directly.
+  // Served at /admin via web rewrites — relative /admin/_next works on localhost and tunnel hosts.
+  // Set STUDIO_DEV_DIRECT=1 to load chunks from STUDIO_URL (faster HMR when editing Studio on :3001).
   ...(process.env.NODE_ENV === "development"
     ? {
-        assetPrefix: `${studioDevOrigin}/admin`,
-        allowedDevOrigins: ["localhost", "127.0.0.1"],
+        ...(process.env.STUDIO_DEV_DIRECT === "1"
+          ? { assetPrefix: `${studioDevOrigin}/admin` }
+          : {}),
+        allowedDevOrigins: ["localhost", "127.0.0.1", ".trycloudflare.com"],
       }
     : {}),
   poweredByHeader: false,

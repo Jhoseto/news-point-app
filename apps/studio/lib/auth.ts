@@ -102,9 +102,15 @@ function createAuth() {
 }
 
 let instance: ReturnType<typeof createAuth> | undefined;
+let authCacheKey = "";
 
 /** Created on first use so that builds do not need database access or secrets. */
 export function getAuth() {
-  instance ??= createAuth();
+  loadRootEnv();
+  const cacheKey = `${readStudioPublicBaseUrl()}|${process.env.WEB_URL ?? ""}`;
+  if (!instance || authCacheKey !== cacheKey) {
+    instance = createAuth();
+    authCacheKey = cacheKey;
+  }
   return instance;
 }

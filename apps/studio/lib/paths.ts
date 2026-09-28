@@ -49,16 +49,33 @@ export function withBase(path: string): string {
   return `${BASE_PATH}${normalized}`;
 }
 
+function addOrigin(trusted: Set<string>, raw: string | undefined) {
+  const value = raw?.trim();
+  if (!value) return;
+  try {
+    trusted.add(new URL(value.includes("://") ? value : `https://${value}`).origin);
+  } catch {
+    /* ignore invalid URL */
+  }
+}
+
 /** Origins allowed for Better Auth (public site, direct Studio, www/non-www). */
 export function studioTrustedOrigins(): string[] {
   const publicBase = readStudioPublicBaseUrl();
   const publicOrigin = new URL(publicBase).origin;
   const directOrigin = new URL(process.env.STUDIO_URL ?? "http://localhost:3001").origin;
   const trusted = new Set([publicOrigin, directOrigin]);
+  addOrigin(trusted, process.env.WEB_URL);
+  for (const part of process.env.STUDIO_EXTRA_TRUSTED_ORIGINS?.split(",") ?? []) {
+    addOrigin(trusted, part);
+  }
   const { hostname, protocol } = new URL(publicBase);
   if (hostname !== "localhost" && hostname !== "127.0.0.1") {
     if (hostname.startsWith("www.")) trusted.add(`${protocol}//${hostname.slice(4)}`);
     else trusted.add(`${protocol}//www.${hostname}`);
   }
+  // Local investor demo via Cloudflare quick tunnel (Better Auth wildcard docs).
+  trusted.add("https://*.trycloudflare.com");
+  trusted.add("*.trycloudflare.com");
   return [...trusted];
 }

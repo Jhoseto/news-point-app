@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { absoluteStudioUrl, normalizePasswordResetUrl, readStudioPublicBaseUrl, withBase } from "./paths";
+import {
+  absoluteStudioUrl,
+  normalizePasswordResetUrl,
+  readStudioPublicBaseUrl,
+  studioTrustedOrigins,
+  withBase,
+} from "./paths";
 
 const savedPublic = process.env.STUDIO_PUBLIC_URL;
 const savedNextPublic = process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL;
-
 afterEach(() => {
   if (savedPublic === undefined) delete process.env.STUDIO_PUBLIC_URL;
   else process.env.STUDIO_PUBLIC_URL = savedPublic;
@@ -40,6 +45,13 @@ describe("absoluteStudioUrl", () => {
   it("builds reset page URL", () => {
     process.env.STUDIO_PUBLIC_URL = "https://newspoint.bg/admin";
     expect(absoluteStudioUrl("/login/reset")).toBe("https://newspoint.bg/admin/login/reset/");
+  });
+});
+
+describe("studioTrustedOrigins", () => {
+  it("trusts Cloudflare quick tunnel hosts", () => {
+    expect(studioTrustedOrigins()).toContain("https://*.trycloudflare.com");
+    expect(studioTrustedOrigins()).toContain("*.trycloudflare.com");
   });
 });
 

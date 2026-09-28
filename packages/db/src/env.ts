@@ -30,7 +30,10 @@ export function findRepoRoot(start: string = process.cwd()): string {
 }
 
 export function loadRootEnv(): void {
-  config({ path: resolve(findRepoRoot(), ".env.local"), quiet: true });
+  const root = findRepoRoot();
+  config({ path: resolve(root, ".env.local"), quiet: true });
+  // Optional overrides for Cloudflare demo tunnel (WEB_URL / STUDIO_PUBLIC_URL). Gitignored.
+  config({ path: resolve(root, ".env.tunnel"), quiet: true, override: true });
 }
 
 export function readDatabaseEnv(
