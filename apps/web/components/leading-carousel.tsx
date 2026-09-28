@@ -69,10 +69,13 @@ export function LeadingCarousel({
         key={`${duplicate ? "copy" : "original"}-${article.id}`}
         data-carousel-card
         aria-hidden={duplicate || undefined}
-        inert={duplicate || undefined}
         className="w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"
       >
-        <ArticleCard article={article} {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])} />
+        <ArticleCard
+          article={article}
+          tabbable={!duplicate}
+          {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])}
+        />
       </div>
     ));
 
@@ -90,13 +93,13 @@ export function LeadingCarousel({
       <div className="np-section-heading mb-5 flex items-center justify-between gap-4">
         <h2 id="sec-leading" className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
           <span className="np-ring" aria-hidden="true" />
-          Водещи новини
+          На Фокус
         </h2>
         <div className="order-2 flex items-center gap-2">
-          <button type="button" onClick={() => move(-1)} aria-label="Предишни водещи новини" className="np-carousel-button">
+          <button type="button" onClick={() => move(-1)} aria-label="Предишни новини на фокус" className="np-carousel-button">
             <ChevronLeftIcon width={18} height={18} />
           </button>
-          <button type="button" onClick={() => move(1)} aria-label="Следващи водещи новини" className="np-carousel-button">
+          <button type="button" onClick={() => move(1)} aria-label="Следващи новини на фокус" className="np-carousel-button">
             <ChevronRightIcon width={18} height={18} />
           </button>
         </div>
@@ -105,34 +108,39 @@ export function LeadingCarousel({
       <div
         ref={viewport}
         className="np-carousel-viewport -mx-1 cursor-grab overflow-x-auto px-1 pb-3 select-none active:cursor-grabbing"
-        aria-label="10 водещи новини"
+        aria-label="10 новини на фокус"
         onDragStart={(event) => event.preventDefault()}
         onPointerDown={(event) => {
           if (event.pointerType !== "mouse" || event.button !== 0) return;
           const element = viewport.current;
           if (!element) return;
-          const width = firstSet.current?.offsetWidth ?? 0;
-          // Move to the identical copy so dragging right also works at the visual start.
-          if (width > 0 && element.scrollLeft < element.clientWidth) element.scrollLeft += width;
           drag.current = { active: true, startX: event.clientX, startScroll: element.scrollLeft, moved: false };
           suppressClick.current = false;
           paused.current = true;
-          element.setPointerCapture(event.pointerId);
         }}
         onPointerMove={(event) => {
           const element = viewport.current;
           if (!element || !drag.current.active) return;
           const delta = event.clientX - drag.current.startX;
-          if (Math.abs(delta) >= DRAG_THRESHOLD) drag.current.moved = true;
+          if (Math.abs(delta) < DRAG_THRESHOLD) return;
+          if (!drag.current.moved) {
+            drag.current.moved = true;
+            const width = firstSet.current?.offsetWidth ?? 0;
+            // Shift onto the identical copy only once a drag starts, so a click still hits the link.
+            if (width > 0 && element.scrollLeft < element.clientWidth) {
+              element.scrollLeft += width;
+              drag.current.startScroll += width;
+            }
+            element.setPointerCapture(event.pointerId);
+          }
           element.scrollLeft = drag.current.startScroll - delta;
-          event.preventDefault();
         }}
         onPointerUp={(event) => {
           const element = viewport.current;
-          if (!element || !drag.current.active) return;
+          if (!drag.current.active) return;
           suppressClick.current = drag.current.moved;
           drag.current.active = false;
-          element.releasePointerCapture(event.pointerId);
+          if (element?.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
         }}
         onPointerCancel={() => {
           drag.current.active = false;

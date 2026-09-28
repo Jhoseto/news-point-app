@@ -109,16 +109,19 @@ export function ArticleCard({
   article,
   showExcerpt = false,
   shineDelaySec,
+  tabbable = true,
 }: {
   article: ArticleSummary;
   showExcerpt?: boolean;
   shineDelaySec?: number;
+  /** False on the carousel's visual copy so Tab skips the duplicate links. */
+  tabbable?: boolean;
 }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
     <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative flex h-full w-full flex-col overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100" aria-hidden="true" />
-      <Link href={article.path} className="flex h-full flex-col">
+      <Link href={article.path} tabIndex={tabbable ? undefined : -1} className="flex h-full flex-col">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}

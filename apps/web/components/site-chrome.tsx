@@ -90,7 +90,7 @@ export function PlovdivBanner() {
       <div className="relative flex h-full items-center gap-8 px-8 py-6">
         <BrandLogoImg className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo" sizes="280px" />
         <p className="max-w-xs text-2xl leading-tight font-extrabold tracking-tight text-white">
-          Защото истината има значение!
+          Гласът на истината !
         </p>
         <span className="absolute right-4 bottom-2 text-[0.625rem] text-white/70"></span>
       </div>
