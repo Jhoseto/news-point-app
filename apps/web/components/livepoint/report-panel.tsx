@@ -11,7 +11,9 @@ import { Choice, ConsentRow, Field, npField, SubmissionIntro, SubmissionSuccess,
 
 const LocationPicker = lazy(() => import("./report-location-picker").then(module => ({ default: module.ReportLocationPicker })));
 
-export function ReportPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
+const noopDirtyChange = (_dirty: boolean) => {};
+
+export function ReportPanel({ onDirtyChange = noopDirtyChange }: { onDirtyChange?: (dirty: boolean) => void }) {
   const [kind, setKind] = useState<ReportKind>("road");
   const [location, setLocation] = useState<ReportLocation | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -85,7 +87,7 @@ export function ReportPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean)
         footer={
           <div className="rounded-xl border border-accent/15 bg-surface/85 p-3.5 text-xs leading-relaxed text-body">
             <strong className="block text-sm text-ink">При непосредствена опасност</strong>
-            Формата не е аварийна служба. Обадете се на <a href="tel:112" className="font-extrabold text-link underline underline-offset-2">112</a>.
+            Формата не е аварийна служба. Обадете се на <a href="tel:112" className="inline-flex min-h-11 min-w-11 items-center font-extrabold text-link underline underline-offset-2">112</a>.
           </div>
         }
       />

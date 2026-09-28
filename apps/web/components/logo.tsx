@@ -22,7 +22,7 @@ export function Logo({ className = "h-10", variant = "default" }: { className?: 
     <Link
       href="/"
       aria-label="NewsPoint.bg – начало"
-      className={`inline-flex shrink-0 items-center ${isHeader ? "min-w-0 max-lg:flex-1 max-lg:justify-start" : ""}`}
+      className={`inline-flex min-h-11 shrink-0 items-center ${isHeader ? "min-w-0 max-lg:flex-1 max-lg:justify-start" : ""}`}
       onClick={onLogoClick}
     >
       <BrandLogoImg

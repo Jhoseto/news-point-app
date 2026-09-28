@@ -210,7 +210,7 @@ export function TimelineItem({ article, className = "" }: { article: ArticleSumm
         {formatClock(article.publishedAt)}
       </time>
       <span className="np-gradient-bg absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface" aria-hidden="true" />
-      <Link href={article.path} className="block">
+      <Link href={article.path} className="flex min-h-11 flex-col justify-center">
         <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
           {article.title}
         </h3>

@@ -24,10 +24,11 @@ function BlockView({ block, media }: { block: Block; media: Map<string, Media> }
     case "image": {
       const asset = media.get(block.mediaAssetId) ?? null;
       const caption = block.caption || asset?.caption;
+      const credit = asset?.credit;
       return (
         <figure className="!mt-8 !mb-8">
           <ArticleImage media={asset} sizes="(min-width: 1024px) 720px, 100vw" className="w-full rounded-2xl" />
-          {caption ? <figcaption className="mt-2 text-sm text-muted">{caption}</figcaption> : null}
+          {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>
       );
     }

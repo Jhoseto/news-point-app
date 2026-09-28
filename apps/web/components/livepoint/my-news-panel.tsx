@@ -6,7 +6,9 @@ import { PhotoPicker } from "./photo-picker";
 import { FeatherIcon } from "../icons";
 import { ConsentRow, Field, SubmissionIntro, SubmissionSuccess, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
-export function MyNewsPanel({ onDirtyChange }: { onDirtyChange: (dirty: boolean) => void }) {
+const noopDirtyChange = (_dirty: boolean) => {};
+
+export function MyNewsPanel({ onDirtyChange = noopDirtyChange }: { onDirtyChange?: (dirty: boolean) => void }) {
   const [workingTitle, setWorkingTitle] = useState("");
   const [whatHappened, setWhatHappened] = useState("");
   const [whereWhen, setWhereWhen] = useState("");

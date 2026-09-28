@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function LivePointMyNewsPage() {
   return (
     <LivePointPage title="Моята новина" lead="Отделен вход от „Подай сигнал“. Няма автоматично публикуване." wide>
-      <MyNewsPanel onDirtyChange={() => {}} />
+      <MyNewsPanel />
     </LivePointPage>
   );
 }

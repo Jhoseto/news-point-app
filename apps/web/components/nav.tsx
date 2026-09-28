@@ -69,7 +69,7 @@ function RubricMark({ slug }: { slug: string }) {
   );
 }
 
-/** „Близо до вас“ are the two local rubrics; everything the menu supplies beyond them goes under „Всички теми“. */
+/** „Близо до вас“ are the two local rubrics; the rest are also rubrics. */
 const LOCAL_SLUGS = new Set(["plovdiv", "regionalni-novini"]);
 
 function groupRubrics(items: NavItem[]) {
@@ -77,7 +77,7 @@ function groupRubrics(items: NavItem[]) {
   const rest = items.filter((item) => !LOCAL_SLUGS.has(item.slug));
   return [
     { label: "Близо до вас", items: local },
-    { label: "Всички теми", items: rest },
+    { label: "Още рубрики", items: rest },
   ].filter((group) => group.items.length > 0);
 }
 
@@ -428,7 +428,7 @@ export function RubricsButton() {
       onClick={openRubrics}
       data-rubrics-trigger
       aria-label="Рубрики"
-      className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
+      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
     >
       <GridIcon width={21} height={21} />
     </button>
@@ -454,14 +454,14 @@ export function MobileSearch() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Търсене"
-        className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
+        className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
       >
         <SearchIcon width={21} height={21} />
       </button>
       <Sheet open={open} onClose={close} label="Търсене" side="top">
         <div className="flex items-center justify-between gap-3 px-4 pt-4">
           <span className="text-xs font-extrabold tracking-[0.14em] text-muted uppercase">Търсене</span>
-          <button type="button" onClick={close} aria-label="Затвори търсенето" className="inline-flex size-10 items-center justify-center rounded-full text-ink hover:bg-surface-2">
+          <button type="button" onClick={close} aria-label="Затвори търсенето" className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-surface-2">
             <CloseIcon width={22} height={22} />
           </button>
         </div>

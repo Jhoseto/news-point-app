@@ -223,9 +223,9 @@ export function TrafficMap({ className = "", focusPosition, incidents = [], onSe
       {!ready && <div className="absolute inset-0 flex items-center justify-center bg-surface-2 text-sm font-semibold text-muted" role="status">Зареждане на картата…</div>}
       {flowUnavailable && showFlow && <p className="absolute bottom-3 left-2 rounded-md bg-surface/90 px-2 py-1 text-xs text-ink">Слоят за трафик е временно недостъпен.</p>}
       <div className="absolute top-2 right-2 flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-sm">
-        <button type="button" className="px-3 py-1 text-lg font-semibold text-ink hover:bg-surface-2 disabled:opacity-40" aria-label="Приближи картата" disabled={zoom >= 16} onClick={() => setZoom(zoom + 1)}>+</button>
-        <button type="button" className="border-t border-line px-3 py-1 text-lg font-semibold text-ink hover:bg-surface-2 disabled:opacity-40" aria-label="Отдалечи картата" disabled={zoom <= 9} onClick={() => setZoom(zoom - 1)}>−</button>
-        <button type="button" className="border-t border-line px-3 py-1 text-sm font-bold text-ink hover:bg-surface-2" aria-label="Центрирай картата върху Пловдив" onClick={() => { setCenter({ lat: 42.1354, lon: 24.7453 }); setZoom(12); }}>⌖</button>
+        <button type="button" className="min-h-11 min-w-11 px-3 py-1 text-lg font-semibold text-ink hover:bg-surface-2 disabled:opacity-40" aria-label="Приближи картата" disabled={zoom >= 16} onClick={() => setZoom(zoom + 1)}>+</button>
+        <button type="button" className="min-h-11 min-w-11 border-t border-line px-3 py-1 text-lg font-semibold text-ink hover:bg-surface-2 disabled:opacity-40" aria-label="Отдалечи картата" disabled={zoom <= 9} onClick={() => setZoom(zoom - 1)}>−</button>
+        <button type="button" className="min-h-11 min-w-11 border-t border-line px-3 py-1 text-sm font-bold text-ink hover:bg-surface-2" aria-label="Центрирай картата върху Пловдив" onClick={() => { setCenter({ lat: 42.1354, lon: 24.7453 }); setZoom(12); }}>⌖</button>
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ export function LivePointPage({ title, lead, wide, full, compact, stickyHeader, 
   const heading = (
     <>
       <nav className={`text-sm ${stickyHeader ? "mb-1.5" : compact ? "mb-2" : "mb-5"}`}>
-        <Link href="/" className="font-semibold text-link hover:text-logo">
+        <Link href="/" className="inline-flex min-h-11 min-w-11 items-center font-semibold text-link hover:text-logo">
           Начало
         </Link>
         <span className="text-muted"> / {title}</span>

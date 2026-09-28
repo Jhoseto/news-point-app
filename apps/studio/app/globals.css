@@ -223,6 +223,17 @@
     background-clip: text;
     color: transparent;
   }
+
+  /* Sidebar lockup: matches NewsPoint wordmark weight and navy on white. */
+  .np-studio-wordmark {
+    font-size: 0.8125rem;
+    font-weight: 800;
+    letter-spacing: 0.11em;
+    line-height: 1;
+    color: var(--np-ink);
+    text-transform: uppercase;
+    text-shadow: 0 0 0.5px rgb(10 20 84 / 0.35);
+  }
 }
 
 @keyframes np-drift {

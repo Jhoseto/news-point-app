@@ -80,8 +80,8 @@ export function ReportLocationMap({ point, focusPoint, onSelect }: { point: MapP
       </div>
       {!ready || error ? <p role={error ? "alert" : "status"} className="pointer-events-none absolute inset-0 flex items-center justify-center bg-surface-2/95 px-6 text-center text-sm font-semibold text-muted">{error ?? "Зареждане на картата…"}</p> : null}
       <div className="absolute top-3 right-3 flex flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card">
-        <button type="button" aria-label="Приближи картата" className="size-10 text-xl font-bold text-ink disabled:opacity-40" disabled={zoom >= 19 || !ready || !!error} onClick={() => setZoom(z => z + 1)}>+</button>
-        <button type="button" aria-label="Отдалечи картата" className="size-10 border-t border-line text-xl font-bold text-ink disabled:opacity-40" disabled={zoom <= 3 || !ready || !!error} onClick={() => setZoom(z => z - 1)}>−</button>
+        <button type="button" aria-label="Приближи картата" className="size-11 text-xl font-bold text-ink disabled:opacity-40" disabled={zoom >= 19 || !ready || !!error} onClick={() => setZoom(z => z + 1)}>+</button>
+        <button type="button" aria-label="Отдалечи картата" className="size-11 border-t border-line text-xl font-bold text-ink disabled:opacity-40" disabled={zoom <= 3 || !ready || !!error} onClick={() => setZoom(z => z - 1)}>−</button>
       </div>
       <button type="button" className="absolute bottom-7 left-3 rounded-full border border-line bg-surface px-3 py-2 text-xs font-bold text-link shadow-card disabled:opacity-50" disabled={!ready || !!error} onClick={() => onSelect(center)}>Отбележи центъра</button>
       <a href="https://www.tomtom.com/legal/" target="_blank" rel="noopener noreferrer" className="absolute right-0 bottom-0 rounded-tl-lg bg-white/95 px-2 py-0.5 text-[0.625rem] text-[#263354]">© TomTom</a>

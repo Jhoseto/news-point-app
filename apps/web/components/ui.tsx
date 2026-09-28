@@ -61,7 +61,7 @@ export function SectionTitle({
       {href ? (
         <Link
           href={href}
-          className="np-section-link group inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 py-1.5 text-xs font-bold text-link shadow-[0_3px_12px_-8px_rgb(10_20_84/0.2)] transition-[border-color,background-color,box-shadow] hover:border-accent/30 hover:bg-surface hover:shadow-card sm:text-sm"
+          className="np-section-link group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 text-xs font-bold text-link shadow-[0_3px_12px_-8px_rgb(10_20_84/0.2)] transition-[border-color,background-color,box-shadow] hover:border-accent/30 hover:bg-surface hover:shadow-card sm:text-sm"
         >
           {linkLabel}
           <ArrowRightIcon width={15} height={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
@@ -116,7 +116,7 @@ export function ButtonLink({ href, children, variant = "primary" }: { href: stri
       ? "np-gradient-bg text-on-accent shadow-card hover:brightness-110"
       : "border border-line bg-surface text-ink hover:bg-surface-2";
   return (
-    <Link href={href} className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition ${styles}`}>
+    <Link href={href} className={`inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition ${styles}`}>
       {children}
     </Link>
   );

@@ -58,12 +58,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   } catch { invalid = true; }
   const searchable = searchTerms(filters.query).length > 0;
   const categoryId = menu.find(category => category.slug === filters.category)?.id ?? null;
-  const chip = "inline-flex min-h-9 items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-body transition hover:border-accent hover:text-accent aria-[current=true]:border-transparent aria-[current=true]:bg-accent aria-[current=true]:text-on-accent";
+  const chip = "inline-flex min-h-11 items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-body transition hover:border-accent hover:text-accent aria-[current=true]:border-transparent aria-[current=true]:bg-accent aria-[current=true]:text-on-accent";
 
   return (
-    <div data-np-search-archive className="np-container flex flex-col gap-8 pt-5 pb-10">
+    <div data-np-search-archive className="np-container flex flex-col gap-6 pt-5 pb-10 sm:gap-8">
       <Breadcrumbs items={[{ name: "Търсене", path: SEARCH_PAGE }]} />
-      <header className="flex flex-col gap-5">
+      <header className="flex flex-col gap-3 sm:gap-5">
         <h1 className="text-3xl font-extrabold tracking-tight break-words text-ink sm:text-4xl">{filters.query ? <>Резултати за <span className="np-gradient-text">„{filters.query}“</span></> : "Търсене"}</h1>
         <Form role="search" action={SEARCH_PAGE} prefetch={false} className="np-search relative flex max-w-2xl items-center">
           <label htmlFor="search-page-q" className="sr-only">Търси в статиите</label>
@@ -71,10 +71,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <input type="hidden" name="period" value={filters.period} />
           <SearchIcon width={19} height={19} className="pointer-events-none absolute left-4 text-muted" />
           <input key={filters.query} id="search-page-q" name="q" type="search" defaultValue={filters.query} required minLength={SEARCH_MIN_LENGTH} maxLength={SEARCH_MAX_LENGTH} placeholder="Търси в статиите…" className="h-12 w-full rounded-full border border-line bg-surface pr-28 pl-11 text-[0.9375rem] text-ink placeholder:text-muted focus:border-accent/60 focus:outline-none" />
-          <button type="submit" className="np-gradient-bg absolute right-1.5 rounded-full px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110">Търси</button>
+          <button type="submit" className="np-gradient-bg absolute right-1.5 inline-flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-bold text-on-accent hover:brightness-110">Търси</button>
         </Form>
       </header>
-      <section aria-label="Филтри за търсене" className="np-card flex flex-col gap-5 p-5 sm:p-6">
+      <section aria-label="Филтри за търсене" className="np-card flex flex-col gap-4 p-4 sm:gap-5 sm:p-6">
         <nav aria-label="Филтър по рубрика" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-sm font-bold text-muted">Рубрика{filters.category ? ` · ${menu.find(category => category.slug === filters.category)?.name ?? ""}` : ""}</h2><span className="text-xs text-muted sm:hidden">Плъзнете за още</span></div>
           <ul className="np-scroll-soft flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
@@ -88,11 +88,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </ul>
         </nav>
       </section>
-      <RecentSearches query={filters.query} record={!invalid && searchable} />
-      {invalid ? <div role="alert" className="np-card flex flex-col items-start gap-3 p-6"><p className="font-bold text-ink">Адресът съдържа невалидни филтри или страница.</p><Link href={filteredSearchUrl({ query: filters.query, category: "", period: "all" })} prefetch={false} className="font-bold text-accent hover:underline">Започни търсенето отново</Link></div>
+      {invalid ? <div role="alert" className="np-card flex flex-col items-start gap-3 p-6"><p className="font-bold text-ink">Адресът съдържа невалидни филтри или страница.</p><Link href={filteredSearchUrl({ query: filters.query, category: "", period: "all" })} prefetch={false} className="inline-flex min-h-11 items-center font-bold text-accent hover:underline">Започни търсенето отново</Link></div>
         : !filters.query ? <p className="text-body">Въведете дума от заглавие или резюме на статия.</p>
         : !searchable ? <p role="status" className="text-body">Въведете поне {SEARCH_MIN_LENGTH} букви.</p>
         : <Suspense key={JSON.stringify([filters, params.cursor])} fallback={<ResultsLoading />}><SearchResults filters={filters} categoryId={categoryId} cursor={cursor} /></Suspense>}
+      <RecentSearches query={filters.query} record={!invalid && searchable} />
     </div>
   );
 }

@@ -21,7 +21,7 @@
 .np-poll-result small { font-size:.65rem; font-weight:500; }
 .np-poll-fill { position:absolute; inset:0 auto 0 0; background:linear-gradient(90deg,#3818d612,#990fec1b); }
 .np-poll-actions { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-top:.8rem; font-size:.75rem; color:var(--np-muted); }
-.np-poll-actions button { cursor:pointer; font-weight:750; color:var(--np-accent); }
+.np-poll-actions button { display:inline-flex; min-height:44px; align-items:center; cursor:pointer; font-weight:750; color:var(--np-accent); }
 .np-poll-actions .np-poll-submit { display:flex; align-items:center; justify-content:space-between; gap:2.5rem; background:var(--np-gradient); color:white; padding:.7rem 1.1rem; border-radius:10px; box-shadow:0 5px 16px #3818d622; }
 .np-poll-actions button:focus-visible { outline:2px solid var(--np-accent); outline-offset:4px; }
 .np-poll-actions button:disabled { opacity:.5; cursor:default; }

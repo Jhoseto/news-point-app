@@ -6,7 +6,7 @@ export function Breadcrumbs({ items }: { items: { name: string; path?: string }[
     <nav aria-label="Навигационна пътека" className="text-xs font-medium text-muted">
       <ol className="flex flex-wrap items-center gap-1">
         <li>
-          <Link href="/" className="inline-flex items-center gap-1 hover:text-ink">
+          <Link href="/" className="inline-flex min-h-11 items-center gap-1 hover:text-ink">
             <HomeIcon width={14} height={14} />
             Начало
           </Link>
@@ -17,7 +17,7 @@ export function Breadcrumbs({ items }: { items: { name: string; path?: string }[
             <li key={`${item.name}-${index}`} className="inline-flex min-w-0 items-center gap-1">
               <ChevronRightIcon width={13} height={13} className="shrink-0" />
               {item.path && !last ? (
-                <Link href={item.path} className="hover:text-ink">
+                <Link href={item.path} className="inline-flex min-h-11 min-w-11 items-center px-1 hover:text-ink">
                   {item.name}
                 </Link>
               ) : (

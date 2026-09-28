@@ -4,7 +4,7 @@ import { useState } from "react";
 import { FacebookIcon, LinkedInIcon, LinkIcon, XIcon } from "./icons";
 
 const buttonClass =
-  "inline-flex size-9 items-center justify-center rounded-full border border-line bg-surface text-ink transition hover:border-accent hover:text-accent dark:hover:text-link";
+  "inline-flex size-11 items-center justify-center rounded-full border border-line bg-surface text-ink transition hover:border-accent hover:text-accent dark:hover:text-link";
 
 export function ShareButtons({ url, title }: { url: string; title: string }) {
   const [copied, setCopied] = useState(false);

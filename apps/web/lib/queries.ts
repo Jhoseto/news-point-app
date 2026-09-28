@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
-import { articleCategories, articles, categories, getDb, hasMediaPresentations, mediaAssets, mediaPresentations } from "@newspoint/db";
+import { articleCategories, articles, authorProfiles, categories, getDb, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -18,6 +18,7 @@ export interface Media {
   height: number | null;
   alt: string;
   caption: string;
+  credit: string;
   variants?: ImageVariant[];
   focalPoint?: FocalPoint | null;
 }
@@ -48,6 +49,14 @@ export interface ArticleDetail extends ArticleSummary {
   categories: CategoryRef[];
 }
 
+export const getPublicTeam = cache(async (): Promise<{ id: string; name: string; bio: string }[]> => {
+  return getDb().select({ id: staffUsers.id, name: staffUsers.name, bio: authorProfiles.bio })
+    .from(authorProfiles)
+    .innerJoin(staffUsers, eq(staffUsers.id, authorProfiles.staffUserId))
+    .where(eq(authorProfiles.isPublic, true))
+    .orderBy(asc(staffUsers.name));
+});
+
 const baseSummaryColumns = {
   id: articles.id,
   path: articles.path,
@@ -66,6 +75,7 @@ const baseSummaryColumns = {
   mediaHeight: mediaAssets.height,
   mediaAlt: mediaAssets.alt,
   mediaCaption: mediaAssets.caption,
+  mediaCredit: mediaAssets.credit,
 };
 
 type SummaryRow = {
@@ -88,6 +98,7 @@ function toMedia(row: {
   height: number | null;
   alt: string | null;
   caption: string | null;
+  credit: string | null;
   variants?: unknown;
   focalX?: number | null;
   focalY?: number | null;
@@ -103,6 +114,7 @@ function toMedia(row: {
     height: row.height,
     alt: row.alt ?? "",
     caption: row.caption ?? "",
+    credit: row.credit ?? "",
   };
 }
 
@@ -125,6 +137,7 @@ function toSummary(row: SummaryRow): ArticleSummary {
       height: row.mediaHeight,
       alt: row.mediaAlt,
       caption: row.mediaCaption,
+      credit: row.mediaCredit,
       variants: row.mediaVariants,
       focalX: row.mediaFocalX,
       focalY: row.mediaFocalY,
@@ -356,4 +369,22 @@ export const getRelated = cache(async (article: ArticleSummary, limit: number): 
     .orderBy(desc(articles.publishedAt))
     .limit(limit);
   return rows.map(toSummary);
+});
+
+/** Chronological neighbours in the primary rubric, with the database's full timestamp precision. */
+export const getArticleNeighbors = cache(async (article: ArticleSummary): Promise<{ older: ArticleSummary | null; newer: ArticleSummary | null }> => {
+  if (!article.category) return { older: null, newer: null };
+  const inRubric = eq(articleCategories.categoryId, article.category.id);
+  const at = sql`(select published_at from articles where id = ${article.id})`;
+  const [olderRows, newerRows] = await Promise.all([
+    summaryQuery().then(({ query }) => query
+      .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
+      .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) < (${at}, ${article.id})`))
+      .orderBy(desc(articles.publishedAt), desc(articles.id)).limit(1)),
+    summaryQuery().then(({ query }) => query
+      .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
+      .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) > (${at}, ${article.id})`))
+      .orderBy(asc(articles.publishedAt), asc(articles.id)).limit(1)),
+  ]);
+  return { older: olderRows[0] ? toSummary(olderRows[0]) : null, newer: newerRows[0] ? toSummary(newerRows[0]) : null };
 });

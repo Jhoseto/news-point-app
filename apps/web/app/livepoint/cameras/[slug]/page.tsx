@@ -24,11 +24,11 @@ export default async function LivePointCameraDetailPage({ params }: { params: Pr
   return (
     <div className="np-container max-w-3xl py-8">
       <nav className="mb-4 text-sm">
-        <Link href="/" className="font-semibold text-link">
+        <Link href="/" className="inline-flex min-h-11 min-w-11 items-center font-semibold text-link">
           Начало
         </Link>
         <span className="text-muted"> / </span>
-        <Link href="/livepoint/cameras/" className="font-semibold text-link">
+        <Link href="/livepoint/cameras/" className="inline-flex min-h-11 min-w-11 items-center font-semibold text-link">
           Камери
         </Link>
         <span className="text-muted"> / {camera.name}</span>

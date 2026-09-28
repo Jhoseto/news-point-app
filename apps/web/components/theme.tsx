@@ -22,8 +22,9 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label="Смени светъл/тъмен режим"
-      className="relative inline-flex h-8 w-14 shrink-0 items-center rounded-full border border-line bg-surface-2 p-0.5 transition-colors"
+      className="relative inline-flex h-11 w-14 shrink-0 items-center rounded-full p-0.5 transition-colors"
     >
+      <span className="absolute inset-x-0 top-1/2 h-8 -translate-y-1/2 rounded-full border border-line bg-surface-2" aria-hidden="true" />
       <span className="absolute inset-y-0 left-1.5 flex items-center text-faint dark:text-muted">
         <SunIcon width={14} height={14} />
       </span>

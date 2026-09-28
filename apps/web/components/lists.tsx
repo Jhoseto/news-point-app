@@ -68,13 +68,13 @@ export function CompactList({
 export function CategoryChips({ categories, activeId, title }: { categories: CategoryRef[]; activeId?: string | undefined; title?: string }) {
   return (
     <nav aria-label={title ?? "Рубрики"}>
-      <ul className="flex flex-wrap gap-2">
+      <ul className="np-scroll-soft flex flex-nowrap gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible sm:pb-0">
         {categories.map((category) => (
-          <li key={category.id}>
+          <li key={category.id} className="shrink-0">
             <Link
               href={category.path}
               aria-current={category.id === activeId ? "page" : undefined}
-              className="inline-flex rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-body transition hover:border-accent hover:text-accent aria-[current=page]:border-transparent aria-[current=page]:bg-accent aria-[current=page]:text-on-accent dark:hover:text-link"
+              className="inline-flex min-h-11 items-center rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm font-semibold text-body transition hover:border-accent hover:text-accent aria-[current=page]:border-transparent aria-[current=page]:bg-accent aria-[current=page]:text-on-accent dark:hover:text-link"
             >
               {category.name}
             </Link>

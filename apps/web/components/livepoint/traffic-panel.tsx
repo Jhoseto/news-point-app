@@ -126,9 +126,9 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" aria-pressed={showFlow} onClick={() => setShowFlow((value) => !value)} className="rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Поток {showFlow ? "●" : "○"}</button>
-            <button type="button" aria-pressed={showMarkers} onClick={() => setShowMarkers((value) => !value)} className="rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Маркери {showMarkers ? "●" : "○"}</button>
-            <button type="button" aria-pressed={showMotion} onClick={() => setShowMotion((value) => !value)} className="rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink" title={mapMode === "3d" ? "Движение по участъците от TomTom incidentDetails (не GPS на коли)" : undefined}>Движение {showMotion ? "●" : "○"}</button>
+            <button type="button" aria-pressed={showFlow} onClick={() => setShowFlow((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Поток {showFlow ? "●" : "○"}</button>
+            <button type="button" aria-pressed={showMarkers} onClick={() => setShowMarkers((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Маркери {showMarkers ? "●" : "○"}</button>
+            <button type="button" aria-pressed={showMotion} onClick={() => setShowMotion((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink" title={mapMode === "3d" ? "Движение по участъците от TomTom incidentDetails (не GPS на коли)" : undefined}>Движение {showMotion ? "●" : "○"}</button>
           </div>
         </div>
         {variant === "modal" && <div className="px-3 py-2 sm:hidden">
@@ -139,7 +139,7 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
         </div>}
         <div className={`${variant === "modal" ? "hidden sm:flex" : "flex"} flex-wrap gap-1.5 ${variant === "modal" ? "px-3 py-2 sm:px-4" : "px-3 py-3 sm:px-5"}`} role="group" aria-label="Покажи събития върху картата">
           {FILTERS.map(({ id, label }) => (
-            <button key={id} type="button" aria-pressed={filter === id} onClick={() => chooseFilter(id)} className="shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent sm:text-sm">
+            <button key={id} type="button" aria-pressed={filter === id} onClick={() => chooseFilter(id)} className="min-h-11 shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent sm:text-sm">
               {label} <span className="ml-1 opacity-70">{incidents?.payload ? counts[id] : "—"}</span>
             </button>
           ))}
@@ -147,8 +147,8 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
       </div>
 
       {variant === "modal" && <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface-2 p-1 lg:hidden" role="group" aria-label="Изглед на трафика">
-        <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")} className="rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Карта</button>
-        <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className="rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Събития · {shown.length}</button>
+        <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")} className="min-h-11 rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Карта</button>
+        <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className="min-h-11 rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Събития · {shown.length}</button>
       </div>}
 
       <div className={`grid gap-2.5 ${variant === "page" ? "xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.7fr)]" : "lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.85fr)]"}`}>
@@ -160,10 +160,10 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
             </div>
             <div className="flex items-center gap-2">
               {variant === "page" && <div className="flex rounded-full border border-line bg-surface-2 p-0.5" role="group" aria-label="Размерност на картата">
-                {(["2d", "3d"] as const).map((mode) => <button key={mode} type="button" aria-pressed={mapMode === mode} onClick={() => setMapMode(mode)} className="rounded-full px-3 py-1 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">{mode.toUpperCase()}</button>)}
+                {(["2d", "3d"] as const).map((mode) => <button key={mode} type="button" aria-pressed={mapMode === mode} onClick={() => setMapMode(mode)} className="min-h-11 min-w-11 rounded-full px-3 py-1 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">{mode.toUpperCase()}</button>)}
               </div>}
               {variant === "page" && mapMode === "3d" ? <span className="rounded-full border border-line bg-surface-2 px-3 py-1 text-[11px] font-bold text-muted">Фотореалистичен 3D</span> : <div className="flex rounded-full border border-line bg-surface-2 p-0.5" role="group" aria-label="Визия на картата">
-                {(["auto", "day", "night"] as const).map((style) => <button key={style} type="button" aria-pressed={mapStyle === style} onClick={() => setMapStyle(style)} className="rounded-full px-2.5 py-1 text-[11px] font-extrabold text-muted transition-colors aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">{{ auto: "Авто", day: "Ден", night: "Нощ" }[style]}</button>)}
+                {(["auto", "day", "night"] as const).map((style) => <button key={style} type="button" aria-pressed={mapStyle === style} onClick={() => setMapStyle(style)} className="min-h-11 min-w-11 rounded-full px-2.5 py-1 text-[11px] font-extrabold text-muted transition-colors aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">{{ auto: "Авто", day: "Ден", night: "Нощ" }[style]}</button>)}
               </div>}
               <span className="hidden rounded-full bg-surface-2 px-3 py-1.5 text-xs font-bold text-ink sm:inline">{incidents?.payload ? eventCount(shown.length) : "Зареждане…"}</span>
             </div>

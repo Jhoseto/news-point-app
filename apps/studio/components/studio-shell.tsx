@@ -5,13 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
-import { withBase } from "@/lib/paths";
 
 const NAV = [
   { href: "/", label: "Материали", icon: "M4 6h16M4 12h16M4 18h10" },
   { href: "/articles/new", label: "Нов материал", icon: "M12 5v14M5 12h14" },
   { href: "/polls", label: "Анкети", icon: "M5 20V10M12 20V4M19 20v-7" },
-  { href: "/profile", label: "Моят профил", icon: "M20 21a8 8 0 0 0-16 0M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 
@@ -48,9 +46,9 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
   return (
     <div className="min-h-dvh lg:pl-64">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-shell text-white/80 lg:flex">
-        <div className="flex h-[4.5rem] items-center gap-3 border-b border-white/8 px-5">
-          <BrandLogoImg className="h-9 w-auto max-w-[9rem] object-contain object-left" />
-          <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-[0.15em] text-white uppercase">Studio</span>
+        <div className="flex h-[4.5rem] shrink-0 items-center gap-2.5 border-b border-line bg-surface px-4">
+          <BrandLogoImg className="h-9 w-auto max-w-[8.5rem] shrink object-contain object-left" />
+          <span className="np-studio-wordmark shrink-0 pt-0.5">Studio</span>
         </div>
         <nav className="flex-1 space-y-1 p-3" aria-label="Studio">
           {nav.map((item) => (
@@ -76,13 +74,19 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
           </a>
         </nav>
         <div className="border-t border-white/8 p-3">
-          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
-            <span className="np-gradient-bg flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white">{initials}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-bold text-white">{user.name}</span>
-              <span className="block text-xs text-white/55">{user.role}</span>
-            </span>
-            <button type="button" onClick={signOut} className="rounded-lg px-2 py-1.5 text-xs font-bold text-white/60 transition hover:bg-white/8 hover:text-white">
+          <div className="flex items-center gap-2 rounded-xl px-2 py-2">
+            <Link
+              href="/profile"
+              aria-current={isActive("/profile") ? "page" : undefined}
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 pr-1 transition hover:bg-white/6 aria-[current=page]:bg-white/8"
+            >
+              <span className="np-gradient-bg flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white">{initials}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-white">{user.name}</span>
+                <span className="block text-xs text-white/55">{user.role}</span>
+              </span>
+            </Link>
+            <button type="button" onClick={signOut} className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-bold text-white/60 transition hover:bg-white/8 hover:text-white">
               Изход
             </button>
           </div>

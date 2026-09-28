@@ -27,13 +27,13 @@ export function RecentSearches({ query, record }: { query: string; record: boole
     <section aria-label="Скорошни търсения на това устройство" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
         <h2 className="font-semibold text-muted">Скорошни <span className="font-normal">· на това устройство</span></h2>
-        {items.length ? <button type="button" className="min-h-9 font-semibold text-accent hover:underline" onClick={() => {
+        {items.length ? <button type="button" className="min-h-11 font-semibold text-accent hover:underline" onClick={() => {
           try { localStorage.removeItem(RECENT_SEARCH_KEY); setItems([]); setCleared(true); }
           catch { setUnavailable(true); }
         }}>Изчисти</button> : null}
       </div>
       <ul className="flex flex-wrap gap-2">
-        {items.map(item => <li key={item.query} className="min-w-0 max-w-full"><Link href={searchPageUrl(item.query)} prefetch={false} className="inline-flex max-w-full rounded-full border border-line bg-surface px-3.5 py-2 text-sm font-semibold break-words text-body transition hover:border-accent hover:text-accent">{item.query}</Link></li>)}
+        {items.map(item => <li key={item.query} className="min-w-0 max-w-full"><Link href={searchPageUrl(item.query)} prefetch={false} className="inline-flex min-h-11 max-w-full items-center rounded-full border border-line bg-surface px-3.5 py-2 text-sm font-semibold break-words text-body transition hover:border-accent hover:text-accent">{item.query}</Link></li>)}
       </ul>
       <p role="status" className="text-sm text-muted">{cleared ? "Скорошните търсения са изчистени." : null}</p>
     </section>

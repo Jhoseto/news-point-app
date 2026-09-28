@@ -1,14 +1,16 @@
+import Link from "next/link";
 import { formatFull, isoDate, readingMinutes } from "@/lib/format";
-import { getLatest, getRelated, type ArticleDetail } from "@/lib/queries";
+import { getArticleNeighbors, getLatest, getRelated, type ArticleDetail } from "@/lib/queries";
 import { ArticleBody } from "./article-body";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon, ExternalIcon } from "./icons";
 import { CategoryChips, CompactList, LatestList } from "./lists";
 import { ShareButtons } from "./share";
+import { ReadingProgress } from "./reading-progress";
 import { ArticleImage, CategoryPill } from "./ui";
 
 export async function ArticlePage({ article }: { article: ArticleDetail }) {
-  const [latest, related] = await Promise.all([getLatest(7), getRelated(article, 4)]);
+  const [latest, related, neighbors] = await Promise.all([getLatest(7), getRelated(article, 4), getArticleNeighbors(article)]);
   const latestOthers = latest.filter((item) => item.id !== article.id).slice(0, 6);
   const shareUrl = article.sourceUrl ?? article.path;
   const crumbs = article.category
@@ -17,6 +19,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
 
   return (
     <div className="np-container flex max-w-[104rem] flex-col gap-6 pt-5 pb-10">
+      <ReadingProgress />
       <Breadcrumbs items={crumbs} />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 2xl:gap-10">
         <article className="min-w-0">
@@ -26,7 +29,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
                 <ArticleImage media={article.hero} priority sizes="(min-width: 1536px) 70vw, (min-width: 1024px) 66vw, 100vw" className="aspect-[16/9] w-full" />
                 {article.category ? <CategoryPill category={article.category} className="absolute top-4 left-4" /> : null}
               </div>
-              {article.hero.caption ? <p className="mt-2 text-xs text-muted">{article.hero.caption}</p> : null}
+              {article.hero.caption || article.hero.credit ? (
+                <p className="mt-2 text-xs text-muted">
+                  {article.hero.caption}{article.hero.caption && article.hero.credit ? " · " : ""}
+                  {article.hero.credit ? `Снимка: ${article.hero.credit}` : ""}
+                </p>
+              ) : null}
             </>
           ) : null}
 
@@ -55,12 +63,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
               <ShareButtons url={shareUrl} title={article.title} />
             </div>
 
-            <ArticleBody blocks={article.body} media={article.media} />
+            <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
 
             {article.categories.length ? (
               <div className="mt-4 flex flex-col gap-3 border-t border-line pt-5">
-                <span className="text-sm font-bold text-ink">Теми</span>
-                <CategoryChips categories={article.categories} activeId={article.category?.id} title="Теми на статията" />
+                <span className="text-sm font-bold text-ink">Рубрики</span>
+                <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
               </div>
             ) : null}
 
@@ -69,11 +77,28 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
                 href={article.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 self-start text-xs font-semibold text-muted hover:text-ink"
+                className="inline-flex min-h-11 items-center gap-1.5 self-start text-xs font-semibold text-muted hover:text-ink"
               >
                 Оригинална публикация на newspoint.bg
                 <ExternalIcon width={13} height={13} />
               </a>
+            ) : null}
+
+            {neighbors.older || neighbors.newer ? (
+              <nav aria-label="Съседни статии" className="mt-4 grid gap-3 border-t border-line pt-6 sm:grid-cols-2">
+                {neighbors.older ? (
+                  <Link href={neighbors.older.path} rel="prev" className="np-card group flex min-h-24 flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:shadow-card">
+                    <span className="text-xs font-bold text-muted">← По-ранна в {article.category?.name}</span>
+                    <span className="line-clamp-2 text-sm font-extrabold text-ink group-hover:text-accent">{neighbors.older.title}</span>
+                  </Link>
+                ) : <span />}
+                {neighbors.newer ? (
+                  <Link href={neighbors.newer.path} rel="next" className="np-card group flex min-h-24 flex-col gap-2 p-4 transition hover:-translate-y-0.5 hover:shadow-card sm:text-right">
+                    <span className="text-xs font-bold text-muted">По-нова в {article.category?.name} →</span>
+                    <span className="line-clamp-2 text-sm font-extrabold text-ink group-hover:text-accent">{neighbors.newer.title}</span>
+                  </Link>
+                ) : <span />}
+              </nav>
             ) : null}
           </div>
         </article>
