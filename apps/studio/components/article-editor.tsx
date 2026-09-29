@@ -111,13 +111,14 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [device, setDevice] = useState<Device>("desktop");
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const [availableMedia, setAvailableMedia] = useState(media);
   const publishKey = useRef<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   const readOnly = !article.canEdit;
   const dirty = !sameDraft(draft, saved);
   const busy = phase !== "idle";
-  const hero = media.find((item) => item.id === draft.heroMediaId) ?? null;
+  const hero = availableMedia.find((item) => item.id === draft.heroMediaId) ?? null;
   const words = wordCount(draft.bodyText);
 
   const previewSource = useDeferredValue(draft);
@@ -486,68 +487,65 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               </select>
             </div>
 
-            <div className="np-card flex items-center gap-2.5 p-3">
-              {hero ? (
-                <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
-              ) : (
-                <div className="flex aspect-[4/3] w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-[0.625rem] font-bold text-faint">
-                  Няма
+            <fieldset className="np-card min-w-0 p-3" disabled={readOnly}>
+              <label htmlFor="author-kind" className="np-label">Публичен автор</label>
+              <select
+                id="author-kind"
+                aria-label="Публичен автор"
+                value={draft.authorKind}
+                disabled={readOnly}
+                onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
+                className="np-input py-2 text-sm"
+              >
+                <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
+                <option value="newsroom">NewsPoint.bg</option>
+                <option value="manual">Друг автор</option>
+              </select>
+              {draft.authorKind === "manual" ? (
+                <div className="mt-2">
+                  <label htmlFor="manual-author" className="np-label">Име на автора</label>
+                  <input
+                    id="manual-author"
+                    value={draft.authorName}
+                    maxLength={AUTHOR_NAME_MAX}
+                    onChange={(event) => update("authorName", event.target.value)}
+                    placeholder="Име и фамилия"
+                    className="np-input"
+                    autoComplete="off"
+                  />
                 </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="np-label">Основна снимка</p>
-                {!readOnly ? (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => { setMediaTarget("hero"); setPickerOpen(true); }} className="np-btn np-btn-secondary px-3 py-1.5">
-                      {hero ? "Смени" : "Избери"}
-                    </button>
-                    <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary px-3 py-1.5">Embed</button>
-                    {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary px-3 py-1.5">Махни embed</button> : null}
-                    {hero ? (
-                      <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary px-3 py-1.5">
-                        Махни
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="truncate text-sm text-muted">{hero?.alt || "—"}</p>
-                )}
-              </div>
-            </div>
+              ) : null}
+            </fieldset>
           </div>
 
-          <fieldset className="np-card p-3" disabled={readOnly}>
-            <legend className="np-label px-1">Публичен автор</legend>
-            <select
-              id="author-kind"
-              aria-label="Публичен автор"
-              value={draft.authorKind}
-              disabled={readOnly}
-              onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
-              className="np-input py-2 text-sm"
-            >
-              <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
-              <option value="newsroom">NewsPoint.bg</option>
-              <option value="manual">Друг автор</option>
-            </select>
-            {draft.authorKind === "manual" ? (
-              <div className="mt-3 grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <div>
-                <label htmlFor="manual-author" className="np-label">Име на автора</label>
-                <input
-                  id="manual-author"
-                  value={draft.authorName}
-                  maxLength={AUTHOR_NAME_MAX}
-                  onChange={(event) => update("authorName", event.target.value)}
-                  placeholder="Име и фамилия"
-                  className="np-input"
-                  autoComplete="off"
-                />
-                </div>
-                <p className="pb-2.5 text-xs text-faint">Текстов подпис без авторски профил.</p>
+          <div className="np-card flex items-center gap-2.5 p-3">
+            {hero ? (
+              <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
+            ) : (
+              <div className="flex aspect-[4/3] w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-[0.625rem] font-bold text-faint">
+                Няма
               </div>
-            ) : null}
-          </fieldset>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="np-label">Основна снимка</p>
+              {!readOnly ? (
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => { setMediaTarget("hero"); setPickerOpen(true); }} className="np-btn np-btn-secondary px-3 py-1.5">
+                    {hero ? "Смени" : "Избери"}
+                  </button>
+                  <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary px-3 py-1.5">Embed</button>
+                  {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary px-3 py-1.5">Махни embed</button> : null}
+                  {hero ? (
+                    <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary px-3 py-1.5">
+                      Махни
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="truncate text-sm text-muted">{hero?.alt || "—"}</p>
+              )}
+            </div>
+          </div>
 
           <div className="np-card p-3">
             <label htmlFor="excerpt" className="np-label">
@@ -672,7 +670,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 </div>
                 <ArticlePreview
                   theme={theme}
-                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media, authorName: previewSource.authorName, publishedAt: published.at }}
+                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media: availableMedia, authorName: previewSource.authorName, publishedAt: published.at }}
                 />
               </div>
             ) : (
@@ -683,7 +681,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <div className="max-h-[760px] overflow-y-auto rounded-[2rem]">
                   <ArticlePreview
                     theme={theme}
-                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media, authorName: previewSource.authorName, publishedAt: published.at }}
+                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media: availableMedia, authorName: previewSource.authorName, publishedAt: published.at }}
                   />
                 </div>
               </div>
@@ -694,10 +692,11 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
       {pickerOpen ? (
         <MediaPicker
-          media={media}
+          media={availableMedia}
           selected={draft.heroMediaId}
           multiple={mediaTarget === "body"}
           onClose={() => setPickerOpen(false)}
+          onUpload={(item) => { setAvailableMedia((current) => [item, ...current]); if (mediaTarget === "hero") update("heroMediaId", item.id); else if (bodyRef.current) { bodyRef.current.focus(); document.execCommand("insertHTML", false, `<p><img data-media-id="${item.id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`); update("bodyText", htmlToBodyText(bodyRef.current.innerHTML)); } setPickerOpen(false); }}
           onSelect={(id) => {
             if (mediaTarget === "body" && bodyRef.current) {
               bodyRef.current.focus();

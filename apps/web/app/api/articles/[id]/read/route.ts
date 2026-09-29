@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { and, eq, lte, sql } from "drizzle-orm";
 import { articleReadCounts, articles, getDb, hasArticleReadCounts } from "@newspoint/db";
+import { isArticleReadSameOrigin } from "@/lib/article-read";
 import { z } from "zod";
 
 export const runtime = "nodejs";
@@ -12,14 +13,20 @@ function allowed(key: string) {
   const now = Date.now();
   for (const [stored, value] of buckets) if (value.expires <= now) buckets.delete(stored);
   const entry = buckets.get(key);
-  if (entry) { entry.count += 1; return entry.count <= 12; }
+  if (entry) { entry.count += 1; return entry.count <= 120; }
   if (buckets.size >= 5_000) return false;
   buckets.set(key, { count: 1, expires: now + 10 * 60_000 });
   return true;
 }
 
 export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
-  if (request.headers.get("origin") !== request.nextUrl.origin || request.headers.get("sec-fetch-site") === "cross-site") {
+  if (!isArticleReadSameOrigin({
+    origin: request.headers.get("origin"),
+    host: request.headers.get("host"),
+    forwardedHost: request.headers.get("x-forwarded-host"),
+    forwardedProto: request.headers.get("x-forwarded-proto"),
+    fetchSite: request.headers.get("sec-fetch-site"),
+  })) {
     return NextResponse.json({ error: "Заявката трябва да е от сайта." }, { status: 403, headers });
   }
   const parsed = z.uuid().safeParse((await context.params).id);
