@@ -8,6 +8,7 @@ export * from "./schema";
 export { hasMediaPresentations } from "./media-presentation";
 export { hasArticleReadCounts } from "./article-reads";
 export { applyDueViewBoosts, hasArticleViewBoosts } from "./view-boosts";
+export { hasPageArrangements } from "./page-arrangements";
 export { loadRootEnv } from "./env";
 
 function readEnv() {

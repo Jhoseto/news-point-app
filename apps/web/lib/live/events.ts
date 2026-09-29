@@ -28,7 +28,7 @@ export interface LiveCard {
 export interface OutboxRow {
   id: number;
   type: OutboxEventType;
-  entityId: string;
+  entityId: string | null;
   version: number;
   payload: OutboxPayload;
   occurredAt: Date;
@@ -50,7 +50,7 @@ export function toLiveEvent(row: OutboxRow, card: LiveCard | null = null): LiveE
   return {
     eventId: row.id,
     type: row.type,
-    entityId: row.entityId,
+    entityId: row.entityId ?? "",
     version: row.version,
     occurredAt: row.occurredAt.toISOString(),
     layoutVersion: row.id,
@@ -74,7 +74,8 @@ export function parseLastEventId(value: string | null): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-/** Paths whose cached HTML changes when an article changes. */
-export function affectedPaths(event: Pick<LiveEvent, "path">): string[] {
+/** Paths whose cached HTML changes when an article or a published arrangement changes. */
+export function affectedPaths(event: { path: string; type?: LiveEvent["type"] }): string[] {
+  if (event.type === "layout.updated") return event.path ? [event.path] : [];
   return [...new Set(["/", event.path])];
 }

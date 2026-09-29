@@ -16,6 +16,7 @@ interface UserRow {
   createdAt: string;
   lastActiveAt: string | null;
   profileBio: string;
+  profileImageUrl: string | null;
 }
 
 interface Actor {
@@ -260,7 +261,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
             const deletable = canDeleteAccount(actor, user);
             return (
               <li key={user.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
-                <span className="np-gradient-bg flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">{initials(user.name)}</span>
+                {user.profileImageUrl ? <img src={user.profileImageUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" /> : <span className="np-gradient-bg flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">{initials(user.name)}</span>}
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-bold text-ink">
                     {user.name}

@@ -37,6 +37,15 @@ export function LiveUpdates() {
       } catch {
         return;
       }
+      if (event.type === "layout.updated") {
+        const here = window.location.pathname;
+        const same = event.path === "/" ? here === "/" : here.replace(/\/$/, "") === event.path.replace(/\/$/, "");
+        if (same) {
+          startTransition(() => router.refresh());
+          setRefreshedAt(new Date());
+        }
+        return;
+      }
       if (event.type === "article.published" && event.card) {
         setToasts((current) =>
           [event, ...current.filter((toast) => toast.entityId !== event.entityId)].slice(0, MAX_TOASTS),

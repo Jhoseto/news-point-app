@@ -40,10 +40,10 @@ class LiveHub {
       .where(gt(outboxEvents.id, afterId))
       .orderBy(asc(outboxEvents.id))
       .limit(limit);
-    const publishedIds = rows.filter((row) => row.type === "article.published").map((row) => row.entityId);
+    const publishedIds = rows.flatMap((row) => row.type === "article.published" && row.entityId ? [row.entityId] : []);
     const summaries = await getSummariesByIds([...new Set(publishedIds)]);
     return rows.map((row) => {
-      const summary = row.type === "article.published" ? summaries.get(row.entityId) : undefined;
+      const summary = row.type === "article.published" && row.entityId ? summaries.get(row.entityId) : undefined;
       return toLiveEvent(row, summary ? toLiveCard(summary) : null);
     });
   }

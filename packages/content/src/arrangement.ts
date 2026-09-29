@@ -1,0 +1,170 @@
+import { z } from "zod";
+
+/** Home and category pages keep this grid. Editors only choose which story fills a slot. */
+export const HOME_PAGE_KEY = "home";
+export const HOME_LEAD_SECTION = "plovdiv";
+export const HOME_ASIDE_SECTIONS = ["lajfstajl", "kultura"] as const;
+export const HOME_SUPPORT_COUNT = 3;
+export const HOME_CAROUSEL_COUNT = 10;
+export const HOME_LATEST_PIN_COUNT = 3;
+export const HOME_BAND_COUNT = 13;
+export const CATEGORY_NEXT_COUNT = 6;
+export const ARRANGEMENT_QUEUE_LIMIT = 5;
+
+const asideSet = new Set<string>(HOME_ASIDE_SECTIONS);
+
+export const arrangementItemSchema = z.object({
+  articleId: z.uuid(),
+  startsAt: z.string().nullable(),
+  endsAt: z.string().nullable(),
+  placedBy: z.string().max(120).default(""),
+  placedAt: z.string().nullable().default(null),
+}).strict();
+
+export const arrangementSlotSchema = z.object({
+  items: z.array(arrangementItemSchema).max(1 + ARRANGEMENT_QUEUE_LIMIT),
+}).strict();
+
+export const arrangementDocumentSchema = z.object({
+  slots: z.record(z.string().max(80), arrangementSlotSchema),
+  excluded: z.array(z.uuid()).max(80),
+}).strict();
+
+export type ArrangementItem = z.infer<typeof arrangementItemSchema>;
+export type ArrangementSlot = z.infer<typeof arrangementSlotSchema>;
+export type ArrangementDocument = z.infer<typeof arrangementDocumentSchema>;
+
+export const emptyArrangement = (): ArrangementDocument => ({ slots: {}, excluded: [] });
+
+export interface HomeSectionPlan {
+  slug: string;
+  name: string;
+  count: number;
+  layout: "grid" | "feature" | "list";
+  wide: boolean;
+  aside: boolean;
+}
+
+export function homeSectionCount(layout: "grid" | "feature" | "list", wide: boolean): number {
+  if (layout === "list") return 4;
+  return wide ? 7 : layout === "grid" ? 5 : 4;
+}
+
+/** Same section order and card counts the public homepage already renders. */
+export function planHomeSections(categories: { slug: string; name: string }[]): { main: HomeSectionPlan[]; aside: HomeSectionPlan[] } {
+  const mainCategories = [
+    ...categories.filter((category) => category.slug === HOME_LEAD_SECTION),
+    ...categories.filter((category) => category.slug !== HOME_LEAD_SECTION && !asideSet.has(category.slug)),
+  ];
+  const main = mainCategories.map((category, index): HomeSectionPlan => {
+    const layout = index % 2 === 1 ? "feature" : "grid";
+    const wide = index >= 1;
+    return { slug: category.slug, name: category.name, layout, wide, aside: false, count: homeSectionCount(layout, wide) };
+  });
+  const aside = categories
+    .filter((category) => asideSet.has(category.slug))
+    .map((category): HomeSectionPlan => ({
+      slug: category.slug,
+      name: category.name,
+      layout: "list",
+      wide: false,
+      aside: true,
+      count: 4,
+    }));
+  return { main, aside };
+}
+
+export function sectionSlotKey(slug: string, index: number): string {
+  return `section:${slug}:${index}`;
+}
+
+export interface SlotLabel {
+  key: string;
+  group: string;
+  label: string;
+}
+
+export function homeSlotCatalog(categories: { slug: string; name: string }[]): SlotLabel[] {
+  const slots: SlotLabel[] = [
+    { key: "hero", group: "Водеща лента", label: "Водеща" },
+    { key: "support-0", group: "Водеща лента", label: "До водещата — голяма" },
+    { key: "support-1", group: "Водеща лента", label: "До водещата — лява малка" },
+    { key: "support-2", group: "Водеща лента", label: "До водещата — дясна малка" },
+  ];
+  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
+    slots.push({ key: `carousel-${index}`, group: "Въртележка", label: `Място ${index + 1}` });
+  }
+  for (let index = 0; index < HOME_LATEST_PIN_COUNT; index += 1) {
+    slots.push({ key: `latest-${index}`, group: "Последни", label: `Отгоре ${index + 1}` });
+  }
+  const planned = planHomeSections(categories);
+  for (const section of [...planned.main, ...planned.aside]) {
+    for (let index = 0; index < section.count; index += 1) {
+      const label = section.aside ? `Ред ${index + 1}` : index === 0 ? "Голяма карта" : `Малка ${index}`;
+      slots.push({ key: sectionSlotKey(section.slug, index), group: section.name, label });
+    }
+  }
+  return slots;
+}
+
+export function categorySlotCatalog(): SlotLabel[] {
+  const slots: SlotLabel[] = [{ key: "lead", group: "Първа страница", label: "Голяма карта" }];
+  for (let index = 0; index < CATEGORY_NEXT_COUNT; index += 1) {
+    slots.push({ key: `next-${index}`, group: "Първа страница", label: `Следваща ${index + 1}` });
+  }
+  return slots;
+}
+
+export function allowedSlotKeys(pageKey: string, categories: { slug: string; name: string }[]): Set<string> {
+  const catalog = pageKey === HOME_PAGE_KEY ? homeSlotCatalog(categories) : categorySlotCatalog();
+  return new Set(catalog.map((slot) => slot.key));
+}
+
+function validInstant(value: string | null): boolean {
+  return value === null || Number.isFinite(Date.parse(value));
+}
+
+/** Drops unknown slots and items whose clock values cannot be read. */
+export function sanitizeArrangement(pageKey: string, document: ArrangementDocument, categories: { slug: string; name: string }[]): ArrangementDocument {
+  const allowed = allowedSlotKeys(pageKey, categories);
+  const slots: ArrangementDocument["slots"] = {};
+  for (const [key, slot] of Object.entries(document.slots)) {
+    if (!allowed.has(key)) continue;
+    const items = slot.items.filter((item) => validInstant(item.startsAt) && validInstant(item.endsAt) && (item.endsAt === null || item.startsAt === null || Date.parse(item.startsAt) < Date.parse(item.endsAt)));
+    if (items.length) slots[key] = { items };
+  }
+  return { slots, excluded: [...new Set(document.excluded)] };
+}
+
+/**
+ * First queued story whose window contains `now` and which is still public.
+ * A future start holds the slot empty. After the current story ends, the next one takes the same place.
+ */
+export function activePlacement(slot: ArrangementSlot | undefined, now: number, visible: ReadonlySet<string>): ArrangementItem | null {
+  if (!slot) return null;
+  for (const item of slot.items) {
+    if (item.startsAt && Date.parse(item.startsAt) > now) return null;
+    const ended = item.endsAt !== null && Date.parse(item.endsAt) <= now;
+    if (!visible.has(item.articleId) || ended) continue;
+    return item;
+  }
+  return null;
+}
+
+export function duplicateArticleIds(document: ArrangementDocument, now: number, visible: ReadonlySet<string>): string[] {
+  const counts = new Map<string, number>();
+  for (const slot of Object.values(document.slots)) {
+    const active = activePlacement(slot, now, visible);
+    if (!active) continue;
+    counts.set(active.articleId, (counts.get(active.articleId) ?? 0) + 1);
+  }
+  return [...counts].filter(([, count]) => count > 1).map(([id]) => id);
+}
+
+export function referencedArticleIds(document: ArrangementDocument): string[] {
+  const ids = new Set<string>(document.excluded);
+  for (const slot of Object.values(document.slots)) {
+    for (const item of slot.items) ids.add(item.articleId);
+  }
+  return [...ids];
+}

@@ -16,6 +16,7 @@ export interface StaffListItem {
   createdAt: Date;
   lastActiveAt: Date | null;
   profileBio: string;
+  profileImageUrl: string | null;
 }
 
 const assignable = z.enum(["editor", "admin"]);
@@ -33,7 +34,7 @@ export async function listStaffProfiles(): Promise<{ id: string; name: string }[
   return getDb()
     .select({ id: staffUsers.id, name: staffUsers.name })
     .from(staffUsers)
-    .orderBy(asc(staffUsers.name));
+    .orderBy(asc(staffUsers.createdAt), asc(staffUsers.name));
 }
 
 export async function listStaff(): Promise<StaffListItem[]> {
@@ -48,10 +49,11 @@ export async function listStaff(): Promise<StaffListItem[]> {
         (value: string | null) => (value ? new Date(value) : null),
       ),
       profileBio: sql<string>`coalesce(${authorProfiles.bio}, '')`,
+      profileImageUrl: sql<string | null>`case when ${staffUsers.image} is not null then '/admin/api/staff/' || ${staffUsers.id} || '/photo/' else null end`,
     })
     .from(staffUsers)
     .leftJoin(authorProfiles, eq(authorProfiles.staffUserId, staffUsers.id))
-    .orderBy(asc(staffUsers.name));
+    .orderBy(asc(staffUsers.createdAt), asc(staffUsers.name));
 }
 
 async function findTarget(id: string) {

@@ -5,11 +5,13 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
+import { withBase } from "@/lib/paths";
 
 const NAV = [
   { href: "/", label: "Материали", icon: "M4 6h16M4 12h16M4 18h10" },
   { href: "/articles/new", label: "Нов материал", icon: "M12 5v14M5 12h14" },
   { href: "/polls", label: "Анкети", icon: "M5 20V10M12 20V4M19 20v-7" },
+  { href: "/arrange", label: "Подреждане", icon: "M12 17v5M8 8a4 4 0 1 1 8 0c0 2-2 3-2 5H10c0-2-2-3-2-5" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 
@@ -73,7 +75,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
             aria-current={isActive("/profile") ? "page" : undefined}
             className="flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-white/6 aria-[current=page]:bg-white/8"
           >
-            <span className="np-gradient-bg flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white">{initials}</span>
+            <span className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"><span className="np-gradient-bg absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-white">{initials}</span><img src={withBase("/api/profile/photo/")} alt="" className="relative size-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-[13px] leading-tight font-bold text-white">{user.name}</span>
               <span className="mt-0.5 block text-[11px] leading-tight text-white/55">{user.role}</span>

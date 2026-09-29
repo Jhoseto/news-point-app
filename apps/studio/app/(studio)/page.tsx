@@ -2,11 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArticleDeskPreview } from "@/components/article-desk-preview";
+import { PlaceArticle } from "@/components/place-article";
 import { ArticleFilterForm } from "@/components/article-filter-form";
 import { ArticleVisibility } from "@/components/article-visibility";
 import { queryArticleDesk } from "@/lib/article-desk";
 import { articleListActive, articleListHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
 import { listSections, type ArticleListItem } from "@/lib/articles";
+import { menuCategories } from "@/lib/arrangements";
 import { listStaffProfiles } from "@/lib/users";
 import { formatStamp } from "@/lib/format";
 
@@ -52,7 +54,7 @@ function SortHeader({ query, sort, label, className = "" }: { query: ArticleList
 
 export default async function ArticlesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseArticleListQuery(await searchParams);
-  const [desk, sections, profiles] = await Promise.all([queryArticleDesk(query), listSections(), listStaffProfiles()]);
+  const [desk, sections, profiles, menu] = await Promise.all([queryArticleDesk(query), listSections(), listStaffProfiles(), menuCategories()]);
   if (desk.page !== query.page) redirect(articleListHref(query, { page: desk.page }));
 
   const web = (process.env.WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -238,7 +240,10 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   </td>
                   <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
                   <td className="px-2 py-1 text-right">
-                    <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
+                    <span className="inline-flex items-center gap-1">
+                      <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
+                      <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
+                    </span>
                   </td>
                 </tr>
               ))}

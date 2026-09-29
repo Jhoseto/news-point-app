@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { CATEGORY_PAGE_SIZE, type CategoryCursor } from "@/lib/category-pagination";
+import { categoryFront } from "@/lib/front-page";
 import { getCategoryArchive, getLatest24Hours, getMenuCategories, type CategoryRef } from "@/lib/queries";
-import type { CategoryCursor } from "@/lib/category-pagination";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
@@ -10,8 +11,14 @@ import { ArrowRightIcon } from "./icons";
 
 export async function CategoryPage({ category, cursor }: { category: CategoryRef; cursor: CategoryCursor | null }) {
   const asOfMs = Date.now();
-  const [archive, menu, latest24h] = await Promise.all([getCategoryArchive(category, cursor), getMenuCategories(), getLatest24Hours(asOfMs)]);
-  const { articles } = archive;
+  const front = await categoryFront(category.id, asOfMs);
+  const skipIds = cursor ? front.pinnedIds : [...front.pinnedIds, ...front.excludedIds];
+  const [archive, menu, latest24h] = await Promise.all([
+    getCategoryArchive(category, cursor, cursor ? { skipIds } : { skipIds, limit: Math.max(1, CATEGORY_PAGE_SIZE - front.pins.length) }),
+    getMenuCategories(),
+    getLatest24Hours(asOfMs),
+  ]);
+  const articles = cursor ? archive.articles : [...front.pins, ...archive.articles].slice(0, CATEGORY_PAGE_SIZE);
   const [lead, ...rest] = articles;
 
   return (

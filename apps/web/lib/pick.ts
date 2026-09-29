@@ -8,10 +8,16 @@ export class UniquePicker {
     const picked: ArticleSummary[] = [];
     for (const article of pool) {
       if (picked.length === count) break;
-      if (this.seen.has(article.id)) continue;
-      this.seen.add(article.id);
-      picked.push(article);
+      const claimed = this.claim(article);
+      if (claimed) picked.push(claimed);
     }
     return picked;
+  }
+
+  /** Reserves one story. A story already used on the page is skipped. */
+  claim(article: ArticleSummary | null | undefined): ArticleSummary | null {
+    if (!article || this.seen.has(article.id)) return null;
+    this.seen.add(article.id);
+    return article;
   }
 }

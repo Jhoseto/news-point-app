@@ -11,26 +11,18 @@ import { SectionTitle } from "@/components/ui";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
 import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
-import { UniquePicker } from "@/lib/pick";
+import { homeArrangement } from "@/lib/front-page";
+import { composeHome } from "@/lib/home-compose";
 import { getByCategory, getLabelled, getLatest, getLatest24Hours, getMenuCategories, type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
 export const revalidate = 60;
 
-// Section order follows the approved mockup: Пловдив first, then the menu.
-const LEAD_SECTION = "plovdiv";
-const ASIDE_SECTIONS = ["lajfstajl", "kultura"];
 // Editors on the old site mark headline stories with this label; "top-novina"
 // is used for daily features (horoscope, weather), so it does not lead.
 const LEADING_LABEL = "novini";
-// Sections next to the aside; the rest run the full width so wide screens have no empty column.
-const BESIDE_ASIDE = 1;
 
 type Layout = "grid" | "feature";
 
-/**
- * Below 2xl every section shows four stories. From 2xl the first grid story
- * becomes a large tile and extra stories fill the mosaic (or a second list column).
- */
 function sectionCount(layout: Layout, wide: boolean) {
   return wide ? 7 : layout === "grid" ? 5 : 4;
 }
@@ -106,38 +98,29 @@ function CategorySection({
 
 export default async function HomePage() {
   const asOfMs = Date.now();
-  const [latest, latest24h, featured, menu, poll] = await Promise.all([
+  const [latest, latest24h, featured, menu, poll, placed] = await Promise.all([
     getLatest(50),
     getLatest24Hours(asOfMs),
     getLabelled(LEADING_LABEL, 13),
     getMenuCategories(),
     featuredPoll().catch(error => { console.error("[polls] homepage unavailable", error instanceof Error ? error.message : "unknown"); return null; }),
+    homeArrangement(),
   ]);
   const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
   const menuIds = new Set(menu.map((category) => category.id));
-
-  const picker = new UniquePicker();
-  const [hero] = picker.take(
-    latest.filter((article) => article.category && menuIds.has(article.category.id)),
-    1,
-  );
-  const leading = [...picker.take(featured, 13)];
-  leading.push(...picker.take(latest, 13 - leading.length));
-  // Three headline stories of different sizes sit beside the lead; the rest open the next section.
-  const support = leading.splice(0, 3);
-
-  const ordered = [
-    ...sections.filter((s) => s.category.slug === LEAD_SECTION),
-    ...sections.filter((s) => s.category.slug !== LEAD_SECTION && !ASIDE_SECTIONS.includes(s.category.slug)),
-  ];
-  const mainSections = ordered.map((section, index) => {
-    const layout: Layout = index % 2 === 1 ? "feature" : "grid";
-    const wide = index >= BESIDE_ASIDE;
-    return { ...section, layout, wide, articles: picker.take(section.pool, sectionCount(layout, wide)) };
+  const composed = composeHome({
+    latest,
+    latest24h,
+    featured,
+    sections,
+    menuIds,
+    pinned: placed.pinned,
+    document: placed.document,
+    now: asOfMs,
   });
-  const asideSections = sections
-    .filter((s) => ASIDE_SECTIONS.includes(s.category.slug))
-    .map((section) => ({ ...section, articles: picker.take(section.pool, 4) }));
+  const { hero, support } = composed;
+  const mainSections = composed.main;
+  const asideSections = composed.aside;
 
   const shine = createHomeShine();
   const bandHero = hero ? shine.nextCard() : undefined;
@@ -145,14 +128,14 @@ export default async function HomePage() {
   const bandSupport1 = support[1] ? shine.nextCard() : undefined;
   const bandSupport2 = support[2] ? shine.nextCard() : undefined;
   shine.sectionBreak();
-  const carouselArticles = leading.slice(0, 10);
+  const carouselArticles = composed.carousel;
   const carouselShineDelays = carouselArticles.map(() => shine.nextCard());
 
   const narrowMain = mainSections.filter((section) => !section.wide);
   const wideMain = mainSections.filter((section) => section.wide);
   const shineCycleSec = estimateHomeShineCycleSec(
     shine,
-    [...narrowMain, ...wideMain],
+    [...narrowMain, ...wideMain].map((section) => ({ ...section, layout: section.layout === "feature" ? "feature" as const : "grid" as const })),
     asideSections.map((section) => section.articles.length),
   );
 
@@ -175,7 +158,7 @@ export default async function HomePage() {
               ))}
             </div>
           ) : null}
-          <LatestNews24h articles={latest24h} asOfMs={asOfMs} className="h-[30rem]" />
+          <LatestNews24h articles={composed.latest} asOfMs={asOfMs} className="h-[30rem]" />
         </div>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
@@ -199,7 +182,7 @@ export default async function HomePage() {
               ))}
             </div>
           </div>
-          <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="min-h-0" />
+          <LatestNews24h articles={composed.latest} asOfMs={asOfMs} dense className="min-h-0" />
         </div>
 
         {carouselArticles.length ? (
@@ -211,7 +194,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
           <div className="flex h-full min-h-0 min-w-0 flex-col gap-10 3xl:gap-12">
             {narrowMain.map((section) => (
-              <CategorySection key={section.category.id} {...section} shine={shine} />
+              <CategorySection key={section.category.id} category={section.category} articles={section.articles} layout={section.layout === "feature" ? "feature" : "grid"} wide={section.wide} shine={shine} />
             ))}
             <PlovdivBanner />
           </div>
@@ -236,7 +219,7 @@ export default async function HomePage() {
         {wideMain.map((section) => (
           <Fragment key={section.category.id}>
             {section.category.slug === "balgariya" && poll ? <HomePoll initial={poll} /> : null}
-            <CategorySection {...section} shine={shine} />
+            <CategorySection category={section.category} articles={section.articles} layout={section.layout === "feature" ? "feature" : "grid"} wide={section.wide} shine={shine} />
           </Fragment>
         ))}
 

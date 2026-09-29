@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
 import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
@@ -211,30 +211,36 @@ export interface CategoryArchive {
 }
 
 /** Keyset navigation: one bounded page, one small opposite-direction probe. No COUNT/OFFSET. */
-export async function getCategoryArchive(category: CategoryRef, cursor: CategoryCursor | null): Promise<CategoryArchive> {
+export async function getCategoryArchive(
+  category: CategoryRef,
+  cursor: CategoryCursor | null,
+  options?: { skipIds?: string[]; limit?: number },
+): Promise<CategoryArchive> {
   const db = getDb();
+  const pageSize = options?.limit ?? CATEGORY_PAGE_SIZE;
+  const skip = options?.skipIds?.length ? notInArray(articles.id, options.skipIds) : undefined;
   const anchor = cursor?.anchor ?? (await db.select({ at: archiveNow }).from(articles).limit(1))[0]?.at;
   if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor };
   const direction = cursor?.direction ?? "older";
   const filter = archiveFilter(category.id, anchor);
   const rows = await (await summaryQuery(true)).query
     .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
-    .where(and(filter, cursor ? archiveBoundary(cursor.boundary, direction) : undefined))
+    .where(and(filter, cursor ? archiveBoundary(cursor.boundary, direction) : undefined, skip))
     .orderBy(...archiveOrder(direction))
-    .limit(CATEGORY_PAGE_SIZE + 1);
+    .limit(pageSize + 1);
   // Preserve the exact DB timestamp separately from the display Date.
-  const pageRows = rows.slice(0, CATEGORY_PAGE_SIZE);
+  const pageRows = rows.slice(0, pageSize);
   if (direction === "newer") pageRows.reverse();
   if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor };
   const first = { id: pageRows[0]!.id!, at: pageRows[0]!.archivePublishedAt! };
   const last = { id: pageRows.at(-1)!.id!, at: pageRows.at(-1)!.archivePublishedAt! };
-  let previous = direction === "newer" && rows.length > CATEGORY_PAGE_SIZE;
-  let next = direction === "older" && rows.length > CATEGORY_PAGE_SIZE;
+  let previous = direction === "newer" && rows.length > pageSize;
+  let next = direction === "older" && rows.length > pageSize;
   if (cursor) {
     const opposite = direction === "older" ? "newer" : "older";
     const probe = await db.select({ id: articles.id }).from(articles)
       .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
-      .where(and(filter, archiveBoundary(opposite === "newer" ? first : last, opposite)))
+      .where(and(filter, archiveBoundary(opposite === "newer" ? first : last, opposite), skip))
       .limit(1);
     if (opposite === "newer") previous = probe.length > 0;
     else next = probe.length > 0;

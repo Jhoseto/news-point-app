@@ -212,7 +212,7 @@ export const articleCategories = pgTable(
   ],
 );
 
-export const outboxEventTypes = ["article.published", "article.updated"] as const;
+export const outboxEventTypes = ["article.published", "article.updated", "layout.updated"] as const;
 export type OutboxEventType = (typeof outboxEventTypes)[number];
 
 export interface OutboxPayload {
@@ -226,9 +226,7 @@ export const outboxEvents = pgTable(
   {
     id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
     type: text("type", { enum: outboxEventTypes }).notNull(),
-    entityId: uuid("entity_id")
-      .notNull()
-      .references(() => articles.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id").references(() => articles.id, { onDelete: "cascade" }),
     version: integer("version").notNull(),
     payload: jsonb("payload").$type<OutboxPayload>().notNull(),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
@@ -317,6 +315,24 @@ export const pollRevisions = pgTable("poll_revisions", {
   snapshot:jsonb("snapshot").notNull(),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
 });
 
+export const pageArrangementStatuses = ["draft", "published", "history"] as const;
+
+/** Editorial story placement for the existing homepage and category grids. */
+export const pageArrangements = pgTable(
+  "page_arrangements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pageKey: text("page_key").notNull(),
+    status: text("status", { enum: pageArrangementStatuses }).notNull(),
+    document: jsonb("document").notNull(),
+    note: text("note").notNull().default(""),
+    placedBy: text("placed_by").references(() => staffUsers.id, { onDelete: "set null" }),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("page_arrangements_page_idx").on(table.pageKey, table.createdAt.desc())],
+);
+
 export const schemaTables = {
   polls, pollVotes, pollRevisions,
   categories,
@@ -333,4 +349,5 @@ export const schemaTables = {
   articleRevisions,
   publishRequests,
   livepointSubmissions,
+  pageArrangements,
 };
