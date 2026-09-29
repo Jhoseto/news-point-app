@@ -71,6 +71,22 @@ describe("text body", () => {
     expect(bodyToText(textToBody(text))).toBe(text);
   });
 
+  it("supports ordered and unordered list blocks from the toolbar format", () => {
+    const source = "- Първа точка\n- Втора точка\n\n1. Първа стъпка\n2. Втора стъпка";
+    expect(textToBody(source)).toEqual([
+      { type: "list", ordered: false, items: ["Първа точка", "Втора точка"] },
+      { type: "list", ordered: true, items: ["Първа стъпка", "Втора стъпка"] },
+    ]);
+    expect(bodyToText(textToBody(source))).toBe(source);
+  });
+
+  it("keeps toolbar inline formatting safe and reversible", () => {
+    const source = "**Важно** и *акцент* · [източник](https://newspoint.bg/news/)";
+    const body = textToBody(source);
+    expect(body[0]).toEqual({ type: "paragraph", html: '<strong>Важно</strong> и <em>акцент</em> · <a href="https://newspoint.bg/news/">източник</a>' });
+    expect(bodyToText(body)).toBe(source);
+  });
+
   it("refuses bodies it cannot represent", () => {
     expect(bodyToText([{ type: "legacy_html", html: "<div>x</div>" }])).toBeNull();
   });

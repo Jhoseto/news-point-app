@@ -8,6 +8,5 @@ create table if not exists article_read_counts (
 );
 
 alter table article_read_counts enable row level security;
-revoke all on article_read_counts from anon, authenticated;
 
 commit;

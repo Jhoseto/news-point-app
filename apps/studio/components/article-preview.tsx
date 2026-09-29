@@ -19,9 +19,10 @@ export interface PreviewArticle {
   authorName: string;
   /** Null until published; the preview then shows the current time. */
   publishedAt: string | null;
+  media: MediaOption[];
 }
 
-function PreviewBlock({ block }: { block: Block }) {
+function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) {
   switch (block.type) {
     case "paragraph":
       return <p dangerouslySetInnerHTML={{ __html: block.html }} />;
@@ -44,6 +45,10 @@ function PreviewBlock({ block }: { block: Block }) {
           ))}
         </List>
       );
+    }
+    case "image": {
+      const asset = media.find((item) => item.id === block.mediaAssetId);
+      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"}`}><img src={asset.url} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
     }
     default:
       return <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted">Елемент „{block.type}“ се вижда само на сайта.</p>;
@@ -116,9 +121,15 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
 
           {hasBody ? (
             <div className="np-prose np-site-prose">
-              {article.blocks.map((block, index) => (
-                <PreviewBlock key={index} block={block} />
-              ))}
+              {article.blocks.map((block, index) => {
+                if (block.type === "image" && block.groupId) {
+                  const first = article.blocks.findIndex((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
+                  if (first !== index) return null;
+                  const group = article.blocks.filter((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
+                  return <div key={`preview-gallery-${block.groupId}`} className="studio-preview-gallery">{group.map((item, groupIndex) => <PreviewBlock key={groupIndex} block={item} media={article.media} />)}</div>;
+                }
+                return <PreviewBlock key={index} block={block} media={article.media} />;
+              })}
             </div>
           ) : (
             <p className="rounded-2xl border-2 border-dashed border-line px-5 py-10 text-center text-sm text-faint">Текстът ще се появи тук, докато пишете.</p>

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/articles";
 import { callApi } from "@/lib/client-api";
-import { textToBody, wordCount } from "@/lib/editor/body";
+import { bodyTextToHtml, htmlToBodyText, textToBody, wordCount } from "@/lib/editor/body";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
 import { slugify } from "@/lib/editor/slug";
 import { formatWhen } from "@/lib/format";
@@ -39,6 +39,41 @@ type Device = "desktop" | "phone";
 
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
 
+function RichEditorSurface({ value, readOnly, editorRef, onChange }: { value: string; readOnly: boolean; editorRef: React.RefObject<HTMLDivElement | null>; onChange: (value: string) => void }) {
+  const initialized = useRef(false);
+  useEffect(() => {
+    if (!editorRef.current || initialized.current) return;
+    editorRef.current.innerHTML = bodyTextToHtml(value);
+    initialized.current = true;
+  }, [editorRef, value]);
+  const markImages = () => editorRef.current?.querySelectorAll<HTMLImageElement>("img[data-media-id]").forEach((image) => {
+    image.draggable = !readOnly;
+    image.classList.toggle("studio-editor-draggable-image", !readOnly);
+  });
+  useEffect(markImages, [readOnly, value]);
+  return <div id="body" ref={editorRef} aria-disabled={readOnly} contentEditable={!readOnly} suppressContentEditableWarning
+    onInput={(event) => { markImages(); onChange(htmlToBodyText(event.currentTarget.innerHTML)); }}
+    onDragStart={(event) => {
+      const image = (event.target as HTMLElement).closest("img[data-media-id]");
+      if (!image || readOnly) return;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", "newspoint-image");
+      image.classList.add("studio-editor-dragging-image");
+    }}
+    onDragEnd={(event) => (event.target as HTMLElement).closest("img[data-media-id]")?.classList.remove("studio-editor-dragging-image")}
+    onDragOver={(event) => { if ((event.target as HTMLElement).closest("img[data-media-id]")) event.preventDefault(); }}
+    onDrop={(event) => {
+      const target = (event.target as HTMLElement).closest("img[data-media-id]");
+      const dragged = editorRef.current?.querySelector<HTMLImageElement>(".studio-editor-dragging-image");
+      if (!target || !dragged || target === dragged || readOnly) return;
+      event.preventDefault();
+      target.parentElement?.insertBefore(dragged, target);
+      markImages();
+      onChange(htmlToBodyText(event.currentTarget.innerHTML));
+    }}
+    className="studio-rich-editor mt-2 min-h-[17rem] w-full rounded-lg border border-line bg-surface px-3.5 py-3 text-base leading-[1.65] text-body outline-none empty:before:text-faint empty:before:content-[attr(data-placeholder)] focus:border-accent focus:ring-4 focus:ring-accent/10" data-placeholder="Пишете тук…" />;
+}
+
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
   return (
     <div role="group" aria-label={label} className="inline-flex rounded-xl border border-line bg-surface p-0.5">
@@ -71,10 +106,12 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
   const [device, setDevice] = useState<Device>("desktop");
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
   const publishKey = useRef<string | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   const readOnly = !article.canEdit;
   const dirty = !sameDraft(draft, saved);
@@ -94,6 +131,41 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     });
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);
+  };
+
+  const insertBodyBlock = (kind: "paragraph" | "heading" | "subheading" | "quote" | "list" | "orderedList") => {
+    if (!bodyRef.current || readOnly) return;
+    bodyRef.current.focus();
+    const command = kind === "heading" ? "formatBlock" : kind === "subheading" ? "formatBlock" : kind === "quote" ? "formatBlock" : kind === "list" ? "insertUnorderedList" : kind === "orderedList" ? "insertOrderedList" : "formatBlock";
+    const value = kind === "heading" ? "<h2>" : kind === "subheading" ? "<h3>" : kind === "quote" ? "<blockquote>" : "<p>";
+    document.execCommand(command, false, value);
+    update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+  };
+
+  const insertInlineFormat = (kind: "bold" | "italic") => {
+    if (!bodyRef.current || readOnly) return;
+    bodyRef.current.focus();
+    document.execCommand(kind === "bold" ? "bold" : "italic");
+    update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+  };
+
+  const editorCommand = (command: string, value?: string) => {
+    if (!bodyRef.current || readOnly) return;
+    bodyRef.current.focus();
+    if (command === "createLink") {
+      const url = window.prompt("HTTPS адрес на връзката:", "https://");
+      if (!url?.startsWith("https://")) return;
+      document.execCommand(command, false, url);
+    } else document.execCommand(command, false, value);
+    update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+  };
+
+  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y", value: string) => {
+    const node = window.getSelection()?.anchorNode;
+    const image = node instanceof HTMLImageElement ? node : node?.parentElement?.closest("img[data-media-id]");
+    if (!image) return;
+    image.setAttribute(key, value);
+    if (bodyRef.current) update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
   };
 
   const selectAuthor = (authorKind: Draft["authorKind"]) => {
@@ -283,8 +355,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         </div>
       </div>
 
-      <div className="grid flex-1 lg:grid-cols-2">
-        <div className={`min-w-0 space-y-3 px-3 py-4 sm:px-5 lg:block lg:py-5 xl:px-7 ${mobileTab === "edit" ? "" : "hidden"}`}>
+      <div className="grid flex-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+        <div className={`studio-editor-pane min-w-0 space-y-2.5 px-2.5 py-3 sm:px-4 lg:block lg:py-4 xl:px-5 ${mobileTab === "edit" ? "" : "hidden"}`}>
           {readOnly ? (
             <p className="rounded-2xl border border-line bg-surface-2 px-5 py-3.5 text-sm font-semibold text-body">
               Статията е импортирана от WordPress и засега е само за преглед. Редакцията на архива идва с новия редактор.
@@ -343,7 +415,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </div>
           ) : null}
 
-          <div className="np-card p-4">
+          <div className="np-card p-3">
             <label htmlFor="title" className="np-label">
               Заглавие
             </label>
@@ -357,7 +429,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               placeholder="Заглавие на материала"
               className="w-full resize-none bg-transparent text-xl leading-tight font-extrabold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint sm:text-[1.4rem]"
             />
-            <div className="mt-2 flex flex-wrap items-center gap-1 border-t border-line pt-2 text-xs text-muted">
+            <div className="mt-1.5 flex flex-wrap items-center gap-1 border-t border-line pt-1.5 text-xs text-muted">
               <span className="font-semibold">Адрес:</span>
               <span className="text-faint">newspoint.bg/</span>
               <input
@@ -376,7 +448,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <div className="np-card p-4">
+            <div className="np-card p-3">
               <label htmlFor="category" className="np-label">
                 Рубрика
               </label>
@@ -396,7 +468,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               </select>
             </div>
 
-            <div className="np-card flex items-center gap-3 p-4">
+            <div className="np-card flex items-center gap-2.5 p-3">
               {hero ? (
                 <img src={hero.url} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
               ) : (
@@ -408,7 +480,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <p className="np-label">Основна снимка</p>
                 {!readOnly ? (
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setPickerOpen(true)} className="np-btn np-btn-secondary px-3 py-1.5">
+                    <button type="button" onClick={() => { setMediaTarget("hero"); setPickerOpen(true); }} className="np-btn np-btn-secondary px-3 py-1.5">
                       {hero ? "Смени" : "Избери"}
                     </button>
                     {hero ? (
@@ -424,30 +496,20 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </div>
           </div>
 
-          <fieldset className="np-card p-4" disabled={readOnly}>
+          <fieldset className="np-card p-3" disabled={readOnly}>
             <legend className="np-label px-1">Публичен автор</legend>
-            <div className="grid gap-1.5 sm:grid-cols-3">
-              {([
-                ["staff", draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`],
-                ["newsroom", "NewsPoint.bg"],
-                ["manual", "Друг автор"],
-              ] as const).map(([kind, label]) => (
-                <button
-                  key={kind}
-                  type="button"
-                  aria-pressed={draft.authorKind === kind}
-                  onClick={() => selectAuthor(kind)}
-                  className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-left text-xs font-bold text-body transition hover:border-accent/50 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent/5 aria-pressed:text-accent disabled:cursor-default"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="flex size-3.5 shrink-0 items-center justify-center rounded-full border border-current">
-                      {draft.authorKind === kind ? <span className="size-1.5 rounded-full bg-current" /> : null}
-                    </span>
-                    {label}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <select
+              id="author-kind"
+              aria-label="Публичен автор"
+              value={draft.authorKind}
+              disabled={readOnly}
+              onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
+              className="np-input py-2 text-sm"
+            >
+              <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
+              <option value="newsroom">NewsPoint.bg</option>
+              <option value="manual">Друг автор</option>
+            </select>
             {draft.authorKind === "manual" ? (
               <div className="mt-3 grid items-end gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
                 <div>
@@ -467,7 +529,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             ) : null}
           </fieldset>
 
-          <div className="np-card p-4">
+          <div className="np-card p-3">
             <label htmlFor="excerpt" className="np-label">
               Кратко резюме
             </label>
@@ -489,15 +551,47 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <textarea
-              id="body"
-              value={draft.bodyText}
-              disabled={readOnly}
-              onChange={(event) => update("bodyText", event.target.value)}
-              placeholder={"Пишете тук. Празен ред започва нов абзац.\n\n## Подзаглавие\n\n> Цитат"}
-              className="mt-2 min-h-[17rem] w-full resize-y rounded-lg border border-line bg-surface px-3.5 py-3 text-base leading-[1.65] text-body outline-none [field-sizing:content] placeholder:text-faint focus:border-accent focus:ring-4 focus:ring-accent/10 disabled:bg-surface-2"
-            />
-            <p className="mt-2 text-xs text-faint">Празен ред = нов абзац · „## “ = подзаглавие · „&gt; “ = цитат · Ctrl+S записва</p>
+            <div className="studio-editor-classic" role="toolbar" aria-label="WordPress стил редактор">
+              <div className="studio-editor-classic-top">
+                <button type="button" disabled={readOnly} onClick={() => { setMediaTarget("body"); setPickerOpen(true); }} className="studio-editor-media">▣&nbsp; Add Media</button>
+              </div>
+              <div className="studio-editor-classic-row">
+                <button type="button" disabled={readOnly} onClick={() => insertInlineFormat("bold")} className="studio-editor-classic-tool" title="Bold"><strong>B</strong></button>
+                <button type="button" disabled={readOnly} onClick={() => insertInlineFormat("italic")} className="studio-editor-classic-tool" title="Italic"><em>I</em></button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("strikeThrough")} className="studio-editor-classic-tool" title="Strikethrough"><s>ABC</s></button>
+                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("list")} className="studio-editor-classic-tool" title="Bulleted list">☷</button>
+                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("orderedList")} className="studio-editor-classic-tool" title="Numbered list">☷</button>
+                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("quote")} className="studio-editor-classic-tool" title="Blockquote">❝</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("insertHorizontalRule")} className="studio-editor-classic-tool" title="Horizontal line">—</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyLeft")} className="studio-editor-classic-tool" title="Align left">≡</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyCenter")} className="studio-editor-classic-tool" title="Align center">≡</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyRight")} className="studio-editor-classic-tool" title="Align right">≡</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("createLink")} className="studio-editor-classic-tool" title="Insert link">🔗</button>
+              </div>
+              <div className="studio-editor-classic-row">
+              <select aria-label="Стил на блока" defaultValue="paragraph" disabled={readOnly} onChange={(event) => insertBodyBlock(event.target.value as "paragraph" | "heading" | "subheading")} className="studio-editor-classic-select">
+                  <option value="paragraph">Paragraph</option><option value="heading">Heading 2</option><option value="subheading">Heading 3</option>
+                </select>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("underline")} className="studio-editor-classic-tool" title="Underline"><u>U</u></button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyFull")} className="studio-editor-classic-tool" title="Justify">≡</button>
+                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Text color">A</button>
+                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Paste as text">▣</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("removeFormat")} className="studio-editor-classic-tool" title="Clear formatting">⌫</button>
+                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Special character">Ω</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("indent")} className="studio-editor-classic-tool" title="Indent">⇥</button>
+                <button type="button" disabled={readOnly} onClick={() => editorCommand("outdent")} className="studio-editor-classic-tool" title="Outdent">⇤</button>
+                <button type="button" disabled={readOnly} onClick={() => document.execCommand("undo")} className="studio-editor-classic-tool" title="Undo">↶</button>
+                <button type="button" disabled={readOnly} onClick={() => document.execCommand("redo")} className="studio-editor-classic-tool" title="Redo">↷</button>
+                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Help">?</button>
+                <select aria-label="Размер на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-size", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Снимка</option><option value="small">Малка</option><option value="medium">Средна</option><option value="large">Голяма</option><option value="full">Цяла ширина</option></select>
+                <select aria-label="Форма на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-shape", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Форма</option><option value="rectangle">Правоъгълна</option><option value="rounded">Заоблена</option><option value="circle">Кръгла</option></select>
+                <select aria-label="Рамка на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-frame", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Рамка</option><option value="none">Без рамка</option><option value="soft">Сянка</option><option value="line">Контур</option></select>
+                <label className="studio-editor-focal-control" title="Фокус по хоризонтала">X <input aria-label="Фокус по хоризонтала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-x", event.target.value)} /></label>
+                <label className="studio-editor-focal-control" title="Фокус по вертикала">Y <input aria-label="Фокус по вертикала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-y", event.target.value)} /></label>
+              </div>
+            </div>
+            <RichEditorSurface value={draft.bodyText} readOnly={readOnly} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} />
+            <p className="mt-1.5 text-[0.6875rem] text-faint">Изберете текст или поставете курсора, после натиснете формат. Ctrl+S записва.</p>
           </div>
         </div>
 
@@ -555,7 +649,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 </div>
                 <ArticlePreview
                   theme={theme}
-                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: previewSource.authorName, publishedAt: published.at }}
+                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, media, authorName: previewSource.authorName, publishedAt: published.at }}
                 />
               </div>
             ) : (
@@ -566,7 +660,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <div className="max-h-[760px] overflow-y-auto rounded-[2rem]">
                   <ArticlePreview
                     theme={theme}
-                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, authorName: previewSource.authorName, publishedAt: published.at }}
+                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, media, authorName: previewSource.authorName, publishedAt: published.at }}
                   />
                 </div>
               </div>
@@ -579,9 +673,23 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         <MediaPicker
           media={media}
           selected={draft.heroMediaId}
+          multiple={mediaTarget === "body"}
           onClose={() => setPickerOpen(false)}
           onSelect={(id) => {
-            update("heroMediaId", id);
+            if (mediaTarget === "body" && bodyRef.current) {
+              bodyRef.current.focus();
+              document.execCommand("insertHTML", false, `<p><img data-media-id="${id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`);
+              update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+            } else update("heroMediaId", id);
+            setPickerOpen(false);
+          }}
+          onSelectMany={(ids) => {
+            if (bodyRef.current && ids.length) {
+              bodyRef.current.focus();
+              const group = crypto.randomUUID();
+              document.execCommand("insertHTML", false, `<div data-image-group="${group}">${ids.map((id) => `<img data-media-id="${id}" data-size="medium" data-align="center" data-shape="rounded" data-frame="none" />`).join("")}</div><p><br></p>`);
+              update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+            }
             setPickerOpen(false);
           }}
         />

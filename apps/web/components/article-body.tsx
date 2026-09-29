@@ -27,8 +27,8 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       const caption = block.caption || asset?.caption;
       const credit = asset?.credit;
       return (
-        <figure className="np-article-figure">
-          <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" />
+        <figure className={`np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"}`}>
+          <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} />
           {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>
       );
@@ -70,9 +70,15 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
 export function ArticleBody({ blocks, media }: { blocks: Block[]; media: Map<string, Media> }) {
   return (
     <div className="np-prose">
-      {blocks.map((block, index) => (
-        <BlockView key={index} block={block} media={media} index={index} />
-      ))}
+      {blocks.map((block, index) => {
+        if (block.type === "image" && block.groupId) {
+          const first = blocks.findIndex((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
+          if (first !== index) return null;
+          const group = blocks.filter((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
+          return <div key={`gallery-${block.groupId}`} className="np-article-gallery">{group.map((item, groupIndex) => <BlockView key={groupIndex} block={item} media={media} index={index + groupIndex} />)}</div>;
+        }
+        return <BlockView key={index} block={block} media={media} index={index} />;
+      })}
     </div>
   );
 }

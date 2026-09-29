@@ -46,7 +46,7 @@ export function ArticleReadCount({ articleId, initialCount }: { articleId: strin
   return (
     <span className="np-article-read-stat" title={unavailable ? "Статистиката ще бъде активна след прилагане на миграция 17." : undefined}>
       <EyeIcon width={16} height={16} />
-      <span><strong>{unavailable ? "—" : formatter.format(count)}</strong> прочитания</span>
+      <span><strong>Прегледи</strong>{unavailable ? "—" : formatter.format(count)}</span>
     </span>
   );
 }

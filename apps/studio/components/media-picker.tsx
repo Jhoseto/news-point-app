@@ -8,15 +8,20 @@ export function MediaPicker({
   media,
   selected,
   onSelect,
+  multiple = false,
+  onSelectMany,
   onClose,
 }: {
   media: MediaOption[];
   selected: string | null;
   onSelect: (id: string) => void;
+  multiple?: boolean;
+  onSelectMany?: (ids: string[]) => void;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState("");
+  const [selectedMany, setSelectedMany] = useState<string[]>(selected ? [selected] : []);
 
   useEffect(() => {
     dialog.current?.showModal();
@@ -50,8 +55,8 @@ export function MediaPicker({
             <li key={item.id}>
               <button
                 type="button"
-                onClick={() => onSelect(item.id)}
-                aria-pressed={item.id === selected}
+                onClick={() => multiple ? setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]) : onSelect(item.id)}
+                aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                 className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
               >
                 <img src={item.url} alt="" loading="lazy" className="aspect-[4/3] w-full bg-surface-2 object-cover" />
@@ -62,6 +67,7 @@ export function MediaPicker({
         </ul>
         {shown.length === 0 ? <p className="py-10 text-center text-sm text-muted">Няма намерени снимки.</p> : null}
       </div>
+      {multiple ? <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3"><span className="mr-auto text-xs text-muted">{selectedMany.length} избрани</span><button type="button" disabled={!selectedMany.length} onClick={() => onSelectMany?.(selectedMany)} className="np-btn np-btn-primary px-3 py-1.5 text-xs">Вмъкни в статията</button></div> : null}
     </dialog>
   );
 }

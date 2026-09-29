@@ -113,6 +113,73 @@
     @apply mb-1.5 block text-xs font-bold tracking-wide text-muted uppercase;
   }
 
+  .studio-editor-tool {
+    @apply inline-flex min-h-7 items-center gap-1 rounded-md border border-transparent px-2 py-1 text-[0.6875rem] font-bold text-muted transition hover:border-accent/30 hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-45;
+  }
+
+  .studio-editor-tool strong {
+    @apply text-[0.625rem] font-extrabold text-link;
+  }
+
+  .studio-editor-style {
+    @apply min-h-7 rounded-md border border-line bg-surface px-2 text-[0.6875rem] font-bold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/10;
+  }
+  .studio-editor-tool-icon {
+    @apply min-w-7 justify-center px-1.5 text-sm;
+  }
+  .studio-editor-divider {
+    @apply mx-0.5 h-5 w-px bg-line;
+  }
+  .studio-preview-image { margin: 1.2rem 0; }
+  .studio-preview-image img { display: block; max-width: 100%; margin-inline: auto; object-fit: cover; }
+  .studio-preview-image.is-small img { width: 35%; }
+  .studio-preview-image.is-medium img { width: 60%; }
+  .studio-preview-image.is-large img { width: 82%; }
+  .studio-preview-image.is-full img { width: 100%; }
+  .studio-preview-image.is-left img { margin-left: 0; }
+  .studio-preview-image.is-right img { margin-right: 0; }
+  .studio-preview-image.is-circle img { aspect-ratio: 1; border-radius: 9999px; }
+  .studio-preview-image.is-rounded img { border-radius: 1rem; }
+  .studio-preview-image.is-soft img { box-shadow: 0 16px 30px -20px var(--np-ink); }
+  .studio-preview-image.is-line img { border: 4px solid var(--np-line); }
+  .studio-preview-image figcaption { margin-top: .35rem; color: var(--np-muted); font-size: .7rem; text-align: center; }
+  .studio-preview-gallery { display: flex; align-items: flex-start; gap: .75rem; margin: 1.2rem 0; }
+  .studio-preview-gallery .studio-preview-image { min-width: 0; flex: 1 1 0; margin: 0; }
+  .studio-preview-gallery .studio-preview-image img { width: 100%; }
+  @media (max-width: 40rem) { .studio-preview-gallery { flex-wrap: wrap; } .studio-preview-gallery .studio-preview-image { flex-basis: calc(50% - .375rem); } }
+
+  .studio-editor-classic {
+    border: 1px solid #cfd4da;
+    background: #f6f7f7;
+    color: #3c434a;
+    font-family: Arial, sans-serif;
+  }
+  .studio-editor-classic-top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    min-height: 2.25rem;
+    padding: 0.28rem 0.35rem 0;
+    border-bottom: 1px solid #cfd4da;
+    background: #fff;
+  }
+  .studio-editor-media {
+    border: 1px solid #c3c4c7;
+    background: linear-gradient(#fff, #f0f0f1);
+    color: #3c434a;
+    cursor: pointer;
+    font-size: 0.72rem;
+    line-height: 1.8;
+    padding: 0.08rem 0.5rem;
+  }
+  .studio-editor-media { align-self: center; border-radius: 2px; }
+  .studio-editor-media:hover { border-color: #8c8f94; background: #fff; color: #1d2327; }
+  .studio-editor-classic-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; padding: 0.28rem 0.35rem; border-bottom: 1px solid #dcdcde; }
+  .studio-editor-classic-tool, .studio-editor-classic-select { min-width: 1.8rem; height: 1.8rem; border: 1px solid transparent; border-radius: 2px; background: transparent; color: #3c434a; cursor: pointer; font-size: 0.78rem; font-weight: 600; text-align: center; }
+  .studio-editor-classic-tool:hover { border-color: #8c8f94; background: #fff; color: #1d2327; }
+  .studio-editor-classic-tool:disabled, .studio-editor-classic-select:disabled, .studio-editor-media:disabled { cursor: not-allowed; opacity: 0.5; }
+  .studio-editor-classic-select { width: 7rem; padding-inline: 0.35rem; border-color: #c3c4c7; background: #fff; font-size: 0.7rem; font-weight: 400; text-align: left; }
+
   .np-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50;
   }
@@ -242,4 +309,34 @@
   to {
     transform: translate3d(-3rem, 2rem, 0) scale(1.12);
   }
+}
+
+.studio-editor-draggable-image {
+  cursor: grab;
+  transition: opacity 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.studio-editor-draggable-image:hover {
+  box-shadow: 0 0 0 3px rgb(56 24 214 / 0.14);
+}
+
+.studio-editor-dragging-image {
+  cursor: grabbing;
+  opacity: 0.48;
+  transform: scale(0.98);
+}
+
+.studio-editor-focal-control {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  color: var(--np-muted);
+  font-size: .7rem;
+  font-weight: 700;
+  padding-inline: .25rem;
+}
+
+.studio-editor-focal-control input {
+  width: 4.5rem;
+  accent-color: var(--np-accent);
 }

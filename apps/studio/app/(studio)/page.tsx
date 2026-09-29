@@ -5,7 +5,7 @@ import { ArticleFilterForm } from "@/components/article-filter-form";
 import { queryArticleDesk } from "@/lib/article-desk";
 import { articleListActive, articleListHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
 import { listSections, type ArticleListItem } from "@/lib/articles";
-import { formatWhen } from "@/lib/format";
+import { formatFull, formatWhen } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Материали" };
 export const dynamic = "force-dynamic";
@@ -129,6 +129,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <option value="published">Публикуване</option>
               <option value="title">Заглавие</option>
               <option value="author">Автор</option>
+              <option value="views">Прегледи</option>
             </select>
           </label>
           <label>
@@ -188,13 +189,14 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
 
       <div className="np-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] text-left text-[13px] leading-tight">
+          <table className="w-full min-w-[980px] text-left text-[13px] leading-tight">
             <thead className="border-b border-line bg-surface-2/60 text-[10px] font-semibold tracking-wide text-faint uppercase">
               <tr>
                 <SortHeader query={query} sort="title" label="Заглавие" className="px-3 py-1.5" />
                 <th scope="col" className="px-2 py-1.5">Рубрика</th>
                 <SortHeader query={query} sort="author" label="Автор" className="px-2 py-1.5" />
                 <th scope="col" className="px-2 py-1.5">Статус</th>
+                <SortHeader query={query} sort="views" label="Прегледи" className="px-2 py-1.5 text-right" />
                 <SortHeader query={query} sort="published" label="Публикуване" className="px-2 py-1.5" />
                 <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-1.5 text-right" />
               </tr>
@@ -214,13 +216,14 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="px-2 py-1.5 text-xs text-muted">{item.categoryName ?? "—"}</td>
                   <td className="max-w-32 truncate px-2 py-1.5 text-xs text-muted">{item.authorName ?? "—"}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap"><StatusBadge article={item} /></td>
+                  <td className="px-2 py-1.5 text-right text-xs whitespace-nowrap text-ink tabular-nums">{item.readCount === null ? "—" : number.format(item.readCount)}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs text-muted tabular-nums">
-                    {item.publishedAt ? formatWhen(item.publishedAt) : "—"}
+                    {item.publishedAt ? formatFull(item.publishedAt) : "—"}
                     {item.isPublic ? (
                       <a href={`${web}${item.path.startsWith("/") ? item.path : `/${item.path}`}`} target="_blank" rel="noreferrer" className="ml-1.5 font-semibold text-link">сайт</a>
                     ) : null}
                   </td>
-                  <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatWhen(item.updatedAt)}</td>
+                  <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatFull(item.updatedAt)}</td>
                 </tr>
               ))}
             </tbody>

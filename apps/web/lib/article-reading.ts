@@ -16,21 +16,3 @@ export function articleSections(blocks: Block[]): ArticleSection[] {
 export function articleSectionId(index: number): string {
   return `article-section-${index}`;
 }
-
-/** The current article is the fixed centre of the chronological strip. */
-export function chronologicalStrip<T extends { id: string }>(older: T[], current: T, newer: T[]): Array<{ article: T; position: "older" | "current" | "newer" }> {
-  const seen = new Set([current.id]);
-  const unique = (items: T[], position: "older" | "newer") => {
-    const result: Array<{ article: T; position: "older" | "newer" }> = [];
-    for (const article of items) {
-      if (seen.has(article.id)) continue;
-      seen.add(article.id);
-      result.push({ article, position });
-      if (result.length === 2) break;
-    }
-    return result;
-  };
-  const before = unique(older, "older").reverse();
-  const after = unique(newer, "newer");
-  return [...before, { article: current, position: "current" }, ...after];
-}

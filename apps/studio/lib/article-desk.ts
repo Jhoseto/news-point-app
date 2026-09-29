@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, inArray, sql } from "@newspoint/db/orm";
-import { articleRevisions, articles, categories, getDb } from "@newspoint/db";
+import { articleReadCounts, articleRevisions, articles, categories, getDb, hasArticleReadCounts } from "@newspoint/db";
 import { likePattern, shiftIsoDate, sofiaDayStart, type ArticleListQuery, type ArticleStatus } from "./article-list-query";
 import type { ArticleListItem } from "./articles";
 
@@ -62,6 +62,10 @@ function statusFilter(status: ArticleStatus) {
 }
 
 function orderBy(query: ArticleListQuery) {
+  if (query.sort === "views") {
+    const views = sql`(select ${articleReadCounts.readCount} from ${articleReadCounts} where ${articleReadCounts.articleId} = ${articles.id})`;
+    return query.dir === "asc" ? sql`${views} asc nulls last, ${articles.id} asc` : sql`${views} desc nulls last, ${articles.id} desc`;
+  }
   const column = query.sort === "published" ? articles.publishedAt : query.sort === "title" ? articles.title : query.sort === "author" ? articles.authorName : articles.updatedAt;
   if (query.sort === "published" && query.dir === "asc") return sql`${column} asc nulls last, ${articles.id} asc`;
   if (query.sort === "published") return sql`${column} desc nulls last, ${articles.id} desc`;
@@ -118,6 +122,11 @@ export async function queryArticleDesk(query: ArticleListQuery): Promise<Article
     .limit(query.pageSize)
     .offset((page - 1) * query.pageSize);
   const ids = rows.map((row) => row.id);
+  const readsReady = await hasArticleReadCounts(db);
+  const readRows = readsReady && ids.length
+    ? await db.select({ articleId: articleReadCounts.articleId, readCount: articleReadCounts.readCount }).from(articleReadCounts).where(inArray(articleReadCounts.articleId, ids))
+    : [];
+  const readsById = new Map(readRows.map((row) => [row.articleId, number(row.readCount)]));
   const latestRows = ids.length
     ? await db
         .select({ articleId: articleRevisions.articleId, latest: sql<number>`max(${articleRevisions.number})::int` })
@@ -130,7 +139,7 @@ export async function queryArticleDesk(query: ArticleListQuery): Promise<Article
   return {
     items: rows.map(({ publishedRevision, ...row }) => {
       const latest = latestById.get(row.id) ?? null;
-      return { ...row, hasUnpublishedChanges: row.isPublic && latest !== null && latest !== publishedRevision };
+      return { ...row, hasUnpublishedChanges: row.isPublic && latest !== null && latest !== publishedRevision, readCount: readsById.get(row.id) ?? null };
     }),
     total: number(counts?.total),
     matched,

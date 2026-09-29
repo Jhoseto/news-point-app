@@ -76,6 +76,7 @@ export interface ArticleListItem {
   categoryName: string | null;
   authorName: string | null;
   hasUnpublishedChanges: boolean;
+  readCount: number | null;
 }
 
 export async function listSections() {

@@ -104,27 +104,6 @@ function useScrollLock(locked: boolean) {
   }, [locked]);
 }
 
-/** Header shrinks on scroll, but stays full while a panel is open (DEC-119). */
-function useHeaderCompact(locked: boolean) {
-  useEffect(() => {
-    const header = document.querySelector("[data-np-header]");
-    const root = document.documentElement;
-    if (locked) {
-      header?.removeAttribute("data-compact");
-      root.removeAttribute("data-np-compact");
-      return;
-    }
-    const onScroll = () => {
-      const compact = window.scrollY > 48;
-      header?.toggleAttribute("data-compact", compact);
-      root.toggleAttribute("data-np-compact", compact);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [locked]);
-}
-
 export function LivePointProvider({
   children,
   weather,
@@ -194,7 +173,6 @@ export function LivePointProvider({
   }, [close]);
 
   useScrollLock(active !== null);
-  useHeaderCompact(active !== null);
 
   useEffect(() => {
     if (!active) return;

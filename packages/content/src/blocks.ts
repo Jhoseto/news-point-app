@@ -27,6 +27,13 @@ export const imageBlock = z.strictObject({
   type: z.literal("image"),
   mediaAssetId: z.uuid(),
   caption: plainText.optional(),
+  size: z.enum(["small", "medium", "large", "full"]).optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+  shape: z.enum(["rectangle", "rounded", "circle"]).optional(),
+  frame: z.enum(["none", "soft", "line"]).optional(),
+  groupId: z.string().max(64).optional(),
+  focalX: z.number().min(0).max(100).optional(),
+  focalY: z.number().min(0).max(100).optional(),
 });
 
 export const quoteBlock = z.strictObject({

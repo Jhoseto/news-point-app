@@ -1,7 +1,8 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, gt, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
+import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
 import { articleCategories, articleReadCounts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
@@ -362,24 +363,34 @@ export async function getSummariesByIds(ids: string[]): Promise<Map<string, Arti
   return new Map(rows.map((row) => [row.id!, toSummary(row)]));
 }
 
-export const getRelated = cache(async (article: ArticleSummary, limit: number): Promise<ArticleSummary[]> => {
-  if (!article.category) return [];
-  const rows = await (await summaryQuery()).query
-    .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
-    .where(
-      and(
-        isPublished(),
-        eq(articleCategories.categoryId, article.category.id),
-        ne(articles.id, article.id),
-      ),
-    )
-    .orderBy(desc(articles.publishedAt))
-    .limit(limit);
-  return rows.map(toSummary);
+export const getRecommendedArticles = cache(async (article: ArticleDetail, limit = 8, excludeIds: string[] = []): Promise<ArticleSummary[]> => {
+  const categoryIds = [...new Set(article.categories.map(({ id }) => id))];
+  const anchors = recommendationTerms(`${article.title} ${article.excerpt}`).slice(0, 6);
+  const [rubricRows, archiveRows] = await Promise.all([
+    categoryIds.length
+      ? summaryQuery().then(({ query }) => query
+        .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
+        .where(and(isPublished(), inArray(articleCategories.categoryId, categoryIds), ne(articles.id, article.id)))
+        .orderBy(desc(articles.publishedAt), desc(articles.id))
+        .limit(180))
+      : Promise.resolve([]),
+    anchors.length
+      ? summaryQuery().then(({ query }) => query
+        .where(and(
+          isPublished(),
+          ne(articles.id, article.id),
+          or(...anchors.flatMap((term) => [ilike(articles.title, `%${term}%`), ilike(articles.excerpt, `%${term}%`)])),
+        ))
+        .orderBy(desc(articles.publishedAt), desc(articles.id))
+        .limit(140))
+      : Promise.resolve([]),
+  ]);
+  const candidates = [...new Map([...rubricRows, ...archiveRows].map((row) => [row.id, toSummary(row)])).values()];
+  return rankArticleRecommendations(article, candidates, { limit, excludeIds });
 });
 
-/** Up to two articles on either side in the primary rubric, nearest first. */
-export const getArticleTimeline = cache(async (article: ArticleSummary): Promise<{ older: ArticleSummary[]; newer: ArticleSummary[] }> => {
+/** Neighbouring public stories in the primary rubric, nearest first. */
+export const getArticleNeighbours = cache(async (article: ArticleSummary): Promise<{ older: ArticleSummary[]; newer: ArticleSummary[] }> => {
   if (!article.category) return { older: [], newer: [] };
   const inRubric = eq(articleCategories.categoryId, article.category.id);
   const at = sql`(select published_at from articles where id = ${article.id})`;
@@ -387,11 +398,11 @@ export const getArticleTimeline = cache(async (article: ArticleSummary): Promise
     summaryQuery().then(({ query }) => query
       .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
       .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) < (${at}, ${article.id})`))
-      .orderBy(desc(articles.publishedAt), desc(articles.id)).limit(2)),
+      .orderBy(desc(articles.publishedAt), desc(articles.id)).limit(1)),
     summaryQuery().then(({ query }) => query
       .innerJoin(articleCategories, eq(articleCategories.articleId, articles.id))
       .where(and(isPublished(), inRubric, sql`(${articles.publishedAt}, ${articles.id}) > (${at}, ${article.id})`))
-      .orderBy(asc(articles.publishedAt), asc(articles.id)).limit(2)),
+      .orderBy(asc(articles.publishedAt), asc(articles.id)).limit(1)),
   ]);
   return { older: olderRows.map(toSummary), newer: newerRows.map(toSummary) };
 });

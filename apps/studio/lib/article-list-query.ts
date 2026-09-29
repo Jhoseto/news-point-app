@@ -1,4 +1,4 @@
-export const ARTICLE_SORTS = ["updated", "published", "title", "author"] as const;
+export const ARTICLE_SORTS = ["updated", "published", "title", "author", "views"] as const;
 export const ARTICLE_STATUSES = ["all", "published", "draft", "changed"] as const;
 export const ARTICLE_SOURCES = ["all", "wordpress", "studio"] as const;
 export const ARTICLE_HERO = ["all", "with", "without"] as const;

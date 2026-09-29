@@ -25,10 +25,10 @@ function StripItem({
       aria-haspopup="dialog"
       aria-expanded={on}
       data-active={on || undefined}
-      className="np-lp-item group flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-center text-[0.625rem] leading-tight font-bold text-body transition-colors hover:bg-surface-2 hover:text-logo data-[active]:bg-surface-2 data-[active]:text-ink sm:text-xs lg:h-full lg:flex-row lg:gap-1.5 lg:rounded-none lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold lg:whitespace-nowrap lg:hover:bg-transparent lg:data-[active]:bg-transparent"
+      className="np-lp-item group flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-center text-[0.625rem] leading-tight font-bold text-body sm:text-xs lg:h-full lg:flex-row lg:gap-1.5 lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold lg:whitespace-nowrap"
     >
-      <span className="text-muted transition-colors group-hover:text-logo group-data-[active]:text-logo">{icon}</span>
-      {children}
+      <span className="np-lp-item-icon" aria-hidden="true">{icon}</span>
+      <span className="np-lp-item-label">{children}</span>
     </button>
   );
 }

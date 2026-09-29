@@ -1,12 +1,12 @@
-import Link from "next/link";
 import { articleSections } from "@/lib/article-reading";
 import { formatFull, isoDate, readingMinutes } from "@/lib/format";
-import { getArticleTimeline, getLatest24Hours, getRelated, type ArticleDetail } from "@/lib/queries";
+import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, type ArticleDetail } from "@/lib/queries";
 import { ArticleBody } from "./article-body";
 import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
 import { ArticleReadCount } from "./article-read-count";
-import { ArticleTimeline } from "./article-timeline";
+import { ArticleNeighbours } from "./article-neighbours";
+import { RelatedStories } from "./related-stories";
 import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon, ExternalIcon } from "./icons";
@@ -14,19 +14,18 @@ import { LatestNews24h } from "./latest-news-24h";
 import { CategoryChips } from "./lists";
 import { ShareButtons } from "./share";
 import { ReadingProgress } from "./reading-progress";
-import { ArticleImage, CategoryPill } from "./ui";
+import { CategoryPill } from "./ui";
 import "./article-premium.css";
 
 export async function ArticlePage({ article }: { article: ArticleDetail }) {
   const asOfMs = Date.now();
-  const [timeline, related, latest24h] = await Promise.all([
-    getArticleTimeline(article),
-    getRelated(article, 8),
+  const [timeline, latest24h] = await Promise.all([
+    getArticleNeighbours(article),
     getLatest24Hours(asOfMs),
   ]);
+  const neighbours = [timeline.older[0], timeline.newer[0]].filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
-  const timelineIds = new Set([...timeline.older, article, ...timeline.newer].map((item) => item.id));
-  const moreFromRubric = related.filter((item) => !timelineIds.has(item.id)).slice(0, 3);
   const shareUrl = article.sourceUrl ?? article.path;
   const crumbs = article.category
     ? [{ name: article.category.name, path: article.category.path }, { name: article.title }]
@@ -79,18 +78,16 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             <div className="np-article-reading-column">
               {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
               <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
-              <footer className="np-article-footer">
-              {article.categories.length ? (
-                <div className="np-article-footer-rubrics">
-                  <span>Рубрики</span>
-                  <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
+              <footer className="np-article-end">
+                <ArticleNeighbours older={timeline.older[0] ?? null} newer={timeline.newer[0] ?? null} />
+                <div className="np-article-origin">
+                  {article.categories.length ? <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" /> : <span />}
+                  {article.sourceUrl ? (
+                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="np-article-source">
+                      Оригинал в newspoint.bg <ExternalIcon width={14} height={14} />
+                    </a>
+                  ) : null}
                 </div>
-              ) : null}
-              {article.sourceUrl ? (
-                <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="np-article-source">
-                  Оригинална публикация на newspoint.bg <ExternalIcon width={14} height={14} />
-                </a>
-              ) : null}
               </footer>
             </div>
           </div>
@@ -99,32 +96,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
         <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest" />
       </article>
 
-      <div className="np-article-after">
-        <ArticleTimeline current={article} older={timeline.older} newer={timeline.newer} />
-
-        {moreFromRubric.length ? (
-          <section className="np-article-more" aria-labelledby="np-article-more-title">
-          <div className="np-article-more-heading">
-            <div>
-              <p className="np-article-rail-kicker">Продължете с NewsPoint</p>
-              <h2 id="np-article-more-title">Още от {article.category?.name}</h2>
-            </div>
-            {article.category ? <Link href={article.category.path}>Всички в рубриката <span aria-hidden="true">↗</span></Link> : null}
-          </div>
-          <div className="np-article-more-grid">
-            {moreFromRubric.map((item) => (
-              <Link key={item.id} href={item.path} className="np-article-more-card">
-                {item.hero ? <ArticleImage media={item.hero} sizes="(min-width: 1024px) 320px, (min-width: 640px) 45vw, 100vw" className="np-article-more-image" /> : null}
-                <span className="np-article-more-card-content">
-                  <time dateTime={isoDate(item.publishedAt)}>{formatFull(item.publishedAt)}</time>
-                  <strong>{item.title}</strong>
-                </span>
-              </Link>
-            ))}
-          </div>
-          </section>
-        ) : null}
-      </div>
+      <RelatedStories articles={related} />
     </div>
   );
 }
