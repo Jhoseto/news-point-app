@@ -27,6 +27,10 @@ export const draftInput = z
     authorKind: z.enum(["staff", "newsroom", "manual"]),
     authorUserId: z.string().min(1).nullable(),
     authorName,
+    viewSeed: z.number().int().min(0).max(100_000_000).nullable().optional(),
+    viewEvery: z.number().int().min(1).max(100_000).nullable().optional(),
+    viewUnit: z.enum(["seconds", "minutes", "hours"]).optional(),
+    viewTarget: z.number().int().min(0).max(100_000_000).nullable().optional(),
   })
   .superRefine((draft, context) => {
     if (draft.authorKind === "staff" && !draft.authorUserId) {
@@ -37,6 +41,9 @@ export const draftInput = z
     }
     if (draft.authorKind === "newsroom" && draft.authorName !== "NewsPoint.bg") {
       context.addIssue({ code: "custom", path: ["authorName"], message: "Редакционният подпис е NewsPoint.bg" });
+    }
+    if (draft.viewSeed != null && draft.viewTarget != null && draft.viewTarget < draft.viewSeed) {
+      context.addIssue({ code: "custom", path: ["viewTarget"], message: "Крайният брой не може да е по-малък от броя при публикуване." });
     }
   });
 export type DraftInput = z.infer<typeof draftInput>;

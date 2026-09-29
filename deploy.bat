@@ -17,9 +17,9 @@ if not exist "%KEY%" (
   exit /b 1
 )
 
-echo [1/4] Packing source...
+echo [1/4] Packing the current local source...
 if exist "%ARCHIVE%" del /f /q "%ARCHIVE%"
-tar -czf "%ARCHIVE%" --exclude=node_modules --exclude=.next --exclude=.git --exclude=.turbo --exclude=.env.local --exclude=.env.tunnel -C "%~dp0." .
+tar -czf "%ARCHIVE%" --exclude=node_modules --exclude=.next --exclude=.git --exclude=.turbo --exclude=.pnpm-store --exclude=logs --exclude=.env.local --exclude=.env.tunnel -C "%~dp0." .
 if errorlevel 1 (
   echo Pack failed.
   pause
@@ -34,18 +34,19 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [3/4] Extracting on the server...
-ssh -i "%KEY%" -p 6543 -o IdentitiesOnly=yes %HOST% "mkdir -p ~/newspoint-app && tar -xzf ~/np2-app.tgz -C ~/newspoint-app && rm -f ~/np2-app.tgz && sed -i 's/\r$//' ~/newspoint-app/deploy/np2/*.sh"
+echo [3/4] Extracting beside the live site. It stays up during the build...
+ssh -i "%KEY%" -p 6543 -o IdentitiesOnly=yes %HOST% "rm -rf ~/newspoint-app.next && mkdir -p ~/newspoint-app.next && tar -xzf ~/np2-app.tgz -C ~/newspoint-app.next && rm -f ~/np2-app.tgz && sed -i 's/\r$//' ~/newspoint-app.next/deploy/np2/*.sh"
 if errorlevel 1 (
-  echo Extract failed.
+  echo Extract failed. The live site was not replaced.
   pause
   exit /b 1
 )
 
-echo [4/4] Build and restart...
-ssh -i "%KEY%" -p 6543 -o IdentitiesOnly=yes %HOST% "bash ~/newspoint-app/deploy/np2/remote-deploy.sh"
+echo [4/4] Build, then replace the server copy and restart...
+ssh -i "%KEY%" -p 6543 -o IdentitiesOnly=yes %HOST% "bash ~/newspoint-app.next/deploy/np2/remote-deploy.sh"
 if errorlevel 1 (
-  echo Deploy failed. The old site was not part of this command.
+  echo Deploy failed. If the build failed, the running NewsPoint copy was left in place.
+  echo The old WordPress site was not part of this command.
   pause
   exit /b 1
 )

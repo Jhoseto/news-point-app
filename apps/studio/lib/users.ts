@@ -29,6 +29,13 @@ export const createUserInput = z.object({
   password: z.string().max(PASSWORD_MAX),
 });
 
+export async function listStaffProfiles(): Promise<{ id: string; name: string }[]> {
+  return getDb()
+    .select({ id: staffUsers.id, name: staffUsers.name })
+    .from(staffUsers)
+    .orderBy(asc(staffUsers.name));
+}
+
 export async function listStaff(): Promise<StaffListItem[]> {
   return getDb()
     .select({

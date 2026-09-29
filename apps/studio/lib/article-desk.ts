@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, inArray, sql } from "@newspoint/db/orm";
-import { articleReadCounts, articleRevisions, articles, categories, getDb, hasArticleReadCounts } from "@newspoint/db";
+import { articleReadCounts, articleRevisions, articleViewBoosts, articles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, staffUsers } from "@newspoint/db";
 import { likePattern, shiftIsoDate, sofiaDayStart, type ArticleListQuery, type ArticleStatus } from "./article-list-query";
 import type { ArticleListItem } from "./articles";
 
@@ -33,8 +33,20 @@ function baseFilters(query: ArticleListQuery) {
       or ${articles.authorName} ilike ${term} escape '\\'
     )`);
   }
-  const author = likePattern(query.author);
-  if (author) parts.push(sql`${articles.authorName} ilike ${author} escape '\\'`);
+  if (query.author === "newsroom") {
+    parts.push(eq(articles.authorName, "NewsPoint.bg"));
+  } else if (query.author === "anonymous") {
+    parts.push(sql`(
+      ${articles.authorName} is distinct from 'NewsPoint.bg'
+      and (${articles.authorUserId} is null or not exists (select 1 from ${staffUsers} s where s.id = ${articles.authorUserId}))
+      and not exists (select 1 from ${staffUsers} s where s.name <> '' and s.name = ${articles.authorName})
+    )`);
+  } else if (query.author) {
+    parts.push(sql`(
+      ${articles.authorUserId} = ${query.author}
+      or ${articles.authorName} = (select ${staffUsers.name} from ${staffUsers} where ${staffUsers.id} = ${query.author})
+    )`);
+  }
   if (query.source !== "all") parts.push(eq(articles.sourceSystem, query.source));
   if (query.category) parts.push(eq(articles.primaryCategoryId, query.category));
   if (query.hero === "with") parts.push(sql`${articles.heroMediaId} is not null`);
@@ -61,9 +73,11 @@ function statusFilter(status: ArticleStatus) {
   return undefined;
 }
 
-function orderBy(query: ArticleListQuery) {
+function orderBy(query: ArticleListQuery, boostsReady: boolean) {
   if (query.sort === "views") {
-    const views = sql`(select ${articleReadCounts.readCount} from ${articleReadCounts} where ${articleReadCounts.articleId} = ${articles.id})`;
+    const views = boostsReady
+      ? sql`(coalesce((select ${articleReadCounts.readCount} from ${articleReadCounts} where ${articleReadCounts.articleId} = ${articles.id}), 0) + coalesce((select ${articleViewBoosts.artificialCount} from ${articleViewBoosts} where ${articleViewBoosts.articleId} = ${articles.id}), 0))`
+      : sql`(select ${articleReadCounts.readCount} from ${articleReadCounts} where ${articleReadCounts.articleId} = ${articles.id})`;
     return query.dir === "asc" ? sql`${views} asc nulls last, ${articles.id} asc` : sql`${views} desc nulls last, ${articles.id} desc`;
   }
   const column = query.sort === "published" ? articles.publishedAt : query.sort === "title" ? articles.title : query.sort === "author" ? articles.authorName : articles.updatedAt;
@@ -102,6 +116,8 @@ export async function queryArticleDesk(query: ArticleListQuery): Promise<Article
   const page = Math.min(query.page, pageCount);
   const status = statusFilter(query.status);
   const where = status ? and(base, status) : base;
+  const readsReady = await hasArticleReadCounts(db);
+  const boostsReady = await hasArticleViewBoosts(db);
   const rows = await db
     .select({
       id: articles.id,
@@ -118,15 +134,18 @@ export async function queryArticleDesk(query: ArticleListQuery): Promise<Article
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .where(where)
-    .orderBy(orderBy(query))
+    .orderBy(orderBy(query, boostsReady))
     .limit(query.pageSize)
     .offset((page - 1) * query.pageSize);
   const ids = rows.map((row) => row.id);
-  const readsReady = await hasArticleReadCounts(db);
   const readRows = readsReady && ids.length
     ? await db.select({ articleId: articleReadCounts.articleId, readCount: articleReadCounts.readCount }).from(articleReadCounts).where(inArray(articleReadCounts.articleId, ids))
     : [];
   const readsById = new Map(readRows.map((row) => [row.articleId, number(row.readCount)]));
+  const addedRows = boostsReady && ids.length
+    ? await db.select({ articleId: articleViewBoosts.articleId, addedCount: articleViewBoosts.artificialCount }).from(articleViewBoosts).where(inArray(articleViewBoosts.articleId, ids))
+    : [];
+  const addedById = new Map(addedRows.map((row) => [row.articleId, number(row.addedCount)]));
   const latestRows = ids.length
     ? await db
         .select({ articleId: articleRevisions.articleId, latest: sql<number>`max(${articleRevisions.number})::int` })
@@ -139,7 +158,7 @@ export async function queryArticleDesk(query: ArticleListQuery): Promise<Article
   return {
     items: rows.map(({ publishedRevision, ...row }) => {
       const latest = latestById.get(row.id) ?? null;
-      return { ...row, hasUnpublishedChanges: row.isPublic && latest !== null && latest !== publishedRevision, readCount: readsById.get(row.id) ?? null };
+      return { ...row, hasUnpublishedChanges: row.isPublic && latest !== null && latest !== publishedRevision, readCount: readsById.get(row.id) ?? null, addedCount: boostsReady ? addedById.get(row.id) ?? 0 : null };
     }),
     total: number(counts?.total),
     matched,

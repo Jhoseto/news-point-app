@@ -25,6 +25,9 @@ export default async function NewArticlePage() {
         revisionSavedBy: null,
         editableBody: true,
         canEdit: true,
+        viewSeedLocked: false,
+        viewReal: 0,
+        viewAdded: 0,
       }}
       draft={{
         title: "",
@@ -37,6 +40,10 @@ export default async function NewArticlePage() {
         authorKind: "staff",
         authorUserId: staff.id,
         authorName: staff.name,
+        viewSeed: null,
+        viewEvery: null,
+        viewUnit: "minutes",
+        viewTarget: null,
       }}
       sections={sections}
       media={media}

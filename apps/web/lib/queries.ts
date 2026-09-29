@@ -3,7 +3,7 @@ import { cache } from "react";
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
-import { articleCategories, articleReadCounts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
+import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -301,10 +301,15 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     .where(and(eq(articleCategories.articleId, row.id), eq(categories.kind, "section")))
     .orderBy(asc(categories.name));
 
-  const readCount = readsReady
+  const boostsReady = await hasArticleViewBoosts(db);
+  const realCount = readsReady
     ? (await db.select({ value: articleReadCounts.readCount }).from(articleReadCounts)
       .where(eq(articleReadCounts.articleId, row.id)).limit(1))[0]?.value ?? 0
     : null;
+  const addedCount = readsReady && boostsReady
+    ? (await db.select({ value: articleViewBoosts.artificialCount }).from(articleViewBoosts)
+      .where(eq(articleViewBoosts.articleId, row.id)).limit(1))[0]?.value ?? 0
+    : 0;
 
   return {
     ...toSummary(row),
@@ -313,7 +318,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     body,
     media,
     categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
-    readCount,
+    readCount: realCount === null ? null : realCount + addedCount,
   };
 });
 

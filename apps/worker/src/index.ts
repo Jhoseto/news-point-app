@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { createScriptDb, loadRootEnv } from "@newspoint/db/node";
+import { applyDueViewBoosts, createScriptDb, loadRootEnv } from "@newspoint/db/node";
 import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
 
@@ -34,6 +34,11 @@ async function runWorker() {
 
   let stopping = false;
   let timer: NodeJS.Timeout | undefined;
+  const boostTimer = setInterval(() => {
+    void applyDueViewBoosts(db)
+      .then((updated) => { if (updated > 0) log(`view boosts updated ${updated}`); })
+      .catch((error) => log(`view boost failed: ${(error as Error).message}`));
+  }, 15_000);
 
   async function tick() {
     try {
@@ -49,6 +54,7 @@ async function runWorker() {
   async function shutdown() {
     stopping = true;
     clearTimeout(timer);
+    clearInterval(boostTimer);
     await close();
   }
 

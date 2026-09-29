@@ -8,13 +8,46 @@ import {
 } from "@/lib/livepoint/traffic/flow-tiles";
 import { CesiumTrafficLayer } from "@/lib/livepoint/traffic/cesium-traffic-layer";
 import { TrafficIncidentHoverCard } from "./traffic-incident-hover-card";
-import "cesium/Build/Cesium/Widgets/widgets.css";
 import { useReducedMotion } from "../reader-preferences";
 
 type Position = { lat: number; lon: number };
 type MapIncident = Pick<TrafficIncident, "id" | "category" | "position" | "path" | "categoryLabel" | "description" | "from" | "to" | "delaySec">;
 
 const MARKER_PREFIX = "np-marker:";
+type CesiumModule = typeof import("cesium");
+
+let cesiumLoader: Promise<CesiumModule> | null = null;
+
+function loadCesium(): Promise<CesiumModule> {
+  if (!cesiumLoader) {
+    cesiumLoader = new Promise((resolve, reject) => {
+      const current = (window as Window & { Cesium?: CesiumModule }).Cesium;
+      if (current) {
+        resolve(current);
+        return;
+      }
+      (window as Window & { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = "/cesium/";
+      if (!document.querySelector("link[data-cesium-widgets]")) {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = "/cesium/Widgets/widgets.css";
+        link.dataset.cesiumWidgets = "true";
+        document.head.appendChild(link);
+      }
+      const script = document.createElement("script");
+      script.src = "/cesium/Cesium.js";
+      script.async = true;
+      script.onload = () => {
+        const loaded = (window as Window & { Cesium?: CesiumModule }).Cesium;
+        if (loaded) resolve(loaded);
+        else reject(new Error("Cesium не се зареди."));
+      };
+      script.onerror = () => reject(new Error("Cesium не се зареди."));
+      document.head.appendChild(script);
+    });
+  }
+  return cesiumLoader;
+}
 
 export function TrafficMap3D({ className, token, focusPosition, incidents, showFlow, showMarkers, showMotion = false, onSelectIncident }: {
   className: string;
@@ -63,10 +96,13 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
     if (!host.current || !token || !mapKey) return;
     let disposed = false;
     let localViewer: import("cesium").Viewer | null = null;
+    let finished = false;
+    const timeout = window.setTimeout(() => {
+      if (!disposed && !finished) setError("3D картата не се зареди. Опитайте отново.");
+    }, 25_000);
     (async () => {
       try {
-        (window as Window & { CESIUM_BASE_URL?: string }).CESIUM_BASE_URL = "/cesium/";
-        const C = await import("cesium");
+        const C = await loadCesium();
         if (disposed || !host.current) return;
         C.Ion.defaultAccessToken = token;
         cesium.current = C;
@@ -113,13 +149,19 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
             if (node instanceof HTMLElement) node.style.display = "none";
           });
         }
+        finished = true;
+        window.clearTimeout(timeout);
+        setError(null);
         setReady(true);
       } catch {
+        finished = true;
+        window.clearTimeout(timeout);
         if (!disposed) setError("3D теренът или въздушните снимки не се заредиха. Проверете Cesium ion достъпа.");
       }
     })();
     return () => {
       disposed = true;
+      window.clearTimeout(timeout);
       trafficLayer.current?.dispose();
       trafficLayer.current = null;
       if (localViewer && !localViewer.isDestroyed()) localViewer.destroy();

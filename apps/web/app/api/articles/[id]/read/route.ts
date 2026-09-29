@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { and, eq, lte, sql } from "drizzle-orm";
-import { articleReadCounts, articles, getDb, hasArticleReadCounts } from "@newspoint/db";
+import { articleReadCounts, articleViewBoosts, articles, getDb, hasArticleReadCounts, hasArticleViewBoosts } from "@newspoint/db";
 import { isArticleReadSameOrigin } from "@/lib/article-read";
 import { z } from "zod";
 
@@ -45,7 +45,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         target: articleReadCounts.articleId,
         set: { readCount: sql`${articleReadCounts.readCount} + 1`, updatedAt: new Date() },
       }).returning({ count: articleReadCounts.readCount });
-    return NextResponse.json({ count: row?.count ?? 0 }, { headers });
+    const added = await hasArticleViewBoosts(db)
+      ? (await db.select({ value: articleViewBoosts.artificialCount }).from(articleViewBoosts).where(eq(articleViewBoosts.articleId, article.id)).limit(1))[0]?.value ?? 0
+      : 0;
+    return NextResponse.json({ count: (row?.count ?? 0) + added }, { headers });
   } catch (error) {
     console.error("[article-read] failed", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "Статистиката временно не е достъпна." }, { status: 503, headers });

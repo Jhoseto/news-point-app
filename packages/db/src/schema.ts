@@ -182,6 +182,20 @@ export const articleReadCounts = pgTable("article_read_counts", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Editorial additions on top of real reads. The public site shows the sum. */
+export const articleViewBoosts = pgTable("article_view_boosts", {
+  articleId: uuid("article_id")
+    .primaryKey()
+    .references(() => articles.id, { onDelete: "cascade" }),
+  seedCount: bigint("seed_count", { mode: "number" }).notNull().default(0),
+  artificialCount: bigint("artificial_count", { mode: "number" }).notNull().default(0),
+  intervalSeconds: integer("interval_seconds"),
+  targetCount: bigint("target_count", { mode: "number" }),
+  seededAt: timestamp("seeded_at", { withTimezone: true }),
+  nextIncrementAt: timestamp("next_increment_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const articleCategories = pgTable(
   "article_categories",
   {

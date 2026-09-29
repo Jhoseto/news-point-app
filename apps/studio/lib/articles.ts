@@ -3,10 +3,14 @@ import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
 import { articleBody, resolveMediaUrl, type ArticleBody } from "@newspoint/content";
 import {
   articleCategories,
+  articleReadCounts,
   articleRevisions,
+  articleViewBoosts,
   articles,
   categories,
   getDb,
+  hasArticleReadCounts,
+  hasArticleViewBoosts,
   mediaAssets,
   outboxEvents,
   publishRequests,
@@ -19,6 +23,7 @@ import { publishProblems } from "./editor/input";
 import { articlePath } from "./editor/slug";
 import { libraryImageUrl } from "./media-library";
 import type { Staff } from "./session";
+import { artificialForSeed, intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
 
 export class EditorError extends Error {
   constructor(
@@ -47,6 +52,10 @@ export interface Draft {
   authorKind: ArticleAuthorKind;
   authorUserId: string | null;
   authorName: string;
+  viewSeed: number | null;
+  viewEvery: number | null;
+  viewUnit: ViewUnit;
+  viewTarget: number | null;
 }
 
 export interface EditorArticle {
@@ -63,8 +72,10 @@ export interface EditorArticle {
   draft: Draft;
   /** False for imported bodies the text editor cannot represent. */
   editableBody: boolean;
-  /** Every role writes and publishes; only Studio articles with a plain-text body are editable. */
   canEdit: boolean;
+  viewSeedLocked: boolean;
+  viewReal: number;
+  viewAdded: number;
 }
 
 export interface ArticleListItem {
@@ -79,6 +90,7 @@ export interface ArticleListItem {
   authorName: string | null;
   hasUnpublishedChanges: boolean;
   readCount: number | null;
+  addedCount: number | null;
 }
 
 export async function listSections() {
@@ -136,6 +148,10 @@ function toDraft(row: {
       authorKind,
       authorUserId: authorKind === "staff" ? row.authorUserId : null,
       authorName: row.authorName,
+      viewSeed: null,
+      viewEvery: null,
+      viewUnit: "minutes",
+      viewTarget: null,
     },
     editableBody: text !== null,
   };
@@ -155,6 +171,15 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
 
   const source = latest?.revision ?? { ...article, slug: article.isPublic ? article.slug : "" };
   const { draft, editableBody } = toDraft(source);
+  const boostsReady = await hasArticleViewBoosts(db);
+  const [boost] = boostsReady
+    ? await db.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, id)).limit(1)
+    : [];
+  const readsReady = await hasArticleReadCounts(db);
+  const [read] = readsReady
+    ? await db.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, id)).limit(1)
+    : [];
+  const interval = splitInterval(boost?.intervalSeconds ?? null);
   const isStudio = article.sourceSystem === "studio";
   return {
     id: article.id,
@@ -167,9 +192,18 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
     revision: latest?.revision.number ?? 0,
     revisionSavedAt: latest?.revision.createdAt ?? null,
     revisionSavedBy: latest?.savedBy ?? null,
-    draft,
+    draft: {
+      ...draft,
+      viewSeed: boost && boost.seedCount > 0 ? boost.seedCount : null,
+      viewEvery: interval.amount,
+      viewUnit: interval.unit,
+      viewTarget: boost?.targetCount ?? null,
+    },
     editableBody,
     canEdit: isStudio && editableBody,
+    viewSeedLocked: Boolean(boost?.seededAt),
+    viewReal: read?.readCount ?? 0,
+    viewAdded: boost?.artificialCount ?? 0,
   };
 }
 
@@ -200,6 +234,78 @@ function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Author
   };
 }
 
+async function viewDraft(tx: Pick<ReturnType<typeof getDb>, "select" | "execute">, articleId: string) {
+  if (!await hasArticleViewBoosts(tx)) return {};
+  const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
+  const interval = splitInterval(boost?.intervalSeconds ?? null);
+  return {
+    viewSeed: boost && boost.seedCount > 0 ? boost.seedCount : null,
+    viewEvery: interval.amount,
+    viewUnit: interval.unit,
+    viewTarget: boost?.targetCount ?? null,
+  };
+}
+
+async function saveViewSettings(tx: Pick<ReturnType<typeof getDb>, "insert" | "execute">, articleId: string, draft: DraftInput) {
+  if (!await hasArticleViewBoosts(tx)) return;
+  const intervalSeconds = intervalToSeconds(draft.viewEvery ?? null, draft.viewUnit ?? "minutes");
+  await tx.insert(articleViewBoosts).values({
+    articleId,
+    seedCount: draft.viewSeed ?? 0,
+    intervalSeconds,
+    targetCount: draft.viewTarget ?? null,
+  }).onConflictDoUpdate({
+    target: articleViewBoosts.articleId,
+    set: {
+      seedCount: draft.viewSeed ?? 0,
+      intervalSeconds,
+      targetCount: draft.viewTarget ?? null,
+      updatedAt: new Date(),
+    },
+  });
+}
+
+async function refreshViewSchedule(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {
+  if (!await hasArticleViewBoosts(tx)) return;
+  const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
+  if (!boost?.seededAt) return;
+  const [read] = await tx.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, articleId)).limit(1);
+  const displayed = (read?.readCount ?? 0) + boost.artificialCount;
+  const auto = boost.intervalSeconds != null && boost.targetCount != null && displayed < boost.targetCount;
+  if (!auto) {
+    if (boost.nextIncrementAt) await tx.update(articleViewBoosts).set({ nextIncrementAt: null, updatedAt: new Date() }).where(eq(articleViewBoosts.articleId, articleId));
+    return;
+  }
+  if (boost.nextIncrementAt) return;
+  await tx.update(articleViewBoosts).set({
+    nextIncrementAt: sql`now() + make_interval(secs => ${boost.intervalSeconds})`,
+    updatedAt: new Date(),
+  }).where(eq(articleViewBoosts.articleId, articleId));
+}
+
+async function applyPublishViews(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {
+  if (!await hasArticleViewBoosts(tx)) return;
+  const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
+  if (!boost || boost.seededAt) {
+    await refreshViewSchedule(tx, articleId);
+    return;
+  }
+  const hasSeed = boost.seedCount > 0;
+  const hasAuto = boost.intervalSeconds != null && boost.targetCount != null;
+  if (!hasSeed && !hasAuto) return;
+  const [read] = await tx.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, articleId)).limit(1);
+  const real = read?.readCount ?? 0;
+  const artificial = Math.max(boost.artificialCount, artificialForSeed(boost.seedCount, real));
+  const displayed = real + artificial;
+  const auto = hasAuto && boost.targetCount != null && displayed < boost.targetCount;
+  await tx.update(articleViewBoosts).set({
+    artificialCount: artificial,
+    seededAt: new Date(),
+    nextIncrementAt: auto ? sql`now() + make_interval(secs => ${boost.intervalSeconds})` : null,
+    updatedAt: new Date(),
+  }).where(eq(articleViewBoosts.articleId, articleId));
+}
+
 export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ id: string; revision: number }> {
   const body = textToBody(draft.bodyText);
   const authorship = resolveAuthorship(staff, draft);
@@ -221,6 +327,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       createdBy: staff.id,
     });
     await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
+    await saveViewSettings(tx, id, draft);
     return { id, revision: 1 };
   });
 }
@@ -257,7 +364,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         revision: current,
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
-        draft: toDraft(latest!.revision).draft,
+        draft: { ...toDraft(latest!.revision).draft, ...(await viewDraft(tx, id)) },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
@@ -281,6 +388,8 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
             },
       )
       .where(eq(articles.id, id));
+    await saveViewSettings(tx, id, draft);
+    if (article.isPublic) await refreshViewSchedule(tx, id);
     return { revision: number };
   });
 }
@@ -371,6 +480,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
 
     await tx.delete(articleCategories).where(eq(articleCategories.articleId, id));
     await tx.insert(articleCategories).values({ articleId: id, categoryId: category.id });
+    await applyPublishViews(tx, id);
 
     const type = wasPublic ? "article.updated" : "article.published";
     const [event] = await tx
@@ -404,6 +514,10 @@ export async function setArticleVisibility(id: string, visible: boolean): Promis
       version,
       payload: { path: article.path, title: article.title, topics: category ? [category.slug] : [] },
     });
+    if (await hasArticleViewBoosts(tx)) {
+      if (visible) await refreshViewSchedule(tx, id);
+      else await tx.update(articleViewBoosts).set({ nextIncrementAt: null, updatedAt: new Date() }).where(eq(articleViewBoosts.articleId, id));
+    }
     return { isPublic: visible };
   });
 }

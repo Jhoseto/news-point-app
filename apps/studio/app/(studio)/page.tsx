@@ -6,6 +6,7 @@ import { ArticleVisibility } from "@/components/article-visibility";
 import { queryArticleDesk } from "@/lib/article-desk";
 import { articleListActive, articleListHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
 import { listSections, type ArticleListItem } from "@/lib/articles";
+import { listStaffProfiles } from "@/lib/users";
 import { formatStamp } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Материали" };
@@ -50,7 +51,7 @@ function SortHeader({ query, sort, label, className = "" }: { query: ArticleList
 
 export default async function ArticlesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = parseArticleListQuery(await searchParams);
-  const [desk, sections] = await Promise.all([queryArticleDesk(query), listSections()]);
+  const [desk, sections, profiles] = await Promise.all([queryArticleDesk(query), listSections(), listStaffProfiles()]);
   if (desk.page !== query.page) redirect(articleListHref(query, { page: desk.page }));
 
   const web = (process.env.WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "");
@@ -113,7 +114,14 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
           </label>
           <label>
             <span className={caption}>Автор</span>
-            <input name="author" type="text" defaultValue={query.author} placeholder="Подпис" className={control} />
+            <select name="author" defaultValue={query.author} className={control}>
+              <option value="">Всички</option>
+              <option value="newsroom">NewsPoint.bg</option>
+              <option value="anonymous">Анонимни</option>
+              {profiles.map((profile) => (
+                <option key={profile.id} value={profile.id}>{profile.name}</option>
+              ))}
+            </select>
           </label>
           <label>
             <span className={caption}>Снимка</span>
@@ -199,7 +207,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                 <th scope="col" className="px-2 py-1.5">Рубрика</th>
                 <SortHeader query={query} sort="author" label="Автор" className="px-2 py-1.5" />
                 <th scope="col" className="px-2 py-1.5">Статус</th>
-                <SortHeader query={query} sort="views" label="Прегледи" className="px-2 py-1.5 text-right" />
+                <SortHeader query={query} sort="views" label="Реални / добавени" className="px-2 py-1.5 text-right" />
                 <SortHeader query={query} sort="published" label="Публикуване" className="px-2 py-1.5" />
                 <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-1.5 text-right" />
               </tr>
@@ -221,7 +229,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="px-2 py-1.5 text-xs text-muted">{item.categoryName ?? "—"}</td>
                   <td className="max-w-32 truncate px-2 py-1.5 text-xs text-muted">{item.authorName ?? "—"}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap"><StatusBadge article={item} /></td>
-                  <td className="px-2 py-1.5 text-right text-xs whitespace-nowrap text-ink tabular-nums">{item.readCount === null ? "—" : number.format(item.readCount)}</td>
+                  <td className="px-2 py-1.5 text-right text-xs whitespace-nowrap text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs text-muted tabular-nums">
                     {item.publishedAt ? formatStamp(item.publishedAt) : "—"}
                     {item.isPublic ? (

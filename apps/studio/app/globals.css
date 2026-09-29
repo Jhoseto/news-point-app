@@ -119,6 +119,15 @@
   .studio-editor-pane .np-input { border-radius: .65rem; padding: .45rem .7rem; font-size: .8125rem; }
   .studio-editor-pane select:not(.studio-editor-classic-select) { min-height: 2.35rem; border-radius: .65rem; padding: .35rem .65rem; font-size: .8125rem; }
   .studio-editor-pane button:not(.studio-editor-classic-tool):not(.studio-editor-media) { min-height: 2.25rem; border-radius: .65rem; padding-inline: .7rem; font-size: .75rem; }
+  .studio-editor-pane .np-views-input,
+  .studio-editor-pane select.np-views-input {
+    height: 1.7rem;
+    min-height: 0;
+    border-radius: .4rem;
+    padding: 0 .4rem;
+    font-size: .75rem;
+    line-height: 1;
+  }
 
   .studio-editor-tool {
     @apply inline-flex min-h-7 items-center gap-1 rounded-md border border-transparent px-2 py-1 text-[0.6875rem] font-bold text-muted transition hover:border-accent/30 hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-45;

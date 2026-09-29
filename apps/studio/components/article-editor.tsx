@@ -28,6 +28,9 @@ export interface EditorProps {
     revisionSavedBy: string | null;
     editableBody: boolean;
     canEdit: boolean;
+    viewSeedLocked: boolean;
+    viewReal: number;
+    viewAdded: number;
   };
   draft: Draft;
   sections: { id: string; name: string }[];
@@ -106,6 +109,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [notice, setNotice] = useState<Notice | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
+  const [seedLocked, setSeedLocked] = useState(article.viewSeedLocked);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
   const [device, setDevice] = useState<Device>("desktop");
@@ -114,6 +118,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [availableMedia, setAvailableMedia] = useState(media);
   const publishKey = useRef<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
+  const savedBodyRange = useRef<Range | null>(null);
 
   const readOnly = !article.canEdit;
   const dirty = !sameDraft(draft, saved);
@@ -133,6 +138,23 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     });
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);
+  };
+
+  const openMediaPicker = (target: "body" | "hero") => {
+    if (target === "body") {
+      const selection = window.getSelection();
+      if (selection?.rangeCount && bodyRef.current?.contains(selection.anchorNode)) savedBodyRange.current = selection.getRangeAt(0).cloneRange();
+    }
+    setMediaTarget(target);
+    setPickerOpen(true);
+  };
+
+  const restoreBodyRange = () => {
+    if (!bodyRef.current || !savedBodyRange.current) return;
+    bodyRef.current.focus();
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(savedBodyRange.current);
   };
 
   const insertBodyBlock = (kind: "paragraph" | "heading" | "subheading" | "quote" | "list" | "orderedList") => {
@@ -259,6 +281,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       return;
     }
     publishKey.current = null;
+    if (draft.viewSeed != null) setSeedLocked(true);
     setPublished((current) => ({ isPublic: true, revision: result.data.revision, path: result.data.path, at: current.at ?? new Date().toISOString() }));
     setNotice({
       tone: "success",
@@ -518,7 +541,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </fieldset>
           </div>
 
-          <div className="np-card flex items-center gap-2.5 p-3">
+          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="np-card flex h-full items-center gap-2.5 p-3">
             {hero ? (
               <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
             ) : (
@@ -530,7 +554,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <p className="np-label">Основна снимка</p>
               {!readOnly ? (
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => { setMediaTarget("hero"); setPickerOpen(true); }} className="np-btn np-btn-secondary px-3 py-1.5">
+                    <button type="button" onClick={() => openMediaPicker("hero")} className="np-btn np-btn-secondary px-3 py-1.5">
                     {hero ? "Смени" : "Избери"}
                   </button>
                   <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary px-3 py-1.5">Embed</button>
@@ -545,6 +569,68 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <p className="truncate text-sm text-muted">{hero?.alt || "—"}</p>
               )}
             </div>
+          </div>
+
+          <div className="np-card flex h-full min-w-0 flex-col justify-center px-2.5 py-2">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">Прегледи</p>
+              <p className="truncate text-[10px] text-faint tabular-nums">
+                {published.isPublic ? `${(article.viewReal + article.viewAdded).toLocaleString("bg-BG")} на сайта` : "сбор на сайта"}
+              </p>
+            </div>
+            <div className="flex items-end gap-1.5">
+              <label className="w-16 shrink-0">
+                <span className="mb-0.5 block text-[10px] font-semibold text-faint">Старт</span>
+                <input
+                  aria-label="Прегледи при публикуване"
+                  inputMode="numeric"
+                  disabled={readOnly || seedLocked}
+                  value={draft.viewSeed ?? ""}
+                  onChange={(event) => update("viewSeed", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+                  placeholder="—"
+                  className="np-input np-views-input tabular-nums"
+                />
+              </label>
+              <label className="w-14 shrink-0">
+                <span className="mb-0.5 block text-[10px] font-semibold text-faint">На всеки</span>
+                <input
+                  aria-label="Интервал"
+                  inputMode="numeric"
+                  disabled={readOnly}
+                  value={draft.viewEvery ?? ""}
+                  onChange={(event) => update("viewEvery", event.target.value === "" ? null : Math.max(1, Math.trunc(Number(event.target.value) || 1)))}
+                  placeholder="—"
+                  className="np-input np-views-input tabular-nums"
+                />
+              </label>
+              <label className="w-14 shrink-0">
+                <span className="mb-0.5 block text-[10px] font-semibold text-transparent" aria-hidden="true">.</span>
+                <select
+                  aria-label="Мярка за времето"
+                  disabled={readOnly}
+                  value={draft.viewUnit}
+                  onChange={(event) => update("viewUnit", event.target.value as Draft["viewUnit"])}
+                  className="np-input np-views-input"
+                >
+                  <option value="seconds">сек</option>
+                  <option value="minutes">мин</option>
+                  <option value="hours">ч</option>
+                </select>
+              </label>
+              <label className="w-16 shrink-0">
+                <span className="mb-0.5 block text-[10px] font-semibold text-faint">До</span>
+                <input
+                  aria-label="Краен брой прегледи"
+                  inputMode="numeric"
+                  disabled={readOnly}
+                  value={draft.viewTarget ?? ""}
+                  onChange={(event) => update("viewTarget", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+                  placeholder="—"
+                  className="np-input np-views-input tabular-nums"
+                />
+              </label>
+            </div>
+          </div>
           </div>
 
           <div className="np-card p-3">
@@ -571,7 +657,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
             <div className="studio-editor-classic" role="toolbar" aria-label="WordPress стил редактор">
               <div className="studio-editor-classic-top">
-                <button type="button" disabled={readOnly} onClick={() => { setMediaTarget("body"); setPickerOpen(true); }} className="studio-editor-media">▣&nbsp; Add Media</button>
+                <button type="button" disabled={readOnly} onClick={() => openMediaPicker("body")} className="studio-editor-media">▣&nbsp; Add Media</button>
               </div>
               <div className="studio-editor-classic-row">
                 <button type="button" disabled={readOnly} onClick={() => insertInlineFormat("bold")} className="studio-editor-classic-tool" title="Bold"><strong>B</strong></button>
@@ -696,10 +782,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
           selected={draft.heroMediaId}
           multiple={mediaTarget === "body"}
           onClose={() => setPickerOpen(false)}
-          onUpload={(item) => { setAvailableMedia((current) => [item, ...current]); if (mediaTarget === "hero") update("heroMediaId", item.id); else if (bodyRef.current) { bodyRef.current.focus(); document.execCommand("insertHTML", false, `<p><img data-media-id="${item.id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`); update("bodyText", htmlToBodyText(bodyRef.current.innerHTML)); } setPickerOpen(false); }}
+          onUpload={(item) => { setAvailableMedia((current) => [item, ...current]); if (mediaTarget === "hero") update("heroMediaId", item.id); else if (bodyRef.current) { restoreBodyRange(); document.execCommand("insertHTML", false, `<p><img data-media-id="${item.id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`); update("bodyText", htmlToBodyText(bodyRef.current.innerHTML)); } setPickerOpen(false); }}
           onSelect={(id) => {
             if (mediaTarget === "body" && bodyRef.current) {
-              bodyRef.current.focus();
+              restoreBodyRange();
               document.execCommand("insertHTML", false, `<p><img data-media-id="${id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`);
               update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
             } else update("heroMediaId", id);

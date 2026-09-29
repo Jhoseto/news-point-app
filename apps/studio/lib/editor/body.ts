@@ -115,6 +115,9 @@ function inlineFromNode(node: Node): string {
 export function htmlToBodyText(html: string): string {
   if (typeof DOMParser === "undefined") return "";
   const root = new DOMParser().parseFromString(html, "text/html").body;
+  // Browsers may place the first typed character directly in contenteditable
+  // before they create the first paragraph. Keep live preview responsive.
+  if (!root.children.length && root.textContent?.trim()) return root.textContent.trim();
   return Array.from(root.children).map((element) => {
     const images = Array.from(element.querySelectorAll("img[data-media-id]"));
     const iframe = element.querySelector("iframe[data-embed-provider][src]");
