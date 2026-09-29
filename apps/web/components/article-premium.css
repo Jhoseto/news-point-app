@@ -289,6 +289,10 @@
 .np-article-figure.np-image-shape-rounded img { border-radius: 1rem; }
 .np-article-figure.np-image-frame-soft img { box-shadow: 0 18px 35px -24px var(--np-ink); }
 .np-article-figure.np-image-frame-line img { border: 4px solid var(--np-line); }
+.np-article-embed-frame { overflow: hidden; margin: 2rem auto; max-width: 760px; border: 1px solid var(--np-line); border-radius: 1rem; background: #fff; box-shadow: 0 20px 45px -35px var(--np-ink); }
+.np-article-hero-embed { overflow: hidden; border-radius: 1.5rem; background: #fff; box-shadow: 0 22px 48px -36px var(--np-ink); }
+.np-article-hero-embed iframe { display: block; width: 100%; min-height: 32rem; border: 0; }
+.np-article-embed-frame iframe { display: block; width: 100%; min-height: 32rem; border: 0; }
 .np-article-figure.np-image-crop-square img { aspect-ratio: 1; object-fit: cover; }
 .np-article-figure.np-image-crop-portrait img { aspect-ratio: 4 / 5; object-fit: cover; }
 .np-article-figure.np-image-crop-landscape img { aspect-ratio: 16 / 9; object-fit: cover; }

@@ -86,12 +86,14 @@ export function ArticleImage({
   priority = false,
   sizes,
   objectPosition,
+  imageTransform,
 }: {
   media: Media | null;
   className?: string;
   priority?: boolean;
   sizes?: string;
   objectPosition?: string;
+  imageTransform?: { scale: number; origin: string };
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   const presentation = imagePresentation(media);
@@ -103,7 +105,7 @@ export function ArticleImage({
       height={media.height ?? undefined}
       sizes={sizes}
       srcSet={presentation.srcSet}
-      style={{ ...(presentation.objectPosition ? { objectPosition: presentation.objectPosition } : {}), ...(objectPosition ? { objectPosition } : {}) }}
+      style={{ ...(presentation.objectPosition ? { objectPosition: presentation.objectPosition } : {}), ...(objectPosition ? { objectPosition } : {}), ...(imageTransform ? { transform: `scale(${imageTransform.scale})`, transformOrigin: imageTransform.origin } : {}) }}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}
       decoding="async"

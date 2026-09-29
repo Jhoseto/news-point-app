@@ -33,6 +33,7 @@ export default async function NewArticlePage() {
         bodyText: "",
         primaryCategoryId: null,
         heroMediaId: null,
+        heroEmbedUrl: null,
         authorKind: "staff",
         authorUserId: staff.id,
         authorName: staff.name,

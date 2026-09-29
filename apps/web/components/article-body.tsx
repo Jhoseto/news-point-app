@@ -28,7 +28,7 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       const credit = asset?.credit;
       return (
         <figure className={`np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"} np-image-crop-${block.crop ?? "original"}`}>
-          <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} />
+          <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} imageTransform={{ scale: (block.cropZoom ?? 100) / 100, origin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} />
           {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>
       );
@@ -51,17 +51,7 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       );
     }
     case "embed":
-      return (
-        <a
-          href={block.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink"
-        >
-          <span>Виж публикацията в {EMBED_LABEL[block.provider]}</span>
-          <ExternalIcon width={18} height={18} />
-        </a>
-      );
+      return /^https:\/\/(www\.)?(facebook\.com|youtube\.com|youtu\.be|instagram\.com|x\.com|twitter\.com)\//i.test(block.url) ? <div className="np-article-embed-frame"><iframe src={block.url} title={`Вградено съдържание от ${EMBED_LABEL[block.provider]}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div> : <a href={block.url} target="_blank" rel="noopener noreferrer" className="np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink"><span>Виж публикацията в {EMBED_LABEL[block.provider]}</span><ExternalIcon width={18} height={18} /></a>;
     case "legacy_html":
       return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }

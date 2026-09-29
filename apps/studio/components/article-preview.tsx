@@ -2,6 +2,7 @@ import type { Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { wordCount } from "@/lib/editor/body";
 import { formatFull } from "@/lib/format";
+import { browserMediaSrc } from "@/lib/media-src";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 
@@ -16,6 +17,7 @@ export interface PreviewArticle {
   blocks: Block[];
   category: string | null;
   hero: MediaOption | null;
+  heroEmbedUrl: string | null;
   authorName: string;
   /** Null until published; the preview then shows the current time. */
   publishedAt: string | null;
@@ -48,8 +50,10 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
     }
     case "image": {
       const asset = media.find((item) => item.id === block.mediaAssetId);
-      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><img src={asset.url} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
+      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><img src={browserMediaSrc(asset.url)} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
     }
+    case "embed":
+      return <div className="studio-preview-embed"><iframe src={block.url} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div>;
     default:
       return <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted">Елемент „{block.type}“ се вижда само на сайта.</p>;
   }
@@ -80,8 +84,10 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
           </p>
         ) : null}
         <div className="relative overflow-hidden rounded-3xl shadow-card">
-          {article.hero ? (
-            <img src={article.hero.url} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
+          {article.heroEmbedUrl ? (
+            <iframe src={article.heroEmbedUrl} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen />
+          ) : article.hero ? (
+            <img src={browserMediaSrc(article.hero.url)} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
           ) : (
             <div className="flex aspect-[16/9] w-full items-center justify-center bg-surface-2 text-sm font-semibold text-faint">Основна снимка</div>
           )}

@@ -51,7 +51,9 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
 
       <article className="np-article-story">
         <div className="np-article-main">
-          {article.hero ? (
+          {article.heroEmbedUrl ? (
+            <div className="np-article-hero-embed"><iframe src={article.heroEmbedUrl} title="Вградено hero съдържание" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div>
+          ) : article.hero ? (
             <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={lightboxImages} />
           ) : null}
 

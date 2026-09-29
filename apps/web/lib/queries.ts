@@ -36,6 +36,7 @@ export interface ArticleSummary {
   path: string;
   title: string;
   excerpt: string;
+  heroEmbedUrl?: string | null;
   authorName: string;
   publishedAt: Date;
   category: CategoryRef | null;
@@ -64,6 +65,7 @@ const baseSummaryColumns = {
   path: articles.path,
   title: articles.title,
   excerpt: articles.excerpt,
+  heroEmbedUrl: articles.heroEmbedUrl,
   authorName: articles.authorName,
   publishedAt: articles.publishedAt,
   categoryId: categories.id,
@@ -126,6 +128,7 @@ function toSummary(row: SummaryRow): ArticleSummary {
     path: row.path!,
     title: row.title!,
     excerpt: row.excerpt ?? "",
+    heroEmbedUrl: row.heroEmbedUrl ?? null,
     authorName: row.authorName ?? "NewsPoint.bg",
     publishedAt: row.publishedAt!,
     category: row.categoryId

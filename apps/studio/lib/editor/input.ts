@@ -23,6 +23,7 @@ export const draftInput = z
     bodyText: z.string().max(BODY_TEXT_MAX),
     primaryCategoryId: z.uuid().nullable(),
     heroMediaId: z.uuid().nullable(),
+    heroEmbedUrl: z.string().url().nullable().optional(),
     authorKind: z.enum(["staff", "newsroom", "manual"]),
     authorUserId: z.string().min(1).nullable(),
     authorName,

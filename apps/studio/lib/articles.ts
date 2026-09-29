@@ -17,6 +17,7 @@ import { bodyToText, textToBody } from "./editor/body";
 import type { DraftInput } from "./editor/input";
 import { publishProblems } from "./editor/input";
 import { articlePath } from "./editor/slug";
+import { libraryImageUrl } from "./media-library";
 import type { Staff } from "./session";
 
 export class EditorError extends Error {
@@ -42,6 +43,7 @@ export interface Draft {
   bodyText: string;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
+  heroEmbedUrl: string | null;
   authorKind: ArticleAuthorKind;
   authorUserId: string | null;
   authorName: string;
@@ -102,7 +104,7 @@ export async function listRecentMedia(limit = 48, include: string | null = null)
   }
   return rows.map((row) => ({
     id: row.id,
-    url: resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
+    url: row.storageKey ? libraryImageUrl(row.storageKey, row.sourceUrl) : resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
     alt: row.alt,
   }));
 }
@@ -114,6 +116,7 @@ function toDraft(row: {
   body: unknown;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
+  heroEmbedUrl?: string | null;
   authorKind: ArticleAuthorKind;
   authorUserId: string | null;
   authorName: string;
@@ -129,6 +132,7 @@ function toDraft(row: {
       bodyText: text ?? "",
       primaryCategoryId: row.primaryCategoryId,
       heroMediaId: row.heroMediaId,
+      heroEmbedUrl: row.heroEmbedUrl ?? null,
       authorKind,
       authorUserId: authorKind === "staff" ? row.authorUserId : null,
       authorName: row.authorName,
@@ -191,6 +195,7 @@ function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Author
     body,
     primaryCategoryId: draft.primaryCategoryId,
     heroMediaId: draft.heroMediaId,
+    heroEmbedUrl: draft.heroEmbedUrl,
     ...authorship,
   };
 }
@@ -211,6 +216,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       body,
       primaryCategoryId: draft.primaryCategoryId,
       heroMediaId: draft.heroMediaId,
+      heroEmbedUrl: draft.heroEmbedUrl,
       isPublic: false,
       createdBy: staff.id,
     });
@@ -436,7 +442,7 @@ async function listMediaByIds(ids: string[]): Promise<MediaOption[]> {
   const rows = await getDb().select().from(mediaAssets).where(inArray(mediaAssets.id, ids));
   return rows.map((row) => ({
     id: row.id,
-    url: resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
+    url: row.storageKey ? libraryImageUrl(row.storageKey, row.sourceUrl) : resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
     alt: row.alt,
   }));
 }

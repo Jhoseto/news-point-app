@@ -8,6 +8,7 @@ import { bodyTextToHtml, htmlToBodyText, textToBody, wordCount } from "@/lib/edi
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
 import { slugify } from "@/lib/editor/slug";
 import { formatWhen } from "@/lib/format";
+import { browserMediaSrc } from "@/lib/media-src";
 import { withBase } from "@/lib/paths";
 import { ArticlePreview, type PreviewTheme } from "./article-preview";
 import { MediaPicker } from "./media-picker";
@@ -160,7 +161,24 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
   };
 
-  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y" | "data-crop", value: string) => {
+  const insertEmbed = () => {
+    if (!bodyRef.current || readOnly) return;
+    const url = window.prompt("HTTPS адрес за Facebook/YouTube/Instagram embed:", "https://");
+    if (!url?.startsWith("https://")) return;
+    const provider = url.includes("facebook.com") ? "facebook" : url.includes("youtube.com") || url.includes("youtu.be") ? "youtube" : url.includes("instagram.com") ? "instagram" : "other";
+    bodyRef.current.focus();
+    document.execCommand("insertHTML", false, `<p><iframe data-embed-provider="${provider}" src="${url.replace(/&/g, "&amp;")}"></iframe></p><p><br></p>`);
+    update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+  };
+
+  const setHeroEmbed = () => {
+    const url = window.prompt("HTTPS адрес за hero embed:", draft.heroEmbedUrl ?? "https://");
+    if (!url?.startsWith("https://")) return;
+    update("heroEmbedUrl", url);
+    update("heroMediaId", null);
+  };
+
+  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y" | "data-crop" | "data-crop-zoom", value: string) => {
     const node = window.getSelection()?.anchorNode;
     const image = node instanceof HTMLImageElement ? node : node?.parentElement?.closest("img[data-media-id]");
     if (!image) return;
@@ -470,7 +488,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
             <div className="np-card flex items-center gap-2.5 p-3">
               {hero ? (
-                <img src={hero.url} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
+                <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
               ) : (
                 <div className="flex aspect-[4/3] w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-[0.625rem] font-bold text-faint">
                   Няма
@@ -483,6 +501,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                     <button type="button" onClick={() => { setMediaTarget("hero"); setPickerOpen(true); }} className="np-btn np-btn-secondary px-3 py-1.5">
                       {hero ? "Смени" : "Избери"}
                     </button>
+                    <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary px-3 py-1.5">Embed</button>
+                    {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary px-3 py-1.5">Махни embed</button> : null}
                     {hero ? (
                       <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary px-3 py-1.5">
                         Махни
@@ -567,6 +587,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyCenter")} className="studio-editor-classic-tool" title="Align center">≡</button>
                 <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyRight")} className="studio-editor-classic-tool" title="Align right">≡</button>
                 <button type="button" disabled={readOnly} onClick={() => editorCommand("createLink")} className="studio-editor-classic-tool" title="Insert link">🔗</button>
+                <button type="button" disabled={readOnly} onClick={insertEmbed} className="studio-editor-classic-tool" title="Вгради външна публикация">Embed</button>
               </div>
               <div className="studio-editor-classic-row">
               <select aria-label="Стил на блока" defaultValue="paragraph" disabled={readOnly} onChange={(event) => insertBodyBlock(event.target.value as "paragraph" | "heading" | "subheading")} className="studio-editor-classic-select">
@@ -589,6 +610,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <select aria-label="Кадриране на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-crop", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Кадър</option><option value="original">Оригинал</option><option value="landscape">Пейзаж</option><option value="square">Квадрат</option><option value="portrait">Портрет</option></select>
                 <label className="studio-editor-focal-control" title="Фокус по хоризонтала">X <input aria-label="Фокус по хоризонтала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-x", event.target.value)} /></label>
                 <label className="studio-editor-focal-control" title="Фокус по вертикала">Y <input aria-label="Фокус по вертикала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-y", event.target.value)} /></label>
+                <label className="studio-editor-focal-control" title="Приближение на кадъра">Zoom <input aria-label="Приближение на кадъра" type="range" min="100" max="300" defaultValue="100" onChange={(event) => setImagePresentation("data-crop-zoom", event.target.value)} /></label>
               </div>
             </div>
             <RichEditorSurface value={draft.bodyText} readOnly={readOnly} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} />
@@ -650,7 +672,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 </div>
                 <ArticlePreview
                   theme={theme}
-                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, media, authorName: previewSource.authorName, publishedAt: published.at }}
+                  article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media, authorName: previewSource.authorName, publishedAt: published.at }}
                 />
               </div>
             ) : (
@@ -661,7 +683,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <div className="max-h-[760px] overflow-y-auto rounded-[2rem]">
                   <ArticlePreview
                     theme={theme}
-                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, media, authorName: previewSource.authorName, publishedAt: published.at }}
+                    article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media, authorName: previewSource.authorName, publishedAt: published.at }}
                   />
                 </div>
               </div>

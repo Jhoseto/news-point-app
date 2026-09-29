@@ -13,13 +13,16 @@ const NAV = [
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 
-function Icon({ d }: { d: string }) {
+function Icon({ d, size = 18 }: { d: string; size?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true">
       <path d={d} />
     </svg>
   );
 }
+
+const SITE_ICON = "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5";
+const EXIT_ICON = "M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5";
 
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
 export function StudioShell({ user, webUrl, canManageUsers, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; children: ReactNode }) {
@@ -63,30 +66,35 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
               {item.label}
             </Link>
           ))}
-          <a
-            href={webUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition hover:bg-white/6 hover:text-white"
-          >
-            <Icon d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-            Към сайта
-          </a>
         </nav>
-        <div className="border-t border-white/8 p-3">
-          <div className="flex items-center gap-2 rounded-xl px-2 py-2">
-            <Link
-              href="/profile"
-              aria-current={isActive("/profile") ? "page" : undefined}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-lg py-1 pr-1 transition hover:bg-white/6 aria-[current=page]:bg-white/8"
+        <div className="border-t border-white/8 p-2">
+          <Link
+            href="/profile"
+            aria-current={isActive("/profile") ? "page" : undefined}
+            className="flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-white/6 aria-[current=page]:bg-white/8"
+          >
+            <span className="np-gradient-bg flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-extrabold text-white">{initials}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13px] leading-tight font-bold text-white">{user.name}</span>
+              <span className="mt-0.5 block text-[11px] leading-tight text-white/55">{user.role}</span>
+            </span>
+          </Link>
+          <div className="mt-0.5 flex items-center gap-0.5 px-1 pb-0.5">
+            <a
+              href={webUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
             >
-              <span className="np-gradient-bg flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-white">{initials}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold text-white">{user.name}</span>
-                <span className="block text-xs text-white/55">{user.role}</span>
-              </span>
-            </Link>
-            <button type="button" onClick={signOut} className="shrink-0 rounded-lg px-2 py-1.5 text-xs font-bold text-white/60 transition hover:bg-white/8 hover:text-white">
+              <Icon d={SITE_ICON} size={13} />
+              Към сайта
+            </a>
+            <button
+              type="button"
+              onClick={signOut}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
+            >
+              <Icon d={EXIT_ICON} size={13} />
               Изход
             </button>
           </div>
@@ -109,9 +117,13 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
               <span className="sr-only sm:not-sr-only">{item.label}</span>
             </Link>
           ))}
-          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:px-2.5 sm:py-1.5">
-            <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5" /></svg>
-            <span className="sr-only sm:not-sr-only sm:ml-1.5">Изход</span>
+          <a href={webUrl} target="_blank" rel="noreferrer" aria-label="Към сайта" title="Към сайта" className="flex size-9 items-center justify-center rounded-lg text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+            <Icon d={SITE_ICON} />
+            <span className="sr-only sm:not-sr-only text-sm font-bold">Към сайта</span>
+          </a>
+          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+            <Icon d={EXIT_ICON} />
+            <span className="sr-only sm:not-sr-only">Изход</span>
           </button>
         </nav>
       </header>
