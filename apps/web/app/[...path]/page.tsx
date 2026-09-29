@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticlePage } from "@/components/article-page";
 import { CategoryPage } from "@/components/category-page";
+import { shareOrigin } from "@/lib/share-card";
 import { getArticleByPath, getCategoryByPath } from "@/lib/queries";
 import { parseCategoryCursor } from "@/lib/category-pagination";
 
@@ -17,19 +18,29 @@ async function resolvePath(params: Props["params"]): Promise<string> {
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const path = await resolvePath(params);
+  const origin = shareOrigin();
   const category = await getCategoryByPath(path);
-  if (category) return {
-    title: category.name,
-    alternates: { canonical: `https://newspoint.bg${category.path}` },
-    // Snapshot URLs must not create an unbounded set of indexed duplicates.
-    ...((await searchParams).cursor !== undefined ? { robots: { index: false, follow: true } } : {}),
-  };
+  if (category) {
+    const image = `${origin}/share/category/${category.id}/`;
+    return {
+      title: category.name,
+      description: `Новини от рубрика ${category.name} — NewsPoint.bg`,
+      alternates: { canonical: `${origin}${category.path}` },
+      openGraph: { title: category.name, description: `Новини от рубрика ${category.name}`, siteName: "NewsPoint.bg", locale: "bg_BG", type: "website", images: [{ url: image, width: 1200, height: 630 }] },
+      twitter: { card: "summary_large_image", title: category.name, images: [image] },
+      ...((await searchParams).cursor !== undefined ? { robots: { index: false, follow: true } } : {}),
+    };
+  }
   const article = await getArticleByPath(path);
   if (!article) return {};
+  const image = `${origin}/share/article/${article.id}/`;
+  const description = article.excerpt || article.title;
   return {
     title: article.title,
-    description: article.excerpt,
-    openGraph: { title: article.title, description: article.excerpt, images: article.hero ? [article.hero.url] : [] },
+    description,
+    alternates: { canonical: `${origin}${article.path}` },
+    openGraph: { title: article.title, description, siteName: "NewsPoint.bg", locale: "bg_BG", type: "article", images: [{ url: image, width: 1200, height: 630 }] },
+    twitter: { card: "summary_large_image", title: article.title, description, images: [image] },
   };
 }
 

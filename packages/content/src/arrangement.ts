@@ -92,7 +92,7 @@ export function homeSlotCatalog(categories: { slug: string; name: string }[]): S
     { key: "support-2", group: "Водеща лента", label: "До водещата — дясна малка" },
   ];
   for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
-    slots.push({ key: `carousel-${index}`, group: "Въртележка", label: `Място ${index + 1}` });
+    slots.push({ key: `carousel-${index}`, group: "На Фокус", label: `Място ${index + 1}` });
   }
   for (let index = 0; index < HOME_LATEST_PIN_COUNT; index += 1) {
     slots.push({ key: `latest-${index}`, group: "Последни", label: `Отгоре ${index + 1}` });

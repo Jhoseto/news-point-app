@@ -31,6 +31,7 @@ export const draftInput = z
     viewEvery: z.number().int().min(1).max(100_000).nullable().optional(),
     viewUnit: z.enum(["seconds", "minutes", "hours"]).optional(),
     viewTarget: z.number().int().min(0).max(100_000_000).nullable().optional(),
+    publishAtSofia: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).nullable().optional(),
   })
   .superRefine((draft, context) => {
     if (draft.authorKind === "staff" && !draft.authorUserId) {

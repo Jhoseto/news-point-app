@@ -29,9 +29,11 @@ const EXIT_ICON = "M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
 export function StudioShell({ user, webUrl, canManageUsers, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
-  const nav = canManageUsers ? [...NAV, USERS_LINK] : NAV;
+  const nav = NAV;
+  const mobileNav = canManageUsers ? [...NAV, USERS_LINK] : NAV;
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
+  const desk = pathname === "/" || pathname === "/arrange";
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -69,24 +71,32 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
             </Link>
           ))}
         </nav>
-        <div className="border-t border-white/8 p-2">
+        <div className="border-t border-white/10 px-3 pt-3 pb-2.5">
+          {canManageUsers ? <Link href={USERS_LINK.href} aria-current={isActive(USERS_LINK.href) ? "page" : undefined} className="group relative mb-2 flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold transition hover:bg-white/6 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white">
+            {isActive(USERS_LINK.href) ? <span className="np-gradient-bg absolute inset-y-2 left-0 w-1 rounded-full" aria-hidden="true" /> : null}<Icon d={USERS_LINK.icon} />{USERS_LINK.label}
+          </Link> : null}
           <Link
             href="/profile"
             aria-current={isActive("/profile") ? "page" : undefined}
-            className="flex w-full min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5 transition hover:bg-white/6 aria-[current=page]:bg-white/8"
+            className="group flex w-full min-w-0 items-center gap-3 rounded-2xl bg-white/[0.06] p-2.5 ring-1 ring-white/10 transition hover:bg-white/[0.1] aria-[current=page]:bg-white/[0.12]"
           >
-            <span className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full"><span className="np-gradient-bg absolute inset-0 flex items-center justify-center text-[11px] font-extrabold text-white">{initials}</span><img src={withBase("/api/profile/photo/")} alt="" className="relative size-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} /></span>
+            <span className="np-gradient-bg relative flex size-11 shrink-0 rounded-full p-[2px] shadow-[0_8px_20px_-10px_rgb(124_155_255/0.9)]">
+              <span className="relative flex size-full items-center justify-center overflow-hidden rounded-full bg-[#12183a]">
+                <span className="text-[11px] font-extrabold tracking-wide text-white">{initials}</span>
+                <img src={withBase("/api/profile/photo/")} alt="" className="absolute inset-0 size-full object-cover" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+              </span>
+            </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] leading-tight font-bold text-white">{user.name}</span>
-              <span className="mt-0.5 block text-[11px] leading-tight text-white/55">{user.role}</span>
+              <span className="block truncate text-sm leading-tight font-bold tracking-tight text-white">{user.name}</span>
+              <span className="mt-1.5 inline-flex max-w-full truncate rounded-full bg-white/10 px-2 py-0.5 text-[10px] leading-none font-semibold tracking-wide text-white/80">{user.role}</span>
             </span>
           </Link>
-          <div className="mt-0.5 flex items-center gap-0.5 px-1 pb-0.5">
+          <div className="mt-2 flex items-center justify-between gap-2">
             <a
               href={webUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
             >
               <Icon d={SITE_ICON} size={13} />
               Към сайта
@@ -94,7 +104,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
             <button
               type="button"
               onClick={signOut}
-              className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
+              className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
             >
               <Icon d={EXIT_ICON} size={13} />
               Изход
@@ -106,7 +116,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
         <BrandLogoImg className="h-7 w-auto max-w-[7rem] object-contain" />
         <nav className="ml-auto flex items-center gap-1" aria-label="Studio">
-          {nav.map((item) => (
+          {mobileNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -130,7 +140,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
         </nav>
       </header>
 
-      <main className={wide ? "" : "mx-auto max-w-[1400px] px-3 py-3 sm:px-4 lg:px-5 lg:py-3"}>{children}</main>
+      <main className={wide ? "" : desk ? "px-4 py-3 lg:px-6 lg:py-4" : "mx-auto max-w-[1400px] px-3 py-3 sm:px-4 lg:px-5 lg:py-3"}>{children}</main>
     </div>
   );
 }

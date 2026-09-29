@@ -1,5 +1,5 @@
 import { parseArgs } from "node:util";
-import { applyDueViewBoosts, createScriptDb, loadRootEnv } from "@newspoint/db/node";
+import { applyDueViewBoosts, createScriptDb, loadRootEnv, publishDueScheduled } from "@newspoint/db/node";
 import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
 
@@ -38,6 +38,9 @@ async function runWorker() {
     void applyDueViewBoosts(db)
       .then((updated) => { if (updated > 0) log(`view boosts updated ${updated}`); })
       .catch((error) => log(`view boost failed: ${(error as Error).message}`));
+    void publishDueScheduled(db)
+      .then((published) => { if (published > 0) log(`scheduled publish ${published}`); })
+      .catch((error) => log(`scheduled publish failed: ${(error as Error).message}`));
   }, 15_000);
 
   async function tick() {

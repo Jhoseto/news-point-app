@@ -18,3 +18,4 @@ export { loadRootEnv, findRepoRoot } from "./env";
 export * from "./schema";
 export { hasMediaPresentations } from "./media-presentation";
 export { applyDueViewBoosts } from "./view-boosts";
+export { publishDueScheduled } from "./scheduled-publish";

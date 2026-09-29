@@ -200,46 +200,57 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
       </nav>
 
       <div className="np-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-left text-[13px] leading-tight">
+        <table className="w-full table-fixed text-left text-[13px] leading-snug">
+            <colgroup>
+              <col className="w-12" />
+              <col className="w-10" />
+              <col />
+              <col className="w-36" />
+              <col className="w-36" />
+              <col className="w-28" />
+              <col className="w-28" />
+              <col className="w-40" />
+              <col className="w-36" />
+              <col className="w-44" />
+            </colgroup>
             <thead className="border-b border-line bg-surface-2/60 text-[10px] font-semibold tracking-wide text-faint uppercase">
               <tr>
-                <th scope="col" className="w-10 px-2 py-1.5 text-right">№</th>
-                <th scope="col" className="w-8 px-1 py-1.5"><span className="sr-only">На сайта</span></th>
-                <SortHeader query={query} sort="title" label="Заглавие" className="px-3 py-1.5" />
-                <th scope="col" className="px-2 py-1.5">Рубрика</th>
-                <SortHeader query={query} sort="author" label="Автор" className="px-2 py-1.5" />
-                <th scope="col" className="px-2 py-1.5">Статус</th>
-                <SortHeader query={query} sort="views" label="Реални / добавени" className="px-2 py-1.5 text-right" />
-                <SortHeader query={query} sort="published" label="Публикуване" className="px-2 py-1.5" />
-                <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-1.5 text-right" />
-                <th scope="col" className="px-2 py-1.5 text-right"><span className="sr-only">Редакция</span></th>
+                <th scope="col" className="px-3 py-2.5 text-right">№</th>
+                <th scope="col" className="px-2 py-2.5"><span className="sr-only">На сайта</span></th>
+                <SortHeader query={query} sort="title" label="Заглавие" className="px-3 py-2.5" />
+                <th scope="col" className="px-3 py-2.5">Рубрика</th>
+                <SortHeader query={query} sort="author" label="Автор" className="px-3 py-2.5" />
+                <th scope="col" className="px-3 py-2.5">Статус</th>
+                <SortHeader query={query} sort="views" label="Реални / добавени" className="px-3 py-2.5 text-right" />
+                <SortHeader query={query} sort="published" label="Публикуване" className="px-3 py-2.5" />
+                <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-2.5 text-right" />
+                <th scope="col" className="px-3 py-2.5 text-right"><span className="sr-only">Редакция</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {desk.items.map((item, index) => (
                 <tr key={item.id} className="group transition hover:bg-surface-2/50">
-                  <td className="px-2 py-1 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
-                  <td className="px-1 py-1"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
-                  <td className="max-w-md px-3 py-1.5">
+                  <td className="px-3 py-2.5 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
+                  <td className="px-2 py-2.5"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
+                  <td className="px-3 py-2.5">
                     <ArticleDeskPreview id={item.id} title={item.title || "Без заглавие"} />
                     <span className="block truncate text-[11px] text-faint">
                       {item.path}
                       <span className="ml-1.5 font-semibold tracking-wide uppercase">{item.sourceSystem === "wordpress" ? "WP" : "Studio"}</span>
                     </span>
                   </td>
-                  <td className="px-2 py-1.5 text-xs text-muted">{item.categoryName ?? "—"}</td>
-                  <td className="max-w-32 truncate px-2 py-1.5 text-xs text-muted">{item.authorName ?? "—"}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap"><StatusBadge article={item} /></td>
-                  <td className="px-2 py-1.5 text-right text-xs whitespace-nowrap text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap text-xs text-muted tabular-nums">
+                  <td className="truncate px-3 py-2.5 text-xs text-muted">{item.categoryName ?? "—"}</td>
+                  <td className="truncate px-3 py-2.5 text-xs text-muted">{item.authorName ?? "—"}</td>
+                  <td className="px-3 py-2.5"><StatusBadge article={item} /></td>
+                  <td className="px-3 py-2.5 text-right text-xs whitespace-nowrap text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
+                  <td className="px-3 py-2.5 text-xs whitespace-nowrap text-muted tabular-nums">
                     {item.publishedAt ? formatStamp(item.publishedAt) : "—"}
                     {item.isPublic ? (
                       <a href={`${web}${item.path.startsWith("/") ? item.path : `/${item.path}`}`} target="_blank" rel="noreferrer" className="ml-1.5 font-semibold text-link">сайт</a>
                     ) : null}
                   </td>
-                  <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
-                  <td className="px-2 py-1 text-right">
+                  <td className="px-3 py-2.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
+                  <td className="px-3 py-2.5 text-right">
                     <span className="inline-flex items-center gap-1">
                       <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
                       <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
@@ -249,7 +260,6 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               ))}
             </tbody>
           </table>
-        </div>
         {desk.items.length === 0 ? (
           <p className="px-3 py-6 text-center text-xs text-muted">
             {desk.total === 0 ? "Още няма материали." : "Няма материали за тези филтри."}

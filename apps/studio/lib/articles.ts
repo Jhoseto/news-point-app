@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
-import { articleBody, resolveMediaUrl, type ArticleBody } from "@newspoint/content";
+import { articleBody, resolveMediaUrl, sofiaWallToUtc, utcToSofiaWall, type ArticleBody } from "@newspoint/content";
 import {
   articleCategories,
   articleReadCounts,
@@ -13,6 +13,7 @@ import {
   hasArticleViewBoosts,
   mediaAssets,
   outboxEvents,
+  publishDueScheduled,
   publishRequests,
   staffUsers,
   type ArticleAuthorKind,
@@ -56,6 +57,7 @@ export interface Draft {
   viewEvery: number | null;
   viewUnit: ViewUnit;
   viewTarget: number | null;
+  publishAtSofia: string | null;
 }
 
 export interface EditorArticle {
@@ -152,6 +154,7 @@ function toDraft(row: {
       viewEvery: null,
       viewUnit: "minutes",
       viewTarget: null,
+      publishAtSofia: null,
     },
     editableBody: text !== null,
   };
@@ -197,6 +200,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
       viewEvery: interval.amount,
       viewUnit: interval.unit,
       viewTarget: boost?.targetCount ?? null,
+      publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null,
     },
     editableBody,
     canEdit: true,
@@ -218,6 +222,13 @@ function resolveAuthorship(staff: Staff, draft: DraftInput, preserved?: Authorsh
   if (draft.authorUserId === staff.id) return { authorKind: "staff", authorUserId: staff.id, authorName: staff.name };
   if (preserved?.authorKind === "staff" && preserved.authorUserId === draft.authorUserId) return preserved;
   throw new EditorError(422, "invalid_author", "Изберете валиден авторски профил.");
+}
+
+function scheduleInstant(wall: string | null | undefined): Date | null {
+  if (!wall) return null;
+  const instant = sofiaWallToUtc(wall);
+  if (!instant) throw new EditorError(422, "invalid_input", "Датата и часът не са валидни. Ползва се българско време.");
+  return instant;
 }
 
 function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Authorship) {
@@ -323,11 +334,15 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       heroMediaId: draft.heroMediaId,
       heroEmbedUrl: draft.heroEmbedUrl,
       isPublic: false,
+      scheduledPublishAt: scheduleInstant(draft.publishAtSofia),
       createdBy: staff.id,
     });
     await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveViewSettings(tx, id, draft);
     return { id, revision: 1 };
+  }).then(async (created) => {
+    await publishDueScheduled(getDb());
+    return created;
   });
 }
 
@@ -373,13 +388,14 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       .update(articles)
       .set(
         article.isPublic
-          ? { updatedAt: new Date() }
+          ? { scheduledPublishAt: null, updatedAt: new Date() }
           : {
               title: draft.title,
               excerpt: draft.excerpt,
               body,
               primaryCategoryId: draft.primaryCategoryId,
               heroMediaId: draft.heroMediaId,
+              scheduledPublishAt: scheduleInstant(draft.publishAtSofia),
               ...authorship,
               updatedAt: new Date(),
             },
@@ -388,6 +404,9 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     await saveViewSettings(tx, id, draft);
     if (article.isPublic) await refreshViewSchedule(tx, id);
     return { revision: number };
+  }).then(async (saved) => {
+    await publishDueScheduled(getDb());
+    return saved;
   });
 }
 

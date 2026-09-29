@@ -20,6 +20,7 @@ export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   description: "Новини от Пловдив, България и света.",
   robots: { index: false, follow: false },
+  alternates: { types: { "application/rss+xml": "/feed/" } },
   icons: {
     icon: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
     shortcut: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],

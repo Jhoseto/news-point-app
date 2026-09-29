@@ -160,6 +160,7 @@ export const articles = pgTable(
     sourceHtml: text("source_html"),
     isPublic: boolean("is_public").notNull().default(false),
     publishedAt: timestamp("published_at", { withTimezone: true }),
+    scheduledPublishAt: timestamp("scheduled_publish_at", { withTimezone: true }),
     sourceModifiedAt: timestamp("source_modified_at", { withTimezone: true }),
     importedAt: timestamp("imported_at", { withTimezone: true }),
     version: integer("version").notNull().default(1),

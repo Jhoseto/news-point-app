@@ -700,6 +700,26 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </div>
             <RichEditorSurface value={draft.bodyText} readOnly={bodyLocked} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} />
             <p className="mt-1.5 text-[0.6875rem] text-faint">Изберете текст или поставете курсора, после натиснете формат. Ctrl+S записва.</p>
+            <fieldset className="np-card mt-4 p-3" disabled={readOnly || published.isPublic}>
+              <legend className="px-1 text-xs font-bold text-ink">Публикуване по час</legend>
+              <p className="mt-1 text-[0.6875rem] text-muted">Датата и часът са българско време. Празни полета не пускат новината сами. След „Запиши“ тя излиза в този момент.</p>
+              <div className="mt-2 flex flex-wrap items-end gap-2">
+                <label className="text-[11px] font-semibold text-muted">Дата
+                  <input type="date" value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                    const time = draft.publishAtSofia?.slice(11, 16) || "08:00";
+                    update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
+                  }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
+                </label>
+                <label className="text-[11px] font-semibold text-muted">Час
+                  <input type="time" value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                    const date = draft.publishAtSofia?.slice(0, 10);
+                    update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
+                  }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
+                </label>
+                {draft.publishAtSofia ? <button type="button" className="np-btn np-btn-secondary h-8 px-2 text-xs" onClick={() => update("publishAtSofia", null)}>Изчисти</button> : null}
+              </div>
+              {published.isPublic ? <p className="mt-2 text-[0.6875rem] text-muted">Новината вече е на сайта. Часът важи само преди първото публикуване.</p> : null}
+            </fieldset>
           </div>
         </div>
 

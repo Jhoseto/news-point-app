@@ -44,6 +44,7 @@ export default async function NewArticlePage() {
         viewEvery: null,
         viewUnit: "minutes",
         viewTarget: null,
+        publishAtSofia: null,
       }}
       sections={sections}
       media={media}
