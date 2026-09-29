@@ -180,7 +180,6 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
     ? await db.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, id)).limit(1)
     : [];
   const interval = splitInterval(boost?.intervalSeconds ?? null);
-  const isStudio = article.sourceSystem === "studio";
   return {
     id: article.id,
     sourceSystem: article.sourceSystem,
@@ -200,7 +199,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
       viewTarget: boost?.targetCount ?? null,
     },
     editableBody,
-    canEdit: isStudio && editableBody,
+    canEdit: true,
     viewSeedLocked: Boolean(boost?.seededAt),
     viewReal: read?.readCount ?? 0,
     viewAdded: boost?.artificialCount ?? 0,
@@ -341,13 +340,9 @@ export interface Conflict {
 
 /** Optimistic concurrency: the save applies only on top of the revision the editor loaded. */
 export async function saveRevision(staff: Staff, id: string, expectedRevision: number, draft: DraftInput): Promise<{ revision: number }> {
-  const body = textToBody(draft.bodyText);
   return getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
-    if (article.sourceSystem !== "studio") {
-      throw new EditorError(403, "forbidden", "Импортираните статии не се редактират от Studio.");
-    }
     if (article.isPublic && draft.slug !== article.slug) {
       throw new EditorError(422, "slug_locked", "Адресът на публикувана статия не се сменя.");
     }
@@ -369,7 +364,9 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
     const number = current + 1;
-    const authorship = resolveAuthorship(staff, draft, latest?.revision);
+    const stored = articleBody.parse(latest?.revision.body ?? article.body);
+    const body = bodyToText(stored) === null ? stored : textToBody(draft.bodyText);
+    const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
     await tx
@@ -426,7 +423,6 @@ export async function publishRevision(staff: Staff, id: string, revision: number
 
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
-    if (article.sourceSystem !== "studio") throw new EditorError(403, "forbidden", "Импортираните статии не се публикуват от Studio.");
     const [rev] = await tx
       .select()
       .from(articleRevisions)
@@ -535,6 +531,8 @@ export async function getPreview(id: string, revision?: number) {
     .limit(1);
   const source = rev ?? article;
   const body = articleBody.safeParse(source.body);
+  const blocks = body.success ? body.data : [];
+  const imageIds = [...new Set(blocks.flatMap((block) => (block.type === "image" ? [block.mediaAssetId] : [])))];
   const [category] = source.primaryCategoryId
     ? await db.select({ name: categories.name }).from(categories).where(eq(categories.id, source.primaryCategoryId)).limit(1)
     : [];
@@ -542,9 +540,11 @@ export async function getPreview(id: string, revision?: number) {
   return {
     title: source.title,
     excerpt: source.excerpt,
-    body: body.success ? body.data : [],
+    body: blocks,
     category: category?.name ?? null,
     hero: hero ?? null,
+    heroEmbedUrl: source.heroEmbedUrl ?? null,
+    media: imageIds.length ? await listMediaByIds(imageIds) : [],
     authorName: source.authorName,
     publishedAt: article.publishedAt,
     revision: rev?.number ?? null,

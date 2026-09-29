@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArticleDeskPreview } from "@/components/article-desk-preview";
 import { ArticleFilterForm } from "@/components/article-filter-form";
 import { ArticleVisibility } from "@/components/article-visibility";
 import { queryArticleDesk } from "@/lib/article-desk";
@@ -210,6 +211,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                 <SortHeader query={query} sort="views" label="Реални / добавени" className="px-2 py-1.5 text-right" />
                 <SortHeader query={query} sort="published" label="Публикуване" className="px-2 py-1.5" />
                 <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-1.5 text-right" />
+                <th scope="col" className="px-2 py-1.5 text-right"><span className="sr-only">Редакция</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -218,9 +220,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="px-2 py-1 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
                   <td className="px-1 py-1"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
                   <td className="max-w-md px-3 py-1.5">
-                    <Link href={`/articles/${item.id}`} className="block truncate font-semibold text-ink group-hover:text-accent">
-                      {item.title || "Без заглавие"}
-                    </Link>
+                    <ArticleDeskPreview id={item.id} title={item.title || "Без заглавие"} />
                     <span className="block truncate text-[11px] text-faint">
                       {item.path}
                       <span className="ml-1.5 font-semibold tracking-wide uppercase">{item.sourceSystem === "wordpress" ? "WP" : "Studio"}</span>
@@ -237,6 +237,9 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                     ) : null}
                   </td>
                   <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
+                  <td className="px-2 py-1 text-right">
+                    <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

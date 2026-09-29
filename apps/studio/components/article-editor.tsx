@@ -121,6 +121,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const savedBodyRange = useRef<Range | null>(null);
 
   const readOnly = !article.canEdit;
+  const bodyLocked = readOnly || !article.editableBody;
   const dirty = !sameDraft(draft, saved);
   const busy = phase !== "idle";
   const hero = availableMedia.find((item) => item.id === draft.heroMediaId) ?? null;
@@ -399,9 +400,9 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
       <div className="grid flex-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
         <div className={`studio-editor-pane min-w-0 space-y-2.5 px-2.5 py-3 sm:px-4 lg:block lg:py-4 xl:px-5 ${mobileTab === "edit" ? "" : "hidden"}`}>
-          {readOnly ? (
-            <p className="rounded-2xl border border-line bg-surface-2 px-5 py-3.5 text-sm font-semibold text-body">
-              Статията е импортирана от WordPress и засега е само за преглед. Редакцията на архива идва с новия редактор.
+          {bodyLocked && !readOnly ? (
+            <p className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
+              Част от текста е в стар формат и остава непроменена. Заглавие, рубрика, автор, снимка и прегледи се записват.
             </p>
           ) : null}
 
@@ -657,37 +658,37 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
             <div className="studio-editor-classic" role="toolbar" aria-label="WordPress стил редактор">
               <div className="studio-editor-classic-top">
-                <button type="button" disabled={readOnly} onClick={() => openMediaPicker("body")} className="studio-editor-media">▣&nbsp; Add Media</button>
+                <button type="button" disabled={bodyLocked} onClick={() => openMediaPicker("body")} className="studio-editor-media">▣&nbsp; Add Media</button>
               </div>
               <div className="studio-editor-classic-row">
-                <button type="button" disabled={readOnly} onClick={() => insertInlineFormat("bold")} className="studio-editor-classic-tool" title="Bold"><strong>B</strong></button>
-                <button type="button" disabled={readOnly} onClick={() => insertInlineFormat("italic")} className="studio-editor-classic-tool" title="Italic"><em>I</em></button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("strikeThrough")} className="studio-editor-classic-tool" title="Strikethrough"><s>ABC</s></button>
-                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("list")} className="studio-editor-classic-tool" title="Bulleted list">☷</button>
-                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("orderedList")} className="studio-editor-classic-tool" title="Numbered list">☷</button>
-                <button type="button" disabled={readOnly} onClick={() => insertBodyBlock("quote")} className="studio-editor-classic-tool" title="Blockquote">❝</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("insertHorizontalRule")} className="studio-editor-classic-tool" title="Horizontal line">—</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyLeft")} className="studio-editor-classic-tool" title="Align left">≡</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyCenter")} className="studio-editor-classic-tool" title="Align center">≡</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyRight")} className="studio-editor-classic-tool" title="Align right">≡</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("createLink")} className="studio-editor-classic-tool" title="Insert link">🔗</button>
-                <button type="button" disabled={readOnly} onClick={insertEmbed} className="studio-editor-classic-tool" title="Вгради външна публикация">Embed</button>
+                <button type="button" disabled={bodyLocked} onClick={() => insertInlineFormat("bold")} className="studio-editor-classic-tool" title="Bold"><strong>B</strong></button>
+                <button type="button" disabled={bodyLocked} onClick={() => insertInlineFormat("italic")} className="studio-editor-classic-tool" title="Italic"><em>I</em></button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("strikeThrough")} className="studio-editor-classic-tool" title="Strikethrough"><s>ABC</s></button>
+                <button type="button" disabled={bodyLocked} onClick={() => insertBodyBlock("list")} className="studio-editor-classic-tool" title="Bulleted list">☷</button>
+                <button type="button" disabled={bodyLocked} onClick={() => insertBodyBlock("orderedList")} className="studio-editor-classic-tool" title="Numbered list">☷</button>
+                <button type="button" disabled={bodyLocked} onClick={() => insertBodyBlock("quote")} className="studio-editor-classic-tool" title="Blockquote">❝</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("insertHorizontalRule")} className="studio-editor-classic-tool" title="Horizontal line">—</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("justifyLeft")} className="studio-editor-classic-tool" title="Align left">≡</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("justifyCenter")} className="studio-editor-classic-tool" title="Align center">≡</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("justifyRight")} className="studio-editor-classic-tool" title="Align right">≡</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("createLink")} className="studio-editor-classic-tool" title="Insert link">🔗</button>
+                <button type="button" disabled={bodyLocked} onClick={insertEmbed} className="studio-editor-classic-tool" title="Вгради външна публикация">Embed</button>
               </div>
               <div className="studio-editor-classic-row">
-              <select aria-label="Стил на блока" defaultValue="paragraph" disabled={readOnly} onChange={(event) => insertBodyBlock(event.target.value as "paragraph" | "heading" | "subheading")} className="studio-editor-classic-select">
+              <select aria-label="Стил на блока" defaultValue="paragraph" disabled={bodyLocked} onChange={(event) => insertBodyBlock(event.target.value as "paragraph" | "heading" | "subheading")} className="studio-editor-classic-select">
                   <option value="paragraph">Paragraph</option><option value="heading">Heading 2</option><option value="subheading">Heading 3</option>
                 </select>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("underline")} className="studio-editor-classic-tool" title="Underline"><u>U</u></button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("justifyFull")} className="studio-editor-classic-tool" title="Justify">≡</button>
-                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Text color">A</button>
-                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Paste as text">▣</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("removeFormat")} className="studio-editor-classic-tool" title="Clear formatting">⌫</button>
-                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Special character">Ω</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("indent")} className="studio-editor-classic-tool" title="Indent">⇥</button>
-                <button type="button" disabled={readOnly} onClick={() => editorCommand("outdent")} className="studio-editor-classic-tool" title="Outdent">⇤</button>
-                <button type="button" disabled={readOnly} onClick={() => document.execCommand("undo")} className="studio-editor-classic-tool" title="Undo">↶</button>
-                <button type="button" disabled={readOnly} onClick={() => document.execCommand("redo")} className="studio-editor-classic-tool" title="Redo">↷</button>
-                <button type="button" disabled={readOnly} className="studio-editor-classic-tool" title="Help">?</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("underline")} className="studio-editor-classic-tool" title="Underline"><u>U</u></button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("justifyFull")} className="studio-editor-classic-tool" title="Justify">≡</button>
+                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Text color">A</button>
+                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Paste as text">▣</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("removeFormat")} className="studio-editor-classic-tool" title="Clear formatting">⌫</button>
+                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Special character">Ω</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("indent")} className="studio-editor-classic-tool" title="Indent">⇥</button>
+                <button type="button" disabled={bodyLocked} onClick={() => editorCommand("outdent")} className="studio-editor-classic-tool" title="Outdent">⇤</button>
+                <button type="button" disabled={bodyLocked} onClick={() => document.execCommand("undo")} className="studio-editor-classic-tool" title="Undo">↶</button>
+                <button type="button" disabled={bodyLocked} onClick={() => document.execCommand("redo")} className="studio-editor-classic-tool" title="Redo">↷</button>
+                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Help">?</button>
                 <select aria-label="Размер на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-size", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Снимка</option><option value="small">Малка</option><option value="medium">Средна</option><option value="large">Голяма</option><option value="full">Цяла ширина</option></select>
                 <select aria-label="Форма на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-shape", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Форма</option><option value="rectangle">Правоъгълна</option><option value="rounded">Заоблена</option><option value="circle">Кръгла</option></select>
                 <select aria-label="Рамка на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-frame", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Рамка</option><option value="none">Без рамка</option><option value="soft">Сянка</option><option value="line">Контур</option></select>
@@ -697,7 +698,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <label className="studio-editor-focal-control" title="Приближение на кадъра">Zoom <input aria-label="Приближение на кадъра" type="range" min="100" max="300" defaultValue="100" onChange={(event) => setImagePresentation("data-crop-zoom", event.target.value)} /></label>
               </div>
             </div>
-            <RichEditorSurface value={draft.bodyText} readOnly={readOnly} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} />
+            <RichEditorSurface value={draft.bodyText} readOnly={bodyLocked} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} />
             <p className="mt-1.5 text-[0.6875rem] text-faint">Изберете текст или поставете курсора, после натиснете формат. Ctrl+S записва.</p>
           </div>
         </div>

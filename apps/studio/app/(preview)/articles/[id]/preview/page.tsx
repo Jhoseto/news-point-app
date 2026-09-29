@@ -47,8 +47,8 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
           blocks: preview.body,
           category: preview.category,
           hero: preview.hero,
-          heroEmbedUrl: null,
-          media: [],
+          heroEmbedUrl: preview.heroEmbedUrl,
+          media: preview.media,
           authorName: preview.authorName,
           publishedAt: preview.publishedAt?.toISOString() ?? null,
         }}
