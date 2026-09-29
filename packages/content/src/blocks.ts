@@ -34,6 +34,7 @@ export const imageBlock = z.strictObject({
   groupId: z.string().max(64).optional(),
   focalX: z.number().min(0).max(100).optional(),
   focalY: z.number().min(0).max(100).optional(),
+  crop: z.enum(["original", "square", "portrait", "landscape"]).optional(),
 });
 
 export const quoteBlock = z.strictObject({

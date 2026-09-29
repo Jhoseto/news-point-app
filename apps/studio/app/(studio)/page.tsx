@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArticleFilterForm } from "@/components/article-filter-form";
+import { ArticleVisibility } from "@/components/article-visibility";
 import { queryArticleDesk } from "@/lib/article-desk";
 import { articleListActive, articleListHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
 import { listSections, type ArticleListItem } from "@/lib/articles";
-import { formatFull, formatWhen } from "@/lib/format";
+import { formatStamp } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Материали" };
 export const dynamic = "force-dynamic";
@@ -189,9 +190,11 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
 
       <div className="np-card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-[13px] leading-tight">
+          <table className="w-full min-w-[860px] text-left text-[13px] leading-tight">
             <thead className="border-b border-line bg-surface-2/60 text-[10px] font-semibold tracking-wide text-faint uppercase">
               <tr>
+                <th scope="col" className="w-10 px-2 py-1.5 text-right">№</th>
+                <th scope="col" className="w-8 px-1 py-1.5"><span className="sr-only">На сайта</span></th>
                 <SortHeader query={query} sort="title" label="Заглавие" className="px-3 py-1.5" />
                 <th scope="col" className="px-2 py-1.5">Рубрика</th>
                 <SortHeader query={query} sort="author" label="Автор" className="px-2 py-1.5" />
@@ -202,8 +205,10 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {desk.items.map((item) => (
+              {desk.items.map((item, index) => (
                 <tr key={item.id} className="group transition hover:bg-surface-2/50">
+                  <td className="px-2 py-1 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
+                  <td className="px-1 py-1"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
                   <td className="max-w-md px-3 py-1.5">
                     <Link href={`/articles/${item.id}`} className="block truncate font-semibold text-ink group-hover:text-accent">
                       {item.title || "Без заглавие"}
@@ -218,12 +223,12 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="px-2 py-1.5 whitespace-nowrap"><StatusBadge article={item} /></td>
                   <td className="px-2 py-1.5 text-right text-xs whitespace-nowrap text-ink tabular-nums">{item.readCount === null ? "—" : number.format(item.readCount)}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-xs text-muted tabular-nums">
-                    {item.publishedAt ? formatFull(item.publishedAt) : "—"}
+                    {item.publishedAt ? formatStamp(item.publishedAt) : "—"}
                     {item.isPublic ? (
                       <a href={`${web}${item.path.startsWith("/") ? item.path : `/${item.path}`}`} target="_blank" rel="noreferrer" className="ml-1.5 font-semibold text-link">сайт</a>
                     ) : null}
                   </td>
-                  <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatFull(item.updatedAt)}</td>
+                  <td className="px-3 py-1.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
                 </tr>
               ))}
             </tbody>

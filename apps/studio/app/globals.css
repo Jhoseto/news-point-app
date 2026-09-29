@@ -142,6 +142,9 @@
   .studio-preview-image.is-rounded img { border-radius: 1rem; }
   .studio-preview-image.is-soft img { box-shadow: 0 16px 30px -20px var(--np-ink); }
   .studio-preview-image.is-line img { border: 4px solid var(--np-line); }
+  .studio-preview-image.is-crop-square img { aspect-ratio: 1; object-fit: cover; }
+  .studio-preview-image.is-crop-portrait img { aspect-ratio: 4 / 5; object-fit: cover; }
+  .studio-preview-image.is-crop-landscape img { aspect-ratio: 16 / 9; object-fit: cover; }
   .studio-preview-image figcaption { margin-top: .35rem; color: var(--np-muted); font-size: .7rem; text-align: center; }
   .studio-preview-gallery { display: flex; align-items: flex-start; gap: .75rem; margin: 1.2rem 0; }
   .studio-preview-gallery .studio-preview-image { min-width: 0; flex: 1 1 0; margin: 0; }

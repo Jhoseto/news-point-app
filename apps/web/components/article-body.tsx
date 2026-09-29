@@ -27,7 +27,7 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       const caption = block.caption || asset?.caption;
       const credit = asset?.credit;
       return (
-        <figure className={`np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"}`}>
+        <figure className={`np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"} np-image-crop-${block.crop ?? "original"}`}>
           <ArticleImage media={asset} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} />
           {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>

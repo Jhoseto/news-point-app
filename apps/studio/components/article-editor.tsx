@@ -160,7 +160,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
   };
 
-  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y", value: string) => {
+  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y" | "data-crop", value: string) => {
     const node = window.getSelection()?.anchorNode;
     const image = node instanceof HTMLImageElement ? node : node?.parentElement?.closest("img[data-media-id]");
     if (!image) return;
@@ -586,6 +586,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 <select aria-label="Размер на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-size", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Снимка</option><option value="small">Малка</option><option value="medium">Средна</option><option value="large">Голяма</option><option value="full">Цяла ширина</option></select>
                 <select aria-label="Форма на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-shape", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Форма</option><option value="rectangle">Правоъгълна</option><option value="rounded">Заоблена</option><option value="circle">Кръгла</option></select>
                 <select aria-label="Рамка на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-frame", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Рамка</option><option value="none">Без рамка</option><option value="soft">Сянка</option><option value="line">Контур</option></select>
+                <select aria-label="Кадриране на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-crop", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Кадър</option><option value="original">Оригинал</option><option value="landscape">Пейзаж</option><option value="square">Квадрат</option><option value="portrait">Портрет</option></select>
                 <label className="studio-editor-focal-control" title="Фокус по хоризонтала">X <input aria-label="Фокус по хоризонтала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-x", event.target.value)} /></label>
                 <label className="studio-editor-focal-control" title="Фокус по вертикала">Y <input aria-label="Фокус по вертикала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-y", event.target.value)} /></label>
               </div>

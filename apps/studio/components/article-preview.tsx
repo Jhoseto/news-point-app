@@ -48,7 +48,7 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
     }
     case "image": {
       const asset = media.find((item) => item.id === block.mediaAssetId);
-      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"}`}><img src={asset.url} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
+      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><img src={asset.url} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
     }
     default:
       return <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted">Елемент „{block.type}“ се вижда само на сайта.</p>;

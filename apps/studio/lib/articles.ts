@@ -378,6 +378,30 @@ export async function publishRevision(staff: Staff, id: string, revision: number
   });
 }
 
+/** Shows or hides an already published article on the public site. Drafts stay in the editor. */
+export async function setArticleVisibility(id: string, visible: boolean): Promise<{ isPublic: boolean }> {
+  return getDb().transaction(async (tx) => {
+    const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
+    if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
+    if (article.isPublic === visible) return { isPublic: article.isPublic };
+    if (visible && !article.publishedAt) {
+      throw new EditorError(422, "not_published", "Статията още не е публикувана. Пуснете я от редактора.");
+    }
+    const version = article.version + 1;
+    await tx.update(articles).set({ isPublic: visible, version, updatedAt: new Date() }).where(eq(articles.id, id));
+    const [category] = article.primaryCategoryId
+      ? await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
+      : [];
+    await tx.insert(outboxEvents).values({
+      type: "article.updated",
+      entityId: id,
+      version,
+      payload: { path: article.path, title: article.title, topics: category ? [category.slug] : [] },
+    });
+    return { isPublic: visible };
+  });
+}
+
 /** Rendered preview data for Studio only; never served by the public site. */
 export async function getPreview(id: string, revision?: number) {
   const db = getDb();

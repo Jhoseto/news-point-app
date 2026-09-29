@@ -40,7 +40,7 @@ export function textToBody(text: string): ArticleBody {
     const imageMatch = first.match(/^\[\[image:([0-9a-f-]{36})(?:\|([^\]]+))?\]\]$/i);
     if (lines.length === 1 && imageMatch) {
       const options = Object.fromEntries((imageMatch[2] ?? "").split("|").filter(Boolean).map((item) => item.split("=") as [string, string]));
-      return { type: "image", mediaAssetId: imageMatch[1]!, size: options.size as "small" | "medium" | "large" | "full" | undefined, align: options.align as "left" | "center" | "right" | undefined, shape: options.shape as "rectangle" | "rounded" | "circle" | undefined, frame: options.frame as "none" | "soft" | "line" | undefined, groupId: options.group, focalX: options.fx ? Number(options.fx) : undefined, focalY: options.fy ? Number(options.fy) : undefined };
+      return { type: "image", mediaAssetId: imageMatch[1]!, size: options.size as "small" | "medium" | "large" | "full" | undefined, align: options.align as "left" | "center" | "right" | undefined, shape: options.shape as "rectangle" | "rounded" | "circle" | undefined, frame: options.frame as "none" | "soft" | "line" | undefined, groupId: options.group, focalX: options.fx ? Number(options.fx) : undefined, focalY: options.fy ? Number(options.fy) : undefined, crop: options.crop as "original" | "square" | "portrait" | "landscape" | undefined };
     }
     if (lines.length === 1 && /^###\s+/.test(first)) {
       return { type: "heading", level: 3, text: first.replace(/^###\s+/, "").replace(/[<>]/g, "") };
@@ -78,7 +78,7 @@ export function bodyToText(body: ArticleBody): string | null {
           .join("\n"),
       );
     else if (block.type === "list") parts.push(block.items.map((item, index) => `${block.ordered ? `${index + 1}.` : "-"} ${unescapeHtml(item)}`).join("\n"));
-    else if (block.type === "image") parts.push(`[[image:${block.mediaAssetId}${block.size || block.align || block.shape || block.frame || block.groupId || block.focalX !== undefined || block.focalY !== undefined ? `|${Object.entries({ size: block.size, align: block.align, shape: block.shape, frame: block.frame, group: block.groupId, fx: block.focalX, fy: block.focalY }).filter(([, value]) => value !== undefined).map(([key, value]) => `${key}=${value}`).join("|")}` : ""}]]`);
+    else if (block.type === "image") parts.push(`[[image:${block.mediaAssetId}${block.size || block.align || block.shape || block.frame || block.groupId || block.focalX !== undefined || block.focalY !== undefined || block.crop ? `|${Object.entries({ size: block.size, align: block.align, shape: block.shape, frame: block.frame, group: block.groupId, fx: block.focalX, fy: block.focalY, crop: block.crop }).filter(([, value]) => value !== undefined).map(([key, value]) => `${key}=${value}`).join("|")}` : ""}]]`);
     else return null;
   }
   return parts.join("\n\n");
@@ -91,7 +91,7 @@ export function wordCount(text: string): number {
 export function bodyTextToHtml(text: string): string {
   return textToBody(text).map((block) => {
     if (block.type === "heading") return `<h${block.level}>${escapeHtml(block.text)}</h${block.level}>`;
-    if (block.type === "image") return `<p><img data-media-id="${block.mediaAssetId}" data-group-id="${block.groupId ?? ""}" data-size="${block.size ?? "large"}" data-align="${block.align ?? "center"}" data-shape="${block.shape ?? "rectangle"}" data-frame="${block.frame ?? "none"}" data-focal-x="${block.focalX ?? 50}" data-focal-y="${block.focalY ?? 50}" /></p>`;
+    if (block.type === "image") return `<p><img data-media-id="${block.mediaAssetId}" data-group-id="${block.groupId ?? ""}" data-size="${block.size ?? "large"}" data-align="${block.align ?? "center"}" data-shape="${block.shape ?? "rectangle"}" data-frame="${block.frame ?? "none"}" data-focal-x="${block.focalX ?? 50}" data-focal-y="${block.focalY ?? 50}" data-crop="${block.crop ?? "original"}" /></p>`;
     if (block.type === "quote") return `<blockquote>${block.html}</blockquote>`;
     if (block.type === "list") return `<${block.ordered ? "ol" : "ul"}>${block.items.map((item) => `<li>${item}</li>`).join("")}</${block.ordered ? "ol" : "ul"}>`;
     return block.type === "paragraph" ? `<p>${block.html}</p>` : "";
@@ -119,6 +119,7 @@ export function htmlToBodyText(html: string): string {
         const options = ["size", "align", "shape", "frame"].flatMap((key) => item.getAttribute(`data-${key}`) ? [`${key}=${item.getAttribute(`data-${key}`)}`] : []);
         if (item.getAttribute("data-focal-x")) options.push(`fx=${item.getAttribute("data-focal-x")}`);
         if (item.getAttribute("data-focal-y")) options.push(`fy=${item.getAttribute("data-focal-y")}`);
+        if (item.getAttribute("data-crop")) options.push(`crop=${item.getAttribute("data-crop")}`);
         const group = item.getAttribute("data-group-id");
         if (group) options.push(`group=${group}`);
         return `[[image:${item.getAttribute("data-media-id")}${options.length ? `|${options.join("|")}` : ""}]]`;

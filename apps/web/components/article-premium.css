@@ -289,6 +289,9 @@
 .np-article-figure.np-image-shape-rounded img { border-radius: 1rem; }
 .np-article-figure.np-image-frame-soft img { box-shadow: 0 18px 35px -24px var(--np-ink); }
 .np-article-figure.np-image-frame-line img { border: 4px solid var(--np-line); }
+.np-article-figure.np-image-crop-square img { aspect-ratio: 1; object-fit: cover; }
+.np-article-figure.np-image-crop-portrait img { aspect-ratio: 4 / 5; object-fit: cover; }
+.np-article-figure.np-image-crop-landscape img { aspect-ratio: 16 / 9; object-fit: cover; }
 .np-article-figure img { display: block; max-height: 43rem; object-fit: contain; background: var(--np-surface-2); }
 .np-article-page .np-prose figcaption { margin-top: 0.55rem; font-size: 0.77rem; line-height: 1.5; }
 .np-article-quote {
