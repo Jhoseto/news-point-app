@@ -15,6 +15,7 @@ const CATEGORY_ACCENTS: Record<string, string> = {
   kultura: "#a365c1",
   lajfstajl: "#ca6999",
   izbori: "#7566d6",
+  "glasat-na-istinata": "#3818d6",
 };
 
 export function categoryAccentStyle(slug: string | undefined): CSSProperties {

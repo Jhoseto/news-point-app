@@ -3,7 +3,8 @@ import { z } from "zod";
 /** Home and category pages keep this grid. Editors only choose which story fills a slot. */
 export const HOME_PAGE_KEY = "home";
 export const HOME_LEAD_SECTION = "plovdiv";
-export const HOME_ASIDE_SECTIONS = ["lajfstajl", "kultura"] as const;
+/** Same stack as the homepage column beside България (Култура, then Лайфстайл). */
+export const HOME_ASIDE_SECTIONS = ["kultura", "lajfstajl"] as const;
 export const HOME_SUPPORT_COUNT = 3;
 export const HOME_CAROUSEL_COUNT = 10;
 export const HOME_LATEST_PIN_COUNT = 3;
@@ -52,25 +53,29 @@ export function homeSectionCount(layout: "grid" | "feature" | "list", wide: bool
 
 /** Same section order and card counts the public homepage already renders. */
 export function planHomeSections(categories: { slug: string; name: string }[]): { main: HomeSectionPlan[]; aside: HomeSectionPlan[] } {
-  const mainCategories = [
-    ...categories.filter((category) => category.slug === HOME_LEAD_SECTION),
-    ...categories.filter((category) => category.slug !== HOME_LEAD_SECTION && !asideSet.has(category.slug)),
-  ];
-  const main = mainCategories.map((category, index): HomeSectionPlan => {
+  const flow = categories.filter((category) => !asideSet.has(category.slug));
+  const main = flow.map((category, index): HomeSectionPlan => {
+    if (category.slug === HOME_LEAD_SECTION) {
+      return { slug: category.slug, name: category.name, layout: "grid", wide: true, aside: false, count: homeSectionCount("grid", true) };
+    }
+    if (category.slug === "balgariya") {
+      return { slug: category.slug, name: category.name, layout: "grid", wide: false, aside: false, count: homeSectionCount("grid", false) };
+    }
     const layout = index % 2 === 1 ? "feature" : "grid";
-    const wide = index >= 1;
-    return { slug: category.slug, name: category.name, layout, wide, aside: false, count: homeSectionCount(layout, wide) };
+    return { slug: category.slug, name: category.name, layout, wide: true, aside: false, count: homeSectionCount(layout, true) };
   });
-  const aside = categories
-    .filter((category) => asideSet.has(category.slug))
-    .map((category): HomeSectionPlan => ({
+  const aside = HOME_ASIDE_SECTIONS.flatMap((slug) => {
+    const category = categories.find((item) => item.slug === slug);
+    if (!category) return [];
+    return [{
       slug: category.slug,
       name: category.name,
-      layout: "list",
+      layout: "list" as const,
       wide: false,
       aside: true,
       count: 4,
-    }));
+    }];
+  });
   return { main, aside };
 }
 

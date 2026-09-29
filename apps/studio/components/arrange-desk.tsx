@@ -35,6 +35,7 @@ const ACCENTS: Record<string, string> = {
   kultura: "#a365c1",
   lajfstajl: "#ca6999",
   izbori: "#7566d6",
+  "glasat-na-istinata": "#3818d6",
 };
 
 function accent(slug?: string) {
@@ -373,6 +374,64 @@ function Tile({
   );
 }
 
+function CarouselRow({
+  title,
+  hint,
+  count,
+  slotPrefix,
+  color,
+  selected,
+  onSelect,
+  titleFor,
+  metaFor,
+}: {
+  title: string;
+  hint?: string;
+  count: number;
+  slotPrefix: string;
+  color: string;
+  selected: string;
+  onSelect: (key: string) => void;
+  titleFor: (key: string) => string | null;
+  metaFor: (key: string) => string;
+}) {
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-white/50 uppercase">{title}</p>
+        {hint ? <p className="text-[10px] text-white/35">{hint}</p> : null}
+      </div>
+      <div className="grid grid-cols-5 gap-2 xl:grid-cols-10">
+        {Array.from({ length: count }, (_, index) => {
+          const key = `${slotPrefix}-${index}`;
+          return (
+            <Tile
+              key={key}
+              slotKey={key}
+              label={`${index + 1}`}
+              title={titleFor(key)}
+              meta={metaFor(key)}
+              selected={selected === key}
+              color={color}
+              className="min-h-24 rounded-xl p-2"
+              onSelect={onSelect}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StaticBlock({ title, detail, className = "" }: { title: string; detail: string; className?: string }) {
+  return (
+    <div className={`flex flex-col justify-center rounded-2xl bg-white/[0.04] px-4 py-3 ring-1 ring-white/10 ${className}`}>
+      <p className="text-[10px] font-bold tracking-[0.14em] text-white/45 uppercase">{title}</p>
+      <p className="mt-1 text-xs leading-snug text-white/55">{detail}</p>
+    </div>
+  );
+}
+
 function HomeMap({
   planned,
   selected,
@@ -386,8 +445,10 @@ function HomeMap({
   titleFor: (key: string) => string | null;
   metaFor: (key: string) => string;
 }) {
-  const narrow = planned.main.filter((section) => !section.wide);
-  const wide = planned.main.filter((section) => section.wide);
+  const balIndex = planned.main.findIndex((section) => section.slug === "balgariya");
+  const beforeSplit = planned.main.filter((section, index) => section.wide && index < balIndex);
+  const bulgaria = planned.main.find((section) => section.slug === "balgariya");
+  const afterSplit = planned.main.filter((section, index) => section.wide && index > balIndex);
   return (
     <div className="flex flex-col gap-4">
       <div className="grid h-[22rem] grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_13rem] gap-3">
@@ -408,32 +469,58 @@ function HomeMap({
         </div>
       </div>
 
-      <div>
-        <p className="mb-2 text-[10px] font-bold tracking-[0.14em] text-white/50 uppercase">На фокус</p>
-        <div className="grid grid-cols-5 gap-2 xl:grid-cols-10">
-          {Array.from({ length: HOME_CAROUSEL_COUNT }, (_, index) => {
-            const key = `carousel-${index}`;
-            return <Tile key={key} slotKey={key} label={`${index + 1}`} title={titleFor(key)} meta={metaFor(key)} selected={selected === key} color="#5b6cff" className="min-h-24 rounded-xl p-2" onSelect={onSelect} />;
-          })}
-        </div>
-      </div>
+      <CarouselRow
+        title="На Фокус"
+        count={HOME_CAROUSEL_COUNT}
+        slotPrefix="carousel"
+        color="#5b6cff"
+        selected={selected}
+        onSelect={onSelect}
+        titleFor={titleFor}
+        metaFor={metaFor}
+      />
 
-      <div className="grid grid-cols-[minmax(0,1fr)_16rem] gap-4">
-        <div className="flex flex-col gap-4">
-          {narrow.map((section) => (
-            <SectionBlock key={section.slug} section={section} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
-          ))}
-        </div>
-        <div className="flex flex-col gap-3">
-          {planned.aside.map((section) => (
-            <SectionBlock key={section.slug} section={section} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
-          ))}
-        </div>
-      </div>
+      <StaticBlock
+        title="Топ теми"
+        detail="Въртележка с всички новини от рубрика top-temi на стария сайт. Подредбата не се задава тук — само от етикета в материалите."
+        className="min-h-20"
+      />
 
-      {wide.map((section) => (
+      {beforeSplit.map((section) => (
         <SectionBlock key={section.slug} section={section} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
       ))}
+
+      {bulgaria ? (
+        <>
+          <StaticBlock title="Анкета" detail="Активната анкета от Studio → Анкети. Без слотове за подреждане." className="min-h-16" />
+          <div className="grid grid-cols-[minmax(0,1fr)_16rem] gap-4">
+            <div className="flex flex-col gap-3">
+              <SectionBlock section={bulgaria} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
+              <StaticBlock
+                title="Банер NewsPoint.bg"
+                detail="Снимка на Пловдив и слоганите под рубриката България. Само текст — без избор на новини."
+                className="min-h-24 bg-gradient-to-r from-[#0c4fbe]/40 to-[#3818d6]/30"
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              {planned.aside.map((section) => (
+                <SectionBlock key={section.slug} section={section} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
+              ))}
+            </div>
+          </div>
+          <StaticBlock
+            title="Гласът на истината"
+            detail="Същата въртележка като „На Фокус“, с всички новини от рубрика glasat-na-istinata. Подредбата не се задава тук."
+            className="min-h-20"
+          />
+        </>
+      ) : null}
+
+      {afterSplit.map((section) => (
+        <SectionBlock key={section.slug} section={section} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
+      ))}
+
+      <StaticBlock title="Долен банер" detail="„Защото истината има значение.“ — фиксиран бранд блок в края на началото." className="min-h-16" />
     </div>
   );
 }
@@ -475,9 +562,19 @@ function SectionBlock({
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-2">
+        <div className={`grid gap-2 ${section.wide ? "grid-cols-2 sm:grid-cols-4 xl:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"}`}>
           {keys.map((key, index) => (
-            <Tile key={key} slotKey={key} label={index === 0 ? "Голяма" : `Малка ${index}`} title={titleFor(key)} meta={metaFor(key)} selected={selected === key} color={color} className={index === 0 ? "col-span-2 row-span-2 min-h-36" : "min-h-16 rounded-xl"} onSelect={onSelect} />
+            <Tile
+              key={key}
+              slotKey={key}
+              label={index === 0 ? "Голяма" : `Малка ${index}`}
+              title={titleFor(key)}
+              meta={metaFor(key)}
+              selected={selected === key}
+              color={color}
+              className={index === 0 ? (section.wide ? "col-span-2 row-span-2 min-h-36" : "col-span-2 row-span-2 min-h-32") : "min-h-16 rounded-xl"}
+              onSelect={onSelect}
+            />
           ))}
         </div>
       )}

@@ -18,6 +18,7 @@ describe("public menu", () => {
       "kultura",
       "lajfstajl",
       "izbori",
+      "glasat-na-istinata",
     ]);
     expect(new Set(PUBLIC_MENU.map((entry) => entry.slug)).size).toBe(PUBLIC_MENU.length);
   });

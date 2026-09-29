@@ -55,7 +55,7 @@ describe("composeHome", () => {
     expect(composed.support.map((item) => item.id)).toEqual(legacy.support);
     expect(composed.carousel.map((item) => item.id)).toEqual(legacy.carousel);
     expect(composed.main.map((section) => section.category.slug)).toEqual(["plovdiv", "regionalni-novini"]);
-    expect(composed.aside.map((section) => section.category.slug)).toEqual(["lajfstajl", "kultura"]);
+    expect(composed.aside.map((section) => section.category.slug)).toEqual(["kultura", "lajfstajl"]);
     expect(composed.main[0]?.articles).toHaveLength(2);
   });
 

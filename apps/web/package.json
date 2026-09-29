@@ -9,6 +9,7 @@
     "typecheck": "next typegen && tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource-variable/literata": "^5.3.0",
     "@fontsource-variable/manrope": "5.3.0",
     "@newspoint/content": "workspace:*",
     "@newspoint/db": "workspace:*",

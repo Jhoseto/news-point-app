@@ -11,6 +11,7 @@ const NAV = [
   { href: "/", label: "Материали", icon: "M4 6h16M4 12h16M4 18h10" },
   { href: "/articles/new", label: "Нов материал", icon: "M12 5v14M5 12h14" },
   { href: "/polls", label: "Анкети", icon: "M5 20V10M12 20V4M19 20v-7" },
+  { href: "/submissions", label: "Сигнали", icon: "M4 5h16v11H8l-4 4V5z" },
   { href: "/arrange", label: "Подреждане", icon: "M12 17v5M8 8a4 4 0 1 1 8 0c0 2-2 3-2 5H10c0-2-2-3-2-5" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };

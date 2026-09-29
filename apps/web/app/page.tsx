@@ -20,6 +20,10 @@ export const revalidate = 60;
 // Editors on the old site mark headline stories with this label; "top-novina"
 // is used for daily features (horoscope, weather), so it does not lead.
 const LEADING_LABEL = "novini";
+// Old homepage block "Топ теми" is the WordPress category top-temi, newest first.
+const TOP_THEMES_LABEL = "top-temi";
+// Old editorial label „Гласът на истината“ (WordPress category glasat-na-istinata).
+const VOICE_OF_TRUTH_LABEL = "glasat-na-istinata";
 
 type Layout = "grid" | "feature";
 
@@ -98,10 +102,12 @@ function CategorySection({
 
 export default async function HomePage() {
   const asOfMs = Date.now();
-  const [latest, latest24h, featured, menu, poll, placed] = await Promise.all([
+  const [latest, latest24h, featured, topics, voiceOfTruth, menu, poll, placed] = await Promise.all([
     getLatest(50),
     getLatest24Hours(asOfMs),
     getLabelled(LEADING_LABEL, 13),
+    getLabelled(TOP_THEMES_LABEL, 50),
+    getLabelled(VOICE_OF_TRUTH_LABEL, 50),
     getMenuCategories(),
     featuredPoll().catch(error => { console.error("[polls] homepage unavailable", error instanceof Error ? error.message : "unknown"); return null; }),
     homeArrangement(),
@@ -130,6 +136,8 @@ export default async function HomePage() {
   shine.sectionBreak();
   const carouselArticles = composed.carousel;
   const carouselShineDelays = carouselArticles.map(() => shine.nextCard());
+  const topicShineDelays = topics.map(() => shine.nextCard());
+  const voiceShineDelays = voiceOfTruth.map(() => shine.nextCard());
 
   const narrowMain = mainSections.filter((section) => !section.wide);
   const wideMain = mainSections.filter((section) => section.wide);
@@ -190,38 +198,59 @@ export default async function HomePage() {
             <LeadingCarousel articles={carouselArticles} shineDelays={carouselShineDelays} />
           </div>
         ) : null}
+        {topics.length ? (
+          <LeadingCarousel articles={topics} shineDelays={topicShineDelays} title="Топ теми" headingId="sec-top-themes" motion="to-right" />
+        ) : null}
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
-          <div className="flex h-full min-h-0 min-w-0 flex-col gap-10 3xl:gap-12">
-            {narrowMain.map((section) => (
-              <CategorySection key={section.category.id} category={section.category} articles={section.articles} layout={section.layout === "feature" ? "feature" : "grid"} wide={section.wide} shine={shine} />
-            ))}
-            <PlovdivBanner />
-          </div>
-
-          <aside className="flex flex-col gap-6" aria-label="Още новини">
-            {asideSections.map((section) => {
-              shine.sectionBreak();
-              return (
-                <CompactList
-                  key={section.category.id}
-                  title={section.category.name}
-                  accentSlug={section.category.slug}
-                  articles={section.articles}
-                  href={section.category.path}
-                  shine={shine}
-                />
-              );
-            })}
-          </aside>
-        </div>
-
-        {wideMain.map((section) => (
-          <Fragment key={section.category.id}>
-            {section.category.slug === "balgariya" && poll ? <HomePoll initial={poll} /> : null}
-            <CategorySection category={section.category} articles={section.articles} layout={section.layout === "feature" ? "feature" : "grid"} wide={section.wide} shine={shine} />
-          </Fragment>
-        ))}
+        {mainSections.map((section) => {
+          if (section.category.slug === "balgariya") {
+            return (
+              <Fragment key={section.category.id}>
+                {poll ? <HomePoll initial={poll} /> : null}
+                <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
+                  <div className="flex h-full min-h-0 min-w-0 flex-col gap-10 3xl:gap-12">
+                    <CategorySection category={section.category} articles={section.articles} layout="grid" wide={false} shine={shine} />
+                    <PlovdivBanner />
+                  </div>
+                  <aside className="flex flex-col gap-6" aria-label="Още новини">
+                    {asideSections.map((aside) => {
+                      shine.sectionBreak();
+                      return (
+                        <CompactList
+                          key={aside.category.id}
+                          title={aside.category.name}
+                          accentSlug={aside.category.slug}
+                          articles={aside.articles}
+                          href={aside.category.path}
+                          shine={shine}
+                        />
+                      );
+                    })}
+                  </aside>
+                </div>
+                {voiceOfTruth.length ? (
+                  <LeadingCarousel
+                    articles={voiceOfTruth}
+                    shineDelays={voiceShineDelays}
+                    title="Гласът на истината"
+                    headingId="sec-glasat-na-istinata"
+                  />
+                ) : null}
+              </Fragment>
+            );
+          }
+          if (!section.wide) return null;
+          return (
+            <CategorySection
+              key={section.category.id}
+              category={section.category}
+              articles={section.articles}
+              layout={section.layout === "feature" ? "feature" : "grid"}
+              wide
+              shine={shine}
+            />
+          );
+        })}
 
         <BrandBanner />
       </div>

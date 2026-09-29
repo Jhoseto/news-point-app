@@ -1,3 +1,5 @@
+import "@fontsource-variable/literata/wght.css";
+import "@fontsource-variable/literata/wght-italic.css";
 import Link from "next/link";
 import { LivePointStrip } from "@/components/livepoint/livepoint-strip";
 import { getMenuCategories } from "@/lib/queries";
@@ -87,13 +89,32 @@ export function PlovdivBanner() {
       </svg>
       <div className="pointer-events-none absolute -top-10 -right-6 size-36 rounded-full bg-[#7c3aed]/80" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-8 -bottom-12 size-40 rounded-full bg-[#c026d3]/70" aria-hidden="true" />
-      <div className="relative flex h-full items-center gap-8 px-8 py-6">
+      <div className="relative flex h-full items-center gap-6 px-7 xl:gap-8 xl:px-9">
         <BrandLogoImg className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo" sizes="280px" />
-        <p className="max-w-xs text-2xl leading-tight font-extrabold tracking-tight text-white">
-          Гласът на истината !
-        </p>
-        <span className="absolute right-4 bottom-2 text-[0.625rem] text-white/70"></span>
+        <div className="flex min-w-0 flex-1 items-center gap-5 xl:gap-6">
+          <div className="h-14 w-px shrink-0 bg-white/45" aria-hidden="true" />
+          <div className="flex min-w-0 flex-1 items-center text-white" style={{ textShadow: "0 1px 2px rgb(8 28 90 / 0.35)" }}>
+            <div className="inline-flex max-w-full flex-col items-stretch">
+              <p className="text-lg leading-snug font-medium tracking-tight xl:text-xl" style={{ fontFamily: '"Literata Variable", Georgia, serif' }}>
+                Отвъд заглавията и по-близо до фактите.
+              </p>
+              <p className="mt-2.5 flex w-full items-center gap-2 text-xs font-light tracking-wide text-white/90 xl:text-sm">
+                <span className="whitespace-nowrap">Питаме</span>
+                <span className="h-px min-w-2 flex-1 bg-white/50" aria-hidden="true" />
+                <span className="whitespace-nowrap">Проверяваме</span>
+                <span className="h-px min-w-2 flex-1 bg-white/50" aria-hidden="true" />
+                <span className="whitespace-nowrap">Информираме</span>
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
+      <p
+        className="absolute bottom-7 left-8 z-10 text-lg leading-none font-medium tracking-tight text-white italic xl:bottom-8 xl:left-10 xl:text-xl"
+        style={{ fontFamily: '"Literata Variable", Georgia, serif', textShadow: "0 1px 2px rgb(8 28 90 / 0.45)" }}
+      >
+        Защото истината има значение!
+      </p>
     </section>
   );
 }

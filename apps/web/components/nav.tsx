@@ -51,6 +51,7 @@ const RUBRIC_ICONS: Record<string, IconComponent> = {
   kultura: PaletteIcon,
   lajfstajl: CupIcon,
   izbori: BallotIcon,
+  "glasat-na-istinata": BoltIcon,
 };
 
 function RubricIcon({ slug, ...props }: { slug: string } & SVGProps<SVGSVGElement>) {

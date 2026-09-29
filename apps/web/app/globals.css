@@ -1557,3 +1557,27 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
   background: var(--np-surface-2);
   border-color: color-mix(in oklab, var(--np-accent) 25%, var(--np-line));
 }
+@media (max-width: 767px) {
+  .np-latest-mobile-thumb { display: block; float: right; width: 3.25rem; height: 2.35rem; margin: 0 0 .35rem .6rem; border-radius: .45rem; object-fit: cover; }
+
+  /* Touch-first leading strips: native inertial scrolling with a quiet premium edge treatment. */
+  .np-mobile-touch-carousel {
+    touch-action: pan-x;
+    overscroll-behavior-x: contain;
+    /* The autoplay ticker owns the offset on phones; native swipe remains inertial. */
+    scroll-snap-type: none;
+    scroll-padding-inline: .75rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent 0, #000 .75rem, #000 calc(100% - .75rem), transparent 100%);
+  }
+  .np-mobile-touch-carousel::-webkit-scrollbar { display: none; }
+  .np-carousel-mobile-card {
+    width: min(82vw, 19rem);
+    flex-basis: min(82vw, 19rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .np-latest-mobile-thumb { display: none; }
+}
