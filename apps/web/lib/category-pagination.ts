@@ -29,5 +29,6 @@ export function parseCategoryCursor(raw: string | string[] | undefined, category
 
 export function categoryCursorUrl(path: string, cursor: CategoryCursor): string {
   const value = Buffer.from(JSON.stringify(cursorSchema.parse(cursor))).toString("base64url");
-  return `${path}?cursor=${value}`;
+  const base = path.endsWith("/") ? path.slice(0, -1) : path;
+  return `${base}/archive/${value}/`;
 }

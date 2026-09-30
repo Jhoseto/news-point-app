@@ -14,7 +14,9 @@ const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("
 describe("category archive navigation", () => {
   it("keeps microsecond precision, category, direction and anchor in the URL", () => {
     const url = categoryCursorUrl("/bulgaria/", cursor);
-    expect(parseCategoryCursor(new URL(url, "https://newspoint.bg").searchParams.get("cursor")!, category, now)).toEqual(cursor);
+    const token = new URL(url, "https://newspoint.bg").pathname.split("/").filter(Boolean).at(-1);
+    expect(url).toBe(`/bulgaria/archive/${token}/`);
+    expect(parseCategoryCursor(token, category, now)).toEqual(cursor);
     expect(parseCategoryCursor(undefined, category, now)).toBeNull();
     expect(CATEGORY_PAGE_SIZE).toBe(30);
   });

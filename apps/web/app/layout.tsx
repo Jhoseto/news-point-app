@@ -17,8 +17,7 @@ import { getLatest } from "@/lib/queries";
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
 export const revalidate = 60;
 
-// The weather fetch is uncached on purpose. Running it inside this cache keeps
-// that from forcing every page to render on each visit.
+// Weather stays inside this cache. A no-store fetch here marks the whole site dynamic and 500s under ISR.
 const loadPublicShell = unstable_cache(async () => {
   const [weather, latestArticles] = await Promise.all([getWeatherForecast(), getLatest(1)]);
   return { weather, latest: toLatestHeadline(latestArticles[0]) };

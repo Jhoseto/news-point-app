@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { unstable_cache } from "next/cache";
 import { CATEGORY_PAGE_SIZE, type CategoryCursor } from "@/lib/category-pagination";
 import { categoryFront } from "@/lib/front-page";
-import { getCategoryArchive, getLatest24Hours, getMenuCategories, type CategoryRef } from "@/lib/queries";
+import { getCategoryArchive, getLatest24Hours, getMenuCategories, publicAsOfMs, type ArticleSummary, type CategoryRef } from "@/lib/queries";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
@@ -9,8 +10,12 @@ import { LatestNews24h } from "./latest-news-24h";
 import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
-export async function CategoryPage({ category, cursor }: { category: CategoryRef; cursor: CategoryCursor | null }) {
-  const asOfMs = Date.now();
+function reviveArticle(article: ArticleSummary): ArticleSummary {
+  return article.publishedAt instanceof Date ? article : { ...article, publishedAt: new Date(article.publishedAt) };
+}
+
+const readCategoryView = unstable_cache(async (category: CategoryRef, cursor: CategoryCursor | null) => {
+  const asOfMs = publicAsOfMs();
   const front = await categoryFront(category.id, asOfMs);
   const skipIds = cursor ? front.pinnedIds : [...front.pinnedIds, ...front.excludedIds];
   const [archive, menu, latest24h] = await Promise.all([
@@ -18,7 +23,17 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
     getMenuCategories(),
     getLatest24Hours(asOfMs),
   ]);
-  const articles = cursor ? archive.articles : [...front.pins, ...archive.articles].slice(0, CATEGORY_PAGE_SIZE);
+  return { asOfMs, front, archive, menu, latest24h };
+}, ["public-category-view"], { revalidate: 60 });
+
+export async function CategoryPage({ category, cursor }: { category: CategoryRef; cursor: CategoryCursor | null }) {
+  const view = await readCategoryView(category, cursor);
+  const asOfMs = view.asOfMs;
+  const archive = { ...view.archive, articles: view.archive.articles.map(reviveArticle) };
+  const latest24h = view.latest24h.map(reviveArticle);
+  const menu = view.menu;
+  const pins = view.front.pins.map(reviveArticle);
+  const articles = cursor ? archive.articles : [...pins, ...archive.articles].slice(0, CATEGORY_PAGE_SIZE);
   const [lead, ...rest] = articles;
 
   return (

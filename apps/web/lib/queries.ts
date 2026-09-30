@@ -201,6 +201,11 @@ const readLatest24Hours = unstable_cache(async (minute: number): Promise<Article
   return rows.map(toSummary);
 }, ["public-latest-24h"], { revalidate: 60 });
 
+/** Minute bucket so a public page can stay on the ISR path. */
+export function publicAsOfMs(now = Date.now()): number {
+  return Math.floor(now / 60_000) * 60_000;
+}
+
 /** Complete rolling 24-hour feed; the public published-at index supports the range scan. */
 export const getLatest24Hours = cache(async (asOfMs: number): Promise<ArticleSummary[]> => {
   const rows = await readLatest24Hours(Math.floor(asOfMs / 60_000));

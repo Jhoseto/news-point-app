@@ -1,6 +1,6 @@
 import { articleSections } from "@/lib/article-reading";
 import { formatFull, isoDate, readingMinutes } from "@/lib/format";
-import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, type ArticleDetail } from "@/lib/queries";
+import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, publicAsOfMs, type ArticleDetail } from "@/lib/queries";
 import { ArticleBody } from "./article-body";
 import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
@@ -18,7 +18,7 @@ import { CategoryPill } from "./ui";
 import "./article-premium.css";
 
 export async function ArticlePage({ article }: { article: ArticleDetail }) {
-  const asOfMs = Date.now();
+  const asOfMs = publicAsOfMs();
   const [timeline, latest24h] = await Promise.all([
     getArticleNeighbours(article),
     getLatest24Hours(asOfMs),

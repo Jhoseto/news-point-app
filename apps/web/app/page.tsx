@@ -2,7 +2,6 @@ import { ArticleCard, CompactCard, FeatureCard, HeroCard } from "@/components/ar
 import { HomeShineRoot } from "@/components/home-shine-root";
 import { Fragment } from "react";
 import { HomePoll } from "@/components/home-poll";
-import { featuredPoll } from "@newspoint/db/polls";
 import { LeadingCarousel } from "@/components/leading-carousel";
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
@@ -11,22 +10,13 @@ import { SectionTitle } from "@/components/ui";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
 import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
-import { homeArrangement } from "@/lib/front-page";
-import { HOME_TOP_THEMES_CAROUSEL_PREFIX, HOME_VOICE_CAROUSEL_PREFIX } from "@newspoint/content";
-import { composeHome, composeLabelCarousel } from "@/lib/home-compose";
-import { getByCategory, getLabelled, getLatest, getLatest24Hours, getMenuCategories, type ArticleSummary, type CategoryRef } from "@/lib/queries";
+import { loadPublicHome } from "@/lib/public-home";
+import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
 export const revalidate = 60;
 
-// Band pool for the hero row (editorial label novini on the old site).
-const LEADING_LABEL = "novini";
-// Homepage carousel „На Фокус“ — WordPress category na-fokus (same as newspoint.bg/na-fokus/).
 const FOCUS_LABEL = "na-fokus";
 const FOCUS_ARCHIVE_PATH = "/na-fokus/";
-// Old homepage block "Топ теми" is the WordPress category top-temi, newest first.
-const TOP_THEMES_LABEL = "top-temi";
-// Old editorial label „Гласът на истината“ (WordPress category glasat-na-istinata).
-const VOICE_OF_TRUTH_LABEL = "glasat-na-istinata";
 
 type Layout = "grid" | "feature";
 
@@ -104,33 +94,7 @@ function CategorySection({
 }
 
 export default async function HomePage() {
-  const asOfMs = Date.now();
-  const [latest, latest24h, featured, focusPool, topics, voiceOfTruth, menu, poll, placed] = await Promise.all([
-    getLatest(50),
-    getLatest24Hours(asOfMs),
-    getLabelled(LEADING_LABEL, 13),
-    getLabelled(FOCUS_LABEL, 50),
-    getLabelled(TOP_THEMES_LABEL, 50),
-    getLabelled(VOICE_OF_TRUTH_LABEL, 50),
-    getMenuCategories(),
-    featuredPoll().catch(error => { console.error("[polls] homepage unavailable", error instanceof Error ? error.message : "unknown"); return null; }),
-    homeArrangement(),
-  ]);
-  const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
-  const menuIds = new Set(menu.map((category) => category.id));
-  const composed = composeHome({
-    latest,
-    latest24h,
-    featured,
-    sections,
-    menuIds,
-    pinned: placed.pinned,
-    document: placed.document,
-    now: asOfMs,
-  });
-  const { hero, support } = composed;
-  const mainSections = composed.main;
-  const asideSections = composed.aside;
+  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceCarousel, poll } = await loadPublicHome();
 
   const shine = createHomeShine();
   const bandHero = hero ? shine.nextCard() : undefined;
@@ -138,26 +102,6 @@ export default async function HomePage() {
   const bandSupport1 = support[1] ? shine.nextCard() : undefined;
   const bandSupport2 = support[2] ? shine.nextCard() : undefined;
   shine.sectionBreak();
-  const focusCarousel = composeLabelCarousel({
-    pool: focusPool,
-    document: placed.document,
-    pinned: placed.pinned,
-    now: asOfMs,
-  });
-  const topicsCarousel = composeLabelCarousel({
-    pool: topics,
-    document: placed.document,
-    pinned: placed.pinned,
-    now: asOfMs,
-    slotPrefix: HOME_TOP_THEMES_CAROUSEL_PREFIX,
-  });
-  const voiceCarousel = composeLabelCarousel({
-    pool: voiceOfTruth,
-    document: placed.document,
-    pinned: placed.pinned,
-    now: asOfMs,
-    slotPrefix: HOME_VOICE_CAROUSEL_PREFIX,
-  });
   const focusShineDelays = focusCarousel.map(() => shine.nextCard());
   const topicShineDelays = topicsCarousel.map(() => shine.nextCard());
   const voiceShineDelays = voiceCarousel.map(() => shine.nextCard());
@@ -189,7 +133,7 @@ export default async function HomePage() {
               ))}
             </div>
           ) : null}
-          <LatestNews24h articles={composed.latest} asOfMs={asOfMs} className="h-[30rem]" />
+          <LatestNews24h articles={latest} asOfMs={asOfMs} className="h-[30rem]" />
         </div>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
@@ -213,7 +157,7 @@ export default async function HomePage() {
               ))}
             </div>
           </div>
-          <LatestNews24h articles={composed.latest} asOfMs={asOfMs} dense className="min-h-0" />
+          <LatestNews24h articles={latest} asOfMs={asOfMs} dense className="min-h-0" />
         </div>
 
         {focusCarousel.length ? (

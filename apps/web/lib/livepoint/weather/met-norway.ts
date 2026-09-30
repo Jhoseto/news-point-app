@@ -58,7 +58,7 @@ export async function getWeatherForecast(): Promise<DataEnvelope<WeatherForecast
   if (cached?.etag) headers["If-None-Match"] = cached.etag;
 
   try {
-    const response = await fetch(url, { headers, cache: "no-store" });
+    const response = await fetch(url, { headers, next: { revalidate: 1800 } });
     if (response.status === 304 && cached) {
       const expiresAt = parseExpires(response.headers.get("expires"), 30 * 60_000);
       slot.current = { ...cached, expiresAt };
