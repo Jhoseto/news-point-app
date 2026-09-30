@@ -30,7 +30,7 @@
   --np-home-glow-b: rgb(25 195 195 / 0.035);
   --np-home-card-shadow: 0 2px 5px rgb(10 20 84 / 0.035), 0 20px 38px -26px rgb(56 24 214 / 0.16);
   /* LivePoint subpage sticky title sits below masthead + utility strip */
-  --np-livepoint-sticky-top: 12.5rem;
+  --np-livepoint-sticky-top: 6.75rem;
   color-scheme: light;
 }
 
@@ -85,7 +85,7 @@
 @layer base {
   html {
     /* Height of the sticky header. The desktop rail starts directly below it. */
-    --np-header-h: 12.5rem;
+    --np-header-h: 6.75rem;
     --np-bar-h: 4rem;
     --np-rail-w: 0px;
     --np-logo-h: 2rem;
@@ -722,6 +722,54 @@
   }
   .np-lp-strip::-webkit-scrollbar {
     display: none;
+  }
+  .np-lp-scroll {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .np-lp-scroll::-webkit-scrollbar {
+    display: none;
+  }
+  .np-lp-scroll-wrap[data-more-left]::before,
+  .np-lp-scroll-wrap[data-more-right]::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: 1.6rem;
+    pointer-events: none;
+  }
+  .np-lp-scroll-wrap[data-more-left]::before {
+    left: 0;
+    background: linear-gradient(90deg, var(--np-surface), transparent);
+  }
+  .np-lp-scroll-wrap[data-more-right]::after {
+    right: 0;
+    background: linear-gradient(270deg, var(--np-surface), transparent);
+  }
+  .np-lp-scroll-hint {
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    display: grid;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    transform: translateY(-50%);
+    border: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--np-surface) 92%, transparent);
+    color: var(--np-ink);
+    box-shadow: 0 2px 8px rgb(10 20 84 / 0.14);
+  }
+  .np-lp-scroll-hint.is-left { left: 0.1rem; }
+  .np-lp-scroll-hint.is-right { right: 0.1rem; }
+  @media (min-width: 64rem) {
+    .np-lp-scroll-wrap[data-more-left]::before,
+    .np-lp-scroll-wrap[data-more-right]::after {
+      content: none;
+    }
   }
   .np-lp-heart {
     position: relative;
