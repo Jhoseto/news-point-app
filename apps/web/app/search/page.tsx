@@ -11,7 +11,6 @@ import { getMenuCategories, getSearchArchive } from "@/lib/queries";
 import { parseSearchCursor, parseSearchFilters, type SearchCursor, type SearchParams } from "@/lib/search-pagination";
 import { filteredSearchUrl, normalizeSearchQuery, SEARCH_MAX_LENGTH, SEARCH_MIN_LENGTH, SEARCH_PAGE, SEARCH_PERIODS, searchTerms, type SearchFilters } from "@/lib/search";
 
-export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Търсене", robots: { index: false, follow: true } };
 
 function ResultsLoading() {

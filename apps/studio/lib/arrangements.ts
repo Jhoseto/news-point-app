@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, ilike, inArray } from "@newspoint/db/orm";
+import { and, desc, eq, ilike, inArray, sql } from "@newspoint/db/orm";
 import {
   HOME_PAGE_KEY,
   PUBLIC_MENU,
@@ -248,7 +248,7 @@ export async function searchPlacementArticles(query: string): Promise<Arrangemen
     .select({ id: articles.id, title: articles.title, categoryName: categories.name, isPublic: articles.isPublic })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
-    .where(and(eq(articles.isPublic, true), ilike(articles.title, `%${term.replace(/[%_]/g, "")}%`)))
+    .where(and(eq(articles.isPublic, true), sql`${articles.publishedAt} <= now()`, ilike(articles.title, `%${term.replace(/[%_]/g, "")}%`)))
     .orderBy(desc(articles.publishedAt))
     .limit(12);
 }

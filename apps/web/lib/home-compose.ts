@@ -71,9 +71,10 @@ export function composeHome(input: {
   const heroPool = latest.filter((article) => article.category && menuIds.has(article.category.id));
   const hero = picker.claim(slot("hero")) ?? picker.take(heroPool.filter((article) => !excluded.has(article.id)), 1)[0];
 
+  // „На Фокус“ carousel slots are filled only via composeLabelCarousel — not the hero band pool.
   const bandPins = [
     ...Array.from({ length: HOME_SUPPORT_COUNT }, (_, index) => slot(`support-${index}`)),
-    ...Array.from({ length: HOME_CAROUSEL_COUNT }, (_, index) => slot(`carousel-${index}`)),
+    ...Array.from({ length: HOME_CAROUSEL_COUNT }, () => null),
   ];
   const band = fillPinned(picker, [...featured, ...latest], HOME_BAND_COUNT, bandPins, excluded);
   const support = band.slice(0, HOME_SUPPORT_COUNT);
@@ -111,4 +112,29 @@ export function composeHome(input: {
     main,
     aside,
   };
+}
+
+/** Homepage label carousels (На Фокус, …): first rows follow arrangement slots, then the rest of the pool. */
+export function composeLabelCarousel(input: {
+  pool: ArticleSummary[];
+  document: ArrangementDocument;
+  pinned: Map<string, ArticleSummary>;
+  now: number;
+  slotPrefix?: string;
+  slotCount?: number;
+  maxArticles?: number;
+}): ArticleSummary[] {
+  const slotCount = input.slotCount ?? HOME_CAROUSEL_COUNT;
+  const maxArticles = input.maxArticles ?? 50;
+  const slotPrefix = input.slotPrefix ?? "carousel";
+  const { pool, document, pinned, now } = input;
+  const visible = new Set(pinned.keys());
+  const excluded = new Set(document.excluded);
+  const slot = (key: string) => resolveSlot(document, key, now, visible, pinned);
+  const picker = new UniquePicker();
+  const pins = Array.from({ length: slotCount }, (_, index) => slot(`${slotPrefix}-${index}`));
+  const head = fillPinned(picker, pool, slotCount, pins, excluded);
+  const used = new Set(head.map((article) => article.id));
+  const tail = pool.filter((article) => !used.has(article.id) && !excluded.has(article.id));
+  return [...head, ...tail].slice(0, maxArticles);
 }

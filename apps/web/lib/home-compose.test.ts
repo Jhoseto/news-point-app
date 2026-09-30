@@ -1,6 +1,6 @@
 import { emptyArrangement, type ArrangementDocument } from "@newspoint/content";
 import { describe, expect, it } from "vitest";
-import { composeHome } from "./home-compose";
+import { composeHome, composeLabelCarousel } from "./home-compose";
 import { UniquePicker } from "./pick";
 import type { ArticleSummary, CategoryRef } from "./queries";
 
@@ -59,6 +59,29 @@ describe("composeHome", () => {
     expect(composed.main[0]?.articles).toHaveLength(2);
   });
 
+  it("does not pull „На Фокус“ carousel pins into the hero support row", () => {
+    const pinned = article("focus-pin");
+    const document: ArrangementDocument = {
+      slots: {
+        "carousel-0": { items: [{ articleId: pinned.id, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] },
+        "support-0": { items: [{ articleId: "support-pin", startsAt: null, endsAt: null, placedBy: "", placedAt: null }] },
+      },
+      excluded: [],
+    };
+    const composed = composeHome({
+      latest,
+      latest24h: latest,
+      featured,
+      sections,
+      menuIds: new Set(menu.map((entry) => entry.id)),
+      pinned: new Map([[pinned.id, pinned], ["support-pin", article("support-pin")]]),
+      document,
+      now: Date.parse("2026-09-29T12:00:00Z"),
+    });
+    expect(composed.support[0]?.id).toBe("support-pin");
+    expect(composed.support.map((item) => item.id)).not.toContain("focus-pin");
+  });
+
   it("keeps a permanent lead in place when a newer story arrives", () => {
     const pinned = article("old");
     const document: ArrangementDocument = {
@@ -77,6 +100,43 @@ describe("composeHome", () => {
     });
     expect(composed.hero?.id).toBe("old");
     expect(composed.support.map((item) => item.id)).not.toContain("old");
+  });
+
+  it("fills the focus carousel from a label pool and respects carousel slot pins", () => {
+    const pool = [article("a1"), article("a2"), article("a3")];
+    const pinned = article("pinned");
+    const document: ArrangementDocument = {
+      slots: { "carousel-0": { items: [{ articleId: pinned.id, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] } },
+      excluded: [],
+    };
+    const list = composeLabelCarousel({
+      pool,
+      document,
+      pinned: new Map([[pinned.id, pinned]]),
+      now: Date.parse("2026-09-29T12:00:00Z"),
+      slotCount: 2,
+      maxArticles: 3,
+    });
+    expect(list.map((item) => item.id)).toEqual(["pinned", "a1", "a2"]);
+  });
+
+  it("uses a separate slot prefix for another label carousel", () => {
+    const pool = [article("a1"), article("a2"), article("a3")];
+    const pinned = article("pinned");
+    const document: ArrangementDocument = {
+      slots: { "top-temi-0": { items: [{ articleId: pinned.id, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] } },
+      excluded: [],
+    };
+    const list = composeLabelCarousel({
+      pool,
+      document,
+      pinned: new Map([[pinned.id, pinned]]),
+      now: Date.parse("2026-09-29T12:00:00Z"),
+      slotPrefix: "top-temi",
+      slotCount: 2,
+      maxArticles: 3,
+    });
+    expect(list.map((item) => item.id)).toEqual(["pinned", "a1", "a2"]);
   });
 
   it("drops the lead after its time and pins the latest column without removing the real list", () => {

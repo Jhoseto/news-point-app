@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
+import { categoryAccentStyle } from "@/lib/category-accent";
 import { ArticleCard } from "./article-card";
-import { ChevronLeftIcon, ChevronRightIcon } from "./icons";
+import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { useReducedMotion } from "./reader-preferences";
 
 const SPEED_PX_PER_SECOND = 18;
@@ -16,6 +18,9 @@ export function LeadingCarousel({
   title = "На Фокус",
   headingId = "sec-leading",
   motion = "to-left",
+  href,
+  linkLabel = "Всички",
+  accentSlug,
 }: {
   articles: ArticleSummary[];
   /** Precomputed on the homepage (server); one delay per article, originals only. */
@@ -24,6 +29,10 @@ export function LeadingCarousel({
   headingId?: string;
   /** `to-left` is the focus strip. `to-right` moves cards from left to right. */
   motion?: "to-left" | "to-right";
+  /** Archive link for the rubric (e.g. /na-fokus/). */
+  href?: string;
+  linkLabel?: string;
+  accentSlug?: string;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const firstSet = useRef<HTMLDivElement>(null);
@@ -123,12 +132,21 @@ export function LeadingCarousel({
         if (!event.currentTarget.contains(event.relatedTarget)) paused.current = false;
       }}
     >
-      <div className="np-section-heading mb-5 flex items-center justify-between gap-4">
-        <h2 id={headingId} className="flex items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
+      <div className="np-section-heading mb-5 flex items-center justify-between gap-4" style={categoryAccentStyle(accentSlug)}>
+        <h2 id={headingId} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
           <span className="np-ring" aria-hidden="true" />
           {title}
         </h2>
-        <div className="order-2 flex items-center gap-2">
+        <div className="order-2 flex shrink-0 items-center gap-2">
+          {href ? (
+            <Link
+              href={href}
+              className="np-section-link group inline-flex min-h-11 items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 text-xs font-bold text-link shadow-[0_3px_12px_-8px_rgb(10_20_84/0.2)] transition-[border-color,background-color,box-shadow] hover:border-accent/30 hover:bg-surface hover:shadow-card sm:text-sm"
+            >
+              {linkLabel}
+              <ArrowRightIcon width={15} height={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
+          ) : null}
           <button type="button" onClick={() => move(-1)} aria-label={`Предишни: ${title}`} className="np-carousel-button">
             <ChevronLeftIcon width={18} height={18} />
           </button>

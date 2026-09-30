@@ -8,6 +8,12 @@ import { parseCategoryCursor } from "@/lib/category-pagination";
 
 export const revalidate = 60;
 
+// Empty on purpose: there is no finite list to bake at build time. The first
+// visit stores the page, and revalidatePath refreshes it on publish.
+export function generateStaticParams() {
+  return [];
+}
+
 type Props = { params: Promise<{ path: string[] }>; searchParams: Promise<{ cursor?: string | string[] }> };
 
 // Articles and categories both live at the site root, as on WordPress (DEC-105).
@@ -22,13 +28,15 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const category = await getCategoryByPath(path);
   if (category) {
     const image = `${origin}/share/category/${category.id}/`;
+    // Only rubric pages read the cursor. An article must not, or the cached page is dropped.
+    const cursor = (await searchParams).cursor;
     return {
       title: category.name,
       description: `Новини от рубрика ${category.name} — NewsPoint.bg`,
       alternates: { canonical: `${origin}${category.path}` },
       openGraph: { title: category.name, description: `Новини от рубрика ${category.name}`, siteName: "NewsPoint.bg", locale: "bg_BG", type: "website", images: [{ url: image, width: 1200, height: 630 }] },
       twitter: { card: "summary_large_image", title: category.name, images: [image] },
-      ...((await searchParams).cursor !== undefined ? { robots: { index: false, follow: true } } : {}),
+      ...(cursor !== undefined ? { robots: { index: false, follow: true } } : {}),
     };
   }
   const article = await getArticleByPath(path);

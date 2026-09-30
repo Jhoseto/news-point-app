@@ -12,14 +12,17 @@ import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
 import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
 import { homeArrangement } from "@/lib/front-page";
-import { composeHome } from "@/lib/home-compose";
+import { HOME_TOP_THEMES_CAROUSEL_PREFIX, HOME_VOICE_CAROUSEL_PREFIX } from "@newspoint/content";
+import { composeHome, composeLabelCarousel } from "@/lib/home-compose";
 import { getByCategory, getLabelled, getLatest, getLatest24Hours, getMenuCategories, type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
 export const revalidate = 60;
 
-// Editors on the old site mark headline stories with this label; "top-novina"
-// is used for daily features (horoscope, weather), so it does not lead.
+// Band pool for the hero row (editorial label novini on the old site).
 const LEADING_LABEL = "novini";
+// Homepage carousel „На Фокус“ — WordPress category na-fokus (same as newspoint.bg/na-fokus/).
+const FOCUS_LABEL = "na-fokus";
+const FOCUS_ARCHIVE_PATH = "/na-fokus/";
 // Old homepage block "Топ теми" is the WordPress category top-temi, newest first.
 const TOP_THEMES_LABEL = "top-temi";
 // Old editorial label „Гласът на истината“ (WordPress category glasat-na-istinata).
@@ -102,10 +105,11 @@ function CategorySection({
 
 export default async function HomePage() {
   const asOfMs = Date.now();
-  const [latest, latest24h, featured, topics, voiceOfTruth, menu, poll, placed] = await Promise.all([
+  const [latest, latest24h, featured, focusPool, topics, voiceOfTruth, menu, poll, placed] = await Promise.all([
     getLatest(50),
     getLatest24Hours(asOfMs),
     getLabelled(LEADING_LABEL, 13),
+    getLabelled(FOCUS_LABEL, 50),
     getLabelled(TOP_THEMES_LABEL, 50),
     getLabelled(VOICE_OF_TRUTH_LABEL, 50),
     getMenuCategories(),
@@ -134,10 +138,29 @@ export default async function HomePage() {
   const bandSupport1 = support[1] ? shine.nextCard() : undefined;
   const bandSupport2 = support[2] ? shine.nextCard() : undefined;
   shine.sectionBreak();
-  const carouselArticles = composed.carousel;
-  const carouselShineDelays = carouselArticles.map(() => shine.nextCard());
-  const topicShineDelays = topics.map(() => shine.nextCard());
-  const voiceShineDelays = voiceOfTruth.map(() => shine.nextCard());
+  const focusCarousel = composeLabelCarousel({
+    pool: focusPool,
+    document: placed.document,
+    pinned: placed.pinned,
+    now: asOfMs,
+  });
+  const topicsCarousel = composeLabelCarousel({
+    pool: topics,
+    document: placed.document,
+    pinned: placed.pinned,
+    now: asOfMs,
+    slotPrefix: HOME_TOP_THEMES_CAROUSEL_PREFIX,
+  });
+  const voiceCarousel = composeLabelCarousel({
+    pool: voiceOfTruth,
+    document: placed.document,
+    pinned: placed.pinned,
+    now: asOfMs,
+    slotPrefix: HOME_VOICE_CAROUSEL_PREFIX,
+  });
+  const focusShineDelays = focusCarousel.map(() => shine.nextCard());
+  const topicShineDelays = topicsCarousel.map(() => shine.nextCard());
+  const voiceShineDelays = voiceCarousel.map(() => shine.nextCard());
 
   const narrowMain = mainSections.filter((section) => !section.wide);
   const wideMain = mainSections.filter((section) => section.wide);
@@ -193,13 +216,18 @@ export default async function HomePage() {
           <LatestNews24h articles={composed.latest} asOfMs={asOfMs} dense className="min-h-0" />
         </div>
 
-        {carouselArticles.length ? (
+        {focusCarousel.length ? (
           <div className="-mt-6 3xl:-mt-8">
-            <LeadingCarousel articles={carouselArticles} shineDelays={carouselShineDelays} />
+            <LeadingCarousel
+              articles={focusCarousel}
+              shineDelays={focusShineDelays}
+              href={FOCUS_ARCHIVE_PATH}
+              accentSlug={FOCUS_LABEL}
+            />
           </div>
         ) : null}
-        {topics.length ? (
-          <LeadingCarousel articles={topics} shineDelays={topicShineDelays} title="Топ теми" headingId="sec-top-themes" motion="to-right" />
+        {topicsCarousel.length ? (
+          <LeadingCarousel articles={topicsCarousel} shineDelays={topicShineDelays} title="Топ теми" headingId="sec-top-themes" motion="to-right" />
         ) : null}
 
         {mainSections.map((section) => {
@@ -228,9 +256,9 @@ export default async function HomePage() {
                     })}
                   </aside>
                 </div>
-                {voiceOfTruth.length ? (
+                {voiceCarousel.length ? (
                   <LeadingCarousel
-                    articles={voiceOfTruth}
+                    articles={voiceCarousel}
                     shineDelays={voiceShineDelays}
                     title="Гласът на истината"
                     headingId="sec-glasat-na-istinata"

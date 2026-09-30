@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { unstable_cache } from "next/cache";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
@@ -13,8 +14,15 @@ import { toLatestHeadline } from "@/lib/livepoint/serialize";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 import { getLatest } from "@/lib/queries";
 
-/** Root layout reads live DB (header, LivePoint). */
-export const dynamic = "force-dynamic";
+/** Shared with pages that export the same value. A dynamic child still renders per request. */
+export const revalidate = 60;
+
+// The weather fetch is uncached on purpose. Running it inside this cache keeps
+// that from forcing every page to render on each visit.
+const loadPublicShell = unstable_cache(async () => {
+  const [weather, latestArticles] = await Promise.all([getWeatherForecast(), getLatest(1)]);
+  return { weather, latest: toLatestHeadline(latestArticles[0]) };
+}, ["public-shell"], { revalidate: 60 });
 
 export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
@@ -36,7 +44,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const [weather, latestArticles] = await Promise.all([getWeatherForecast(), getLatest(1)]);
+  const { weather, latest } = await loadPublicShell();
   return (
     <html lang="bg" suppressHydrationWarning>
       <body className="min-h-dvh">
@@ -51,7 +59,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           weather={weather}
           trafficConnected={isTomTomConfigured()}
           camerasLiveLabel={hasVerifiedLiveCamera()}
-          latest={toLatestHeadline(latestArticles[0])}
+          latest={latest}
         >
           <SiteHeader />
           <SiteBody>{children}</SiteBody>

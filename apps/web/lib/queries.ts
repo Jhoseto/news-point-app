@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
@@ -122,6 +123,10 @@ function toMedia(row: {
   };
 }
 
+function reviveSummary(article: ArticleSummary): ArticleSummary {
+  return article.publishedAt instanceof Date ? article : { ...article, publishedAt: new Date(article.publishedAt) };
+}
+
 function toSummary(row: SummaryRow): ArticleSummary {
   return {
     id: row.id!,
@@ -168,7 +173,7 @@ async function summaryQuery(archive = false) {
   return { query: ready ? query.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id)) : query };
 }
 
-export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
+const readMenuCategories = unstable_cache(async (): Promise<CategoryRef[]> => {
   const slugs = PUBLIC_MENU.map((entry) => entry.slug);
   const rows = await getDb()
     .select({ id: categories.id, slug: categories.slug, name: categories.name, path: categories.path })
@@ -179,19 +184,27 @@ export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => {
     const row = bySlug.get(entry.slug);
     return row ? [{ ...row, name: entry.name }] : [];
   });
-});
+}, ["public-menu"], { revalidate: 60 });
+
+export const getMenuCategories = cache(async (): Promise<CategoryRef[]> => readMenuCategories());
 
 export const getLatest = cache(async (limit: number): Promise<ArticleSummary[]> => {
   const rows = await (await summaryQuery()).query.where(isPublished()).orderBy(desc(articles.publishedAt)).limit(limit);
   return rows.map(toSummary);
 });
 
-/** Complete rolling 24-hour feed; the public published-at index supports the range scan. */
-export const getLatest24Hours = cache(async (asOfMs: number): Promise<ArticleSummary[]> => {
+const readLatest24Hours = unstable_cache(async (minute: number): Promise<ArticleSummary[]> => {
+  const asOfMs = minute * 60_000;
   const rows = await (await summaryQuery()).query
     .where(and(isPublished(), gt(articles.publishedAt, new Date(asOfMs - LATEST_WINDOW_MS))))
     .orderBy(desc(articles.publishedAt));
   return rows.map(toSummary);
+}, ["public-latest-24h"], { revalidate: 60 });
+
+/** Complete rolling 24-hour feed; the public published-at index supports the range scan. */
+export const getLatest24Hours = cache(async (asOfMs: number): Promise<ArticleSummary[]> => {
+  const rows = await readLatest24Hours(Math.floor(asOfMs / 60_000));
+  return rows.map(reviveSummary);
 });
 
 export const getByCategory = cache(async (categoryId: string, limit: number): Promise<ArticleSummary[]> => {
@@ -212,6 +225,27 @@ export interface CategoryArchive {
 
 /** Keyset navigation: one bounded page, one small opposite-direction probe. No COUNT/OFFSET. */
 export async function getCategoryArchive(
+  category: CategoryRef,
+  cursor: CategoryCursor | null,
+  options?: { skipIds?: string[]; limit?: number },
+): Promise<CategoryArchive> {
+  const limit = options?.limit ?? CATEGORY_PAGE_SIZE;
+  const skipKey = (options?.skipIds ?? []).join(",");
+  const archive = await readCategoryArchive(category, cursor, skipKey, limit);
+  return { ...archive, articles: archive.articles.map(reviveSummary) };
+}
+
+const readCategoryArchive = unstable_cache(async (
+  category: CategoryRef,
+  cursor: CategoryCursor | null,
+  skipKey: string,
+  limit: number,
+): Promise<CategoryArchive> => queryCategoryArchive(category, cursor, {
+  skipIds: skipKey ? skipKey.split(",") : [],
+  limit,
+}), ["public-category-archive"], { revalidate: 60 });
+
+async function queryCategoryArchive(
   category: CategoryRef,
   cursor: CategoryCursor | null,
   options?: { skipIds?: string[]; limit?: number },

@@ -7,6 +7,31 @@ export const HOME_LEAD_SECTION = "plovdiv";
 export const HOME_ASIDE_SECTIONS = ["kultura", "lajfstajl"] as const;
 export const HOME_SUPPORT_COUNT = 3;
 export const HOME_CAROUSEL_COUNT = 10;
+/** Slot keys `carousel-0` … for the „На Фокус“ row (legacy prefix). */
+export const HOME_FOCUS_CAROUSEL_PREFIX = "carousel";
+/** Slot keys `top-temi-0` … for the „Топ теми“ row. */
+export const HOME_TOP_THEMES_CAROUSEL_PREFIX = "top-temi";
+/** Slot keys `glasat-0` … for „Гласът на истината“. */
+export const HOME_VOICE_CAROUSEL_PREFIX = "glasat";
+
+export const HOME_CAROUSEL_SLOT_PREFIXES = [
+  HOME_FOCUS_CAROUSEL_PREFIX,
+  HOME_TOP_THEMES_CAROUSEL_PREFIX,
+  HOME_VOICE_CAROUSEL_PREFIX,
+] as const;
+
+export type HomeCarouselSlotPrefix = (typeof HOME_CAROUSEL_SLOT_PREFIXES)[number];
+
+export function homeCarouselSlotKey(prefix: HomeCarouselSlotPrefix, index: number): string {
+  return `${prefix}-${index}`;
+}
+
+export function homeCarouselSlotPrefix(key: string): HomeCarouselSlotPrefix | null {
+  for (const prefix of HOME_CAROUSEL_SLOT_PREFIXES) {
+    if (key === prefix || key.startsWith(`${prefix}-`)) return prefix;
+  }
+  return null;
+}
 export const HOME_LATEST_PIN_COUNT = 3;
 export const HOME_BAND_COUNT = 13;
 export const CATEGORY_NEXT_COUNT = 6;
@@ -97,7 +122,13 @@ export function homeSlotCatalog(categories: { slug: string; name: string }[]): S
     { key: "support-2", group: "Водеща лента", label: "До водещата — дясна малка" },
   ];
   for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
-    slots.push({ key: `carousel-${index}`, group: "На Фокус", label: `Място ${index + 1}` });
+    slots.push({ key: homeCarouselSlotKey(HOME_FOCUS_CAROUSEL_PREFIX, index), group: "На Фокус", label: `Място ${index + 1}` });
+  }
+  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
+    slots.push({ key: homeCarouselSlotKey(HOME_TOP_THEMES_CAROUSEL_PREFIX, index), group: "Топ теми", label: `Място ${index + 1}` });
+  }
+  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
+    slots.push({ key: homeCarouselSlotKey(HOME_VOICE_CAROUSEL_PREFIX, index), group: "Гласът на истината", label: `Място ${index + 1}` });
   }
   for (let index = 0; index < HOME_LATEST_PIN_COUNT; index += 1) {
     slots.push({ key: `latest-${index}`, group: "Последни", label: `Отгоре ${index + 1}` });

@@ -13,6 +13,8 @@
     "test": "vitest run",
     "db:check": "pnpm --filter @newspoint/db db:check",
     "db:verify": "pnpm --filter @newspoint/db db:verify",
+    "test:db:audit": "pnpm --filter @newspoint/db exec tsx ../../tests/db/run-audit.ts",
+    "test:load:spike": "pnpm --filter @newspoint/db exec tsx ../../tests/load/spike-users.ts",
     "import:wp": "pnpm --filter @newspoint/wp-import run wp:import",
     "sync:once": "pnpm --filter @newspoint/worker run sync:once",
     "live:simulate": "pnpm --filter @newspoint/worker run live:simulate",
