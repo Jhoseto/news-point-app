@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { LivePointPage } from "@/components/livepoint/livepoint-page";
+import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
 import { publicEpisodes } from "@/lib/podcasts";
 
@@ -13,8 +13,8 @@ export const revalidate = 60;
 export default async function PodcastPage() {
   const episodes = await publicEpisodes();
   return (
-    <LivePointPage title="NewsPodcast" lead="Епизоди за слушане. Изберете тема и пуснете плейъра." wide>
+    <PodcastPageShell>
       <PodcastShow episodes={episodes} />
-    </LivePointPage>
+    </PodcastPageShell>
   );
 }

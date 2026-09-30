@@ -112,13 +112,21 @@ export function openRemoteRange(disk: RemoteDisk, storageKey: string, prefixes: 
   const child = spawn(
     "ssh",
     ["-i", disk.key, "-p", disk.port, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", disk.target,
-      `dd if='${file}' iflag=skip_bytes,count_bytes skip=${start} count=${length} status=none`],
+      `dd if='${file}' bs=64K iflag=skip_bytes,count_bytes skip=${start} count=${length} status=none`],
     { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
   );
   if (!child.stdout) throw new Error("storage unavailable");
   const timer = setTimeout(() => child.kill(), 60_000);
-  child.on("close", () => clearTimeout(timer));
-  child.on("error", () => clearTimeout(timer));
+  child.stderr?.resume();
+  child.stdout.on("close", () => { clearTimeout(timer); child.kill(); });
+  child.on("close", (code) => {
+    clearTimeout(timer);
+    if (code && !child.stdout.destroyed) child.stdout.destroy(new Error("Audio stream interrupted"));
+  });
+  child.on("error", () => {
+    clearTimeout(timer);
+    child.stdout.destroy(new Error("Audio storage unavailable"));
+  });
   return child.stdout;
 }
 

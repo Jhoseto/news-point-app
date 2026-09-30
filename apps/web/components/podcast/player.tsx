@@ -1,8 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PublicEpisode } from "@/lib/podcast-types";
-import { adjacentEpisode, playbackClock, seekRatio } from "@/lib/podcast-playback";
+import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock } from "@/lib/podcast-playback";
+import { AudioIcon, PodcastCover } from "./visuals";
+import { PodcastTimeline } from "./timeline";
 
 const RATES = [0.75, 1, 1.25, 1.5, 1.75, 2];
 const SLEEP = [null, 5, 15, 30, 60] as const;
@@ -19,6 +21,7 @@ type PlayerValue = {
   rate: number;
   sleepMin: number | null;
   error: string;
+  waiting: boolean;
   play: (episode: PublicEpisode, queue: PublicEpisode[]) => void;
   toggle: () => void;
   seek: (seconds: number) => void;
@@ -38,21 +41,9 @@ export function usePodcastPlayer() {
   return value;
 }
 
-function storedTime(id: string) {
-  try {
-    const value = Number(localStorage.getItem(`np-podcast:${id}`));
-    return Number.isFinite(value) && value > 0 ? value : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function remember(id: string, seconds: number) {
-  try { localStorage.setItem(`np-podcast:${id}`, String(Math.floor(seconds))); } catch { /* private mode */ }
-}
-
 export function PodcastProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
+  const [waiting, setWaiting] = useState(false);
   const [episode, setEpisode] = useState<PublicEpisode | null>(null);
   const [queue, setQueue] = useState<PublicEpisode[]>([]);
   const [playing, setPlaying] = useState(false);
@@ -66,6 +57,19 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const episodeRef = useRef(episode);
   const queueRef = useRef(queue);
+  const startAudio = useCallback(() => {
+    const node = audio.current;
+    if (!node) return;
+    setError("");
+    if (node.error) {
+      const resume = node.currentTime;
+      node.addEventListener("loadedmetadata", () => {
+        node.currentTime = clampPlaybackTime(resume, node.duration);
+        void node.play().catch(() => setError("Звукът не може да се пусне. Опитайте отново."));
+      }, { once: true });
+      node.load();
+    } else void node.play().catch(() => setError("Звукът не може да се пусне. Опитайте отново."));
+  }, []);
   episodeRef.current = episode;
   queueRef.current = queue;
 
@@ -73,24 +77,32 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     const next = adjacentEpisode(queueRef.current, episodeRef.current?.id ?? null, direction);
     if (!next) return;
     setEpisode(next);
+    setBuffered(0);
     setError("");
   }, []);
 
   useEffect(() => {
     const node = new Audio();
-    node.preload = "metadata";
+    node.preload = "auto";
     audio.current = node;
     const onTime = () => {
       setCurrent(node.currentTime);
-      if (episodeRef.current && node.currentTime > 1) remember(episodeRef.current.id, node.currentTime);
       const end = node.buffered.length ? node.buffered.end(node.buffered.length - 1) : 0;
       setBuffered(end);
     };
     const onMeta = () => setDuration(Number.isFinite(node.duration) ? node.duration : 0);
     const onPlay = () => setPlaying(true);
-    const onPause = () => setPlaying(false);
-    const onError = () => { if (node.getAttribute("src")) setError("Звукът не може да се пусне."); };
-    const onEnded = () => step(1);
+    const onPlaying = () => { setPlaying(true); setWaiting(false); };
+    const onWaiting = () => setWaiting(true);
+    const onSeeked = () => { onTime(); setWaiting(!node.paused && node.readyState < 3); };
+    const onPause = () => { setPlaying(false); setWaiting(false); };
+    const onError = () => { setWaiting(false); setPlaying(false); if (node.getAttribute("src")) setError("Звукът не може да се пусне."); };
+    const onEnded = () => { setPlaying(false); setWaiting(false); step(1); };
+    node.addEventListener("playing", onPlaying);
+    node.addEventListener("waiting", onWaiting);
+    node.addEventListener("seeking", onWaiting);
+    node.addEventListener("seeked", onSeeked);
+    node.addEventListener("progress", onTime);
     node.addEventListener("timeupdate", onTime);
     node.addEventListener("durationchange", onMeta);
     node.addEventListener("play", onPlay);
@@ -98,8 +110,20 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     node.addEventListener("error", onError);
     node.addEventListener("ended", onEnded);
     return () => {
+      node.removeEventListener("playing", onPlaying);
+      node.removeEventListener("waiting", onWaiting);
+      node.removeEventListener("seeking", onWaiting);
+      node.removeEventListener("seeked", onSeeked);
+      node.removeEventListener("progress", onTime);
+      node.removeEventListener("timeupdate", onTime);
+      node.removeEventListener("durationchange", onMeta);
+      node.removeEventListener("play", onPlay);
+      node.removeEventListener("pause", onPause);
+      node.removeEventListener("error", onError);
+      node.removeEventListener("ended", onEnded);
       node.pause();
       node.src = "";
+      audio.current = null;
     };
   }, [step]);
 
@@ -107,16 +131,16 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     const node = audio.current;
     if (!node || !episode) return;
     let dropped = false;
-    const resume = storedTime(episode.id);
     setError("");
-    setCurrent(resume);
+    setCurrent(0);
+    setWaiting(true);
     setDuration(episode.durationSec);
     const onReady = () => {
       if (dropped) return;
-      node.currentTime = resume;
-      void node.play().catch(() => setPlaying(false));
+      node.currentTime = 0;
+      void node.play().catch(() => { if (!dropped) { setWaiting(false); setPlaying(false); setError("Натиснете Слушай, за да започне звукът."); } });
     };
-    node.addEventListener("loadedmetadata", onReady);
+    node.addEventListener("loadedmetadata", onReady, { once: true });
     node.src = episode.audioUrl;
     node.load();
     return () => {
@@ -135,9 +159,9 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!sleepMin) return;
-    const timer = window.setTimeout(() => audio.current?.pause(), sleepMin * 60_000);
+    const timer = window.setTimeout(() => { audio.current?.pause(); setSleepMin(null); }, sleepMin * 60_000);
     return () => window.clearTimeout(timer);
-  }, [sleepMin, episode]);
+  }, [sleepMin]);
 
   useEffect(() => {
     if (!episode || !("mediaSession" in navigator)) return;
@@ -152,19 +176,21 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       ["pause", () => audio.current?.pause()],
       ["seekbackward", () => { if (audio.current) audio.current.currentTime = Math.max(0, audio.current.currentTime - 15); }],
       ["seekforward", () => { if (audio.current) audio.current.currentTime = Math.min(audio.current.duration || episode.durationSec, audio.current.currentTime + 15); }],
+      ["seekto", (details) => { if (audio.current && details.seekTime !== undefined) audio.current.currentTime = clampPlaybackTime(details.seekTime, audio.current.duration); }],
       ["previoustrack", () => step(-1)],
       ["nexttrack", () => step(1)],
     ];
     for (const [name, handler] of pairs) {
       try { navigator.mediaSession.setActionHandler(name, handler); } catch { /* unsupported action */ }
     }
+    return () => { for (const [name] of pairs) { try { navigator.mediaSession.setActionHandler(name, null); } catch { /* unsupported action */ } } };
   }, [episode, step]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (!episodeRef.current || !audio.current) return;
-      if (target && (target.closest("input, textarea, select, [contenteditable='true']") || target.closest("button") && event.key === " ")) return;
+      if (target?.closest("input, textarea, select, button, a, [contenteditable='true']")) return;
       const inside = !!target?.closest("[data-podcast-player]");
       if (!inside && !playing) return;
       if (event.key === " " || event.key === "k") { event.preventDefault(); if (audio.current.paused) void audio.current.play(); else audio.current.pause(); }
@@ -177,17 +203,24 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
   }, [playing]);
 
   const value = useMemo<PlayerValue>(() => ({
-    episode, queue, playing, current, duration: duration || episode?.durationSec || 0, buffered, volume, muted, rate, sleepMin, error,
-    play: (next, list) => { setQueue(list); setEpisode(next); setError(""); },
-    toggle: () => { const node = audio.current; if (!node) return; if (node.paused) void node.play(); else node.pause(); },
-    seek: (seconds) => { if (audio.current) audio.current.currentTime = seconds; },
-    skip: (delta) => { const node = audio.current; if (node) node.currentTime = Math.max(0, Math.min(node.duration || 0, node.currentTime + delta)); },
+    episode, queue, playing, current, duration: duration || episode?.durationSec || 0, buffered, volume, muted, rate, sleepMin, error, waiting,
+    play: (next, list) => {
+        setQueue(list);
+      if (episodeRef.current?.id === next.id) {
+        if (audio.current?.paused) startAudio(); else audio.current?.pause();
+        return;
+      }
+      setBuffered(0); setPlaying(false); setEpisode(next); setError("");
+    },
+    toggle: () => { const node = audio.current; if (!node) return; if (node.paused) startAudio(); else node.pause(); },
+    seek: (seconds) => { const node = audio.current; if (node && node.readyState > 0) { const target = clampPlaybackTime(seconds, node.duration); setCurrent(target); node.currentTime = target; } },
+    skip: (delta) => { const node = audio.current; if (node && node.readyState > 0) node.currentTime = clampPlaybackTime(node.currentTime + delta, node.duration); },
     step,
     setVolume: setVolumeState,
     setMuted: setMutedState,
     setRate: setRateState,
     setSleep: setSleepMin,
-  }), [episode, queue, playing, current, duration, buffered, volume, muted, rate, sleepMin, error, step]);
+  }), [episode, queue, playing, current, duration, buffered, volume, muted, rate, sleepMin, error, waiting, step, startAudio]);
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }
@@ -196,75 +229,90 @@ export function clock(seconds: number) {
   return playbackClock(seconds);
 }
 
-export function PodcastPlayer({ compact = false }: { compact?: boolean }) {
+export function PodcastPlayer({ compact = false, theater = false, suggested = null, episodes = [] }: { compact?: boolean; theater?: boolean; suggested?: PublicEpisode | null; episodes?: PublicEpisode[] }) {
   const player = usePodcastPlayer();
-  const span = player.duration || 1;
-  const played = Math.min(100, (player.current / span) * 100);
-  const ahead = Math.min(100, (player.buffered / span) * 100);
-  const episode = player.episode;
+  const episode = displayedEpisode(player.episode, suggested);
+  const loaded = !!player.episode;
+  const duration = loaded ? player.duration : episode?.durationSec ?? 0;
+  const current = loaded ? clampPlaybackTime(player.current, duration) : 0;
+  const played = duration ? current / duration * 100 : 0;
+  const buffered = loaded && duration ? Math.min(100, player.buffered / duration * 100) : 0;
+  const [copied, setCopied] = useState("");
+  const toolsId = useId();
+  const [tools, setTools] = useState(false);
+  const queue = loaded ? player.queue : episodes;
+  const canPrevious = !!adjacentEpisode(queue, episode?.id ?? null, -1);
+  const canNext = !!adjacentEpisode(queue, episode?.id ?? null, 1);
+  useEffect(() => setCopied(""), [episode?.id]);
 
-  function seekAt(event: PointerEvent<HTMLDivElement>) {
-    const rect = event.currentTarget.getBoundingClientRect();
-    player.seek(seekRatio(event.clientX - rect.left, rect.width) * player.duration);
+  async function copyLink() {
+    if (!episode) return;
+    try { await navigator.clipboard.writeText(new URL(episode.path, window.location.origin).href); setCopied("Линкът е копиран."); }
+    catch { setCopied("Линкът не беше копиран. Опитайте отново."); }
+  }
+  function start() {
+    if (!episode) return;
+    if (loaded) player.toggle(); else player.play(episode, episodes);
+  }
+  function step(direction: 1 | -1) {
+    if (loaded) player.step(direction);
+    else { const next = adjacentEpisode(episodes, episode?.id ?? null, direction); if (next) player.play(next, episodes); }
   }
 
+  if (!episode) return null;
+  if (theater) return (
+    <section data-podcast-player data-playing={player.playing} className="np-podcast-player np-podcast-player--theater" aria-label="Плеър за NewsPodcast">
+      <div className="np-podcast-artwork"><PodcastCover src={episode.coverUrl} /></div>
+      <button className="np-podcast-play" onClick={start} aria-label={player.playing ? "Пауза" : "Слушай"}><AudioIcon name={player.playing ? "pause" : "play"} /></button>
+      <div className="np-podcast-theater-timeline">
+        <PodcastTimeline current={current} duration={duration} buffered={buffered} playing={player.playing && !player.waiting} waiting={player.waiting} disabled={!loaded || !duration} onSeek={player.seek} />
+      </div>
+      <div className="np-podcast-theater-controls">
+        <label className="np-podcast-rate"><span className="sr-only">Скорост</span><select value={player.rate} aria-label="Скорост на възпроизвеждане" onChange={(event) => player.setRate(Number(event.target.value))}>{RATES.map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</select></label>
+        <button className="np-podcast-control np-podcast-skip" onClick={() => player.skip(-15)} disabled={!loaded} aria-label="15 секунди назад"><AudioIcon name="back" /><span>15</span></button>
+        <button className="np-podcast-control np-podcast-skip" onClick={() => player.skip(15)} disabled={!loaded} aria-label="15 секунди напред"><AudioIcon name="forward" /><span>15</span></button>
+        <button className="np-podcast-tool" aria-label={player.muted ? "Включи звука" : "Изключи звука"} onClick={() => player.setMuted(!player.muted)}><AudioIcon name={player.muted ? "muted" : "volume"} /></button>
+        <button className="np-podcast-tool" aria-expanded={tools} aria-controls={toolsId} onClick={() => setTools(!tools)}><AudioIcon name="timer" /><span className="sr-only">Таймер</span></button>
+      </div>
+      <div id={toolsId} className="np-podcast-extra" hidden={!tools}>
+        <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
+        <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
+      </div>
+      {player.error && <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>}
+    </section>
+  );
   return (
-    <section data-podcast-player className={`np-card overflow-hidden ${compact ? "p-4" : "p-5 sm:p-6"}`} aria-label="Плейър за NewsPodcast">
-      {episode ? (
-        <div className={`flex gap-4 ${compact ? "flex-col" : "flex-col sm:flex-row sm:items-center"}`}>
-          <img src={episode.coverUrl} alt="" className={`${compact ? "h-36 w-full" : "size-28 sm:size-36"} shrink-0 rounded-2xl object-cover`} />
-          <div className="min-w-0 flex-1">
-            {episode.categoryName ? <p className="text-xs font-bold tracking-wide text-logo uppercase">{episode.categoryName}</p> : null}
-            <h2 className={`${compact ? "text-lg" : "text-xl sm:text-2xl"} mt-1 font-extrabold tracking-tight text-ink`}>{episode.title}</h2>
-            <p className="mt-1 line-clamp-2 text-sm text-muted">{episode.summary}</p>
-          </div>
-        </div>
-      ) : <p className="text-sm font-semibold text-muted">Изберете епизод, за да започне слушането.</p>}
-
-      <div className="mt-2">
-        <div className="flex min-h-11 cursor-pointer items-center" onPointerDown={episode ? seekAt : undefined} role="slider" aria-label="Позиция в епизода" aria-valuemin={0} aria-valuemax={Math.floor(player.duration)} aria-valuenow={Math.floor(player.current)} tabIndex={0}>
-          <div className="relative h-2 w-full rounded-full bg-line">
-            <span className="absolute inset-y-0 left-0 rounded-full bg-surface-2" style={{ width: `${ahead}%` }} />
-            <span className="np-gradient-bg absolute inset-y-0 left-0 rounded-full" style={{ width: `${played}%` }} />
-          </div>
-        </div>
-        <div className="-mt-2 flex justify-between text-xs font-semibold text-muted tabular-nums">
-          <span>{clock(player.current)}</span>
-          <span>-{clock(Math.max(0, player.duration - player.current))}</span>
-        </div>
+    <section data-podcast-player data-playing={player.playing} className={`np-podcast-player ${compact ? "np-podcast-player--compact" : ""} ${theater ? "np-podcast-player--theater" : ""}`} aria-label="Плеър за NewsPodcast">
+      <div className="np-podcast-artwork">
+        <PodcastCover src={episode.coverUrl} />
+        {!compact && !theater && <div className="np-podcast-artwork-label"><span>NewsPodcast</span><span>{clock(episode.durationSec)}</span></div>}
       </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line text-sm font-bold text-ink" onClick={() => player.step(-1)} aria-label="Предишен епизод">‹‹</button>
-        <button type="button" className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm font-bold text-ink" onClick={() => player.skip(-15)} aria-label="15 секунди назад">−15</button>
-        <button type="button" className="np-gradient-bg inline-flex h-12 min-w-24 items-center justify-center rounded-full px-5 text-sm font-extrabold text-white" onClick={player.toggle} disabled={!episode}>{player.playing ? "Пауза" : "Слушай"}</button>
-        <button type="button" className="inline-flex min-h-11 items-center rounded-full border border-line px-3 text-sm font-bold text-ink" onClick={() => player.skip(15)} aria-label="15 секунди напред">+15</button>
-        <button type="button" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line text-sm font-bold text-ink" onClick={() => player.step(1)} aria-label="Следващ епизод">››</button>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
-        <label className="inline-flex items-center gap-2 font-semibold text-muted">Сила
-          <input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} aria-label="Сила на звука" onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} />
-        </label>
-        <button type="button" className="min-h-11 font-bold text-ink" onClick={() => player.setMuted(!player.muted)}>{player.muted ? "Звук" : "Тих"}</button>
-        <label className="inline-flex items-center gap-2 font-semibold text-muted">Скорост
-          <select value={player.rate} aria-label="Скорост на възпроизвеждане" className="h-11 rounded-full border border-line bg-surface px-3 font-bold text-ink" onChange={(event) => player.setRate(Number(event.target.value))}>
-            {RATES.map((item) => <option key={item} value={item}>{item}×</option>)}
-          </select>
-        </label>
-        <label className="inline-flex items-center gap-2 font-semibold text-muted">Сън
-          <select value={player.sleepMin ?? ""} aria-label="Таймер за заспиване" className="h-11 rounded-full border border-line bg-surface px-3 font-bold text-ink" onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>
-            {SLEEP.map((item) => <option key={item ?? "off"} value={item ?? ""}>{item ? `${item} мин` : "Изкл."}</option>)}
-          </select>
-        </label>
-      </div>
-      {episode ? (
-        <div className="mt-3 flex flex-wrap gap-3 text-sm font-bold">
-          <a className="text-link" href={`${episode.audioUrl}?download=1`}>Свали MP3</a>
-          <button type="button" className="text-link" onClick={() => void navigator.clipboard.writeText(new URL(episode.path, window.location.origin).href)}>Копирай линка</button>
+      <div className="np-podcast-player-content">
+        <div className="np-podcast-eyebrow"><span className="np-podcast-dot" />{loaded ? player.playing ? "Слушате" : "Пауза" : "Готов за слушане"}</div>
+        <p className="np-podcast-category">{episode.categoryName ?? "NewsPodcast"}</p>
+        <h2>{episode.title}</h2>
+        <p className="np-podcast-player-summary">{episode.summary}</p>
+        <PodcastTimeline current={current} duration={duration} buffered={buffered} playing={player.playing && !player.waiting} waiting={player.waiting} disabled={!loaded || !duration} onSeek={player.seek} />
+        <div className="np-podcast-transport">
+          <button className="np-podcast-control" onClick={() => step(-1)} disabled={!canPrevious} aria-label="Предишен епизод"><AudioIcon name="previous" /></button>
+          <button className="np-podcast-control np-podcast-skip" onClick={() => player.skip(-15)} disabled={!loaded} aria-label="15 секунди назад"><AudioIcon name="back" /><span>15</span></button>
+          <button className="np-podcast-play" onClick={start} aria-label={player.playing ? "Пауза" : "Слушай"}><AudioIcon name={player.playing ? "pause" : "play"} /></button>
+          <button className="np-podcast-control np-podcast-skip" onClick={() => player.skip(15)} disabled={!loaded} aria-label="15 секунди напред"><AudioIcon name="forward" /><span>15</span></button>
+          <button className="np-podcast-control" onClick={() => step(1)} disabled={!canNext} aria-label="Следващ епизод"><AudioIcon name="next" /></button>
         </div>
-      ) : null}
-      {player.error ? <p role="alert" className="mt-2 text-sm font-semibold text-ink">{player.error}</p> : null}
+        <div className="np-podcast-tools">
+          <button className="np-podcast-tool" aria-label={player.muted ? "Включи звука" : "Изключи звука"} onClick={() => player.setMuted(!player.muted)}><AudioIcon name={player.muted ? "muted" : "volume"} /></button>
+          <label className="np-podcast-rate"><span>Скорост</span><select value={player.rate} aria-label="Скорост на възпроизвеждане" onChange={(event) => player.setRate(Number(event.target.value))}>{RATES.map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</select></label>
+          <button className="np-podcast-tool" aria-expanded={tools} aria-controls={toolsId} onClick={() => setTools(!tools)}><AudioIcon name="timer" /><span>{player.sleepMin ? `${player.sleepMin} мин` : "Настройки"}</span></button>
+        </div>
+        <div id={toolsId} className="np-podcast-extra" hidden={!tools}>
+          <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
+          <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
+        </div>
+        <div className="np-podcast-actions"><button onClick={() => void copyLink()}><AudioIcon name="link" />Копирай линка</button></div>
+        <p className="np-podcast-feedback" role="status">{copied}</p>
+        {player.error && <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>}
+      </div>
     </section>
   );
 }

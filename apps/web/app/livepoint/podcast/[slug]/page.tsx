@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { LivePointPage } from "@/components/livepoint/livepoint-page";
+import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
 import { publicEpisode, publicEpisodes } from "@/lib/podcasts";
 
@@ -20,8 +20,8 @@ export default async function PodcastEpisodePage({ params }: Props) {
   if (!episode) notFound();
   const ordered = [episode, ...episodes.filter((item) => item.id !== episode.id)];
   return (
-    <LivePointPage title={episode.title} lead={episode.summary} wide>
+    <PodcastPageShell title={episode.title} summary={episode.summary}>
       <PodcastShow episodes={ordered} activeSlug={episode.slug} />
-    </LivePointPage>
+    </PodcastPageShell>
   );
 }

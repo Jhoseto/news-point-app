@@ -10,7 +10,5 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!z.uuid().safeParse(id).success || !await podcastsReady()) return new Response("Not found", { status: 404 });
   const episode = await publishedPodcastAudio(id);
   if (!episode) return new Response("Not found", { status: 404 });
-  const download = new URL(request.url).searchParams.get("download") === "1";
-  const name = download ? `${episode.slug}.mp3` : null;
-  return podcastAudioResponse(episode.audioKey, request.headers.get("range"), name);
+  return podcastAudioResponse(episode.audioKey, request.headers.get("range"), null);
 }

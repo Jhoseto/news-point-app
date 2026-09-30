@@ -20,3 +20,20 @@ export function seekRatio(offsetX: number, width: number): number {
   if (!Number.isFinite(offsetX) || !Number.isFinite(width) || width <= 0) return 0;
   return Math.min(1, Math.max(0, offsetX / width));
 }
+
+/** Display a suggestion without loading audio; an existing listening session wins. */
+export function displayedEpisode<T>(current: T | null, suggested: T | null): T | null {
+  return current ?? suggested;
+}
+
+export function clampPlaybackTime(seconds: number, duration: number): number {
+  if (!Number.isFinite(seconds) || !Number.isFinite(duration) || duration <= 0) return 0;
+  return Math.max(0, Math.min(seconds, duration));
+}
+
+export function podcastPanelPlace(viewport: number, buttonLeft: number, buttonWidth: number) {
+  const width = Math.min(880, Math.max(0, viewport - 24));
+  const left = Math.max(12, Math.min(buttonLeft, viewport - width - 12));
+  const arrow = Math.max(18, Math.min(width - 18, buttonLeft + buttonWidth / 2 - left));
+  return { width, left, arrow };
+}

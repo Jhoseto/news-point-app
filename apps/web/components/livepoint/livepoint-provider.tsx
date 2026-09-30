@@ -22,6 +22,8 @@ import { MyNewsPanel } from "./my-news-panel";
 import { ReportPanel } from "./report-panel";
 import { TrafficPanel } from "./traffic-panel";
 import { PodcastPanel } from "../podcast/show";
+import { PodcastOrbit } from "../podcast/visuals";
+import { podcastPanelPlace } from "@/lib/podcast-playback";
 import { WeatherPanel } from "./weather-panel";
 
 export type LivePointData = {
@@ -54,7 +56,7 @@ const PANEL_MAX: Record<LivePointModule, number> = {
   cameras: 672,
   report: 896,
   "my-news": 896,
-  podcast: 768,
+  podcast: 880,
 };
 
 type PanelPlace = { top: number; left: number; width: number; arrow: number };
@@ -63,6 +65,7 @@ function placePanel(module: LivePointModule): PanelPlace | null {
   const button = document.querySelector<HTMLElement>(`[data-lp-module="${module}"]`);
   if (!button) return null;
   const rect = button.getBoundingClientRect();
+  if (module === "podcast") return { top: rect.bottom + 10, ...podcastPanelPlace(window.innerWidth, rect.left, rect.width) };
   const margin = 12;
   const left = rect.left;
   const width = Math.min(PANEL_MAX[module], Math.max(160, window.innerWidth - left - margin));
@@ -84,7 +87,7 @@ const PANEL_SUBTITLES: Record<LivePointModule, string> = {
   cameras: "Пловдив и регион",
   report: "Сигнал до редакцията",
   "my-news": "Материал за редакцията",
-  podcast: "Слушайте епизодите",
+  podcast: "Гласът на истината",
 };
 
 function writeQuery(module: LivePointModule | null, mode: "push" | "replace" = "replace") {
@@ -214,7 +217,7 @@ export function LivePointProvider({
       const first = items[0];
       const last = items.at(-1);
       if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
+      if (event.shiftKey && (document.activeElement === first || active === "podcast" && document.activeElement?.hasAttribute("data-autofocus"))) {
         event.preventDefault();
         last.focus();
       } else if (!event.shiftKey && document.activeElement === last) {
@@ -253,7 +256,7 @@ export function LivePointProvider({
                 onClick={close}
               />
               <div
-                className="np-lp-pop pointer-events-auto"
+                className={`np-lp-pop pointer-events-auto ${active === "podcast" ? "np-podcast-pop" : ""}`}
                 style={place ? { top: place.top, left: place.left, width: place.width, transformOrigin: `${place.arrow}px 0` } : { top: "var(--np-header-h)", left: 12, right: 12, width: "auto" }}
               >
               <span className="np-lp-pop-arrow" style={place ? { left: place.arrow } : undefined} aria-hidden="true" />
@@ -262,7 +265,7 @@ export function LivePointProvider({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
+                className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "podcast" ? "np-podcast-panel" : active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
                 style={{ maxHeight: place ? `calc(100dvh - ${place.top + 16}px)` : "min(78dvh, 44rem)" }}
               >
                 <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
@@ -272,7 +275,7 @@ export function LivePointProvider({
                     tabIndex={-1}
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink outline-none"
                   >
-                    <span className="np-ring" aria-hidden="true" />
+                    {active === "podcast" ? <PodcastOrbit className="np-podcast-mark" /> : <span className="np-ring" aria-hidden="true" />}
                     {MODULE_LABELS[active]}
                   </h2>
                   <span className="hidden text-xs font-semibold text-muted sm:inline">{PANEL_SUBTITLES[active]}</span>
@@ -281,12 +284,12 @@ export function LivePointProvider({
                     type="button"
                     aria-label="Затвори"
                     onClick={close}
-                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"
+                    className={`inline-flex ${active === "podcast" ? "size-11" : "size-10"} shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink`}
                   >
                     <CloseIcon width={18} height={18} />
                   </button>
                 </div>
-                <div data-lp-panel-body className={`${active === "traffic" ? "min-h-0 flex-1 overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-3" : "np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"}`}>
+                <div data-lp-panel-body className={`${active === "podcast" ? "np-podcast-panel-body min-h-0 flex-1" : active === "traffic" ? "min-h-0 flex-1 overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-3" : "np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"}`}>
                   {active === "weather" ? <WeatherPanel initial={weather} /> : null}
                   {active === "traffic" ? <TrafficPanel connected={trafficConnected} /> : null}
                   {active === "cameras" ? <CamerasPanel variant="panel" /> : null}
