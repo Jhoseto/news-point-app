@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
+import { PodcastProvider } from "@/components/podcast/player";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
 import { SpotlightField } from "@/components/spotlight-field";
@@ -54,6 +55,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           Към съдържанието
         </a>
+        <PodcastProvider>
         <LivePointProvider
           weather={weather}
           trafficConnected={isTomTomConfigured()}
@@ -64,6 +66,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <SiteBody>{children}</SiteBody>
           <BottomNav />
         </LivePointProvider>
+        </PodcastProvider>
         <LiveUpdates />
         <SpotlightField />
       </body>

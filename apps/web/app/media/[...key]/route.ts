@@ -15,7 +15,8 @@ const TYPES: Record<string, string> = {
 export async function GET(_request: Request, context: { params: Promise<{ key: string[] }> }) {
   const { key } = await context.params;
   const storageKey = key.join("/").replace(/\/+$/, "");
-  if (!storageKey.startsWith("news/")) return new Response("Not found", { status: 404 });
+  const cover = storageKey.startsWith("podcasts/") && storageKey.endsWith(".webp");
+  if (!storageKey.startsWith("news/") && !cover) return new Response("Not found", { status: 404 });
   const bytes = await readMediaFile(storageKey);
   if (!bytes) return new Response("Not found", { status: 404 });
   const extension = storageKey.split(".").pop()?.toLowerCase() ?? "";

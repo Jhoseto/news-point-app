@@ -13,6 +13,7 @@ const NAV = [
   { href: "/polls", label: "Анкети", icon: "M5 20V10M12 20V4M19 20v-7" },
   { href: "/submissions", label: "Сигнали", icon: "M4 5h16v11H8l-4 4V5z" },
   { href: "/arrange", label: "Подреждане", icon: "M12 17v5M8 8a4 4 0 1 1 8 0c0 2-2 3-2 5H10c0-2-2-3-2-5" },
+  { href: "/podcasts", label: "Подкасти", icon: "M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 
@@ -115,8 +116,8 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       </aside>
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
-        <BrandLogoImg className="h-7 w-auto max-w-[7rem] object-contain" />
-        <nav className="ml-auto flex items-center gap-1" aria-label="Studio">
+        <BrandLogoImg className="h-7 w-auto max-w-[6.5rem] shrink-0 object-contain" />
+        <nav className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
           {mobileNav.map((item) => (
             <Link
               key={item.href}

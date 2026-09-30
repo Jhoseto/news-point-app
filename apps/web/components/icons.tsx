@@ -267,6 +267,13 @@ export const EyeIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const HeadphonesIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M4 13a8 8 0 0 1 16 0" />
+    <path d="M4 13v5a2 2 0 0 0 2 2h1v-7H6a2 2 0 0 0-2 2zM20 13v5a2 2 0 0 1-2 2h-1v-7h1a2 2 0 0 1 2 2z" />
+  </Icon>
+);
+
 export const LinkIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />

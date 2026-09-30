@@ -21,6 +21,7 @@ import { CamerasPanel } from "./cameras-panel";
 import { MyNewsPanel } from "./my-news-panel";
 import { ReportPanel } from "./report-panel";
 import { TrafficPanel } from "./traffic-panel";
+import { PodcastPanel } from "../podcast/show";
 import { WeatherPanel } from "./weather-panel";
 
 export type LivePointData = {
@@ -47,13 +48,26 @@ export function useLivePoint(): LivePointContextValue {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-const PANEL_WIDTH: Record<LivePointModule, string> = {
-  weather: "max-w-3xl",
-  traffic: "max-w-[76rem]",
-  cameras: "max-w-2xl",
-  report: "max-w-4xl",
-  "my-news": "max-w-4xl",
+const PANEL_MAX: Record<LivePointModule, number> = {
+  weather: 768,
+  traffic: 1216,
+  cameras: 672,
+  report: 896,
+  "my-news": 896,
+  podcast: 768,
 };
+
+type PanelPlace = { top: number; left: number; width: number; arrow: number };
+
+function placePanel(module: LivePointModule): PanelPlace | null {
+  const button = document.querySelector<HTMLElement>(`[data-lp-module="${module}"]`);
+  if (!button) return null;
+  const rect = button.getBoundingClientRect();
+  const margin = 12;
+  const left = rect.left;
+  const width = Math.min(PANEL_MAX[module], Math.max(160, window.innerWidth - left - margin));
+  return { top: rect.bottom + 10, left, width, arrow: Math.min(width - 18, Math.max(18, rect.width / 2)) };
+}
 
 const DETAIL_LABELS: Record<LivePointModule, string> = {
   weather: "Подробности за времето",
@@ -61,6 +75,7 @@ const DETAIL_LABELS: Record<LivePointModule, string> = {
   cameras: "Всички камери",
   report: "Страница за подаване на сигнал",
   "my-news": "Страница за моята новина",
+  podcast: "Всички епизоди",
 };
 
 const PANEL_SUBTITLES: Record<LivePointModule, string> = {
@@ -69,6 +84,7 @@ const PANEL_SUBTITLES: Record<LivePointModule, string> = {
   cameras: "Пловдив и регион",
   report: "Сигнал до редакцията",
   "my-news": "Материал за редакцията",
+  podcast: "Слушайте епизодите",
 };
 
 function writeQuery(module: LivePointModule | null, mode: "push" | "replace" = "replace") {
@@ -114,6 +130,7 @@ export function LivePointProvider({
   const pathname = usePathname();
   const titleId = useId();
   const [active, setActive] = useState<LivePointModule | null>(null);
+  const [place, setPlace] = useState<PanelPlace | null>(null);
   const [dirty, setDirty] = useState(false);
   const [mounted, setMounted] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
@@ -176,6 +193,14 @@ export function LivePointProvider({
 
   useEffect(() => {
     if (!active) return;
+    const measure = () => setPlace(placePanel(active));
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [active]);
+
+  useEffect(() => {
+    if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       // The native location dialog is in the top layer and owns focus/Escape while open.
       if (event.target instanceof Element && event.target.closest("[data-report-location-dialog]")) return;
@@ -219,20 +244,26 @@ export function LivePointProvider({
       {children}
       {active && mounted
         ? createPortal(
-            <div className="np-lp-layer fixed inset-x-0 top-[var(--np-header-h)] bottom-0 z-50 overflow-x-hidden overflow-y-auto overscroll-contain px-2.5 pt-3 pb-6 sm:px-5 lg:pl-[calc(var(--np-rail-w)+1.5rem)] lg:pr-6">
+            <div className="np-lp-layer pointer-events-none fixed inset-0 z-50">
               <button
                 type="button"
                 aria-label="Затвори LivePoint"
                 tabIndex={-1}
-                className="np-lp-scrim fixed inset-x-0 top-[var(--np-header-h)] bottom-0 cursor-default lg:left-[var(--np-rail-w)]"
+                className="np-lp-scrim pointer-events-auto fixed inset-x-0 top-[var(--np-header-h)] bottom-0 cursor-default backdrop-blur-md lg:left-[var(--np-rail-w)]"
                 onClick={close}
               />
+              <div
+                className="np-lp-pop pointer-events-auto"
+                style={place ? { top: place.top, left: place.left, width: place.width, transformOrigin: `${place.arrow}px 0` } : { top: "var(--np-header-h)", left: 12, right: 12, width: "auto" }}
+              >
+              <span className="np-lp-pop-arrow" style={place ? { left: place.arrow } : undefined} aria-hidden="true" />
               <div
                 ref={panel}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className={`np-lp-panel np-card relative mx-auto mb-auto flex w-full min-w-0 flex-col overflow-hidden ${active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel max-h-[calc(100dvh-var(--np-header-h)-1.5rem)]" : "max-h-[calc(100dvh-var(--np-header-h)-1.5rem)] lg:max-h-[min(78dvh,44rem)]"} ${PANEL_WIDTH[active]}`}
+                className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
+                style={{ maxHeight: place ? `calc(100dvh - ${place.top + 16}px)` : "min(78dvh, 44rem)" }}
               >
                 <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
                   <h2
@@ -261,6 +292,7 @@ export function LivePointProvider({
                   {active === "cameras" ? <CamerasPanel variant="panel" /> : null}
                   {active === "report" ? <ReportPanel onDirtyChange={setDirty} /> : null}
                   {active === "my-news" ? <MyNewsPanel onDirtyChange={setDirty} /> : null}
+                  {active === "podcast" ? <PodcastPanel /> : null}
                 </div>
                 {active !== "traffic" && <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
                   <Link
@@ -275,6 +307,7 @@ export function LivePointProvider({
                     {DETAIL_LABELS[active]} <span aria-hidden="true">→</span>
                   </Link>
                 </div>}
+              </div>
               </div>
             </div>,
             document.body,

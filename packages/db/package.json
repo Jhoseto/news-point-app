@@ -8,7 +8,8 @@
     "./node": "./src/node.ts",
     "./orm": "./src/orm.ts",
     "./polls": "./src/polls.ts",
-    "./poll-types": "./src/poll-types.ts"
+    "./poll-types": "./src/poll-types.ts",
+    "./podcasts": "./src/podcasts.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

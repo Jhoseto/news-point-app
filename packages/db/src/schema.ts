@@ -334,8 +334,32 @@ export const pageArrangements = pgTable(
   (table) => [index("page_arrangements_page_idx").on(table.pageKey, table.createdAt.desc())],
 );
 
+export const podcastStatuses = ["draft", "published"] as const;
+
+/** One NewsPodcast episode. Drafts stay off the public site. */
+export const podcasts = pgTable(
+  "podcasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    summary: text("summary").notNull(),
+    coverKey: text("cover_key").notNull(),
+    audioKey: text("audio_key").notNull(),
+    durationSec: integer("duration_sec").notNull(),
+    bytes: integer("bytes").notNull(),
+    categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
+    status: text("status", { enum: podcastStatuses }).notNull().default("draft"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [unique("podcasts_slug_key").on(table.slug), index("podcasts_public_idx").on(table.publishedAt.desc())],
+);
+
 export const schemaTables = {
   polls, pollVotes, pollRevisions,
+  podcasts,
   categories,
   mediaAssets,
   mediaPresentations,

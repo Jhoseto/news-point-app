@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process";
+import type { Readable } from "node:stream";
 
 export type RemoteDisk = {
   target: string;
@@ -87,6 +88,38 @@ export async function readRemoteFile(disk: RemoteDisk, storageKey: string, prefi
   } catch {
     return null;
   }
+}
+
+export async function remoteFileSize(disk: RemoteDisk, storageKey: string, prefixes: readonly string[]): Promise<number | null> {
+  const file = remoteObjectPath(disk.root, storageKey, prefixes);
+  if (!file) return null;
+  try {
+    const result = await runSsh(disk, `stat -c %s '${file}'`);
+    if (result.code !== 0) return null;
+    const size = Number(result.stdout.toString("utf8").trim());
+    return Number.isInteger(size) && size >= 0 ? size : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Byte slice of a remote file. The caller must destroy the stream. */
+export function openRemoteRange(disk: RemoteDisk, storageKey: string, prefixes: readonly string[], start: number, length: number): Readable {
+  const file = remoteObjectPath(disk.root, storageKey, prefixes);
+  if (!file || !Number.isInteger(start) || !Number.isInteger(length) || start < 0 || length <= 0 || length > 90_000_000) {
+    throw new Error("storage unavailable");
+  }
+  const child = spawn(
+    "ssh",
+    ["-i", disk.key, "-p", disk.port, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", disk.target,
+      `dd if='${file}' iflag=skip_bytes,count_bytes skip=${start} count=${length} status=none`],
+    { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] },
+  );
+  if (!child.stdout) throw new Error("storage unavailable");
+  const timer = setTimeout(() => child.kill(), 60_000);
+  child.on("close", () => clearTimeout(timer));
+  child.on("error", () => clearTimeout(timer));
+  return child.stdout;
 }
 
 export async function removeRemoteFile(disk: RemoteDisk, storageKey: string, prefixes: readonly string[]): Promise<void> {

@@ -10,7 +10,7 @@ export const PLOVDIV = {
 /** TomTom Incident Details bbox around Plovdiv (lon,lat pairs). */
 export const PLOVDIV_TRAFFIC_BBOX = "24.60,42.05,24.90,42.22";
 
-export const LIVEPOINT_MODULES = ["weather", "traffic", "cameras", "report", "my-news"] as const;
+export const LIVEPOINT_MODULES = ["podcast", "weather", "traffic", "cameras", "report", "my-news"] as const;
 export type LivePointModule = (typeof LIVEPOINT_MODULES)[number];
 
 export function isLivePointModule(value: string | null | undefined): value is LivePointModule {
@@ -23,6 +23,7 @@ export const MODULE_PATHS: Record<LivePointModule, string> = {
   cameras: "/livepoint/cameras/",
   report: "/livepoint/report/",
   "my-news": "/livepoint/my-news/",
+  podcast: "/livepoint/podcast/",
 };
 
 export const MODULE_LABELS: Record<LivePointModule, string> = {
@@ -31,6 +32,7 @@ export const MODULE_LABELS: Record<LivePointModule, string> = {
   cameras: "Камери",
   report: "Подай сигнал",
   "my-news": "Моята новина",
+  podcast: "NewsPodcast",
 };
 
 /** Location forecast API requires a descriptive User-Agent (provider terms). */
