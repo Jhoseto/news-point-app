@@ -228,7 +228,7 @@ export function LatestNews24h({
                 onFocus={(event) => activate(article.id, event.currentTarget)}
                 className="-m-1.5 block rounded-lg p-1.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
               >
-                {article.hero ? <img src={article.hero.url} alt="" loading="lazy" className="np-latest-mobile-thumb" aria-hidden="true" /> : null}
+                {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-latest-mobile-thumb" /> : null}
                 <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors group-hover:text-logo">{article.title}</h3>
                 {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
               </Link>

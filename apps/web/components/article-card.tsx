@@ -9,6 +9,8 @@ import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from ".
 /**
  * Story with the title over the photo. "lead" is the top story; "tile" is the
  * smaller version for supporting stories and mosaic sections.
+ * Story links do not prefetch: a cached article is a full page, and the homepage
+ * has too many of them in view.
  */
 export function HeroCard({
   article,
@@ -48,6 +50,7 @@ export function HeroCard({
     >
       <Link
         href={article.path}
+        prefetch={false}
         className={`relative block h-full ${tile && fit === "natural" ? "min-h-[14rem] sm:min-h-[16rem] 2xl:min-h-0" : ""}`}
       >
         <div className={`${shine.className} ${fullBleedPhoto ? "absolute inset-0" : "relative"}`} style={shine.style}>
@@ -121,7 +124,7 @@ export function ArticleCard({
   return (
     <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative flex h-full w-full flex-col overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-x-8 top-0 z-10 h-px opacity-0 transition-opacity duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:opacity-100" aria-hidden="true" />
-      <Link href={article.path} tabIndex={tabbable ? undefined : -1} className="flex h-full flex-col">
+      <Link href={article.path} prefetch={false} tabIndex={tabbable ? undefined : -1} className="flex h-full flex-col">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
@@ -157,7 +160,7 @@ export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummar
   return (
     <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
       <span className="np-category-accent-line absolute inset-y-8 left-0 z-10 w-px opacity-70" aria-hidden="true" />
-      <Link href={article.path} className="grid h-full sm:grid-cols-[1.15fr_1fr]">
+      <Link href={article.path} prefetch={false} className="grid h-full sm:grid-cols-[1.15fr_1fr]">
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
@@ -189,7 +192,7 @@ export function CompactCard({ article, shineDelaySec }: { article: ArticleSummar
   const shine = cardShineStyle(shineDelaySec);
   return (
     <article className="group">
-      <Link href={article.path} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-surface-2">
+      <Link href={article.path} prefetch={false} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-surface-2">
         <div className={`${shine.className} shrink-0 rounded-lg`} style={shine.style}>
           <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 rounded-lg sm:w-28" />
         </div>
@@ -213,7 +216,7 @@ export function TimelineItem({ article, className = "" }: { article: ArticleSumm
         {formatClock(article.publishedAt)}
       </time>
       <span className="np-gradient-bg absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface" aria-hidden="true" />
-      <Link href={article.path} className="flex min-h-11 flex-col justify-center">
+      <Link href={article.path} prefetch={false} className="flex min-h-11 flex-col justify-center">
         <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
           {article.title}
         </h3>

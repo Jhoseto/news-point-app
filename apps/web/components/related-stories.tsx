@@ -16,7 +16,7 @@ export function RelatedStories({ articles }: { articles: ArticleSummary[] }) {
       </div>
       <RelatedStoriesControls>
         {articles.map((article, index) => (
-          <Link key={article.id} href={article.path} className="np-related-card">
+          <Link key={article.id} href={article.path} prefetch={false} className="np-related-card">
             <span className="np-related-card-media">
               {article.hero ? <ArticleImage media={article.hero} sizes="(min-width: 1024px) 300px, 76vw" className="np-related-card-image" /> : <span className="np-related-card-placeholder" aria-hidden="true" />}
               <span className="np-related-card-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>

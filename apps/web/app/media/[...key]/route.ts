@@ -1,4 +1,5 @@
 import { readMediaFile } from "@/lib/media-disk";
+import { mediaCacheControl } from "@/lib/media-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
   return new Response(new Uint8Array(bytes), {
     headers: {
       "content-type": TYPES[extension] ?? "application/octet-stream",
-      "cache-control": "public, max-age=86400",
+      "cache-control": mediaCacheControl(storageKey),
       "x-content-type-options": "nosniff",
     },
   });
