@@ -2,6 +2,7 @@ import { parseArgs } from "node:util";
 import { applyDueViewBoosts, createScriptDb, loadRootEnv, publishDueScheduled } from "@newspoint/db/node";
 import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
+import { processOneAiPodcastJob } from "./ai-podcast-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
 
@@ -57,6 +58,14 @@ async function runWorker() {
       .then((published) => { if (published > 0) log(`scheduled publish ${published}`); })
       .catch((error) => log(`scheduled publish failed: ${(error as Error).message}`));
   }, 15_000);
+  let aiBusy = false;
+  const aiTimer = setInterval(() => {
+    if (aiBusy) return;
+    aiBusy = true;
+    void processOneAiPodcastJob(db)
+      .catch((error) => log(`AI Studio queue failed: ${(error as Error).message}`))
+      .finally(() => { aiBusy = false; });
+  }, 5_000);
 
   async function tick() {
     try {
@@ -73,6 +82,7 @@ async function runWorker() {
     stopping = true;
     clearTimeout(timer);
     clearInterval(boostTimer);
+    clearInterval(aiTimer);
     await close();
   }
 

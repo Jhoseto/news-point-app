@@ -357,9 +357,72 @@ export const podcasts = pgTable(
   (table) => [unique("podcasts_slug_key").on(table.slug), index("podcasts_public_idx").on(table.publishedAt.desc())],
 );
 
+/** AI Studio keeps source and script snapshots independent of public episodes. */
+export const aiPodcastProjects = pgTable("ai_podcast_projects", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  settings: jsonb("settings").notNull(),
+  sources: jsonb("sources").notNull(),
+  segments: jsonb("segments").notNull().default(sql`'[]'::jsonb`),
+  title: text("title"),
+  summary: text("summary"),
+  warnings: jsonb("warnings").notNull().default(sql`'[]'::jsonb`),
+  status: text("status", { enum: ["new", "scripting", "review", "producing", "ready", "failed"] }).notNull().default("new"),
+  revision: integer("revision").notNull().default(1),
+  coverKey: text("cover_key"),
+  musicAssetId: uuid("music_asset_id"),
+  episodeId: uuid("episode_id").references(() => podcasts.id, { onDelete: "set null" }),
+  createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+
+export const aiPodcastAssets = pgTable("ai_podcast_assets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: text("kind", { enum: ["music", "cover"] }).notNull(),
+  preset: text("preset", { enum: ["daily", "evening", "breaking"] }),
+  status: text("status", { enum: ["candidate", "approved"] }).notNull().default("candidate"),
+  storageKey: text("storage_key").notNull(),
+  prompt: text("prompt").notNull(),
+  model: text("model").notNull(),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiPodcastJobs = pgTable("ai_podcast_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  projectId: uuid("project_id").references(() => aiPodcastProjects.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["script", "check", "produce", "segment", "music", "cover"] }).notNull(),
+  payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+  status: text("status", { enum: ["queued", "running", "succeeded", "failed", "cancelled"] }).notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  error: text("error"),
+  usage: jsonb("usage").notNull().default(sql`'{}'::jsonb`),
+  requestedBy: text("requested_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  ...timestamps,
+});
+
+export const aiPodcastAudit = pgTable("ai_podcast_audit", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  projectId: uuid("project_id").notNull().references(() => aiPodcastProjects.id, { onDelete: "cascade" }),
+  actorId: text("actor_id").references(() => staffUsers.id, { onDelete: "set null" }),
+  action: text("action").notNull(),
+  details: jsonb("details").notNull().default(sql`'{}'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const aiPodcastVoiceSettings = pgTable("ai_podcast_voice_settings", {
+  id: boolean("id").primaryKey().default(true),
+  alexVoice: text("alex_voice").notNull(),
+  mayaVoice: text("maya_voice").notNull(),
+  approvedBy: text("approved_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const schemaTables = {
   polls, pollVotes, pollRevisions,
   podcasts,
+  aiPodcastProjects, aiPodcastAssets, aiPodcastJobs, aiPodcastAudit, aiPodcastVoiceSettings,
   categories,
   mediaAssets,
   mediaPresentations,

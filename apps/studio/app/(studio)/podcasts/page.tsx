@@ -1,6 +1,7 @@
 import { PUBLIC_MENU } from "@newspoint/content";
 import { listPodcastCategories, listStudioPodcasts, podcastsReady } from "@newspoint/db/podcasts";
-import { PodcastDesk, type StudioEpisode } from "@/components/podcast-desk";
+import { type StudioEpisode } from "@/components/podcast-desk";
+import { PodcastWorkspace } from "@/components/podcast-workspace";
 import { requireStaff } from "@/lib/session";
 
 export const metadata = { title: "Подкасти" };
@@ -35,7 +36,7 @@ export default async function PodcastsPage() {
   return (
     <section>
       <h1 className="mb-4 text-xl font-extrabold text-ink">Подкасти</h1>
-      <PodcastDesk
+      <PodcastWorkspace
         initial={episodes}
         categories={menu.map((category) => ({ id: category.id, name: bySlug.get(category.slug) ?? category.name }))}
         webUrl={(process.env.WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "")}
