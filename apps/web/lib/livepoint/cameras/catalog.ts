@@ -232,11 +232,6 @@ export function getCamera(slug: string): CameraEntry | undefined {
   return CAMERA_CATALOG.find((camera) => camera.slug === slug);
 }
 
-export function camerasByCategory(category: CameraEntry["category"] | "all"): CameraEntry[] {
-  if (category === "all") return [...CAMERA_CATALOG];
-  return CAMERA_CATALOG.filter((camera) => camera.category === category);
-}
-
 export function hasVerifiedLiveCamera(): boolean {
   return CAMERA_CATALOG.some((camera) => camera.streamStatus === "verified");
 }

@@ -70,8 +70,10 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       node.load();
     } else void node.play().catch(() => setError("Звукът не може да се пусне. Опитайте отново."));
   }, []);
-  episodeRef.current = episode;
-  queueRef.current = queue;
+  useEffect(() => {
+    episodeRef.current = episode;
+    queueRef.current = queue;
+  });
 
   const step = useCallback((direction: 1 | -1) => {
     const next = adjacentEpisode(queueRef.current, episodeRef.current?.id ?? null, direction);
@@ -258,6 +260,14 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
     if (loaded) player.step(direction);
     else { const next = adjacentEpisode(episodes, episode?.id ?? null, direction); if (next) player.play(next, episodes); }
   }
+  // Both layouts render the same settings panel and the same failure block; only the chrome differs.
+  const extraPanel = <div id={toolsId} className="np-podcast-extra" hidden={!tools}>
+    <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
+    <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
+  </div>;
+  const errorPanel = player.error
+    ? <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>
+    : null;
 
   if (!episode) return null;
   if (theater) return (
@@ -274,18 +284,14 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
         <button className="np-podcast-tool" aria-label={player.muted ? "Включи звука" : "Изключи звука"} onClick={() => player.setMuted(!player.muted)}><AudioIcon name={player.muted ? "muted" : "volume"} /></button>
         <button className="np-podcast-tool" aria-expanded={tools} aria-controls={toolsId} onClick={() => setTools(!tools)}><AudioIcon name="timer" /><span className="sr-only">Таймер</span></button>
       </div>
-      <div id={toolsId} className="np-podcast-extra" hidden={!tools}>
-        <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
-        <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
-      </div>
-      {player.error && <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>}
+      {extraPanel}
+      {errorPanel}
     </section>
   );
   return (
     <section data-podcast-player data-playing={player.playing} className={`np-podcast-player ${compact ? "np-podcast-player--compact" : ""} ${theater ? "np-podcast-player--theater" : ""}`} aria-label="Плеър за NewsPodcast">
       <div className="np-podcast-artwork">
         <PodcastCover src={episode.coverUrl} />
-        {!compact && !theater && <div className="np-podcast-artwork-label"><span>NewsPodcast</span><span>{clock(episode.durationSec)}</span></div>}
       </div>
       <div className="np-podcast-player-content">
         <div className="np-podcast-eyebrow"><span className="np-podcast-dot" />{loaded ? player.playing ? "Слушате" : "Пауза" : "Готов за слушане"}</div>
@@ -305,13 +311,10 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
           <label className="np-podcast-rate"><span>Скорост</span><select value={player.rate} aria-label="Скорост на възпроизвеждане" onChange={(event) => player.setRate(Number(event.target.value))}>{RATES.map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</select></label>
           <button className="np-podcast-tool" aria-expanded={tools} aria-controls={toolsId} onClick={() => setTools(!tools)}><AudioIcon name="timer" /><span>{player.sleepMin ? `${player.sleepMin} мин` : "Настройки"}</span></button>
         </div>
-        <div id={toolsId} className="np-podcast-extra" hidden={!tools}>
-          <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
-          <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
-        </div>
+        {extraPanel}
         <div className="np-podcast-actions"><button onClick={() => void copyLink()}><AudioIcon name="link" />Копирай линка</button></div>
         <p className="np-podcast-feedback" role="status">{copied}</p>
-        {player.error && <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>}
+        {errorPanel}
       </div>
     </section>
   );

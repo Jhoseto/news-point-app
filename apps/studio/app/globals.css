@@ -129,23 +129,6 @@
     line-height: 1;
   }
 
-  .studio-editor-tool {
-    @apply inline-flex min-h-7 items-center gap-1 rounded-md border border-transparent px-2 py-1 text-[0.6875rem] font-bold text-muted transition hover:border-accent/30 hover:bg-surface hover:text-ink disabled:cursor-not-allowed disabled:opacity-45;
-  }
-
-  .studio-editor-tool strong {
-    @apply text-[0.625rem] font-extrabold text-link;
-  }
-
-  .studio-editor-style {
-    @apply min-h-7 rounded-md border border-line bg-surface px-2 text-[0.6875rem] font-bold text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent/10;
-  }
-  .studio-editor-tool-icon {
-    @apply min-w-7 justify-center px-1.5 text-sm;
-  }
-  .studio-editor-divider {
-    @apply mx-0.5 h-5 w-px bg-line;
-  }
   .studio-preview-image { margin: 1.2rem 0; }
   .studio-preview-image img { display: block; max-width: 100%; margin-inline: auto; object-fit: cover; }
   .studio-preview-image.is-small img { width: 35%; }

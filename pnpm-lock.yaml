@@ -143,9 +143,16 @@ importers:
 
   packages/content:
     dependencies:
+      sanitize-html:
+        specifier: 2.17.7
+        version: 2.17.7
       zod:
         specifier: 4.6.5
         version: 4.6.5
+    devDependencies:
+      '@types/sanitize-html':
+        specifier: 2.16.1
+        version: 2.16.1
 
   packages/db:
     dependencies:

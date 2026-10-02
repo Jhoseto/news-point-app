@@ -75,7 +75,9 @@ export function studioTrustedOrigins(): string[] {
     else trusted.add(`${protocol}//www.${hostname}`);
   }
   // Local investor demo via Cloudflare quick tunnel (Better Auth wildcard docs).
-  trusted.add("https://*.trycloudflare.com");
-  trusted.add("*.trycloudflare.com");
+  // Off by default; opt in with NP_ALLOW_CF_TUNNEL=1 (set by scripts/start-public-demo.ps1).
+  // When on, the public + WEB_URL origins above are still the recommended path — this
+  // wildcard is only here for the *single* demo flow that uses a quick-tunnel host.
+  if (process.env.NP_ALLOW_CF_TUNNEL === "1") trusted.add("https://*.trycloudflare.com");
   return [...trusted];
 }

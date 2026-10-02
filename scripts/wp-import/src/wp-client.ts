@@ -54,7 +54,9 @@ function pinnedLookup(hostname: string, options: dns.LookupOptions | ((error: No
     done(null, address, 4);
     return;
   }
-  dns.lookup(hostname, lookupOptions, done);
+  // `all` was normalised away above, so the (address: string) overload is the
+  // correct one. Cast mirrors the pinned branch at the top of this function.
+  dns.lookup(hostname, lookupOptions, done as unknown as (error: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family: number) => void);
 }
 
 type JsonResponse = {

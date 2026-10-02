@@ -1,9 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { PREFERENCE_KEYS, READER_PREFERENCES_SCRIPT } from "@/lib/reader-preferences";
-
-export const THEME_STORAGE_KEY = PREFERENCE_KEYS.theme;
+import { READER_PREFERENCES_SCRIPT } from "@/lib/reader-preferences";
 
 // Runs before first paint so the page never flashes the wrong theme.
 const THEME_SCRIPT = READER_PREFERENCES_SCRIPT;

@@ -17,7 +17,8 @@ export function mediaFile(storageKey: string): string | null {
   const parts = storageKey.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
   const full = resolve(root, ...parts);
-  if (!full.startsWith(resolve(root))) return null;
+  const rootResolved = resolve(root);
+  if (full !== rootResolved && !full.startsWith(rootResolved + "/")) return null;
   return full;
 }
 

@@ -7,6 +7,6 @@ export async function assertOutboxReady(db: ScriptDb): Promise<void> {
     sql`select to_regclass('public.outbox_events') is not null as ready`,
   );
   if (!rows[0]?.ready) {
-    throw new Error("outbox_events is missing: apply packages/db/migrations/06_outbox.sql in Supabase first");
+    throw new Error("outbox_events is missing: apply packages/db/migrations/06_outbox.sql first");
   }
 }

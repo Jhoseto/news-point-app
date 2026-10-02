@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { triggerRevalidate } from "@newspoint/content";
 import { podcastsReady, setPodcastStatus, updatePodcastCopy, PodcastError } from "@newspoint/db/podcasts";
 import { staffFromRequest } from "@/lib/session";
 import { studioOrigins } from "@/lib/auth";
@@ -22,20 +23,11 @@ function json(data: unknown, status = 200) {
 }
 
 async function refresh(slug: string | null) {
-  if (!process.env.REVALIDATE_SECRET) return false;
-  const paths = ["/", "/livepoint/podcast/"];
+  // The episode must reach the RSS feed and the sitemap too, not only the podcast pages.
+  const paths = ["/", "/livepoint/podcast/", "/feed/", "/sitemap.xml"];
   if (slug) paths.push(`/livepoint/podcast/${slug}/`);
-  try {
-    const response = await fetch(new URL("/api/revalidate/", process.env.WEB_URL || "http://localhost:3000"), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-revalidate-secret": process.env.REVALIDATE_SECRET },
-      body: JSON.stringify({ paths }),
-      signal: AbortSignal.timeout(3000),
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
+  const result = await triggerRevalidate(paths);
+  return result.reason === "ok";
 }
 
 export async function POST(request: Request) {
@@ -47,13 +39,14 @@ export async function POST(request: Request) {
   if (!parsed.success) return json({ error: { message: "Невалидни данни." } }, 400);
   try {
     if (parsed.data.action === "save") {
-      const row = await updatePodcastCopy(parsed.data.id, parsed.data);
+      const { title, summary, categoryId } = parsed.data;
+      const row = await updatePodcastCopy(parsed.data.id, { title, summary, categoryId });
       if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
       const refreshed = row.status === "published" ? await refresh(row.slug) : false;
       return json({ ok: true, refreshed });
     }
     const status = parsed.data.action === "publish" ? "published" : "draft";
-    const row = await setPodcastStatus(parsed.data.id, status);
+    const row = await setPodcastStatus(parsed.data.id, status, { id: staff.id, name: staff.name ?? staff.email });
     if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
     const refreshed = status === "published" || row.status === "draft" ? await refresh(row.slug) : false;
     return json({ ok: true, refreshed });

@@ -142,22 +142,6 @@
   min-width: 0;
   margin-inline: auto;
 }
-.np-article-rail-kicker {
-  color: var(--np-link);
-  font-size: 0.67rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  line-height: 1.45;
-  text-transform: uppercase;
-}
-.np-article-rail-title {
-  display: block;
-  margin-top: 0.35rem;
-  color: var(--np-ink);
-  font-size: 1rem;
-  font-weight: 800;
-  line-height: 1.35;
-}
 .np-article-toc {
   padding: 0;
 }
@@ -236,11 +220,6 @@
   background: linear-gradient(var(--np-page) 0 72%, transparent);
 }
 @keyframes np-toc-reveal { from { opacity: 0; transform: translateY(-0.4rem); } to { opacity: 1; transform: translateY(0); } }
-
-.np-article-after { width: min(100%, 72rem); margin-inline: auto; }
-@media (min-width: 64rem) {
-  .np-article-after { width: min(calc(100% - 23.25rem), 72rem); margin-right: 23.25rem; margin-left: auto; }
-}
 
 .np-article-page .np-prose {
   color: var(--np-body);

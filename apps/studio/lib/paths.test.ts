@@ -9,11 +9,20 @@ import {
 
 const savedPublic = process.env.STUDIO_PUBLIC_URL;
 const savedNextPublic = process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL;
+const savedWeb = process.env.WEB_URL;
+const savedTunnel = process.env.NP_ALLOW_CF_TUNNEL;
+const savedExtras = process.env.STUDIO_EXTRA_TRUSTED_ORIGINS;
 afterEach(() => {
   if (savedPublic === undefined) delete process.env.STUDIO_PUBLIC_URL;
   else process.env.STUDIO_PUBLIC_URL = savedPublic;
   if (savedNextPublic === undefined) delete process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL;
   else process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL = savedNextPublic;
+  if (savedWeb === undefined) delete process.env.WEB_URL;
+  else process.env.WEB_URL = savedWeb;
+  if (savedTunnel === undefined) delete process.env.NP_ALLOW_CF_TUNNEL;
+  else process.env.NP_ALLOW_CF_TUNNEL = savedTunnel;
+  if (savedExtras === undefined) delete process.env.STUDIO_EXTRA_TRUSTED_ORIGINS;
+  else process.env.STUDIO_EXTRA_TRUSTED_ORIGINS = savedExtras;
 });
 
 describe("withBase", () => {
@@ -49,9 +58,28 @@ describe("absoluteStudioUrl", () => {
 });
 
 describe("studioTrustedOrigins", () => {
-  it("trusts Cloudflare quick tunnel hosts", () => {
+  it("does not include the trycloudflare wildcard by default", () => {
+    delete process.env.NP_ALLOW_CF_TUNNEL;
+    const origins = studioTrustedOrigins();
+    expect(origins).not.toContain("https://*.trycloudflare.com");
+    expect(origins.some((origin) => origin.includes("*"))).toBe(false);
+  });
+
+  it("includes the trycloudflare wildcard only when NP_ALLOW_CF_TUNNEL=1", () => {
+    process.env.NP_ALLOW_CF_TUNNEL = "1";
     expect(studioTrustedOrigins()).toContain("https://*.trycloudflare.com");
-    expect(studioTrustedOrigins()).toContain("*.trycloudflare.com");
+  });
+
+  it("treats any other value as off", () => {
+    process.env.NP_ALLOW_CF_TUNNEL = "true";
+    const origins = studioTrustedOrigins();
+    expect(origins).not.toContain("https://*.trycloudflare.com");
+  });
+
+  it("uses STUDIO_EXTRA_TRUSTED_ORIGINS to grant a specific tunnel host", () => {
+    delete process.env.NP_ALLOW_CF_TUNNEL;
+    process.env.STUDIO_EXTRA_TRUSTED_ORIGINS = "https://cyber-outsourcing-mails-series.trycloudflare.com";
+    expect(studioTrustedOrigins()).toContain("https://cyber-outsourcing-mails-series.trycloudflare.com");
   });
 });
 

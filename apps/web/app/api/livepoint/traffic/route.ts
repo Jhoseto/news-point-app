@@ -23,6 +23,13 @@ export async function GET(request: NextRequest) {
   const data = await getTrafficIncidents();
   return NextResponse.json(
     { ...data, quota: getTomTomQuota() },
-    { headers: { "Cache-Control": "private, no-store" } },
+    {
+      headers: {
+        // TomTom Free tier caps at 5 req/s. 60 s CDN cache keeps the origin
+        // well below that even with a fully cached miss. SWR covers the rare
+        // case where TomTom returns nothing while a stale copy is still valid.
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+      },
+    },
   );
 }

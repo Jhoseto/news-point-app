@@ -37,7 +37,3 @@ export function createHomeShine(): HomeShineAllocator {
     },
   };
 }
-
-export function homeShineCycleSec(allocator: HomeShineAllocator) {
-  return Math.max(SHINE_CYCLE_MIN_S, allocator.maxDelaySec() + SHINE_CYCLE_TAIL_S);
-}

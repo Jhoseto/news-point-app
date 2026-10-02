@@ -47,7 +47,15 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     // Local preview must never be indexed (DEC-111).
-    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    const noindex = { source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] };
+    // Brand art is content-hashed by scripts/build-studio-photo.mjs, so a year-long immutable
+    // cache is safe. Without this header Next serves /public with max-age=0 and every page view
+    // revalidates the background image.
+    const brandCache = {
+      source: "/brand/:path*",
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    };
+    return [noindex, brandCache];
   },
 };
 

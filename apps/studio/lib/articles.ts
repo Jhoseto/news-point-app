@@ -510,7 +510,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
 }
 
 /** Shows or hides an already published article on the public site. Drafts stay in the editor. */
-export async function setArticleVisibility(id: string, visible: boolean): Promise<{ isPublic: boolean }> {
+export async function setArticleVisibility(id: string, visible: boolean, actor?: { id: string; name: string }): Promise<{ isPublic: boolean }> {
   return getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
@@ -527,7 +527,12 @@ export async function setArticleVisibility(id: string, visible: boolean): Promis
       type: "article.updated",
       entityId: id,
       version,
-      payload: { path: article.path, title: article.title, topics: category ? [category.slug] : [] },
+      payload: {
+        path: article.path,
+        title: article.title,
+        topics: category ? [category.slug] : [],
+        visibilityChange: { visible, actorId: actor?.id ?? null, actorName: actor?.name ?? null },
+      },
     });
     if (await hasArticleViewBoosts(tx)) {
       if (visible) await refreshViewSchedule(tx, id);

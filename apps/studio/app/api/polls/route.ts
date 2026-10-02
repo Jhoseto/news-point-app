@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { triggerRevalidate } from "@newspoint/content";
 import { pollsReady, listPolls, pollDetails, savePoll, correctPoll, PollError } from "@newspoint/db/polls";
 import { pollInput, pollCorrection } from "@newspoint/db/poll-types";
 import { staffFromRequest } from "@/lib/session";
@@ -13,7 +14,7 @@ function failure(e: unknown) {
   console.error("[studio-polls]",e instanceof Error ? e.message : "unknown");
   return json({error:{code:"unavailable",message:"Анкетите временно не са достъпни."}},503);
 }
-async function ready() { if (!await pollsReady()) throw new PollError(503,"migration","Първо приложете миграция 16_polls.sql в Supabase."); }
+async function ready() { if (!await pollsReady()) throw new PollError(503,"migration","Първо приложете миграция 16_polls.sql."); }
 export async function GET(request: Request) {
   if (!await staffFromRequest(request)) return json({error:{message:"Влезте отново."}},401);
   try {
@@ -35,10 +36,7 @@ export async function POST(request: Request) {
     let value:unknown; try {value=JSON.parse(Buffer.concat(chunks).toString("utf8"));} catch {throw new PollError(400,"json","Невалидни данни.");}
     const data=mutation.parse(value); await ready();
     const poll=data.action === "save" ? await savePoll(data.input,staff) : await correctPoll(data.input,staff);
-    let refreshed=false;
-    if(process.env.REVALIDATE_SECRET) {
-      try { const response=await fetch(new URL("/api/revalidate/",process.env.WEB_URL || "http://localhost:3000"),{method:"POST",headers:{"Content-Type":"application/json","x-revalidate-secret":process.env.REVALIDATE_SECRET},body:JSON.stringify({paths:["/"]}),signal:AbortSignal.timeout(3000)}); refreshed=response.ok; } catch { /* Homepage also revalidates every 60 seconds. */ }
-    }
-    return json({poll,refreshed});
+    const revalidateResult = await triggerRevalidate(["/"]);
+    return json({poll,refreshed: revalidateResult.reason === "ok"});
   } catch(e) { return failure(e); }
 }

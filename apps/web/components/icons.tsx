@@ -41,12 +41,6 @@ export const SettingsIcon = (props: IconProps) => (
   </Icon>
 );
 
-export const MenuIcon = (props: IconProps) => (
-  <Icon {...props}>
-    <path d="M4 7h16M4 12h16M10 17h10" />
-  </Icon>
-);
-
 export const CloseIcon = (props: IconProps) => (
   <Icon {...props}>
     <path d="M6 6l12 12M18 6 6 18" />

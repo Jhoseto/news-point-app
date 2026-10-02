@@ -6,11 +6,26 @@ import { assertOutboxReady } from "./outbox-ready";
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
 
 loadRootEnv();
+installSupervision();
 if (process.env.DEV_REMOTE === "1") {
   console.log("[worker] DEV_REMOTE=1: sync stays on the server.");
   setInterval(() => {}, 60 * 60 * 1000);
 } else {
   await runWorker();
+}
+
+/** Make worker crashes visible. The supervisor (systemd / nohup) can then restart us. */
+function installSupervision() {
+  process.on("unhandledRejection", (reason) => {
+    console.error(`[worker] unhandledRejection: ${reason instanceof Error ? (reason.stack ?? reason.message) : String(reason)}`);
+  });
+  process.on("uncaughtException", (error) => {
+    console.error(`[worker] uncaughtException: ${error.stack ?? error.message}`);
+    // Do not exit immediately: a transient DB or DNS blip would otherwise
+    // silently drop the next 15-second boost + scheduled-publish cycle.
+    // The supervisor's Restart=always picks us back up if we crash here.
+  });
+  console.log(`[worker] supervision installed (pid=${process.pid})`);
 }
 
 async function runWorker() {

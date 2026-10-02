@@ -1,5 +1,6 @@
 import "server-only";
 import { asc, gt, max } from "drizzle-orm";
+import { triggerRevalidate } from "@newspoint/content";
 import { getDb, listen, OUTBOX_CHANNEL, outboxEvents } from "@newspoint/db";
 import { getSummariesByIds } from "../queries";
 import { affectedPaths, toLiveCard, toLiveEvent, type LiveEvent } from "./events";
@@ -97,21 +98,14 @@ class LiveHub {
 let warnedNoSecret = false;
 
 async function revalidate(events: LiveEvent[]) {
-  const secret = process.env.REVALIDATE_SECRET;
-  const baseUrl = process.env.WEB_URL ?? "http://localhost:3000";
-  if (!secret) {
+  const paths = [...new Set(events.flatMap(affectedPaths))].slice(0, 20);
+  const result = await triggerRevalidate(paths);
+  if (result.reason === "no_secret") {
     if (!warnedNoSecret) console.warn("[live] REVALIDATE_SECRET is not set; cached pages refresh on their own schedule");
     warnedNoSecret = true;
-    return;
+  } else if (result.reason === "error") {
+    console.warn("[live] revalidate failed; pages will refresh on the next ISR tick");
   }
-  const paths = [...new Set(events.flatMap(affectedPaths))].slice(0, 20);
-  const response = await fetch(new URL("/api/revalidate/", baseUrl), {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-revalidate-secret": secret },
-    body: JSON.stringify({ paths }),
-    cache: "no-store",
-  });
-  if (!response.ok) throw new Error(`revalidate returned ${response.status}`);
 }
 
 const globalForHub = globalThis as typeof globalThis & { __npLiveHub?: LiveHub };

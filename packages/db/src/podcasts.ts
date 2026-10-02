@@ -91,7 +91,7 @@ export async function updatePodcastCopy(id: string, input: { title: string; summ
   return row ?? null;
 }
 
-export async function setPodcastStatus(id: string, status: "draft" | "published") {
+export async function setPodcastStatus(id: string, status: "draft" | "published", actor?: { id: string; name: string }) {
   const [current] = await getDb().select({ publishedAt: podcasts.publishedAt }).from(podcasts).where(eq(podcasts.id, id)).limit(1);
   if (!current) return null;
   const publishedAt = status === "published" ? current.publishedAt ?? new Date() : current.publishedAt;
@@ -100,5 +100,12 @@ export async function setPodcastStatus(id: string, status: "draft" | "published"
     slug: podcasts.slug,
     status: podcasts.status,
   });
+  // Audit trail for status changes. Until a dedicated podcast_revisions table
+  // exists (deferred until the third revision surface needs it), the actor and
+  // the transition are surfaced on stdout — same stream the rest of the editor
+  // logs to, so a tail -f or journalctl already in place captures it.
+  if (row && actor) {
+    console.log(`[podcast] status=${status} id=${row.id} slug=${row.slug} actor=${actor.id} ${actor.name}`);
+  }
   return row ?? null;
 }

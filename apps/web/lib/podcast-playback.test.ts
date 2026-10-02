@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock, podcastPanelPlace, seekRatio } from "./podcast-playback";
+import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock, podcastPanelPlace } from "./podcast-playback";
 
 const episodes = [{ id: "a" }, { id: "b" }, { id: "c" }];
 
@@ -45,13 +45,5 @@ describe("podcast playback", () => {
     expect(adjacentEpisode(episodes, "c", 1)).toBeNull();
     expect(adjacentEpisode(episodes, null, 1)?.id).toBe("a");
     expect(adjacentEpisode([], "a", 1)).toBeNull();
-  });
-
-  it("clamps a seek click to the bar", () => {
-    expect(seekRatio(0, 200)).toBe(0);
-    expect(seekRatio(50, 200)).toBe(0.25);
-    expect(seekRatio(999, 200)).toBe(1);
-    expect(seekRatio(-10, 200)).toBe(0);
-    expect(seekRatio(10, 0)).toBe(0);
   });
 });

@@ -2,6 +2,7 @@ export * from "./arrangement";
 export * from "./byte-range";
 export * from "./mp3";
 export * from "./podcast-slug";
+export * from "./revalidate";
 export * from "./sofia-time";
 export * from "./blocks";
 export * from "./menu";

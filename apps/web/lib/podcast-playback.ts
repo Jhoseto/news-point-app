@@ -15,12 +15,6 @@ export function adjacentEpisode<T extends { id: string }>(list: T[], id: string 
   return list[index + direction] ?? null;
 }
 
-/** 0–1 position on the seek bar. A missing duration stays at the start. */
-export function seekRatio(offsetX: number, width: number): number {
-  if (!Number.isFinite(offsetX) || !Number.isFinite(width) || width <= 0) return 0;
-  return Math.min(1, Math.max(0, offsetX / width));
-}
-
 /** Display a suggestion without loading audio; an existing listening session wins. */
 export function displayedEpisode<T>(current: T | null, suggested: T | null): T | null {
   return current ?? suggested;

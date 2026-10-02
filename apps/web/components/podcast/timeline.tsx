@@ -24,7 +24,7 @@ export function PodcastTimeline({ current, duration, buffered, playing, waiting,
   return <div className="np-audio-timeline" data-moving={playing && draft === null} data-scrubbing={draft !== null}>
     <div className="np-audio-wave" style={{ "--seek": `${percent}%`, "--buffer": `${buffered}%` } as CSSProperties}>
       <svg viewBox="0 0 600 56" preserveAspectRatio="none" aria-hidden="true">
-        <defs><linearGradient id={id}><stop stopColor="#62d8ff" /><stop offset=".55" stopColor="#6494ff" /><stop offset="1" stopColor="#bd8bff" /></linearGradient></defs>
+        <defs><linearGradient id={id}><stop stopColor="var(--np-podcast-wave-1)" /><stop offset=".55" stopColor="var(--np-accent)" /><stop offset="1" stopColor="var(--np-podcast-wave-2)" /></linearGradient></defs>
         <g className="np-audio-wave-motion" fill="none" stroke={`url(#${id})`} strokeLinecap="round">
           <path className="np-audio-wave-back" d="M0 28 C30 28 35 13 65 20 S105 45 140 29 S175 12 210 25 S250 42 285 28 S325 9 360 24 S400 44 435 29 S470 15 505 25 S555 36 600 28" />
           <path className="np-audio-wave-front" d="M0 28 C25 28 40 36 65 28 S110 8 140 23 S180 43 210 28 S250 13 285 26 S325 43 360 29 S400 11 435 25 S480 40 505 28 S560 20 600 28" />

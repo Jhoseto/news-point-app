@@ -42,8 +42,6 @@ export const metCompactSchema = z.object({
   }),
 });
 
-export type MetCompact = z.infer<typeof metCompactSchema>;
-
 const dayKey = new Intl.DateTimeFormat("en-CA", { timeZone: PLOVDIV.timeZone });
 
 function symbolOf(entry: z.infer<typeof timeseriesEntrySchema>): string | null {

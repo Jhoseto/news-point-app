@@ -1,41 +1,9 @@
 import Link from "next/link";
-import { Fragment } from "react";
 import type { HomeShineAllocator } from "@/lib/home-shine";
-import { timelineDayBreak } from "@/lib/format";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary, CategoryRef } from "@/lib/queries";
-import { CompactCard, TimelineItem } from "./article-card";
-import { TimelineDayBreak } from "./timeline-day-break";
+import { CompactCard } from "./article-card";
 import { SectionTitle } from "./ui";
-
-/**
- * `compact` is how many items show on phones and tablets; the rest appear from lg,
- * where the list sits beside the lead story. `fill` lets the list take the height it
- * is given and scroll inside instead of pushing the band taller.
- */
-export function LatestList({ articles, id, compact, dense = false, fill = false, className = "" }: { articles: ArticleSummary[]; id?: string; compact?: number; dense?: boolean; fill?: boolean; className?: string }) {
-  return (
-    <section
-      aria-labelledby={id ? `${id}-title` : undefined}
-      id={id}
-      className={`np-card scroll-mt-32 overflow-hidden ${dense ? "p-4" : "p-5"} ${fill ? "flex min-h-0 flex-col" : ""} ${className}`}
-    >
-      <SectionTitle id={id ? `${id}-title` : undefined}>Последни новини</SectionTitle>
-      <ol
-        className={`relative flex flex-col before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"} ${fill ? "np-scroll-soft -mr-2 min-h-0 flex-1 overflow-y-auto pr-2" : ""}`}
-      >
-        {articles.map((article, index) => (
-          <Fragment key={article.id}>
-            {timelineDayBreak(articles[index - 1]?.publishedAt, article.publishedAt) ? (
-              <TimelineDayBreak date={article.publishedAt} />
-            ) : null}
-            <TimelineItem article={article} className={compact !== undefined && index >= compact ? "hidden lg:block" : ""} />
-          </Fragment>
-        ))}
-      </ol>
-    </section>
-  );
-}
 
 export function CompactList({
   title,

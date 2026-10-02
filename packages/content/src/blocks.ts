@@ -1,18 +1,51 @@
+import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 // Minimal body format for rendering imported articles (DEC-106). Not the
 // future editorial format. Inline HTML is sanitized by the importer; this
 // schema is a second line of defence against executable markup.
+//
+// We use an allowlist (the importer does too). Allowlist is strictly safer
+// than a denylist: it is not possible to list every bypass shape
+// (`<img/onerror=…>`, `<svg/onload=…>`, `<body/onload=…>`, future attribute-name
+// permutations, namespaced tags, etc.), so we keep only what the editorial
+// format actually renders and strip everything else. The sanitizer is run at
+// schema-validate time so an attacker who ever reached a writer still cannot
+// surface executable markup through `dangerouslySetInnerHTML` in the reader.
 
-export const BODY_VERSION = 1;
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: [
+    "p", "br", "hr",
+    "strong", "b", "em", "i", "u", "s", "sub", "sup", "mark", "small",
+    "a", "span",
+    "ul", "ol", "li",
+    "blockquote", "pre", "code",
+    "h2", "h3", "h4",
+    "table", "thead", "tbody", "tfoot", "tr", "th", "td", "caption",
+  ],
+  allowedAttributes: {
+    a: ["href", "title", "target", "rel"],
+    th: ["colspan", "rowspan"],
+    td: ["colspan", "rowspan"],
+  },
+  allowedSchemes: ["http", "https", "mailto"],
+  allowedSchemesByTag: { a: ["http", "https", "mailto"] },
+  transformTags: {
+    a: (tagName, attribs) => ({
+      tagName,
+      attribs: attribs.target === "_blank" ? { ...attribs, rel: "noopener noreferrer" } : attribs,
+    }),
+  },
+  disallowedTagsMode: "discard",
+};
 
-const EXECUTABLE_MARKUP = /<\s*\/?\s*(script|style|iframe|object|embed|form|input|button|link|meta|base)\b|\son[a-z]+\s*=|javascript:|vbscript:|data:text\/html/i;
+const sanitize = (value: string): string => sanitizeHtml(value, SANITIZE_OPTIONS);
 
-const safeHtml = z
-  .string()
-  .refine((value) => !EXECUTABLE_MARKUP.test(value), "contains executable markup");
+const safeHtml = z.string().transform(sanitize);
 
 const plainText = z.string().refine((value) => !/[<>]/.test(value), "must be plain text");
+
+export const BODY_VERSION = 1;
 
 export const paragraphBlock = z.strictObject({ type: z.literal("paragraph"), html: safeHtml });
 

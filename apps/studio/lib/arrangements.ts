@@ -7,6 +7,7 @@ import {
   emptyArrangement,
   referencedArticleIds,
   sanitizeArrangement,
+  triggerRevalidate,
   type ArrangementDocument,
 } from "@newspoint/content";
 import { articles, categories, getDb, hasPageArrangements, outboxEvents, pageArrangements } from "@newspoint/db";
@@ -135,17 +136,7 @@ export async function saveArrangement(staff: Staff, pageKey: string, document: A
 }
 
 async function revalidate(path: string) {
-  if (!process.env.REVALIDATE_SECRET) return;
-  try {
-    await fetch(new URL("/api/revalidate/", process.env.WEB_URL || "http://localhost:3000"), {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-revalidate-secret": process.env.REVALIDATE_SECRET },
-      body: JSON.stringify({ paths: [path] }),
-      signal: AbortSignal.timeout(3000),
-    });
-  } catch {
-    // The open page also refreshes from the outbox event.
-  }
+  await triggerRevalidate([path]);
 }
 
 export async function publishArrangement(staff: Staff, pageKey: string): Promise<{ path: string }> {

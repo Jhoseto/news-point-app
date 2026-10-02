@@ -220,6 +220,7 @@ export interface OutboxPayload {
   path: string;
   title: string;
   topics: string[];
+  visibilityChange?: { visible: boolean; actorId: string | null; actorName: string | null };
 }
 
 export const outboxEvents = pgTable(
@@ -273,7 +274,6 @@ export const publishRequests = pgTable("publish_requests", {
 });
 
 export const livepointSubmissionKinds = ["report", "my_news"] as const;
-export type LivepointSubmissionKind = (typeof livepointSubmissionKinds)[number];
 
 export const livepointSubmissionStatuses = ["received", "in_review", "verified", "rejected", "published"] as const;
 export type LivepointSubmissionStatus = (typeof livepointSubmissionStatuses)[number];

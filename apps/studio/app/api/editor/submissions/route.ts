@@ -2,6 +2,7 @@ import { z } from "zod";
 import { desc, eq } from "@newspoint/db/orm";
 import { getDb, livepointSubmissions } from "@newspoint/db";
 import { editorMutation } from "@/lib/api";
+import { EditorError } from "@/lib/articles";
 import { staffFromRequest } from "@/lib/session";
 
 const updateInput = z.strictObject({ id: z.uuid(), status: z.enum(["received", "in_review", "verified", "rejected", "published"]), articleId: z.uuid().nullable().optional() });
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 export function PATCH(request: Request) {
   return editorMutation(request, updateInput, async (_staff, input) => {
     const [row] = await getDb().update(livepointSubmissions).set({ status: input.status, ...(input.articleId !== undefined ? { articleId: input.articleId } : {}) }).where(eq(livepointSubmissions.id, input.id)).returning();
-    if (!row) throw new Error("Сигналът не съществува.");
+    if (!row) throw new EditorError(404, "not_found", "Сигналът не съществува.");
     return { item: row };
   });
 }

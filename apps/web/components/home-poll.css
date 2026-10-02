@@ -25,7 +25,6 @@
 .np-poll-actions .np-poll-submit { display:flex; align-items:center; justify-content:space-between; gap:2.5rem; background:var(--np-gradient); color:white; padding:.7rem 1.1rem; border-radius:10px; box-shadow:0 5px 16px #3818d622; }
 .np-poll-actions button:focus-visible { outline:2px solid var(--np-accent); outline-offset:4px; }
 .np-poll-actions button:disabled { opacity:.5; cursor:default; }
-.np-poll-note { color:var(--np-muted); font-size:.62rem; line-height:1.5; margin-top:.6rem; }
 .np-poll-message { color:var(--np-ink); font-size:.78rem; margin-top:.4rem; }
 [data-theme=dark] .np-poll-band::before { opacity:.09; }
 [data-theme=dark] .np-poll-band { background:linear-gradient(110deg,#0c1230,#171135); }
