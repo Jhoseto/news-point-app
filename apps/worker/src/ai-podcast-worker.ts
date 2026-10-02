@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
-import { aiPodcastSegment, aiPodcastSettings, aiPodcastSource, aiPodcastWarning, podcastSlug, targetWords, type AiPodcastSegment, type AiPodcastSource, type AiPodcastWarning } from "@newspoint/content";
+import { aiPodcastSegment, aiPodcastSettings, aiPodcastSource, aiPodcastWarning, podcastSlug, targetWords, type AiPodcastSegment, type AiPodcastWarning } from "@newspoint/content";
 import { aiPodcastAssets, aiPodcastAudit, aiPodcastJobs, aiPodcastProjects, aiPodcastVoiceSettings, podcasts, type ScriptDb } from "@newspoint/db/node";
 import { brandedCover, aiStorageKey, loadMedia, masterAudio, publicPodcastKey, saveMedia } from "./ai-media";
-import { automaticIntro, checkStory, episodeMetadata, factPack, generateImage, generateMusic, storyScript, synthesize } from "./ai-gemini";
+import { automaticIntro, checkStory, directPerformance, episodeMetadata, factPack, generateImage, generateMusic, storyScript, synthesize } from "./ai-gemini";
 
 type Job = typeof aiPodcastJobs.$inferSelect;
 type Project = typeof aiPodcastProjects.$inferSelect;
@@ -50,18 +50,20 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
     const source = sources.find((item) => item.id === previous.sourceId)!;
     const facts = await factPack(source);
     await requireRunning(db, job.id);
-    const written = await storyScript(source, facts.value, Math.round(targetWords(settings) / sources.length), settings.style, settings.direction, payload.direction);
+    const previousWords = previous.lines.reduce((sum, line) => sum + line.text.trim().split(/\s+/).length, 0);
+    const written = await storyScript(source, facts.value, previousWords, settings.style, settings.direction, payload.direction);
     await requireRunning(db, job.id);
     const changed: AiPodcastSegment = { ...previous, label: written.value.label, lines: written.value.lines, wavKey: null, version: previous.version + 1 };
     const checked = await checkStory(source, changed.id, changed.lines);
     const warnings = aiPodcastWarning.array().parse(project.warnings).filter((warning) => warning.segmentId !== changed.id).concat(checked.value);
     await db.update(aiPodcastProjects).set({ segments: old.map((item) => item.id === changed.id ? changed : item), warnings, revision: project.revision + 1, status: "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
-    await history(db, project.id, "rewritten", { segmentId: changed.id, version: changed.version });
+    await history(db, project.id, "rewritten", { segmentId: changed.id, version: changed.version, previous, next: changed });
     return { facts: facts.usage, script: written.usage, check: checked.usage };
   }
   const segments: AiPodcastSegment[] = [];
   const warnings: AiPodcastWarning[] = [];
   const packs = [];
+  const packMap: Record<string, unknown> = {};
   const usage: unknown[] = [];
   if (settings.introMode === "exact") {
     segments.push({ id: randomUUID(), sourceId: null, label: "Увод", lines: [{ speaker: "alex", text: settings.intro, direction: "" }], wavKey: null, version: 1 });
@@ -70,11 +72,14 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
     segments.push({ id: randomUUID(), sourceId: null, label: "Увод", lines: intro.value.lines, wavKey: null, version: 1 });
     usage.push(intro.usage);
   }
+  const introWords = segments[0]!.lines.reduce((sum, line) => sum + line.text.trim().split(/\s+/).length, 0);
+  const wordsPerStory = Math.max(80, Math.round((targetWords(settings) - introWords) / sources.length));
   for (const source of sources) {
     await requireRunning(db, job.id);
     const facts = await factPack(source);
     packs.push(facts.value);
-    const written = await storyScript(source, facts.value, Math.round(targetWords(settings) / sources.length), settings.style, settings.direction);
+    packMap[source.id] = facts.value;
+    const written = await storyScript(source, facts.value, wordsPerStory, settings.style, settings.direction);
     const segment: AiPodcastSegment = { id: randomUUID(), sourceId: source.id, label: written.value.label, lines: written.value.lines, wavKey: null, version: 1 };
     const checked = await checkStory(source, segment.id, segment.lines);
     segments.push(segment);
@@ -83,7 +88,8 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
   }
   await requireRunning(db, job.id);
   const metadata = await episodeMetadata(sources.map((source) => source.title), packs);
-  await db.update(aiPodcastProjects).set({ title: metadata.value.title, summary: metadata.value.summary, segments, warnings, status: "review", revision: project.revision + 1, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
+  await requireRunning(db, job.id);
+  await db.update(aiPodcastProjects).set({ title: metadata.value.title, summary: metadata.value.summary, factPacks: packMap, segments, warnings, status: "review", revision: project.revision + 1, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
   await history(db, project.id, "script_ready", { warnings: warnings.length, sources: sources.length });
   return { calls: usage, metadata: metadata.usage };
 }
@@ -102,6 +108,7 @@ async function checkEdited(db: ScriptDb, job: Job, project: Project): Promise<un
     warnings.push(...result.value);
     usage.push(result.usage);
   }
+  await requireRunning(db, job.id);
   await db.update(aiPodcastProjects).set({ warnings, status: "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
   return { calls: usage };
 }
@@ -113,6 +120,7 @@ async function cover(db: ScriptDb, job: Job, project: Project): Promise<unknown>
   const bytes = await brandedCover(result.bytes, project.title || "NewsPoint Podcast");
   const key = publicPodcastKey("webp");
   await saveMedia(key, bytes);
+  await requireRunning(db, job.id);
   await db.update(aiPodcastProjects).set({ coverKey: key, status: project.episodeId ? "ready" : "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
   if (project.episodeId) await db.update(podcasts).set({ coverKey: key, updatedAt: new Date() }).where(and(eq(podcasts.id, project.episodeId), eq(podcasts.status, "draft")));
   return result.usage;
@@ -124,6 +132,7 @@ async function music(db: ScriptDb, job: Job): Promise<unknown> {
   await requireRunning(db, job.id);
   const key = aiStorageKey("mp3");
   await saveMedia(key, result.bytes);
+  await requireRunning(db, job.id);
   const [asset] = await db.insert(aiPodcastAssets).values({ kind: "music", preset: payload.preset, storageKey: key, prompt: payload.prompt, model: "lyria-3.5", metadata: { synthId: true, usage: result.usage }, createdBy: job.requestedBy }).returning({ id: aiPodcastAssets.id });
   if (job.projectId && asset) await db.update(aiPodcastProjects).set({ musicAssetId: asset.id, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, job.projectId));
   return result.usage;
@@ -143,12 +152,14 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
     if (onlySegmentId && segment.id !== onlySegmentId) continue;
     if (segment.wavKey && !onlySegmentId) continue;
     await requireRunning(db, job.id);
-    const result = await synthesize(segment.lines, { alex: voices.alexVoice, maya: voices.mayaVoice });
+    const directed = segment.lines.every((line) => line.spoken) ? { lines: segment.lines, usage: {} } : await directPerformance(segment.lines);
+    const result = await synthesize(directed.lines, { alex: voices.alexVoice, maya: voices.mayaVoice });
     const key = aiStorageKey("wav", project.id);
     await saveMedia(key, result.bytes);
-    segments = segments.map((item) => item.id === segment.id ? { ...item, wavKey: key } : item);
+    await requireRunning(db, job.id);
+    segments = segments.map((item) => item.id === segment.id ? { ...item, lines: directed.lines, wavKey: key } : item);
     await db.update(aiPodcastProjects).set({ segments, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
-    usage.push(result.usage);
+    usage.push({ director: directed.usage, tts: result.usage });
   }
   await requireRunning(db, job.id);
   const waveBytes = await Promise.all(segments.map((segment) => segment.wavKey ? loadMedia(segment.wavKey) : Promise.reject(new Error("Voice segment missing"))));
@@ -166,11 +177,15 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
     const bytes = await brandedCover(result.bytes, project.title || "NewsPoint Podcast");
     coverKey = publicPodcastKey("webp");
     await saveMedia(coverKey, bytes);
+    await requireRunning(db, job.id);
     await db.update(aiPodcastProjects).set({ coverKey, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
     usage.push(result.usage);
   }
   await requireRunning(db, job.id);
   const mastered = await masterAudio(waveBytes, musicBytes);
+  if (mastered.durationSec < settings.minutes * 60 * .9 || mastered.durationSec > settings.minutes * 60 * 1.1) {
+    throw new Error(`Final duration ${mastered.durationSec}s is outside the ${settings.minutes} minute target (±10%). Edit the script or regenerate a story before retrying.`);
+  }
   const audioKey = publicPodcastKey("mp3");
   await saveMedia(audioKey, mastered.bytes);
   await requireRunning(db, job.id);
@@ -188,6 +203,8 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
 }
 
 export async function processOneAiPodcastJob(db: ScriptDb): Promise<boolean> {
+  const tables = await db.execute<{ ready: boolean }>(sql`select to_regclass('public.ai_podcast_jobs') is not null as ready`);
+  if (tables[0]?.ready !== true) return false;
   const job = await claim(db);
   if (!job) return false;
   try {
@@ -203,7 +220,7 @@ export async function processOneAiPodcastJob(db: ScriptDb): Promise<boolean> {
     const message = error instanceof Error ? error.message.slice(0, 1000) : "Unknown error";
     const [failed] = await db.update(aiPodcastJobs).set({ status: "failed", error: message, leaseUntil: null, updatedAt: new Date() })
       .where(and(eq(aiPodcastJobs.id, job.id), eq(aiPodcastJobs.status, "running"))).returning({ id: aiPodcastJobs.id });
-    if (failed && job.projectId) await db.update(aiPodcastProjects).set({ status: "failed", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, job.projectId));
+    if (failed && job.projectId && job.kind !== "music") await db.update(aiPodcastProjects).set({ status: "failed", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, job.projectId));
     console.error(`[ai-podcast] job ${job.id} failed: ${message}`);
   }
   return true;

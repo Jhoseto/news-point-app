@@ -31,6 +31,7 @@ export interface EditorProps {
     viewSeedLocked: boolean;
     viewReal: number;
     viewAdded: number;
+    listenEnabled: boolean;
   };
   draft: Draft;
   sections: { id: string; name: string }[];
@@ -109,6 +110,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [notice, setNotice] = useState<Notice | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
+  const [listenEnabled, setListenEnabled] = useState(article.listenEnabled);
   const [seedLocked, setSeedLocked] = useState(article.viewSeedLocked);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
@@ -273,7 +275,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     // Kept until the server answers, so a retry after a lost response publishes once.
     publishKey.current ??= crypto.randomUUID();
     setPhase("publishing");
-    const result = await callApi<PublishOutcome>("POST", `/api/editor/articles/${idRef.current}/publish/`, { revision: toPublish, idempotencyKey: publishKey.current });
+    const result = await callApi<PublishOutcome>("POST", `/api/editor/articles/${idRef.current}/publish/`, { revision: toPublish, idempotencyKey: publishKey.current, listenEnabled });
     setPhase("idle");
     if (!result.ok) {
       if (result.status !== 0) publishKey.current = null;
@@ -366,6 +368,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
           {!readOnly ? (
             <div className="ml-auto flex items-center gap-1.5">
+              <label className="inline-flex items-center gap-2 pr-1 text-xs font-bold text-ink">
+                <input type="checkbox" checked={listenEnabled} onChange={(event) => setListenEnabled(event.target.checked)} />
+                Позволи слушане
+              </label>
               <button type="button" disabled={busy || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
                 {phase === "saving" ? "Записване…" : "Запиши"}
               </button>

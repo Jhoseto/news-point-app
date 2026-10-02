@@ -164,7 +164,7 @@ export function ArticleTts(props: ArticleTtsProps) {
     const context = new AudioContext();
     void context.resume();
     try {
-      const response = await fetch(`/api/articles/${props.articleId}/speech/?v=3`);
+      const response = await fetch(`/api/articles/${props.articleId}/speech/?v=9`);
       if (!response.ok) throw new Error("speech");
       const parts = unpackSpeechParts(new Uint8Array(await response.arrayBuffer()));
       const buffer = await decodeSpeechParts(context, parts);
@@ -205,12 +205,12 @@ export function ArticleTts(props: ArticleTtsProps) {
           data-playing={playing ? "true" : "false"}
           aria-pressed={playing}
           aria-busy={phase === "loading"}
-          aria-label={playing ? "Пауза" : "Слушай статията"}
+          aria-label={playing ? "Пауза" : phase === "loading" ? "Четенето се подготвя" : "Слушай статията"}
           disabled={utterances.length === 0 || phase === "loading"}
           onClick={() => void onToggle()}
         >
-          {playing ? <PauseIcon /> : <PlayIcon />}
-          {playing ? null : <span>{phase === "loading" ? "Чете се" : "Слушай"}</span>}
+          {phase === "loading" ? <SpinnerIcon /> : playing ? <PauseIcon /> : <PlayIcon />}
+          {playing ? null : <span>{phase === "loading" ? "Изчакайте" : "Слушай"}</span>}
         </button>
         <input
           className="np-tts-timeline"
@@ -248,6 +248,15 @@ export function ArticleTts(props: ArticleTtsProps) {
       </div>
       {error ? <p className="np-tts-note">{error}</p> : null}
     </div>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg className="np-tts-spin" viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+      <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="2.4" opacity="0.35" />
+      <path d="M12 4a8 8 0 0 1 8 8" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
   );
 }
 

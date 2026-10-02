@@ -28,6 +28,7 @@ export default async function NewArticlePage() {
         viewSeedLocked: false,
         viewReal: 0,
         viewAdded: 0,
+        listenEnabled: true,
       }}
       draft={{
         title: "",

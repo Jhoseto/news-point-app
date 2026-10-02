@@ -56,11 +56,13 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         excerpt: articles.excerpt,
         body: articles.body,
         version: articles.version,
+        listenEnabled: articles.listenEnabled,
       })
       .from(articles)
       .where(and(eq(articles.id, parsed.data), eq(articles.isPublic, true), lte(articles.publishedAt, sql`now()`)))
       .limit(1);
     if (!row) return NextResponse.json({ error: "Статията не е намерена." }, { status: 404, headers });
+    if (!row.listenEnabled) return NextResponse.json({ error: "Слушането на тази статия е изключено." }, { status: 404, headers });
 
     const text = articleReadingText({
       id: row.id,
@@ -95,7 +97,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         "X-Content-Type-Options": "nosniff",
       },
     });
-  } catch {
+  } catch (error) {
+    console.error("[speech]", error instanceof Error ? error.message : "failed");
     return NextResponse.json({ error: "Четенето не тръгна." }, { status: 502, headers });
   }
 }

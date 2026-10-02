@@ -1,3 +1,4 @@
+import { articleSubtitle } from "@newspoint/content";
 import { articleSections } from "@/lib/article-reading";
 import { formatFull, isoDate, readingMinutes } from "@/lib/format";
 import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, publicAsOfMs, type ArticleDetail } from "@/lib/queries";
@@ -10,7 +11,7 @@ import { ArticleTts } from "./article-tts";
 import { RelatedStories } from "./related-stories";
 import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
-import { BookIcon, ClockIcon, ExternalIcon } from "./icons";
+import { BookIcon, ClockIcon } from "./icons";
 import { LatestNews24h } from "./latest-news-24h";
 import { CategoryChips } from "./lists";
 import { ShareButtons } from "./share";
@@ -27,6 +28,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
   const neighbours = [timeline.older[0], timeline.newer[0]].filter((item): item is NonNullable<typeof item> => Boolean(item));
   const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
+  const subtitle = articleSubtitle(article.excerpt, article.body);
   const shareUrl = article.sourceUrl ?? article.path;
   const crumbs = article.category
     ? [{ name: article.category.name, path: article.category.path }, { name: article.title }]
@@ -62,7 +64,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
             <div className="np-article-heading-accent" aria-hidden="true" />
             <h1 id="article-tts-title">{article.title}</h1>
-            {article.excerpt ? <p id="article-tts-excerpt" className="np-article-deck">{article.excerpt}</p> : null}
+            {subtitle ? <p id="article-tts-excerpt" className="np-article-deck">{subtitle}</p> : null}
             <div className="np-article-meta">
               <div className="np-article-byline">
                 <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
@@ -76,13 +78,15 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
               <ShareButtons url={shareUrl} title={article.title} />
             </div>
           </header>
-          <ArticleTts
-            articleId={article.id}
-            title={article.title}
-            excerpt={article.excerpt}
-            body={article.body}
-            media={article.media}
-          />
+          {article.listenEnabled ? (
+            <ArticleTts
+              articleId={article.id}
+              title={article.title}
+              excerpt={subtitle}
+              body={article.body}
+              media={article.media}
+            />
+          ) : null}
 
           <div className="np-article-reading-layout">
             <div className="np-article-reading-column">
@@ -90,14 +94,11 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
               <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
               <footer className="np-article-end">
                 <ArticleNeighbours older={timeline.older[0] ?? null} newer={timeline.newer[0] ?? null} />
-                <div className="np-article-origin">
-                  {article.categories.length ? <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" /> : <span />}
-                  {article.sourceUrl ? (
-                    <a href={article.sourceUrl} target="_blank" rel="noopener noreferrer" className="np-article-source">
-                      Оригинал в newspoint.bg <ExternalIcon width={14} height={14} />
-                    </a>
-                  ) : null}
-                </div>
+                {article.categories.length ? (
+                  <div className="np-article-origin">
+                    <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
+                  </div>
+                ) : null}
               </footer>
             </div>
           </div>

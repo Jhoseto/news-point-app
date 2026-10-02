@@ -51,6 +51,7 @@ export interface ArticleDetail extends ArticleSummary {
   media: Map<string, Media>;
   categories: CategoryRef[];
   readCount: number | null;
+  listenEnabled: boolean;
 }
 
 export const getPublicTeam = cache(async (): Promise<{ id: string; name: string; bio: string }[]> => {
@@ -316,6 +317,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       authorName: articles.authorName,
       sourceUrl: articles.sourceUrl,
       body: articles.body,
+      listenEnabled: articles.listenEnabled,
     })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
@@ -364,6 +366,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     media,
     categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
     readCount: realCount === null ? null : realCount + addedCount,
+    listenEnabled: row.listenEnabled,
   };
 });
 

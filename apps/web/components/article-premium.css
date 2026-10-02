@@ -292,8 +292,6 @@
 .np-article-embed:hover { border-color: var(--np-accent); }
 .np-article-page .np-legacy { max-width: 100%; overflow: auto; }
 
-.np-article-source { display: inline-flex; min-height: 2.75rem; align-items: center; gap: 0.4rem; margin-top: 0.8rem; color: var(--np-muted); font-size: 0.76rem; font-weight: 650; }
-.np-article-source:hover { color: var(--np-link); }
 
 @media (max-width: 48rem) {
   .np-article-page { padding-bottom: 3.5rem; }
@@ -351,8 +349,7 @@
 .np-article-neighbour-meta { display: flex; align-items: center; gap: 0.42rem; margin-top: 0.48rem; color: var(--np-muted); font-size: 0.6rem; white-space: nowrap; }
 .np-article-neighbour-meta span { color: var(--np-link); font-weight: 750; }
 .np-article-neighbour-meta span::after { content: "·"; margin-left: 0.42rem; color: var(--np-muted); }
-.np-article-origin { display: flex; min-height: 3rem; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid color-mix(in oklab, var(--np-line) 74%, transparent); }
-.np-article-origin .np-article-source { min-height: 2.5rem; margin-top: 0; white-space: nowrap; }
+.np-article-origin { display: flex; min-height: 3rem; align-items: center; gap: 1rem; margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid color-mix(in oklab, var(--np-line) 74%, transparent); }
 
 /* Semantic story carousel. */
 .np-related-stories { position: relative; width: calc(100% + (2 * var(--np-article-gutter))); margin: clamp(3.5rem, 7vw, 6rem) calc(var(--np-article-gutter) * -1) 0; overflow: hidden; border-block: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent); background: linear-gradient(180deg, color-mix(in oklab, var(--np-surface) 56%, transparent), transparent); }

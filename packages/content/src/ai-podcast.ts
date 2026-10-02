@@ -14,6 +14,9 @@ export const aiPodcastSettings = z.strictObject({
 
 export type AiPodcastSettings = z.infer<typeof aiPodcastSettings>;
 
+/** Stable prebuilt Gemini TTS voices. Custom voice IDs can be introduced after approval. */
+export const AI_PODCAST_VOICES = ["Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina", "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi", "Vindemiatrix", "Sadachbia", "Sadaltager", "Sulafat"] as const;
+
 export const aiPodcastSource = z.strictObject({
   id: z.uuid(),
   title: z.string().min(1),
@@ -30,6 +33,7 @@ export const aiPodcastLine = z.strictObject({
   speaker: z.enum(["alex", "maya"]),
   text: z.string().trim().min(1).max(2000),
   direction: z.string().trim().max(180).default(""),
+  spoken: z.string().trim().max(2400).optional(),
 });
 export type AiPodcastLine = z.infer<typeof aiPodcastLine>;
 export const aiPodcastSegment = z.strictObject({
@@ -74,4 +78,8 @@ export function transcript(segments: AiPodcastSegment[]): string {
 export function targetWords(settings: AiPodcastSettings): number {
   // Conversational Bulgarian speech is planned around 130 words/minute.
   return Math.round(settings.minutes * 130);
+}
+
+export function scriptWords(segments: AiPodcastSegment[]): number {
+  return segments.flatMap((segment) => segment.lines).reduce((sum, line) => sum + line.text.trim().split(/\s+/).filter(Boolean).length, 0);
 }

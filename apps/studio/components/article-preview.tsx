@@ -1,4 +1,4 @@
-import type { Block } from "@newspoint/content";
+import { articleSubtitle, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { wordCount } from "@/lib/editor/body";
 import { formatFull } from "@/lib/format";
@@ -68,6 +68,7 @@ function readingMinutes(blocks: Block[]): number {
 
 export function ArticlePreview({ article, theme }: { article: PreviewArticle; theme: PreviewTheme }) {
   const hasBody = article.blocks.length > 0;
+  const subtitle = articleSubtitle(article.excerpt, article.blocks);
   return (
     <div data-theme={theme} className="np-site @container min-h-full bg-page font-sans text-body">
       <header className="border-b border-line bg-surface/90">
@@ -102,7 +103,7 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
           <h1 className={`text-[1.75rem] leading-[1.15] font-extrabold tracking-tight text-balance @xl:text-4xl @4xl:text-[2.6rem] ${article.title ? "text-ink" : "text-faint"}`}>
             {article.title || "Заглавието на материала"}
           </h1>
-          {article.excerpt ? <p className="text-lg leading-relaxed text-body">{article.excerpt}</p> : null}
+          {subtitle ? <p className="text-lg leading-relaxed text-body">{subtitle}</p> : null}
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-y border-line py-3 text-xs font-medium text-muted">
             <span className="inline-flex items-center gap-2 font-bold text-ink">

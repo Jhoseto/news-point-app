@@ -57,6 +57,7 @@ export const saveRequest = z.strictObject({
 export const publishRequest = z.strictObject({
   revision: z.int().positive(),
   idempotencyKey: z.uuid(),
+  listenEnabled: z.boolean(),
 });
 
 /** What still blocks publication, in the editor's language. Empty means ready. */

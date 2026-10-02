@@ -1,6 +1,6 @@
 import "server-only";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
 import { readRemoteFile, remoteDiskFromEnv, removeRemoteFile, writeRemoteFile } from "@newspoint/content/disk";
 
 const PREFIXES = ["users/profiles/", "users/livepoint/", "news/", "podcasts/", "ai-podcasts/"] as const;
@@ -18,7 +18,7 @@ export function mediaFile(storageKey: string): string | null {
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
   const full = resolve(root, ...parts);
   const rootResolved = resolve(root);
-  if (full !== rootResolved && !full.startsWith(rootResolved + "/")) return null;
+  if (full !== rootResolved && !full.startsWith(rootResolved + sep)) return null;
   return full;
 }
 

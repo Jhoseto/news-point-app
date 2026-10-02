@@ -5,6 +5,7 @@ create table if not exists ai_podcast_projects (
   id uuid primary key default gen_random_uuid(),
   settings jsonb not null,
   sources jsonb not null,
+  fact_packs jsonb not null default '{}'::jsonb,
   segments jsonb not null default '[]'::jsonb,
   title text,
   summary text,

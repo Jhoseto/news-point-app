@@ -1,3 +1,29 @@
+/** One news sentence per turn, so the voice can fall at the full stop. */
+export function newsSpeechTurns(text: string): string[] {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const turns = clean.split(/(?<=[.!?])\s+(?=\p{Lu})/u).map((part) => part.trim()).filter(Boolean);
+  return turns.length ? turns : [clean];
+}
+
+export function speechByteChunks(text: string, maxBytes = 4500): string[] {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return [];
+  const parts: string[] = [];
+  let buffer = "";
+  for (const word of clean.split(" ")) {
+    const next = buffer ? `${buffer} ${word}` : word;
+    if (Buffer.byteLength(next, "utf8") > maxBytes && buffer) {
+      parts.push(buffer);
+      buffer = word;
+    } else {
+      buffer = next;
+    }
+  }
+  if (buffer) parts.push(buffer);
+  return parts;
+}
+
 /** Length-prefixed speech pieces. One MP3 cannot be seeked after the pieces are glued together. */
 
 export function packSpeechParts(parts: readonly Uint8Array[]): Uint8Array {

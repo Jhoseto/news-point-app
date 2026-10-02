@@ -81,7 +81,7 @@ export async function masterAudio(wavs: Buffer[], music: Buffer | null): Promise
     }
     const voice = `${wavs.map((_, index) => `[${index}:a]`).join("")}concat=n=${wavs.length}:v=0:a=1,aresample=48000,aformat=channel_layouts=stereo[spoken]`;
     const filter = music
-      ? `${voice};[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13[bed];[bed][spoken]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[spoken][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`
+      ? `${voice};[spoken]asplit=2[voice_mix][side];[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13[bed];[bed][side]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[voice_mix][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`
       : `${voice};[spoken]loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`;
     const out = join(dir, "master.mp3");
     await run(process.env.FFMPEG_PATH || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-map", "[out]", "-ar", "48000", "-ac", "2", "-b:a", "128k", out], 600_000);

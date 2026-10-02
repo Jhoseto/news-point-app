@@ -68,6 +68,7 @@ export interface EditorArticle {
   authorName: string;
   publishedAt: Date | null;
   publishedRevision: number | null;
+  listenEnabled: boolean;
   revision: number;
   revisionSavedAt: Date | null;
   revisionSavedBy: string | null;
@@ -191,6 +192,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
     authorName: article.authorName,
     publishedAt: article.publishedAt,
     publishedRevision: article.publishedRevision,
+    listenEnabled: article.listenEnabled,
     revision: latest?.revision.number ?? 0,
     revisionSavedAt: latest?.revision.createdAt ?? null,
     revisionSavedBy: latest?.savedBy ?? null,
@@ -425,7 +427,7 @@ export interface PublishOutcome {
  * transaction. A repeated idempotency key returns the first outcome, so a
  * double click publishes once.
  */
-export async function publishRevision(staff: Staff, id: string, revision: number, idempotencyKey: string): Promise<PublishOutcome> {
+export async function publishRevision(staff: Staff, id: string, revision: number, idempotencyKey: string, listenEnabled: boolean): Promise<PublishOutcome> {
   return getDb().transaction(async (tx) => {
     const [claimed] = await tx
       .insert(publishRequests)
@@ -485,6 +487,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         authorName: rev.authorName,
         primaryCategoryId: category.id,
         isPublic: true,
+        listenEnabled,
         publishedAt: article.publishedAt ?? sql`now()`,
         version,
         publishedRevision: revision,

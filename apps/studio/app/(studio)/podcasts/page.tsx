@@ -8,7 +8,7 @@ export const metadata = { title: "Подкасти" };
 export const dynamic = "force-dynamic";
 
 export default async function PodcastsPage() {
-  await requireStaff();
+  const staff = await requireStaff();
   if (!await podcastsReady()) {
     return (
       <section className="rounded-2xl border border-line bg-surface p-6">
@@ -40,6 +40,7 @@ export default async function PodcastsPage() {
         initial={episodes}
         categories={menu.map((category) => ({ id: category.id, name: bySlug.get(category.slug) ?? category.name }))}
         webUrl={(process.env.WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "")}
+        role={staff.role}
       />
     </section>
   );

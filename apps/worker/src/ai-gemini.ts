@@ -10,8 +10,8 @@ const MUSIC_MODEL = "lyria-3.5";
 type Interaction = { steps?: Array<{ type?: string; content?: Array<{ type?: string; text?: string; data?: string; mime_type?: string }> }>; usage?: unknown };
 
 function apiKey() {
-  const key = process.env.GEMINI_API_KEY?.trim();
-  if (!key) throw new Error("GEMINI_API_KEY is missing");
+  const key = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_AI_STUDIO?.trim();
+  if (!key) throw new Error("GEMINI_API_KEY or GOOGLE_AI_STUDIO is missing");
   return key;
 }
 
@@ -98,8 +98,33 @@ export async function checkStory(source: AiPodcastSource, segmentId: string, lin
   return { value: response.value.warnings.map((warning) => ({ ...warning, segmentId, sourceId: source.id })), usage: response.usage };
 }
 
+const spokenParser = z.strictObject({ lines: z.array(z.strictObject({ spoken: z.string().min(1) })).min(1).max(100) });
+const spokenSchema = { type: "object", properties: { lines: { type: "array", items: { type: "object", properties: { spoken: { type: "string" } }, required: ["spoken"] } } }, required: ["lines"] };
+const allowedTag = /<(?:breath|sigh|laugh|chuckle|phew|short pause|long pause|throat-clearing)>/g;
+
+export async function directPerformance(lines: AiPodcastLine[]): Promise<{ lines: AiPodcastLine[]; usage: unknown }> {
+  const words = lines.reduce((sum, line) => sum + line.text.split(/\s+/).length, 0);
+  const budget = Math.max(1, Math.ceil(words / 130));
+  const response = await structured(
+    `Подготви точния български сценарий за TTS. Запази всички думи и реда на репликите дословно. Не добавяй и не премахвай думи. Добави общо най-много ${budget} вокални маркера от: <breath>, <sigh>, <laugh>, <chuckle>, <phew>, <short pause>, <long pause>, <throat-clearing>. Не поставяй маркер на всяка реплика. Върни точно ${lines.length} елемента, само поле spoken. Насоките са за интонация, не са за произнасяне.\n${JSON.stringify(lines.map(({ speaker, text, direction }) => ({ speaker, text, direction })))}`,
+    spokenSchema,
+    (value) => spokenParser.parse(value),
+  );
+  if (response.value.lines.length !== lines.length) throw new Error("Performance director changed turn count");
+  let tags = 0;
+  const result = lines.map((line, index) => {
+    const spoken = response.value.lines[index]!.spoken;
+    tags += [...spoken.matchAll(allowedTag)].length;
+    const plain = spoken.replace(allowedTag, "").replace(/\s+/g, " ").trim();
+    if (plain !== line.text.replace(/\s+/g, " ").trim() || /<[^>]+>/.test(plain)) throw new Error("Performance director changed spoken words");
+    return { ...line, spoken };
+  });
+  if (tags > budget) throw new Error("Performance director exceeded vocal tag budget");
+  return { lines: result, usage: response.usage };
+}
+
 export async function synthesize(lines: AiPodcastLine[], voices: { alex: string; maya: string }): Promise<{ bytes: Buffer; usage: unknown }> {
-  const input = [{ type: "user_input", content: lines.map((line) => ({ type: "text", text: line.direction ? `${line.text} <short pause>` : line.text, annotations: [{ type: "speech_metadata", speaker: line.speaker === "alex" ? "Alex" : "Maya", style: line.direction || "natural Bulgarian news conversation" }] })) }];
+  const input = [{ type: "user_input", content: lines.map((line) => ({ type: "text", text: line.spoken || line.text, annotations: [{ type: "speech_metadata", speaker: line.speaker === "alex" ? "Alex" : "Maya", style: line.direction || "natural Bulgarian news conversation" }] })) }];
   const response = await interact({ model: TTS_MODEL, input, response_format: { type: "audio" }, generation_config: { speech_config: { mode: "conversational", speakers: [{ speaker: "Alex", voice: voices.alex }, { speaker: "Maya", voice: voices.maya }] } } });
   const bytes = binary(response, "audio");
   if (bytes.toString("ascii", 0, 4) !== "RIFF") throw new Error("Gemini TTS did not return WAV");
@@ -107,9 +132,9 @@ export async function synthesize(lines: AiPodcastLine[], voices: { alex: string;
 }
 
 export async function generateMusic(prompt: string): Promise<{ bytes: Buffer; usage: unknown }> {
-  const response = await interact({ model: MUSIC_MODEL, input: `Instrumental only, no vocals or speech. Original, clean radio news podcast music. ${prompt}` });
+  const response = await interact({ model: MUSIC_MODEL, input: `Instrumental only, no vocals or speech. Original, clean radio news podcast music. ${prompt}`, response_format: { type: "audio" } });
   const bytes = binary(response, "audio");
-  if (bytes.length < 1000) throw new Error("Lyria returned empty music");
+  if (bytes.length < 1000 || (bytes.toString("ascii", 0, 3) !== "ID3" && !(bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0))) throw new Error("Lyria did not return MP3 music");
   return { bytes, usage: response.usage ?? {} };
 }
 

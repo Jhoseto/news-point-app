@@ -3,7 +3,7 @@
 .np-tts-wrap {
   position: sticky;
   top: calc(var(--np-header-h, 6.75rem) + 0.4rem);
-  z-index: 30;
+  z-index: 10;
   width: min(100%, 64rem);
   margin: 0.85rem auto 0;
   padding-bottom: 0.7rem;
@@ -59,7 +59,18 @@
 }
 
 .np-tts-play[aria-busy="true"] {
-  opacity: 0.8;
+  opacity: 1;
+  cursor: wait;
+}
+
+.np-tts-spin {
+  animation: np-tts-spin 0.7s linear infinite;
+}
+
+@keyframes np-tts-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .np-tts-play:focus-visible,
@@ -140,6 +151,7 @@
 }
 
 .np-tts-active {
+  position: relative;
   scroll-margin-top: calc(var(--np-header-h, 6.75rem) + 5.4rem);
   scroll-margin-bottom: 2rem;
   background: linear-gradient(
@@ -148,7 +160,18 @@
     color-mix(in oklab, var(--np-accent) 4%, transparent)
   );
   border-radius: 0.35rem;
-  box-shadow: inset 3px 0 0 var(--np-accent, #3818d6);
+}
+
+.np-tts-active:not(.np-article-quote)::before {
+  content: "";
+  position: absolute;
+  top: 0.2em;
+  bottom: 0.2em;
+  left: -0.7rem;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--np-accent, #3818d6);
+  pointer-events: none;
 }
 
 @media (max-width: 40rem) {
@@ -165,5 +188,9 @@
 @media (prefers-reduced-motion: reduce) {
   .np-tts-active {
     transition: none;
+  }
+
+  .np-tts-spin {
+    animation: none;
   }
 }
