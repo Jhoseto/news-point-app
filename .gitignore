@@ -25,6 +25,8 @@ blob-report/
 # Local demo output
 DEMO-LINK.txt
 .cloudflared-demo.log
+.tts-cache/
+.tts-voices/
 
 # Logs and OS files
 *.log

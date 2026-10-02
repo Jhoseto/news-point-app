@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArticlePage } from "@/components/article-page";
 import { CategoryPage } from "@/components/category-page";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList, newsArticle } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 import { getArticleByPath, getCategoryByPath } from "@/lib/queries";
 
@@ -51,8 +53,45 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PathPage({ params }: Props) {
   const path = await resolvePath(params);
   const category = await getCategoryByPath(path);
-  if (category) return <CategoryPage category={category} cursor={null} />;
+  if (category) {
+    const origin = shareOrigin();
+    const crumbs = breadcrumbList(origin, [
+      { name: "Начало", path: "/" },
+      { name: category.name },
+    ]);
+    return (
+      <>
+        <JsonLd data={crumbs} id="np-ld-breadcrumb" />
+        <CategoryPage category={category} cursor={null} />
+      </>
+    );
+  }
   const article = await getArticleByPath(path);
-  if (article) return <ArticlePage article={article} />;
+  if (article) {
+    const origin = shareOrigin();
+    const breadcrumbs = breadcrumbList(origin, [
+      { name: "Начало", path: "/" },
+      ...(article.category ? [{ name: article.category.name, path: article.category.path }] : []),
+      { name: article.title },
+    ]);
+    const articleLd = newsArticle({
+      origin,
+      organizationId: `${origin}/#organization`,
+      path: article.path,
+      title: article.title,
+      excerpt: article.excerpt,
+      imageUrl: article.hero?.url ? `${origin}${article.hero.url.startsWith("/") ? "" : "/"}${article.hero.url}` : undefined,
+      datePublished: article.publishedAt?.toISOString() ?? new Date().toISOString(),
+      dateModified: article.publishedAt?.toISOString() ?? new Date().toISOString(),
+      authorName: article.authorName,
+      sectionName: article.category?.name,
+    });
+    return (
+      <>
+        <JsonLd data={[breadcrumbs, articleLd]} id="np-ld-article" />
+        <ArticlePage article={article} />
+      </>
+    );
+  }
   notFound();
 }

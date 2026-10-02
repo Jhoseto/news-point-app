@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Невалидни координати." }, { status: 400, headers });
   const key = tomtomApiKey();
   if (!key) return NextResponse.json({ error: "Адресът не може да се намери в момента." }, { status: 503, headers });
-  const ip = hashIp(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null) ?? "local";
+  const ip = hashIp(request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null) ?? "local";
   if (!allowed(ip)) return NextResponse.json({ error: "Твърде много заявки за адрес. Изчакайте или уточнете мястото ръчно." }, { status: 429, headers: { ...headers, "Retry-After": "600" } });
   const { lat, lon } = parsed.data;
   const url = new URL(`https://api.tomtom.com/search/2/reverseGeocode/${lat.toFixed(6)},${lon.toFixed(6)}.json`);

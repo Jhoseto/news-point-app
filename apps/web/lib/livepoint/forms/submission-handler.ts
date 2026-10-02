@@ -24,7 +24,7 @@ export async function handleSubmission<T>(request: Request, schema: z.ZodType<T>
     try { uploaded = await uploadPhotos(prepared); }
     catch { throw new SubmissionRequestError("Снимките не можаха да се запазят. Опитайте отново по-късно. Формата не е изпратена.", 503); }
     const result = await save(parsed.data, {
-      ipHash: hashIp(request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null),
+      ipHash: hashIp(request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? null),
       userAgent: request.headers.get("user-agent")?.slice(0, 1000) ?? null,
     }, uploaded);
     if (!result.ok) throw new SubmissionRequestError(result.error, result.code === "unavailable" ? 503 : 500);

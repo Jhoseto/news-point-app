@@ -6,6 +6,7 @@ import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
 import { ArticleReadCount } from "./article-read-count";
 import { ArticleNeighbours } from "./article-neighbours";
+import { ArticleTts } from "./article-tts";
 import { RelatedStories } from "./related-stories";
 import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
@@ -60,8 +61,8 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
           <header className="np-article-header">
             {!article.hero && article.category ? <CategoryPill category={article.category} glass={false} className="np-article-no-hero-category" /> : null}
             <div className="np-article-heading-accent" aria-hidden="true" />
-            <h1>{article.title}</h1>
-            {article.excerpt ? <p className="np-article-deck">{article.excerpt}</p> : null}
+            <h1 id="article-tts-title">{article.title}</h1>
+            {article.excerpt ? <p id="article-tts-excerpt" className="np-article-deck">{article.excerpt}</p> : null}
             <div className="np-article-meta">
               <div className="np-article-byline">
                 <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
@@ -75,6 +76,13 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
               <ShareButtons url={shareUrl} title={article.title} />
             </div>
           </header>
+          <ArticleTts
+            articleId={article.id}
+            title={article.title}
+            excerpt={article.excerpt}
+            body={article.body}
+            media={article.media}
+          />
 
           <div className="np-article-reading-layout">
             <div className="np-article-reading-column">

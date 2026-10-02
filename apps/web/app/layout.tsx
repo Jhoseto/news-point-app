@@ -4,6 +4,7 @@ import { unstable_cache } from "next/cache";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
+import { JsonLd } from "@/components/json-ld";
 import { PodcastProvider } from "@/components/podcast/player";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
@@ -14,6 +15,8 @@ import { isTomTomConfigured } from "@/lib/livepoint/config";
 import { toLatestHeadline } from "@/lib/livepoint/serialize";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 import { getLatest } from "@/lib/queries";
+import { newsMediaOrganization, webSite } from "@/lib/jsonld";
+import { shareOrigin } from "@/lib/share-card";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
 export const revalidate = 60;
@@ -45,8 +48,14 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const { weather, latest } = await loadPublicShell();
+  const origin = shareOrigin();
+  const organization = newsMediaOrganization({ origin });
+  const website = webSite(origin, organization["@id"] as string);
   return (
     <html lang="bg" suppressHydrationWarning>
+      <head>
+        <JsonLd data={[organization, website]} id="np-ld-org-website" />
+      </head>
       <body className="min-h-dvh">
         <ThemeScript />
         <a

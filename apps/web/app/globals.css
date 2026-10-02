@@ -22,6 +22,11 @@
   --np-accent-2: #990fec;
   --np-magenta: #d63df2;
   --np-link: #2660fb;
+  --np-team-cyan: #168ac2;
+  --np-team-cyan-bright: #68d1ff;
+  --np-team-cyan-border: #42c8ff;
+  --np-team-deep: #001327;
+  --np-team-dark-panel: #041123;
   --np-on-accent: #ffffff;
   --np-shadow: 0 1px 2px rgb(10 20 84 / 0.04), 0 8px 24px -12px rgb(10 20 84 / 0.12);
   --np-gradient: linear-gradient(90deg, #3818d6 0%, #990fec 55%, #d63df2 100%);
@@ -49,6 +54,7 @@
   --np-accent-2: #b43cf5;
   --np-magenta: #ce06f8;
   --np-link: #b596f2;
+  --np-team-cyan: #48c7ff;
   --np-on-accent: #ffffff;
   --np-shadow: 0 0 0 1px rgb(118 104 255 / 0.14), 0 12px 32px -16px rgb(106 60 240 / 0.45);
   --np-gradient: linear-gradient(90deg, #6a3cf0 0%, #b43cf5 55%, #ce06f8 100%);

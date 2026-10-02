@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CategoryPage } from "@/components/category-page";
+import { JsonLd } from "@/components/json-ld";
 import { parseCategoryCursor } from "@/lib/category-pagination";
+import { breadcrumbList } from "@/lib/jsonld";
+import { shareOrigin } from "@/lib/share-card";
 import { getCategoryByPath } from "@/lib/queries";
 
 export const revalidate = 60;
@@ -20,7 +23,17 @@ export default async function CategoryArchivePage({ params }: Props) {
   try {
     const cursor = parseCategoryCursor(decodeURIComponent(raw), category.id);
     if (!cursor) notFound();
-    return <CategoryPage category={category} cursor={cursor} />;
+    const origin = shareOrigin();
+    const breadcrumbs = breadcrumbList(origin, [
+      { name: "Начало", path: "/" },
+      { name: category.name },
+    ]);
+    return (
+      <>
+        <JsonLd data={breadcrumbs} id="np-ld-breadcrumb-archive" />
+        <CategoryPage category={category} cursor={cursor} />
+      </>
+    );
   } catch {
     notFound();
   }

@@ -212,7 +212,7 @@
 .np-article-inline-toc {
   position: sticky;
   z-index: 2;
-  top: calc(var(--np-header-h) + 0.4rem);
+  top: calc(var(--np-header-h) + 4.9rem);
   display: block;
   width: 100%;
   margin: 0 0 1.25rem;

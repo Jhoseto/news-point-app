@@ -63,8 +63,20 @@ function addOrigin(trusted: Set<string>, raw: string | undefined) {
 export function studioTrustedOrigins(): string[] {
   const publicBase = readStudioPublicBaseUrl();
   const publicOrigin = new URL(publicBase).origin;
-  const directOrigin = new URL(process.env.STUDIO_URL ?? "http://localhost:3001").origin;
-  const trusted = new Set([publicOrigin, directOrigin]);
+  // The direct Studio port is only trusted when explicitly set, or when the
+  // process is unambiguously running in development. Production with a
+  // missing STUDIO_URL is a deployment mistake — fail closed instead of
+  // trusting every localhost:3001 origin by default.
+  const isDev = process.env.NODE_ENV !== "production";
+  const directRaw = process.env.STUDIO_URL?.trim() || (isDev ? "http://localhost:3001" : "");
+  const trusted = new Set([publicOrigin]);
+  if (directRaw) {
+    try {
+      trusted.add(new URL(directRaw).origin);
+    } catch {
+      /* ignore invalid URL — the public origin is already trusted */
+    }
+  }
   addOrigin(trusted, process.env.WEB_URL);
   for (const part of process.env.STUDIO_EXTRA_TRUSTED_ORIGINS?.split(",") ?? []) {
     addOrigin(trusted, part);

@@ -14,7 +14,7 @@ export function reserveSubmission(request: Request): () => void {
   if (request.headers.get("origin") !== new URL(request.url).origin) throw new SubmissionRequestError("Заявката трябва да е от сайта.", 403);
   const now = Date.now();
   for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
+  const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "local";
   const key = createHash("sha256").update(ip).digest("hex");
   const entry = attempts.get(key) ?? { count: 0, until: now + 15 * 60_000 };
   if (entry.count >= 5 || (!attempts.has(key) && attempts.size >= 1000)) throw new SubmissionRequestError("Твърде много опити. Опитайте отново след 15 минути.", 429);

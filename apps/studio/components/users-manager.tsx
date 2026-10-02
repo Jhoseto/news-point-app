@@ -1,42 +1,30 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import type { StaffRole } from "@newspoint/db/schema";
 import { callApi } from "@/lib/client-api";
 import { assignableRoles, canChangeRole, canDeleteAccount, ROLE_LABELS } from "@/lib/editor/roles";
 import { formatWhen } from "@/lib/format";
 import { PASSWORD_MAX, PASSWORD_RULES, passwordProblems } from "@/lib/password-policy";
+import {
+  countUsers,
+  filterUsers,
+  initialsFrom,
+  ROLE_KEYS,
+  ROLE_TONE,
+  type UserRow,
+} from "./users-manager-utils";
+import "./users-manager.css";
 
-interface UserRow {
-  id: string;
-  name: string;
-  email: string;
-  role: StaffRole;
-  createdAt: string;
-  lastActiveAt: string | null;
-  profileBio: string;
-  profileImageUrl: string | null;
-}
+export type { UserRow };
 
 interface Actor {
   id: string;
   role: StaffRole;
 }
 
-const ROLE_STYLE: Record<StaffRole, string> = {
-  editor: "bg-surface-2 text-body",
-  admin: "bg-accent/10 text-accent",
-  master_admin: "np-gradient-bg text-white",
-};
-
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+const initials = initialsFrom;
 
 /** Random password that satisfies every rule; shown once to the creator. */
 function generatePassword(): string {
@@ -91,85 +79,70 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
       ref={dialog}
       onClose={onClose}
       aria-labelledby="create-user-heading"
-      className="m-auto w-[min(30rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
+      className="np-users-dialog"
     >
-      <div className="np-gradient-bg h-1" aria-hidden="true" />
-      <form onSubmit={onSubmit} className="space-y-4 p-6" autoComplete="off">
-        <div className="flex items-start justify-between gap-4">
+      <div className="np-users-dialog-accent" aria-hidden="true" />
+      <form onSubmit={onSubmit} className="np-users-dialog-form" autoComplete="off">
+        <div className="np-users-dialog-head">
           <div>
-            <h2 id="create-user-heading" className="text-xl font-extrabold text-ink">
-              Нов профил
-            </h2>
-            <p className="mt-1 text-sm text-muted">Изпратете паролата на човека по сигурен канал.</p>
+            <h2 id="create-user-heading">Нов профил</h2>
+            <p>Изпратете паролата на човека по сигурен канал.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Затвори" className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-surface-2">
-            ×
-          </button>
+          <button type="button" onClick={onClose} aria-label="Затвори" className="np-users-dialog-close">×</button>
         </div>
 
-        <div>
-          <label htmlFor="new-name" className="np-label">
-            Име
-          </label>
-          <input id="new-name" name="name" required minLength={2} maxLength={80} className="np-input" />
-        </div>
-        <div>
-          <label htmlFor="new-email" className="np-label">
-            Имейл
-          </label>
-          <input id="new-email" name="email" type="email" required maxLength={254} autoCapitalize="none" spellCheck={false} className="np-input" />
-        </div>
-        <div>
-          <label htmlFor="new-role" className="np-label">
-            Роля
-          </label>
-          <select id="new-role" name="role" defaultValue="editor" className="np-input">
+        <label className="np-users-field">
+          <span>Име</span>
+          <input name="name" required minLength={2} maxLength={80} className="np-users-input" />
+        </label>
+        <label className="np-users-field">
+          <span>Имейл</span>
+          <input name="email" type="email" required maxLength={254} autoCapitalize="none" spellCheck={false} className="np-users-input" />
+        </label>
+        <label className="np-users-field">
+          <span>Роля</span>
+          <select name="role" defaultValue="editor" className="np-users-input">
             {roles.map((role) => (
               <option key={role} value={role}>
                 {ROLE_LABELS[role]}
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <div className="flex items-end justify-between">
-            <label htmlFor="new-password" className="np-label">
-              Парола
-            </label>
+        </label>
+        <div className="np-users-field">
+          <div className="np-users-field-row">
+            <span>Парола</span>
             <button
               type="button"
               onClick={() => {
                 setPassword(generatePassword());
                 setShow(true);
               }}
-              className="mb-1.5 text-xs font-bold text-link hover:underline"
+              className="np-users-link"
             >
               Генерирай сигурна
             </button>
           </div>
-          <div className="relative">
+          <div className="np-users-password-wrap">
             <input
-              id="new-password"
               type={show ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               autoComplete="new-password"
               maxLength={PASSWORD_MAX}
               required
-              className="np-input pr-20 font-mono"
+              className="np-users-input np-users-mono"
             />
-            <button type="button" onClick={() => setShow((value) => !value)} className="absolute top-1/2 right-2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-bold text-muted hover:bg-surface-2">
+            <button type="button" onClick={() => setShow((value) => !value)} className="np-users-toggle-pw">
               {show ? "Скрий" : "Покажи"}
             </button>
           </div>
-          <ul className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-semibold">
+          <ul className="np-users-rules">
             {PASSWORD_RULES.map((rule) => {
               const ok = rule.test(password);
               return (
-                <li key={rule.id} className={`flex items-center gap-1.5 ${ok ? "text-success" : "text-faint"}`}>
-                  <span className={`flex size-3.5 items-center justify-center rounded-full text-[0.5rem] ${ok ? "bg-success text-white" : "border border-line"}`} aria-hidden="true">
-                    {ok ? "✓" : ""}
-                  </span>
+                <li key={rule.id} className={`np-users-rule ${ok ? "is-ok" : ""}`}>
+                  <span className="np-users-rule-dot" aria-hidden="true">{ok ? "✓" : ""}</span>
                   {rule.label}
                 </li>
               );
@@ -178,16 +151,14 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
         </div>
 
         {error ? (
-          <p role="alert" className="rounded-xl bg-danger/5 px-3.5 py-2.5 text-sm font-semibold text-danger">
+          <p role="alert" className="np-users-alert np-users-alert--error">
             {error}
           </p>
         ) : null}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="np-btn np-btn-secondary">
-            Отказ
-          </button>
-          <button type="submit" disabled={pending} className="np-btn np-btn-primary px-5">
+        <div className="np-users-dialog-foot">
+          <button type="button" onClick={onClose} className="np-users-btn np-users-btn--secondary">Отказ</button>
+          <button type="submit" disabled={pending} className="np-users-btn np-users-btn--primary">
             {pending ? "Създаване…" : "Създай профил"}
           </button>
         </div>
@@ -200,8 +171,14 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
   const router = useRouter();
   const [creating, setCreating] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | StaffRole>("all");
   const [notice, setNotice] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const roles = assignableRoles(actor.role);
+
+  const counts = useMemo(() => countUsers(users), [users]);
+
+  const filtered = useMemo(() => filterUsers(users, filter, query), [users, filter, query]);
 
   async function changeRole(user: UserRow, role: StaffRole) {
     setBusyId(user.id);
@@ -225,89 +202,164 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
   }
 
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="np-users">
+      <header className="np-users-header">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Профили</h1>
-          <p className="mt-1 text-sm text-muted">
+          <h1>Профили</h1>
+          <p>
             {users.length} {users.length === 1 ? "профил" : "профила"} ·{" "}
-            {canManageAccounts ? "създавате и изтривате профили и сменяте роли" : "сменяте ролите между редактор и администратор"}
+            {canManageAccounts
+              ? "създавате и изтривате профили и сменяте роли"
+              : "сменяте ролите между редактор и администратор"}
           </p>
         </div>
         {canManageAccounts ? (
-          <button type="button" onClick={() => setCreating(true)} className="np-btn np-btn-primary">
-            <span aria-hidden="true" className="text-lg leading-none">
-              +
-            </span>{" "}
-            Нов профил
+          <button type="button" onClick={() => setCreating(true)} className="np-users-btn np-users-btn--primary">
+            <span aria-hidden="true">＋</span> Нов профил
           </button>
         ) : null}
+      </header>
+
+      <div className="np-users-toolbar">
+        <div className="np-users-search">
+          <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} />
+            <path d="m20 20-4.2-4.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Търсене по име, имейл или био…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="np-users-search-input"
+            aria-label="Търсене на профили"
+          />
+        </div>
+        <div className="np-users-chips" role="tablist" aria-label="Филтър">
+          {([
+            ["all", "Всички", counts.all],
+            ["editor", ROLE_LABELS.editor, counts.editor ?? 0],
+            ["admin", ROLE_LABELS.admin, counts.admin ?? 0],
+            ["master_admin", ROLE_LABELS.master_admin, counts.master_admin ?? 0],
+          ] as const).map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={filter === value}
+              onClick={() => setFilter(value)}
+              className="np-users-chip"
+            >
+              {label}
+              <span className="np-users-chip-count">{count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {notice ? (
         <p
           role={notice.tone === "error" ? "alert" : "status"}
-          className={`mb-4 rounded-2xl px-5 py-3 text-sm font-semibold ${notice.tone === "error" ? "border border-danger/20 bg-danger/5 text-danger" : "border border-success/20 bg-success/10 text-success"}`}
+          className={`np-users-alert ${notice.tone === "error" ? "np-users-alert--error" : "np-users-alert--success"}`}
         >
           {notice.text}
         </p>
       ) : null}
 
-      <div className="np-card overflow-hidden">
-        <ul className="divide-y divide-line">
-          {users.map((user) => {
-            const isSelf = user.id === actor.id;
-            const editableRole = roles.some((role) => role !== user.role && canChangeRole(actor, user, role));
-            const deletable = canDeleteAccount(actor, user);
-            return (
-              <li key={user.id} className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4">
-                {user.profileImageUrl ? <img src={user.profileImageUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" /> : <span className="np-gradient-bg flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-white">{initials(user.name)}</span>}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-bold text-ink">
-                    {user.name}
-                    {isSelf ? <span className="ml-2 text-xs font-semibold text-faint">(вие)</span> : null}
-                  </p>
-                  <p className="truncate text-sm text-muted">{user.email}</p>
-                  {user.profileBio ? <p className="mt-1 line-clamp-2 text-xs text-faint">{user.profileBio}</p> : null}
-                </div>
-                <p className="hidden w-40 text-xs text-muted md:block">{user.lastActiveAt ? `Активен ${formatWhen(user.lastActiveAt)}` : "Още не е влизал"}</p>
-                {editableRole ? (
-                  <select
-                    aria-label={`Роля на ${user.name}`}
-                    value={user.role}
-                    disabled={busyId === user.id}
-                    onChange={(event) => void changeRole(user, event.target.value as StaffRole)}
-                    className="np-input w-44 py-2 text-sm font-bold"
-                  >
-                    {user.role === "master_admin" ? <option value="master_admin">{ROLE_LABELS.master_admin}</option> : null}
-                    {roles.map((role) => (
-                      <option key={role} value={role}>
-                        {ROLE_LABELS[role]}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className={`inline-flex w-44 justify-center rounded-full px-3 py-1.5 text-xs font-extrabold ${ROLE_STYLE[user.role]}`}>{ROLE_LABELS[user.role]}</span>
-                )}
-                {canManageAccounts ? (
-                  <button
-                    type="button"
-                    disabled={!deletable || busyId === user.id}
-                    onClick={() => void remove(user)}
-                    aria-label={`Изтрий ${user.name}`}
-                    title={deletable ? "Изтрий профила" : "Не можете да изтриете собствения си профил"}
-                    className="flex size-9 items-center justify-center rounded-lg text-muted transition hover:bg-danger/10 hover:text-danger disabled:invisible"
-                  >
-                    <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                      <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
-                    </svg>
-                  </button>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+      {filtered.length > 0 ? (
+        <div className="np-users-table-wrap">
+          <table className="np-users-table">
+            <thead>
+              <tr>
+                <th>Профил</th>
+                <th>Имейл</th>
+                <th>Роля</th>
+                <th>Активност</th>
+                <th aria-label="Действия" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((user) => {
+                const isSelf = user.id === actor.id;
+                const editableRole = roles.some((role) => role !== user.role && canChangeRole(actor, user, role));
+                const deletable = canDeleteAccount(actor, user);
+                return (
+                  <tr key={user.id}>
+                    <td>
+                      <div className="np-users-profile">
+                        {user.profileImageUrl ? (
+                          <img src={user.profileImageUrl} alt="" className="np-users-avatar" />
+                        ) : (
+                          <span className="np-users-avatar np-users-avatar--initials">{initials(user.name)}</span>
+                        )}
+                        <div className="min-w-0">
+                          <p className="np-users-name">
+                            {user.name}
+                            {isSelf ? <span className="np-users-self">вие</span> : null}
+                          </p>
+                          {user.profileBio ? <p className="np-users-bio">{user.profileBio}</p> : null}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="np-users-email">{user.email}</td>
+                    <td>
+                      {editableRole ? (
+                        <select
+                          aria-label={`Роля на ${user.name}`}
+                          value={user.role}
+                          disabled={busyId === user.id}
+                          onChange={(event) => void changeRole(user, event.target.value as StaffRole)}
+                          className="np-users-select"
+                        >
+                          {user.role === "master_admin" ? (
+                            <option value="master_admin">{ROLE_LABELS.master_admin}</option>
+                          ) : null}
+                          {roles.map((role) => (
+                            <option key={role} value={role}>
+                              {ROLE_LABELS[role]}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className={`np-users-role np-users-role--${ROLE_TONE[user.role]}`}>
+                          {ROLE_LABELS[user.role]}
+                        </span>
+                      )}
+                    </td>
+                    <td className="np-users-activity">
+                      {user.lastActiveAt ? `Активен ${formatWhen(user.lastActiveAt)}` : "Още не е влизал"}
+                    </td>
+                    <td className="np-users-actions">
+                      {canManageAccounts ? (
+                        <button
+                          type="button"
+                          disabled={!deletable || busyId === user.id}
+                          onClick={() => void remove(user)}
+                          aria-label={`Изтрий ${user.name}`}
+                          title={deletable ? "Изтрий профила" : "Не можете да изтриете собствения си профил"}
+                          className="np-users-icon-btn"
+                        >
+                          <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                            <path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="np-users-empty">
+          {query ? (
+            <p>Нищо не съвпада с „{query.trim()}".</p>
+          ) : (
+            <p>{filter === "all" ? "Няма създадени профили." : `Няма профили с роля ${ROLE_LABELS[filter]}.`}</p>
+          )}
+        </div>
+      )}
 
       {creating ? (
         <CreateUserDialog

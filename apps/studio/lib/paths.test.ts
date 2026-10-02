@@ -12,6 +12,13 @@ const savedNextPublic = process.env.NEXT_PUBLIC_STUDIO_PUBLIC_URL;
 const savedWeb = process.env.WEB_URL;
 const savedTunnel = process.env.NP_ALLOW_CF_TUNNEL;
 const savedExtras = process.env.STUDIO_EXTRA_TRUSTED_ORIGINS;
+const savedStudioUrl = process.env.STUDIO_URL;
+const savedNodeEnv = process.env.NODE_ENV;
+
+function setNodeEnv(value: string | undefined) {
+  Object.defineProperty(process.env, "NODE_ENV", { value, configurable: true, writable: true, enumerable: true });
+}
+
 afterEach(() => {
   if (savedPublic === undefined) delete process.env.STUDIO_PUBLIC_URL;
   else process.env.STUDIO_PUBLIC_URL = savedPublic;
@@ -21,6 +28,9 @@ afterEach(() => {
   else process.env.WEB_URL = savedWeb;
   if (savedTunnel === undefined) delete process.env.NP_ALLOW_CF_TUNNEL;
   else process.env.NP_ALLOW_CF_TUNNEL = savedTunnel;
+  if (savedStudioUrl === undefined) delete process.env.STUDIO_URL;
+  else process.env.STUDIO_URL = savedStudioUrl;
+  setNodeEnv(savedNodeEnv);
   if (savedExtras === undefined) delete process.env.STUDIO_EXTRA_TRUSTED_ORIGINS;
   else process.env.STUDIO_EXTRA_TRUSTED_ORIGINS = savedExtras;
 });
@@ -80,6 +90,20 @@ describe("studioTrustedOrigins", () => {
     delete process.env.NP_ALLOW_CF_TUNNEL;
     process.env.STUDIO_EXTRA_TRUSTED_ORIGINS = "https://cyber-outsourcing-mails-series.trycloudflare.com";
     expect(studioTrustedOrigins()).toContain("https://cyber-outsourcing-mails-series.trycloudflare.com");
+  });
+
+  it("does not trust localhost:3001 in production when STUDIO_URL is missing", () => {
+    setNodeEnv("production");
+    delete process.env.STUDIO_URL;
+    const origins = studioTrustedOrigins();
+    expect(origins).not.toContain("http://localhost:3001");
+  });
+
+  it("trusts localhost:3001 in development when STUDIO_URL is missing", () => {
+    setNodeEnv(undefined);
+    delete process.env.STUDIO_URL;
+    const origins = studioTrustedOrigins();
+    expect(origins).toContain("http://localhost:3001");
   });
 });
 

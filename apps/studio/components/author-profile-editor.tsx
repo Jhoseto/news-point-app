@@ -10,6 +10,7 @@ import { ROLE_LABELS } from "@/lib/editor/roles";
 import { PASSWORD_MAX, PASSWORD_RULES, passwordProblems } from "@/lib/password-policy";
 import { withBase } from "@/lib/paths";
 import { ProfilePhotoCropper } from "./profile-photo-cropper";
+import "./author-profile-editor.css";
 
 export function AuthorProfileEditor({ staff, initial }: { staff: { email: string; role: StaffRole }; initial: AuthorProfileInput & { hasPhoto: boolean } }) {
   const router = useRouter();
@@ -116,57 +117,134 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
 
   return (
     <>
-    <div className="mx-auto max-w-5xl">
-      <div className="mb-5">
-        <p className="text-xs font-extrabold tracking-wider text-accent uppercase">Лична зона</p>
-        <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Моят профил</h1>
-        <p className="mt-1 text-sm text-muted">Информацията е достъпна само в Studio за вас и администраторите.</p>
-      </div>
+    <div className="np-profile">
+      <header className="np-profile-header">
+        <span className="np-profile-eyebrow">Лична зона</span>
+        <h1>Моят профил</h1>
+        <p>Информацията е достъпна само в Studio за вас и администраторите.</p>
+      </header>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.78fr)]">
-        <form onSubmit={saveProfile} className="np-card overflow-hidden">
-          <div className="flex flex-col gap-4 border-b border-line p-5 sm:flex-row sm:items-center">
-            {hasPhoto ? <img src={`${withBase("/api/profile/photo/")}?v=${photoVersion}`} alt="Профилна снимка" className="size-20 rounded-full object-cover shadow-card" /> : <span className="np-gradient-bg flex size-20 shrink-0 items-center justify-center rounded-full text-xl font-extrabold text-white shadow-card">{initials}</span>}
-            <div className="min-w-0 flex-1">
-              <p className="text-lg font-extrabold text-ink">{profile.name}</p>
-              <p className="truncate text-sm text-muted">{staff.email}</p>
-              <span className="mt-1.5 inline-flex rounded-full bg-accent/10 px-2.5 py-1 text-xs font-bold text-accent">{ROLE_LABELS[staff.role]}</span>
+      <div className="np-profile-grid">
+        <form onSubmit={saveProfile} className="np-profile-card">
+          <div className="np-profile-card-head">
+            {hasPhoto ? <img src={`${withBase("/api/profile/photo/")}?v=${photoVersion}`} alt="Профилна снимка" className="np-profile-avatar np-profile-avatar--image" /> : <span className="np-profile-avatar np-profile-avatar--initials">{initials}</span>}
+            <div className="np-profile-id">
+              <p className="np-profile-name">{profile.name}</p>
+              <p className="np-profile-email">{staff.email}</p>
+              <span className="np-profile-role">{ROLE_LABELS[staff.role]}</span>
             </div>
-            <label className="np-btn np-btn-secondary cursor-pointer px-3 py-1.5 text-xs">
-              {photoPending ? "Обработка…" : hasPhoto ? "Смени снимката" : "Качи снимка"}
-              <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={photoPending} onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" />
-            </label>
-            {hasPhoto ? <button type="button" disabled={photoPending} onClick={() => void removePhoto()} className="text-xs font-bold text-muted hover:text-danger">Премахни</button> : null}
+            <div className="np-profile-photo-actions">
+              <label className="np-profile-btn np-profile-btn--secondary">
+                {photoPending ? "Обработка…" : hasPhoto ? "Смени снимката" : "Качи снимка"}
+                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={photoPending} onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" />
+              </label>
+              {hasPhoto ? (
+                <button type="button" disabled={photoPending} onClick={() => void removePhoto()} className="np-profile-text-danger">
+                  Премахни
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="space-y-4 p-5">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div><label htmlFor="profile-name" className="np-label">Име</label><input id="profile-name" value={profile.name} onChange={(event) => setProfile((value) => ({ ...value, name: event.target.value }))} minLength={2} maxLength={80} required autoComplete="name" className="np-input" /></div>
-              <div><span className="np-label">Имейл</span><div className="np-input truncate bg-surface-2 text-muted">{staff.email}</div></div>
+
+          <div className="np-profile-body">
+            <div className="np-profile-fields">
+              <label className="np-profile-field">
+                <span>Име</span>
+                <input
+                  id="profile-name"
+                  value={profile.name}
+                  onChange={(event) => setProfile((value) => ({ ...value, name: event.target.value }))}
+                  minLength={2}
+                  maxLength={80}
+                  required
+                  autoComplete="name"
+                  className="np-profile-input"
+                />
+              </label>
+              <div className="np-profile-field">
+                <span>Имейл</span>
+                <div className="np-profile-readonly">{staff.email}</div>
+              </div>
             </div>
-            <p className="text-xs text-faint">Можете да сменяте името си. Имейлът и ролята се управляват от администратор.</p>
-            <div>
-              <div className="flex items-end justify-between gap-3"><label htmlFor="profile-bio" className="np-label">Вътрешна информация</label><span className="mb-1.5 text-xs text-faint tabular-nums">{profile.bio.length}/1500</span></div>
-              <textarea id="profile-bio" rows={5} maxLength={1500} value={profile.bio} onChange={(event) => setProfile((value) => ({ ...value, bio: event.target.value }))} placeholder="Кратка служебна информация, ресори и бележки." className="np-input resize-y" />
+            <p className="np-profile-hint">Можете да сменяте името си. Имейлът и ролята се управляват от администратор.</p>
+            <label className="np-profile-field">
+              <div className="np-profile-field-head">
+                <span>Вътрешна информация</span>
+                <span className="np-profile-counter">{profile.bio.length}/1500</span>
+              </div>
+              <textarea
+                id="profile-bio"
+                rows={5}
+                maxLength={1500}
+                value={profile.bio}
+                onChange={(event) => setProfile((value) => ({ ...value, bio: event.target.value }))}
+                placeholder="Кратка служебна информация, ресори и бележки."
+                className="np-profile-textarea"
+              />
+            </label>
+            {notice ? (
+              <p role={notice.tone === "error" ? "alert" : "status"} className={`np-profile-alert np-profile-alert--${notice.tone}`}>
+                {notice.text}
+              </p>
+            ) : null}
+            <div className="np-profile-foot">
+              <span className="np-profile-save-state">
+                <span className={`np-profile-save-dot ${dirty ? "is-dirty" : ""}`} />
+                {dirty ? "Незаписани промени" : "Всички промени са запазени"}
+              </span>
+              <div className="np-profile-foot-actions">
+                <button type="button" disabled={pending || !dirty} onClick={() => setProfile(saved)} className="np-profile-btn np-profile-btn--secondary">Отмени</button>
+                <button type="submit" disabled={pending || !dirty} className="np-profile-btn np-profile-btn--primary">
+                  {pending ? "Записване…" : "Запиши профила"}
+                </button>
+              </div>
             </div>
-            {notice ? <p role={notice.tone === "error" ? "alert" : "status"} className={`rounded-xl px-3.5 py-2.5 text-sm font-semibold ${notice.tone === "error" ? "bg-danger/5 text-danger" : "bg-success/10 text-success"}`}>{notice.text}</p> : null}
-            <div className="flex items-center justify-end gap-3 border-t border-line pt-4"><span role="status" className="mr-auto text-xs text-muted">{dirty ? "Незаписани промени" : "Всички промени са записани"}</span><button type="button" disabled={pending || !dirty} onClick={() => setProfile(saved)} className="np-btn np-btn-secondary px-3 py-2 text-xs">Отмени</button><button type="submit" disabled={pending || !dirty} className="np-btn np-btn-primary px-4 py-2 text-sm">{pending ? "Записване…" : "Запиши профила"}</button></div>
           </div>
         </form>
 
-        <form onSubmit={changePassword} className="np-card p-5" autoComplete="off">
-          <h2 className="text-lg font-extrabold text-ink">Сигурност</h2>
-          <label className="mt-3 flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />Покажи паролите</label>
-          <p className="mt-1 text-sm text-muted">След промяната другите активни сесии ще бъдат прекратени.</p>
-          <div className="mt-4 space-y-3">
-            <div><label htmlFor="current-password" className="np-label">Текуща парола</label><input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-input" /></div>
-            <div><label htmlFor="new-password" className="np-label">Нова парола</label><input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-input" /></div>
-            <div><label htmlFor="confirm-password" className="np-label">Повторете новата парола</label><input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-input" /></div>
+        <form onSubmit={changePassword} className="np-profile-card" autoComplete="off">
+          <h2 className="np-profile-card-title">Сигурност</h2>
+          <label className="np-profile-toggle">
+            <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
+            <span>Покажи паролите</span>
+          </label>
+          <p className="np-profile-hint">След промяната другите активни сесии ще бъдат прекратени.</p>
+          <div className="np-profile-fields">
+            <label className="np-profile-field">
+              <span>Текуща парола</span>
+              <input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+            </label>
+            <label className="np-profile-field">
+              <span>Нова парола</span>
+              <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+            </label>
+            <label className="np-profile-field">
+              <span>Повторете новата парола</span>
+              <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+            </label>
           </div>
-          <ul className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs font-semibold">
-            {PASSWORD_RULES.map((rule) => { const ok = rule.test(newPassword); return <li key={rule.id} className={`flex items-center gap-1.5 ${ok ? "text-success" : "text-faint"}`}><span className={`flex size-3.5 items-center justify-center rounded-full text-[0.5rem] ${ok ? "bg-success text-white" : "border border-line"}`} aria-hidden="true">{ok ? "✓" : ""}</span>{rule.label}</li>; })}
+          <ul className="np-profile-rules">
+            {PASSWORD_RULES.map((rule) => {
+              const ok = rule.test(newPassword);
+              return (
+                <li key={rule.id} className={`np-profile-rule ${ok ? "is-ok" : ""}`}>
+                  <span className="np-profile-rule-dot" aria-hidden="true">{ok ? "✓" : ""}</span>
+                  {rule.label}
+                </li>
+              );
+            })}
           </ul>
-          {passwordNotice ? <p role={passwordNotice.tone === "error" ? "alert" : "status"} className={`mt-4 rounded-xl px-3.5 py-2.5 text-sm font-semibold ${passwordNotice.tone === "error" ? "bg-danger/5 text-danger" : "bg-success/10 text-success"}`}>{passwordNotice.text}</p> : null}
-          <div className="mt-4 flex justify-end border-t border-line pt-4"><button type="submit" disabled={passwordPending} className="np-btn np-btn-primary px-4 py-2 text-sm">{passwordPending ? "Смяна…" : "Смени паролата"}</button></div>
+          {passwordNotice ? (
+            <p role={passwordNotice.tone === "error" ? "alert" : "status"} className={`np-profile-alert np-profile-alert--${passwordNotice.tone}`}>
+              {passwordNotice.text}
+            </p>
+          ) : null}
+          <div className="np-profile-foot">
+            <span />
+            <button type="submit" disabled={passwordPending} className="np-profile-btn np-profile-btn--primary">
+              {passwordPending ? "Смяна…" : "Смени паролата"}
+            </button>
+          </div>
         </form>
       </div>
     </div>
@@ -174,4 +252,3 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
     </>
   );
 }
-
