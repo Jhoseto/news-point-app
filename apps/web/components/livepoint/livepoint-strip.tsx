@@ -52,7 +52,9 @@ function StripScroller({ children }: { children: ReactNode }) {
       return;
     }
     const max = element.scrollWidth - element.clientWidth;
-    setEdges({ left: element.scrollLeft > 4, right: max - element.scrollLeft > 4 });
+    const left = element.scrollLeft > 4;
+    const right = max - element.scrollLeft > 4;
+    setEdges(previous => previous.left === left && previous.right === right ? previous : { left, right });
   }, []);
 
   useEffect(() => {
@@ -102,18 +104,34 @@ export function LivePointStrip() {
   return (
     <div className="np-lp-row flex items-center lg:pl-[var(--np-rail-w)]">
       <div className="np-lp-strip flex h-11 w-full min-w-0 items-center px-2 lg:h-full lg:gap-1 lg:px-0 lg:pl-3 lg:pr-8 3xl:pl-4 3xl:pr-12">
-        <div className="np-lp-brand flex shrink-0 items-center lg:h-full">
-          <span className="hidden h-4 w-px shrink-0 bg-line lg:block" aria-hidden="true" />
-          <span className="inline-flex h-7 items-center gap-2 px-3 text-[0.75rem] font-extrabold tracking-tight text-ink lg:h-full lg:px-4 lg:py-0 lg:text-[0.8125rem]">
-            <span className="np-lp-heart" aria-hidden="true">
-              <span className="np-ring !size-4" />
-            </span>
-            <span className="np-lp-word">LivePoint</span>
-          </span>
-          <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
-        </div>
-
         <StripScroller>
+          <div className="np-lp-brand flex shrink-0 items-center lg:h-full">
+            <span className="hidden h-4 w-px shrink-0 bg-line lg:block" aria-hidden="true" />
+            <div
+              className="np-lp-brand-mark flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:items-center lg:gap-1.5 lg:px-4 lg:py-0 lg:text-[0.8125rem] lg:font-semibold"
+              aria-label="LivePoint"
+            >
+              <span className="np-lp-brand-mobile flex flex-col items-center gap-0.5 lg:hidden">
+                <span className="np-lp-item-icon np-lp-brand-icon-slot inline-flex items-center justify-center overflow-visible" aria-hidden="true">
+                  <span className="np-lp-brand-pulse inline-flex items-center gap-0.5">
+                    <span className="np-lp-heart np-lp-brand-icon">
+                      <span className="np-ring !size-3" />
+                    </span>
+                    <ChevronRightIcon className="np-lp-brand-cue shrink-0" width={11} height={11} />
+                  </span>
+                </span>
+                <span className="np-lp-item-label np-lp-word tracking-tight text-ink">LivePoint</span>
+              </span>
+              <span className="np-lp-brand-desktop hidden lg:inline-flex lg:items-center lg:gap-1.5">
+                <span className="np-lp-heart np-lp-brand-icon" aria-hidden="true">
+                  <span className="np-ring !size-[1.125rem]" />
+                </span>
+                <span className="np-lp-word tracking-tight text-ink">LivePoint</span>
+              </span>
+            </div>
+            <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
+          </div>
+
           <StripItem module="podcast" icon={<HeadphonesIcon width={17} height={17} />}>
             NewsPodcast
           </StripItem>

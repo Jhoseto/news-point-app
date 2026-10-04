@@ -89,8 +89,41 @@ export function MobileSupportingCard({ article }: { article: ArticleSummary }) {
 }
 
 /**
+ * Elongated rubric-feed card: photo left, title and meta right. Used on
+ * category archive pages after the lead and two supporting cards.
+ */
+export function MobileHorizonCard({ article }: { article: ArticleSummary }) {
+  return (
+    <article
+      className="group np-news-card overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+      style={categoryAccentStyle(article.category?.slug)}
+    >
+      <Link href={article.path} prefetch={false} aria-label={article.title} className="flex items-stretch gap-3 p-3">
+        <div className="relative w-[8.75rem] shrink-0 overflow-hidden rounded-xl sm:w-36">
+          <ArticleImage
+            media={article.hero}
+            sizes="144px"
+            className="h-full min-h-[5.25rem] w-full object-cover object-[center_30%]"
+          />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 py-0.5 pr-1">
+          {article.category ? <CategoryLabel category={article.category} /> : null}
+          <Heading
+            level="h3"
+            className="text-[0.98rem] leading-snug font-extrabold tracking-[-0.012em] text-balance text-ink group-hover:text-logo"
+            text={article.title}
+            clampLines={3}
+          />
+          <TimeMeta date={article.publishedAt} relative className="text-xs text-muted" />
+        </div>
+      </Link>
+    </article>
+  );
+}
+
+/**
  * Mobile compact row: title, category and time in one card without a second
- * big photo. Used after the supporting card for the third and fourth stories.
+ * big photo. Used on the homepage feed after the supporting cards.
  */
 export function MobileCompactRow({ article }: { article: ArticleSummary }) {
   return (

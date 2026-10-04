@@ -7,8 +7,7 @@ import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
 import { LatestNews24h } from "./latest-news-24h";
-import { MobileCompactRow, MobileLeadCard, MobileSupportingCard } from "./mobile-home-cards";
-import { PushPermission } from "./push-permission";
+import { MobileHorizonCard, MobileLeadCard, MobileSupportingCard } from "./mobile-home-cards";
 import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
@@ -39,21 +38,33 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
   const [lead, ...rest] = articles;
 
   return (
-    <div data-np-category-archive className="np-container flex flex-col gap-8 pt-5 pb-10">
-      <Breadcrumbs items={[{ name: category.name, path: category.path }]} />
+    <div data-np-category-archive className="np-container flex flex-col gap-4 pt-3 pb-10 lg:gap-8 lg:pt-5">
+      <div className="flex flex-col gap-1.5 lg:hidden">
+        <Breadcrumbs items={[]} dense />
+        <div className="[&_.np-section-heading]:mb-0 [&_.np-ring]:!size-4 [&_h1]:text-base [&_h1]:leading-tight">
+          <SectionTitle as="h1" accentSlug={category.slug}>
+            {category.name}
+          </SectionTitle>
+        </div>
+        <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" dense />
+      </div>
 
-      <header className="relative isolate overflow-hidden rounded-3xl shadow-card">
-        <ArticleImage media={lead?.hero ?? null} priority sizes="100vw" className="absolute inset-0 -z-10 hidden h-full w-full object-[center_30%] sm:block" />
-        <div className="absolute inset-0 -z-10 hidden bg-gradient-to-r from-[#020826]/90 via-[#020826]/60 to-[#020826]/20 sm:block" aria-hidden="true" />
-        <div className="flex min-h-44 flex-col justify-end gap-2 p-6 sm:min-h-56 sm:p-8">
-          <span className="text-sm font-semibold text-white/75 sm:text-muted">Рубрика</span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-white sm:text-5xl">{category.name}</h1>
+      <div className="hidden lg:contents">
+        <Breadcrumbs items={[{ name: category.name, path: category.path }]} />
+      </div>
+
+      <header className="relative isolate hidden overflow-hidden rounded-3xl shadow-card lg:block">
+        <ArticleImage media={lead?.hero ?? null} priority sizes="100vw" className="absolute inset-0 -z-10 h-full w-full object-[center_30%]" />
+        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#020826]/90 via-[#020826]/60 to-[#020826]/20" aria-hidden="true" />
+        <div className="flex min-h-56 flex-col justify-end gap-2 p-8">
+          <span className="text-sm font-semibold text-white/75">Рубрика</span>
+          <h1 className="text-5xl font-extrabold tracking-tight text-white">{category.name}</h1>
         </div>
       </header>
 
-      <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" />
-
-      <PushPermission categorySlug={category.slug} />
+      <div className="hidden lg:block">
+        <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" />
+      </div>
 
       {archive.anchored ? (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
@@ -68,17 +79,14 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
             <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
           ) : (
             <>
-            {/* Phone: vertical list — lead, then supporting/compact rows. No mosaic. */}
-            <div className="flex flex-col gap-5 lg:hidden">
-              {lead ? <MobileLeadCard article={lead} /> : null}
+            {/* Phone: lead → two medium cards → elongated photo cards. No title-only list. */}
+            <div className="flex flex-col gap-4 lg:hidden">
+              {lead ? <MobileLeadCard article={lead} priority /> : null}
               {articles[1] ? <MobileSupportingCard article={articles[1]} /> : null}
-              {articles.length > 2 ? (
-                <div className="np-card flex flex-col divide-y divide-line overflow-hidden">
-                  {articles.slice(2).map((article) => (
-                    <MobileCompactRow key={article.id} article={article} />
-                  ))}
-                </div>
-              ) : null}
+              {articles[2] ? <MobileSupportingCard article={articles[2]} /> : null}
+              {articles.slice(3).map((article) => (
+                <MobileHorizonCard key={article.id} article={article} />
+              ))}
             </div>
             {/* Desktop: original FeatureCard + grid layout. */}
             <div className="hidden lg:flex lg:flex-col lg:gap-6">

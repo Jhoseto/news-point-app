@@ -202,29 +202,31 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
           </div>
         </form>
 
-        <form onSubmit={changePassword} className="np-profile-card" autoComplete="off">
+        <form onSubmit={changePassword} className="np-profile-card np-profile-card--security" autoComplete="off">
           <div className="np-profile-card-head np-profile-card-head--title">
             <h2 className="np-profile-card-heading">Сигурност</h2>
           </div>
           <div className="np-profile-body">
+            <p className="np-profile-hint">След промяната другите активни сесии ще бъдат прекратени.</p>
             <label className="np-profile-toggle">
               <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
               <span>Покажи паролите</span>
             </label>
-            <p className="np-profile-hint">След промяната другите активни сесии ще бъдат прекратени.</p>
-            <div className="np-profile-fields">
-              <label className="np-profile-field np-profile-field--full">
+            <div className="np-profile-password-fields">
+              <label className="np-profile-field">
                 <span>Текуща парола</span>
                 <input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
               </label>
-              <label className="np-profile-field">
-                <span>Нова парола</span>
-                <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
-              </label>
-              <label className="np-profile-field">
-                <span>Повторете новата парола</span>
-                <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
-              </label>
+              <div className="np-profile-password-new">
+                <label className="np-profile-field">
+                  <span>Нова парола</span>
+                  <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+                </label>
+                <label className="np-profile-field">
+                  <span>Потвърди паролата</span>
+                  <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+                </label>
+              </div>
             </div>
             <ul className="np-profile-rules">
               {PASSWORD_RULES.map((rule) => {

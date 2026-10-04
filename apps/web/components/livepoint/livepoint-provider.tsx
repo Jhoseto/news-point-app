@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -25,6 +26,9 @@ import { PodcastPanel } from "../podcast/show";
 import { PodcastOrbit } from "../podcast/visuals";
 import { podcastPanelPlace } from "@/lib/podcast-playback";
 import { WeatherPanel } from "./weather-panel";
+import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
+
+const MobileLivePointPanel = dynamic(() => import("./mobile-livepoint-panel").then(module => module.MobileLivePointPanel), { ssr: false });
 
 export type LivePointData = {
   weather: DataEnvelope<WeatherForecast>;
@@ -136,6 +140,7 @@ export function LivePointProvider({
   const [place, setPlace] = useState<PanelPlace | null>(null);
   const [dirty, setDirty] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [mobile, setMobile] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const panel = useRef<HTMLDivElement>(null);
   const dirtyRef = useRef(false);
@@ -144,6 +149,13 @@ export function LivePointProvider({
   activeRef.current = active;
 
   useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 63.999rem)");
+    const update = () => setMobile(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     setActive(queryModule());
@@ -184,6 +196,7 @@ export function LivePointProvider({
       close();
       return;
     }
+    if (!requestMobileOverlay("livepoint")) return;
     if (current && dirtyRef.current && !window.confirm("Имате незапазен текст. Да сменя панела?")) return;
     if (current === null) opener.current = document.activeElement as HTMLElement | null;
     activeRef.current = module;
@@ -192,15 +205,44 @@ export function LivePointProvider({
     writeQuery(module, current === null ? "push" : "replace");
   }, [close]);
 
+  useEffect(() => {
+    if (!mobile) return;
+    const switchPanel = (event: Event) => {
+      if ((event as CustomEvent<MobileOverlay>).detail === "livepoint" || !activeRef.current) return;
+      if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да напусна панела?")) { event.preventDefault(); return; }
+    };
+    const finishSwitch = (event: Event) => {
+      if ((event as CustomEvent<MobileOverlay>).detail === "livepoint" || !activeRef.current) return;
+      // A mobile handoff must not navigate Back and close the new sheet.
+      dirtyRef.current = false;
+      activeRef.current = null;
+      setActive(null);
+      setDirty(false);
+      opener.current = null;
+      writeQuery(null);
+      if (window.history.state?.npLivePoint) {
+        const state = { ...window.history.state };
+        delete state.npLivePoint;
+        window.history.replaceState(state, "");
+      }
+    };
+    window.addEventListener(MOBILE_OVERLAY_REQUEST, switchPanel);
+    window.addEventListener(MOBILE_OVERLAY_CHANGE, finishSwitch);
+    return () => {
+      window.removeEventListener(MOBILE_OVERLAY_REQUEST, switchPanel);
+      window.removeEventListener(MOBILE_OVERLAY_CHANGE, finishSwitch);
+    };
+  }, [mobile]);
+
   useScrollLock(active !== null);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || mobile) return;
     const measure = () => setPlace(placePanel(active));
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [active]);
+  }, [active, mobile]);
 
   useEffect(() => {
     if (!active) return;
@@ -213,7 +255,9 @@ export function LivePointProvider({
         return;
       }
       if (event.key !== "Tab" || !panel.current) return;
-      const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((item) => item.offsetParent !== null);
+      const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+        ...(mobile ? document.querySelectorAll<HTMLElement>(`.np-bottom-nav ${FOCUSABLE.split(", ").join(", .np-bottom-nav ")}`) : [])]
+        .filter((item) => item.offsetParent !== null);
       const first = items[0];
       const last = items.at(-1);
       if (!first || !last) return;
@@ -227,15 +271,15 @@ export function LivePointProvider({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [active, close]);
+  }, [active, close, mobile]);
 
   useEffect(() => {
-    if (!active || !panel.current) return;
+    if (!active || !panel.current || mobile) return;
     panel.current.querySelector<HTMLElement>("[data-lp-panel-body]")?.scrollTo({ top: 0 });
     const target =
       panel.current.querySelector<HTMLElement>("[data-autofocus]") ?? panel.current.querySelector<HTMLElement>(FOCUSABLE);
     target?.focus({ preventScroll: true });
-  }, [active]);
+  }, [active, mobile]);
 
   const value = useMemo<LivePointContextValue>(
     () => ({ weather, trafficConnected, camerasLiveLabel, latest, active, open, close }),
@@ -245,7 +289,20 @@ export function LivePointProvider({
   return (
     <LivePointContext.Provider value={value}>
       {children}
-      {active && mounted
+      {mobile && mounted ? <MobileLivePointPanel module={active} titleId={titleId} panelRef={panel} onClose={close} onSelect={open}
+        onDetail={(event) => {
+          if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да отворя подробната страница?")) event.preventDefault();
+        }}
+        renderContent={(module) => <>
+          {module === "weather" ? <WeatherPanel initial={weather} mobile /> : null}
+          {module === "traffic" ? <TrafficPanel connected={trafficConnected} /> : null}
+          {module === "cameras" ? <CamerasPanel variant="panel" /> : null}
+          {module === "report" ? <ReportPanel onDirtyChange={setDirty} /> : null}
+          {module === "my-news" ? <MyNewsPanel onDirtyChange={setDirty} /> : null}
+          {module === "podcast" ? <PodcastPanel /> : null}
+        </>}
+      /> : null}
+      {active && mounted && !mobile
         ? createPortal(
             <div className="np-lp-layer pointer-events-none fixed inset-0 z-50">
               <button

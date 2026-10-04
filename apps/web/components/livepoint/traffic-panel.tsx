@@ -20,6 +20,21 @@ type MapStyle = "auto" | "day" | "night";
 const MODAL_PAGE_SIZE = 3;
 const TrafficMap3D = dynamic(() => import("./traffic-map-3d").then((module) => module.TrafficMap3D), { ssr: false });
 
+const TRAFFIC_SELECT =
+  "np-traffic-select min-h-9 w-full rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-xs font-extrabold text-body";
+
+function layerToggle(compact: boolean) {
+  return `rounded-full border border-line bg-surface-2 font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink ${
+    compact ? "min-h-9 px-2.5 py-1 text-[11px]" : "min-h-11 px-3 py-1.5 text-xs"
+  }`;
+}
+
+function filterChip(compact: boolean) {
+  return `shrink-0 rounded-full border border-line bg-surface-2 font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent ${
+    compact ? "min-h-9 px-2.5 py-1 text-[11px]" : "min-h-11 px-3 py-1.5 text-xs sm:text-sm"
+  }`;
+}
+
 function eventTime(value: string | null): number {
   const parsed = value ? Date.parse(value) : NaN;
   return Number.isFinite(parsed) ? parsed : -Infinity;
@@ -115,41 +130,46 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
     </div>
   );
 
+  const compact = variant === "modal";
+
   return (
-    <section className={variant === "modal" ? "space-y-2.5" : "space-y-4"} aria-label="Пътна обстановка в Пловдив">
-      <div className="rounded-2xl border border-line bg-surface shadow-card">
-        <div className={`flex flex-wrap items-center justify-between gap-2 border-b border-line ${variant === "modal" ? "px-3 py-2 sm:px-4" : "px-4 py-3 sm:px-5"}`}>
-          <div>
-            <p className="text-[11px] font-extrabold tracking-[0.15em] text-logo uppercase">Пловдив · пътна обстановка</p>
-            <p className="mt-1 text-xs text-muted">
+    <section className={compact ? "space-y-2" : "space-y-4"} aria-label="Пътна обстановка в Пловдив">
+      <div className="np-traffic-toolbar rounded-2xl border border-line bg-surface shadow-card">
+        <div className={`border-b border-line ${compact ? "space-y-2 px-2.5 py-2 sm:px-4" : "flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-5"}`}>
+          <div className={compact ? "min-w-0" : undefined}>
+            <p className={`font-extrabold tracking-[0.12em] text-logo uppercase ${compact ? "text-[10px] leading-tight" : "text-[11px] tracking-[0.15em]"}`}>Пловдив · пътна обстановка</p>
+            <p className={`text-muted ${compact ? "truncate text-[10px] leading-tight" : "mt-1 text-xs"}`}>
               {incidents?.fetchedAt ? `Обновено ${formatFull(new Date(incidents.fetchedAt))}` : incidents ? incidents.message : "Зареждане на данните…"}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <button type="button" aria-pressed={showFlow} onClick={() => setShowFlow((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Поток {showFlow ? "●" : "○"}</button>
-            <button type="button" aria-pressed={showMarkers} onClick={() => setShowMarkers((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink">Маркери {showMarkers ? "●" : "○"}</button>
-            <button type="button" aria-pressed={showMotion} onClick={() => setShowMotion((value) => !value)} className="min-h-11 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink" title={mapMode === "3d" ? "Движение по участъците от TomTom incidentDetails (не GPS на коли)" : undefined}>Движение {showMotion ? "●" : "○"}</button>
+          <div className={`np-traffic-toolbar-toggles flex items-center gap-1 ${compact ? "w-full" : "flex-wrap gap-1.5"}`}>
+            <button type="button" aria-pressed={showFlow} onClick={() => setShowFlow((value) => !value)} className={layerToggle(compact)}>Поток {showFlow ? "●" : "○"}</button>
+            <button type="button" aria-pressed={showMarkers} onClick={() => setShowMarkers((value) => !value)} className={layerToggle(compact)}>Маркери {showMarkers ? "●" : "○"}</button>
+            <button type="button" aria-pressed={showMotion} onClick={() => setShowMotion((value) => !value)} className={layerToggle(compact)} title={mapMode === "3d" ? "Движение по участъците от TomTom incidentDetails (не GPS на коли)" : undefined}>Движение {showMotion ? "●" : "○"}</button>
           </div>
         </div>
-        {variant === "modal" && <div className="px-3 py-2 sm:hidden">
-          <label className="sr-only" htmlFor="traffic-mobile-filter">Филтрирай пътните събития</label>
-          <select id="traffic-mobile-filter" value={filter} onChange={(event) => chooseFilter(event.target.value as TrafficFilter)} className="w-full rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-xs font-bold text-ink focus:border-accent focus:outline-none">
-            {FILTERS.map(({ id, label }) => <option key={id} value={id}>{label} · {incidents?.payload ? counts[id] : "—"}</option>)}
-          </select>
-        </div>}
-        <div className={`${variant === "modal" ? "hidden sm:flex" : "flex"} flex-wrap gap-1.5 ${variant === "modal" ? "px-3 py-2 sm:px-4" : "px-3 py-3 sm:px-5"}`} role="group" aria-label="Покажи събития върху картата">
+        {compact ? (
+          <div className="flex items-center gap-1.5 border-b border-line px-2.5 py-1.5 sm:hidden">
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Филтрирай пътните събития</span>
+              <select id="traffic-mobile-filter" value={filter} onChange={(event) => chooseFilter(event.target.value as TrafficFilter)} className={TRAFFIC_SELECT}>
+                {FILTERS.map(({ id, label }) => <option key={id} value={id}>{label} · {incidents?.payload ? counts[id] : "—"}</option>)}
+              </select>
+            </label>
+            <div className="grid shrink-0 grid-cols-2 gap-0.5 rounded-full border border-line bg-surface-2 p-0.5" role="group" aria-label="Изглед на трафика">
+              <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")} className="min-h-9 rounded-full px-2.5 py-1 text-[11px] font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Карта</button>
+              <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className="min-h-9 rounded-full px-2.5 py-1 text-[11px] font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Събития · {incidents?.payload ? shown.length : "—"}</button>
+            </div>
+          </div>
+        ) : null}
+        <div className={`${compact ? "hidden sm:flex" : "flex"} flex-wrap gap-1.5 ${compact ? "px-3 py-2 sm:px-4" : "px-3 py-3 sm:px-5"}`} role="group" aria-label="Покажи събития върху картата">
           {FILTERS.map(({ id, label }) => (
-            <button key={id} type="button" aria-pressed={filter === id} onClick={() => chooseFilter(id)} className="min-h-11 shrink-0 rounded-full border border-line bg-surface-2 px-3 py-1.5 text-xs font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent sm:text-sm">
+            <button key={id} type="button" aria-pressed={filter === id} onClick={() => chooseFilter(id)} className={filterChip(compact)}>
               {label} <span className="ml-1 opacity-70">{incidents?.payload ? counts[id] : "—"}</span>
             </button>
           ))}
         </div>
       </div>
-
-      {variant === "modal" && <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface-2 p-1 lg:hidden" role="group" aria-label="Изглед на трафика">
-        <button type="button" aria-pressed={mobileView === "map"} onClick={() => setMobileView("map")} className="min-h-11 rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Карта</button>
-        <button type="button" aria-pressed={mobileView === "list"} onClick={() => setMobileView("list")} className="min-h-11 rounded-lg px-3 py-1.5 text-xs font-extrabold text-muted aria-pressed:bg-surface aria-pressed:text-ink aria-pressed:shadow-card">Събития · {shown.length}</button>
-      </div>}
 
       <div className={`grid gap-2.5 ${variant === "page" ? "xl:grid-cols-[minmax(0,1.7fr)_minmax(20rem,0.7fr)]" : "lg:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.85fr)]"}`}>
         <div className={`min-w-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-card ${variant === "modal" && mobileView === "list" ? "hidden lg:block" : ""}`}>
@@ -219,7 +239,7 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
               </label>
               <label>
                 <span className="sr-only">Подреди събитията</span>
-                <select value={sort} onChange={(event) => { setSort(event.target.value as SortOrder); setListPage(0); }} className="w-full rounded-xl border border-line bg-surface-2 px-2 py-1.5 text-xs font-bold text-ink focus:border-accent focus:outline-none">
+                <select value={sort} onChange={(event) => { setSort(event.target.value as SortOrder); setListPage(0); }} className={`${TRAFFIC_SELECT} min-w-[7.5rem] px-3`}>
                   <option value="newest">По начало</option>
                   <option value="delay">По забавяне</option>
                   <option value="category">По вид</option>

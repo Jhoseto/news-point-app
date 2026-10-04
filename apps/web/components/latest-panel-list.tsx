@@ -1,108 +1,110 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CategoryPill, TimeMeta } from "./ui";
-import { isRecentArticle, formatClock } from "@/lib/format";
+import type { ArticleSummary } from "@/lib/queries";
+import { categoryAccentStyle } from "@/lib/category-accent";
+import { formatClock, timelineDayBreak } from "@/lib/format";
+import { inLatestWindow, nextLatestExpiryMs } from "@/lib/latest-window";
+import { ArticleImage } from "./ui";
+import { TimelineDayBreak } from "./timeline-day-break";
 
-type Article = {
-  id: string;
-  path: string;
-  title: string;
-  hero: { url: string; alt: string } | null;
-  category: { id: string; name: string; path: string; slug: string } | null;
-  publishedAt: string;
-};
+type Payload = { articles: Array<Omit<ArticleSummary, "publishedAt"> & { publishedAt: string }> };
 
-type Payload = { articles: Article[] };
+/** Real public feed, refreshed on reopen and content updates without losing the list scroll. */
+export function LiveNewsList({ active, onArticleTap }: { active: boolean; onArticleTap?: () => void }) {
+  const [articles, setArticles] = useState<ArticleSummary[] | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const visible = useMemo(() => inLatestWindow(articles ?? [], nowMs), [articles, nowMs]);
 
-/**
- * The list shown inside the LatestPanel. Hits /api/latest-news on first
- * mount, caches the result in component state, and revalidates in the
- * background when the panel reopens. We deliberately do not use the
- * LatestNews24h server component because the panel is rendered from
- * a client-only boundary; doing the fetch here keeps the data path
- * lazy.
- */
-export function LiveNewsList({ onArticleTap }: { onArticleTap?: () => void }) {
-  const [articles, setArticles] = useState<Article[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal: AbortSignal) => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/latest-news", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const payload = (await res.json()) as Payload;
-      setArticles(payload.articles);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Грешка при зареждане.");
+      const response = await fetch("/api/latest-news", { cache: "no-store", signal });
+      if (!response.ok) throw new Error("Latest news unavailable");
+      const payload = await response.json() as Payload;
+      if (!Array.isArray(payload.articles)) throw new Error("Invalid latest news response");
+      const next = payload.articles.flatMap((item) => {
+        if (!item || typeof item.id !== "string" || typeof item.path !== "string" || typeof item.title !== "string") return [];
+        const publishedAt = new Date(item.publishedAt);
+        return Number.isFinite(publishedAt.getTime()) ? [{ ...item, publishedAt }] : [];
+      });
+      if (!signal.aborted) { setArticles(next); setNowMs(Date.now()); setError(false); }
+    } catch {
+      if (!signal.aborted) setError(true);
+    } finally {
+      if (!signal.aborted) setLoading(false);
     }
   }, []);
 
+  const [retry, setRetry] = useState(0);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (!active) return;
+    let controller: AbortController;
+    const refresh = () => {
+      controller?.abort();
+      controller = new AbortController();
+      setNowMs(Date.now());
+      void load(controller.signal);
+    };
+    const whenVisible = () => { if (!document.hidden) refresh(); };
+    refresh();
+    window.addEventListener("np:public-content-updated", refresh);
+    document.addEventListener("visibilitychange", whenVisible);
+    return () => {
+      controller?.abort();
+      window.removeEventListener("np:public-content-updated", refresh);
+      document.removeEventListener("visibilitychange", whenVisible);
+    };
+  }, [active, load, retry]);
 
-  if (error) {
-    return (
-      <div className="np-latest-panel-error" role="status">
-        <p className="text-sm font-semibold text-ink">Последните новини не могат да се заредят.</p>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="np-latest-panel-retry"
-        >
-          Опитай отново
-        </button>
-      </div>
-    );
-  }
-
-  if (!articles) {
-    return (
-      <div role="status" aria-live="polite" className="np-latest-panel-loading">
-        {[0, 1, 2, 3, 4, 5].map((index) => (
-          <div key={index} className="np-latest-panel-skeleton" />
-        ))}
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (!active) return;
+    const delay = nextLatestExpiryMs(visible, nowMs);
+    if (delay === null) return;
+    const timer = setTimeout(() => setNowMs(Date.now()), delay);
+    return () => clearTimeout(timer);
+  }, [active, visible, nowMs]);
 
   return (
-    <ol className="np-latest-panel-list" aria-label="Публикации от последните 24 часа">
-      {articles.map((article) => {
-        const linkProps = onArticleTap
-          ? { onClick: onArticleTap }
-          : {};
-        return (
-          <li key={article.id} className="np-latest-panel-item">
-            <Link
-              {...linkProps}
-              href={article.path}
-              prefetch={false}
-              className="np-latest-panel-link"
-            >
-              <time dateTime={article.publishedAt} className="np-latest-panel-time">
-                {formatClock(new Date(article.publishedAt))}
-              </time>
-              {article.category ? (
-                <CategoryPill category={article.category} className="np-latest-panel-cat" />
-              ) : null}
-              {article.hero ? (
-                <img
-                  src={article.hero.url}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="np-latest-panel-thumb"
-                />
-              ) : null}
-              <h3 className="np-latest-panel-headline">{article.title}</h3>
-            </Link>
-          </li>
-        );
-      })}
-    </ol>
+    <>
+      {error ? (
+        <div className="np-mobile-sheet-error" role="status">
+          <p>{articles ? "Обновяването е временно недостъпно. Показваме заредените новини." : "Последните новини не могат да се заредят."}</p>
+          <button type="button" disabled={loading} onClick={() => setRetry(value => value + 1)} className="np-mobile-sheet-retry">
+            {loading ? "Зареждане…" : "Опитай отново"}
+          </button>
+        </div>
+      ) : null}
+      {!articles && !error ? (
+        <div role="status" aria-live="polite" className="np-mobile-sheet-loading">
+          <span className="sr-only">Зареждане на последните новини…</span>
+          {[0, 1, 2, 3, 4, 5].map(index => <div key={index} className="np-mobile-sheet-skeleton" aria-hidden="true" />)}
+        </div>
+      ) : articles && !visible.length ? (
+        <p className="np-mobile-sheet-empty" role="status">Няма публикувани новини през последните 24 часа.</p>
+      ) : articles ? (
+        <ol className="np-mobile-sheet-list" aria-label="Публикации от последните 24 часа">
+          {visible.map((article, index) => (
+            <Fragment key={article.id}>
+              {index === 0 || timelineDayBreak(visible[index - 1]?.publishedAt, article.publishedAt) ? <TimelineDayBreak date={article.publishedAt} /> : null}
+              <li className="np-mobile-sheet-item" style={categoryAccentStyle(article.category?.slug)}>
+                <time dateTime={article.publishedAt.toISOString()} className="np-mobile-sheet-time">{formatClock(article.publishedAt)}</time>
+                <span className="np-mobile-sheet-dot np-gradient-bg" aria-hidden="true" />
+                <Link href={article.path} prefetch={false} onClick={() => onArticleTap?.()} className="np-mobile-sheet-link">
+                  <div className="np-mobile-sheet-content">
+                    <h3 className="np-mobile-sheet-headline">{article.title}</h3>
+                    {article.category ? <span className="np-mobile-sheet-category">{article.category.name}</span> : null}
+                  </div>
+                  {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-mobile-sheet-thumb" /> : null}
+                </Link>
+              </li>
+            </Fragment>
+          ))}
+        </ol>
+      ) : null}
+    </>
   );
 }

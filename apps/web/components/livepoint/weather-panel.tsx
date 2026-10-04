@@ -6,6 +6,7 @@ import { formatTempC, formatWindMs, skyMood, weatherLabel, windDirectionLabel } 
 import { formatFull, formatTime } from "@/lib/format";
 import { WeatherChart } from "./weather-chart";
 import { WeatherPageView } from "./weather-page-view";
+import { MobileWeatherHours } from "./mobile-weather-hours";
 
 const hourInSofia = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Europe/Sofia",
@@ -22,7 +23,7 @@ const dayLabel = new Intl.DateTimeFormat("bg-BG", {
 /** Real aerial of Plovdiv — the same photo as the brand banner. */
 const PLOVDIV_VIEW = "/brand/plovdiv-aerial.webp";
 
-export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnvelope<WeatherForecast>; variant?: "panel" | "page" }) {
+export function WeatherPanel({ initial, variant = "panel", mobile = false }: { initial: DataEnvelope<WeatherForecast>; variant?: "panel" | "page"; mobile?: boolean }) {
   const [data, setData] = useState(initial);
   useEffect(() => {
     if (variant !== "panel") return;
@@ -87,7 +88,7 @@ export function WeatherPanel({ initial, variant = "panel" }: { initial: DataEnve
           </div>
         </div>
         <div className="rounded-2xl border border-line bg-surface-2 p-4">
-          <WeatherChart hours={forecast.hours} />
+          {mobile ? <MobileWeatherHours hours={forecast.hours} /> : <WeatherChart hours={forecast.hours} />}
         </div>
       </div>
 

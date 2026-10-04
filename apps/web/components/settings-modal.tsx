@@ -37,8 +37,8 @@ export function SettingsModal() {
 
   return (
     <>
-      <button ref={trigger} type="button" aria-label="Отвори настройките на четене" title="Настройки на четене" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(true)} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-accent/40 hover:text-accent dark:hover:text-link">
-        <SettingsIcon width={17} height={17} />
+      <button ref={trigger} type="button" aria-label="Отвори настройките на четене" title="Настройки на четене" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(true)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-accent/40 hover:text-accent lg:size-11 dark:hover:text-link">
+        <SettingsIcon width={14} height={14} className="lg:size-[17px]" />
       </button>
       {open && createPortal(
         <dialog ref={dialog} id={id} aria-labelledby={`${id}-title`} aria-describedby={`${id}-hint`} onCancel={() => setOpen(false)} onClose={() => setOpen(false)} onClick={(event) => {

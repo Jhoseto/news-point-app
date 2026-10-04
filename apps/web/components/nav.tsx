@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObjec
 import { createPortal } from "react-dom";
 import type { CategoryRef } from "@/lib/queries";
 import { currentHeaderSheet, setHeaderSheet, useHeaderSheet } from "./header-state";
+import { MOBILE_OVERLAY_CHANGE, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
 import {
   BadgeIcon,
   BallotIcon,
@@ -19,6 +20,7 @@ import {
   FlagIcon,
   GlobeIcon,
   GridIcon,
+  MenuIcon,
   HeartIcon,
   HomeIcon,
   MapIcon,
@@ -31,7 +33,6 @@ import {
   TrophyIcon,
 } from "./icons";
 import { SiteSearch } from "./site-search";
-import { ThemeChoice } from "./theme";
 
 type NavItem = Pick<CategoryRef, "slug" | "name" | "path">;
 
@@ -182,10 +183,12 @@ const SEARCH_EVENT = "np:search";
 const DESKTOP = "(min-width: 64rem)";
 
 export function openRubrics() {
+  if (!requestMobileOverlay("rubrics")) return;
   window.dispatchEvent(new CustomEvent(RUBRICS_EVENT));
 }
 
 export function openSearch() {
+  if (!requestMobileOverlay("search")) return;
   window.dispatchEvent(new CustomEvent(SEARCH_EVENT));
 }
 
@@ -194,6 +197,16 @@ function isActive(current: string, path: string) {
 }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+type SheetCloseMode = "pop" | "navigate";
+
+/** Drop the synthetic sheet entry without leaving the destination the user chose. */
+function stripSheetHistory(sheet: "rubrics" | "search") {
+  if (history.state?.npSheet !== sheet) return;
+  const state = { ...history.state };
+  delete state.npSheet;
+  history.replaceState(state, "");
+}
 
 /** Modal sheet: Escape and the close button close it, Tab stays inside, focus returns to the opener. */
 function useModal(open: boolean, close: () => void, panel: RefObject<HTMLElement | null>) {
@@ -325,14 +338,29 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   const expandBtn = useRef<HTMLButtonElement>(null);
   const focusCollapse = useRef(false);
 
-  const closeSheet = useCallback(() => {
+  const closeSheet = useCallback((mode: SheetCloseMode = "pop") => {
     if (!sheetOpen) return;
     setSheetOpen(false);
     setHeaderSheet(null);
-    if (ownedEntry.current) {
+    if (!ownedEntry.current) return;
+    ownedEntry.current = false;
+    if (mode === "pop") history.back();
+    else stripSheetHistory("rubrics");
+  }, [sheetOpen]);
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const switchPanel = (event: Event) => {
+      if ((event as CustomEvent<MobileOverlay>).detail === "rubrics") return;
       ownedEntry.current = false;
-      history.back();
-    }
+      setSheetOpen(false);
+      if (currentHeaderSheet() === "rubrics") setHeaderSheet(null);
+      if (history.state?.npSheet === "rubrics") {
+        const state = { ...history.state }; delete state.npSheet; history.replaceState(state, "");
+      }
+    };
+    window.addEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
+    return () => window.removeEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
   }, [sheetOpen]);
 
   const openSheet = useCallback(() => {
@@ -347,10 +375,16 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
     }
   }, []);
 
+  const pathWhenSheetOpened = useRef(current);
   useEffect(() => {
-    if (sheetOpen) closeSheet();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
+    if (!sheetOpen) {
+      pathWhenSheetOpened.current = current;
+      return;
+    }
+    if (pathWhenSheetOpened.current === current) return;
+    pathWhenSheetOpened.current = current;
+    closeSheet("navigate");
+  }, [current, sheetOpen, closeSheet]);
 
   useEffect(() => {
     document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
@@ -458,11 +492,11 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
         </nav>
       </aside>
 
-      <Sheet open={sheetOpen} onClose={closeSheet} label="Рубрики" side="left">
+      <Sheet open={sheetOpen} onClose={() => closeSheet("pop")} label="Рубрики" side="left">
         <div className="flex shrink-0 items-center justify-end border-b border-line px-3 py-2">
           <button
             type="button"
-            onClick={closeSheet}
+            onClick={() => closeSheet("pop")}
             aria-label="Затвори менюто"
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
             data-autofocus
@@ -470,13 +504,9 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
             <CloseIcon width={22} height={22} />
           </button>
         </div>
-        <nav aria-label="Рубрики" className="flex-1 overflow-y-auto p-3 pt-4">
-          <RubricLinks items={items} current={current} onNavigate={closeSheet} />
+        <nav aria-label="Рубрики" className="flex-1 overflow-y-auto p-3 pt-4 pb-5">
+          <RubricLinks items={items} current={current} onNavigate={() => closeSheet("navigate")} />
         </nav>
-        <div className="flex flex-col gap-2 border-t border-line p-5">
-          <span className="text-xs font-extrabold tracking-[0.14em] text-muted uppercase">Режим</span>
-          <ThemeChoice />
-        </div>
       </Sheet>
     </>
   );
@@ -492,13 +522,13 @@ export function RubricsButton() {
       aria-label="Рубрики"
       className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
     >
-      <GridIcon width={21} height={21} />
+      <MenuIcon width={24} height={24} strokeWidth={2.1} />
     </button>
   );
 }
 
 /** Search on screens without the centred header field. */
-export function MobileSearch() {
+export function MobileSearch({ showHeaderTrigger = true }: { showHeaderTrigger?: boolean }) {
   const [open, setOpen] = useState(false);
   const ownedEntry = useRef(false);
   const current = usePathname();
@@ -515,17 +545,42 @@ export function MobileSearch() {
     }
   }, []);
 
-  const close = useCallback(() => {
+  const close = useCallback((mode: SheetCloseMode = "pop") => {
     if (!open) return;
     setOpen(false);
     setHeaderSheet(null);
-    if (ownedEntry.current) {
-      ownedEntry.current = false;
-      history.back();
-    }
+    if (!ownedEntry.current) return;
+    ownedEntry.current = false;
+    if (mode === "pop") history.back();
+    else stripSheetHistory("search");
   }, [open]);
 
-  useEffect(() => setOpen(false), [current]);
+  useEffect(() => {
+    if (!open) return;
+    const switchPanel = (event: Event) => {
+      if ((event as CustomEvent<MobileOverlay>).detail === "search") return;
+      ownedEntry.current = false;
+      setOpen(false);
+      if (currentHeaderSheet() === "search") setHeaderSheet(null);
+      if (history.state?.npSheet === "search") {
+        const state = { ...history.state }; delete state.npSheet; history.replaceState(state, "");
+      }
+    };
+    window.addEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
+    return () => window.removeEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
+  }, [open]);
+
+  const pathWhenSearchOpened = useRef(current);
+  useEffect(() => {
+    if (!open) {
+      pathWhenSearchOpened.current = current ?? "/";
+      return;
+    }
+    const path = current ?? "/";
+    if (pathWhenSearchOpened.current === path) return;
+    pathWhenSearchOpened.current = path;
+    close("navigate");
+  }, [current, open, close]);
 
   useEffect(() => {
     const onOpen = () => openSheet();
@@ -546,30 +601,36 @@ export function MobileSearch() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={openSheet}
-        aria-label="Търсене"
-        className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
-      >
-        <SearchIcon width={21} height={21} />
-      </button>
-      <Sheet open={open} onClose={close} label="Търсене" side="top">
+      {showHeaderTrigger ? (
+        <button
+          type="button"
+          onClick={openSearch}
+          aria-label="Търсене"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
+        >
+          <SearchIcon width={21} height={21} />
+        </button>
+      ) : null}
+      <Sheet open={open} onClose={() => close("pop")} label="Търсене" side="top">
         <div className="flex items-center justify-between gap-3 px-4 pt-4">
           <span className="text-xs font-extrabold tracking-[0.14em] text-muted uppercase">Търсене</span>
-          <button type="button" onClick={close} aria-label="Затвори търсенето" className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-surface-2">
+          <button type="button" onClick={() => close("pop")} aria-label="Затвори търсенето" className="inline-flex size-11 items-center justify-center rounded-full text-ink hover:bg-surface-2">
             <CloseIcon width={22} height={22} />
           </button>
         </div>
         <div className="px-4 pt-2 pb-5">
-          <SiteSearch variant="sheet" autoFocus onNavigate={close} />
+          <SiteSearch variant="sheet" autoFocus onNavigate={() => close("navigate")} />
         </div>
       </Sheet>
     </>
   );
 }
 
-export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) {
+export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
+  onOpenLatest?: () => void;
+  latestOpen?: boolean;
+  onNavigate?: () => void;
+} = {}) {
   const current = usePathname() ?? "/";
   const sheet = useHeaderSheet();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -593,8 +654,8 @@ export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) 
   }, []);
 
   const onHome =
-    current === "/" && !sheet && !current.startsWith("/#");
-  const latestActive = current === "/#posledni";
+    current === "/" && !sheet && !latestOpen && !current.startsWith("/#");
+  const latestActive = latestOpen;
   const searchActive = sheet === "search";
   const rubricsActive = sheet === "rubrics";
   const itemClass =
@@ -607,15 +668,17 @@ export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) 
       className="np-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md">
-        <Link href="/" aria-current={onHome ? "page" : undefined} className={itemClass}>
+        <Link href="/" onClick={(event) => { if (!requestMobileOverlay("home")) event.preventDefault(); else onNavigate?.(); }} aria-current={onHome ? "page" : undefined} className={itemClass}>
           <span aria-hidden="true" className="np-bottom-nav-mark" />
           <HomeIcon width={21} height={21} />
           Начало
         </Link>
         <button
           type="button"
-          onClick={() => onOpenLatest?.()}
-          aria-current={latestActive ? "page" : undefined}
+          onClick={() => { if (requestMobileOverlay("latest")) onOpenLatest?.(); }}
+          data-active={latestActive || undefined}
+          aria-expanded={latestActive}
+          aria-controls={latestActive ? "np-mobile-latest-panel" : undefined}
           className={itemClass}
         >
           <span aria-hidden="true" className="np-bottom-nav-mark" />
@@ -624,7 +687,7 @@ export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) 
         </button>
         <button
           type="button"
-          onClick={openSearch}
+          onClick={() => { onNavigate?.(); openSearch(); }}
           data-active={searchActive || undefined}
           aria-pressed={searchActive}
           className={itemClass}
@@ -635,7 +698,7 @@ export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) 
         </button>
         <button
           type="button"
-          onClick={openRubrics}
+          onClick={() => { onNavigate?.(); openRubrics(); }}
           data-active={rubricsActive || undefined}
           aria-pressed={rubricsActive}
           className={itemClass}

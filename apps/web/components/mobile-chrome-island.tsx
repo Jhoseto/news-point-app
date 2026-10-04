@@ -23,19 +23,22 @@ export function MobileChromeIsland() {
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 63.999rem)");
-    const update = () => setIsMobile(media.matches);
+    const update = () => {
+      setIsMobile(media.matches);
+      if (!media.matches) setLatestOpen(false);
+    };
     update();
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
 
-  const openLatest = useCallback(() => setLatestOpen(true), []);
+  const openLatest = useCallback(() => setLatestOpen(value => !value), []);
   const closeLatest = useCallback(() => setLatestOpen(false), []);
 
   if (!isMobile) return null;
   return (
     <>
-      <BottomNav onOpenLatest={openLatest} />
+      <BottomNav onOpenLatest={openLatest} latestOpen={latestOpen} onNavigate={closeLatest} />
       <LatestPanel open={latestOpen} onClose={closeLatest} />
     </>
   );

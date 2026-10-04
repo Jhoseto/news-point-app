@@ -12,6 +12,7 @@ import { SectionTitle } from "@/components/ui";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
 import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
+import type { ComposedSection } from "@/lib/home-compose";
 import { loadPublicHome } from "@/lib/public-home";
 import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
@@ -19,6 +20,8 @@ export const revalidate = 60;
 
 const FOCUS_LABEL = "na-fokus";
 const FOCUS_ARCHIVE_PATH = "/na-fokus/";
+/** Rubric grid is omitted; homepage uses the editorial carousel only. */
+const VOICE_SECTION_SLUG = "glasat-na-istinata";
 
 const MOBILE_CATEGORY_TABS: CategoryTab[] = [
   { name: "За теб", path: "/" },
@@ -29,6 +32,35 @@ const MOBILE_CATEGORY_TABS: CategoryTab[] = [
 ];
 
 type Layout = "grid" | "feature";
+
+function HomeAsideLists({
+  sections,
+  className,
+  shine,
+}: {
+  sections: ComposedSection[];
+  className: string;
+  shine?: HomeShineAllocator;
+}) {
+  if (!sections.length) return null;
+  return (
+    <aside className={className} aria-label="Още новини">
+      {sections.map((aside) => {
+        shine?.sectionBreak();
+        return (
+          <CompactList
+            key={aside.category.id}
+            title={aside.category.name}
+            accentSlug={aside.category.slug}
+            articles={aside.articles}
+            href={aside.category.path}
+            {...(shine ? { shine } : {})}
+          />
+        );
+      })}
+    </aside>
+  );
+}
 
 function sectionCount(layout: Layout, wide: boolean) {
   return wide ? 7 : layout === "grid" ? 5 : 4;
@@ -192,34 +224,12 @@ export default async function HomePage() {
                     <CategorySection category={section.category} articles={section.articles} layout="grid" wide={false} shine={shine} />
                     <PlovdivBanner />
                   </div>
-                  <aside className="flex flex-col gap-6" aria-label="Още новини">
-                    {asideSections.map((aside) => {
-                      shine.sectionBreak();
-                      return (
-                        <CompactList
-                          key={aside.category.id}
-                          title={aside.category.name}
-                          accentSlug={aside.category.slug}
-                          articles={aside.articles}
-                          href={aside.category.path}
-                          shine={shine}
-                        />
-                      );
-                    })}
-                  </aside>
+                  <HomeAsideLists sections={asideSections} shine={shine} className="hidden flex-col gap-6 lg:flex" />
                 </div>
-                {voiceCarousel.length ? (
-                  <LeadingCarousel
-                    articles={voiceCarousel}
-                    shineDelays={voiceShineDelays}
-                    title="Гласът на истината"
-                    headingId="sec-glasat-na-istinata"
-                  />
-                ) : null}
               </Fragment>
             );
           }
-          if (!section.wide) return null;
+          if (!section.wide || section.category.slug === VOICE_SECTION_SLUG) return null;
           return (
             <CategorySection
               key={section.category.id}
@@ -231,6 +241,16 @@ export default async function HomePage() {
             />
           );
         })}
+
+        <HomeAsideLists sections={asideSections} className="flex flex-col gap-6 lg:hidden" />
+        {voiceCarousel.length ? (
+          <LeadingCarousel
+            articles={voiceCarousel}
+            shineDelays={voiceShineDelays}
+            title="Гласът на истината"
+            headingId="sec-glasat-na-istinata"
+          />
+        ) : null}
 
         <BrandBanner />
       </div>

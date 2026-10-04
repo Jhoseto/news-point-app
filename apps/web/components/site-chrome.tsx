@@ -20,9 +20,9 @@ export function SiteHeader() {
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="np-masthead relative flex h-[3.25rem] items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
-        <div className="flex min-w-0 items-center gap-1 lg:hidden">
+        <div className="flex min-w-0 items-center gap-0.5 lg:hidden">
           <RubricsButton />
-          <Logo variant="header" />
+          <Logo variant="header" className="max-lg:ml-1.5" />
         </div>
 
         <div className="hidden min-w-0 lg:block" aria-hidden="true" />
@@ -35,7 +35,7 @@ export function SiteHeader() {
           <div className="hidden lg:block">
             <HeaderClock />
           </div>
-          <MobileSearch />
+          <MobileSearch showHeaderTrigger={false} />
           <span className="hidden h-8 w-px bg-line lg:block" aria-hidden="true" />
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle />
