@@ -176,10 +176,10 @@ function CategoryTabLink({ item, active }: { item: CategoryTab; active: boolean 
     <Link
       href={item.path}
       aria-current={active ? "page" : undefined}
-      className={`np-cat-tab inline-flex shrink-0 items-center justify-center rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap ${
+      className={`np-cat-tab inline-flex shrink-0 items-center justify-center rounded-full border px-3.5 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors ${
         active
-          ? "bg-accent text-on-accent"
-          : "bg-surface-2 text-body hover:bg-line"
+          ? "border-transparent bg-accent text-on-accent"
+          : "border-line bg-surface text-body hover:border-accent/35 hover:text-accent dark:hover:text-link"
       }`}
     >
       {item.name}

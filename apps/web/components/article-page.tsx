@@ -1,8 +1,10 @@
 import { articleSubtitle } from "@newspoint/content";
 import { articleSections } from "@/lib/article-reading";
-import { formatFull, isoDate, readingMinutes } from "@/lib/format";
+import { embedProviderFromUrl } from "@/lib/article-embed-url";
+import { formatArticleMeta, formatFull, isoDate, readingMinutes } from "@/lib/format";
 import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, publicAsOfMs, type ArticleDetail } from "@/lib/queries";
 import { ArticleBody } from "./article-body";
+import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
 import { ArticleReadCount } from "./article-read-count";
@@ -55,7 +57,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
       <article className="np-article-story">
         <div className="np-article-main">
           {article.heroEmbedUrl ? (
-            <div className="np-article-hero-embed"><iframe src={article.heroEmbedUrl} title="Вградено hero съдържание" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div>
+            <ArticleEmbedFrame src={article.heroEmbedUrl} provider={embedProviderFromUrl(article.heroEmbedUrl)} title="Вградено hero съдържание" className="np-article-hero-embed" />
           ) : article.hero ? (
             <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={lightboxImages} />
           ) : null}
@@ -71,7 +73,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
                 <span><small>Автор</small><strong>{article.authorName}</strong></span>
               </div>
               <div className="np-article-meta-facts">
-                <span><ClockIcon width={16} height={16} /><span><strong>Публикувано</strong><time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time></span></span>
+                <span><ClockIcon width={16} height={16} /><span><strong>Публикувано</strong><time dateTime={isoDate(article.publishedAt)}><span className="lg:hidden">{formatArticleMeta(article.publishedAt)}</span><span className="hidden lg:inline">{formatFull(article.publishedAt)}</span></time></span></span>
                 <span><BookIcon width={16} height={16} /><span><strong>Време за четене</strong>{readingMinutes(article.body)} минути</span></span>
                 <ArticleReadCount articleId={article.id} initialCount={article.readCount} />
               </div>
@@ -104,10 +106,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
           </div>
         </div>
         {/* Direct sibling of the main column: the shared preview uses its geometry. */}
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest hidden lg:block" />
       </article>
 
-      <RelatedStories articles={related} />
+      <div className="hidden lg:block">
+        <RelatedStories articles={related} />
+      </div>
     </div>
   );
 }

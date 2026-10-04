@@ -1,5 +1,6 @@
 import type { Block } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
+import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ExternalIcon } from "./icons";
 import { ArticleImage } from "./ui";
 import { articleSectionId } from "@/lib/article-reading";
@@ -51,7 +52,19 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       );
     }
     case "embed":
-      return /^https:\/\/(www\.)?(facebook\.com|youtube\.com|youtu\.be|instagram\.com|x\.com|twitter\.com)\//i.test(block.url) ? <div id={articleSectionId(index)} className="np-article-embed-frame"><iframe src={block.url} title={`Вградено съдържание от ${EMBED_LABEL[block.provider]}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div> : <a id={articleSectionId(index)} href={block.url} target="_blank" rel="noopener noreferrer" className="np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink"><span>Виж публикацията в {EMBED_LABEL[block.provider]}</span><ExternalIcon width={18} height={18} /></a>;
+      return /^https:\/\/(www\.)?(facebook\.com|youtube\.com|youtu\.be|instagram\.com|x\.com|twitter\.com)\//i.test(block.url) ? (
+        <ArticleEmbedFrame
+          id={articleSectionId(index)}
+          src={block.url}
+          provider={block.provider}
+          title={`Вградено съдържание от ${EMBED_LABEL[block.provider]}`}
+        />
+      ) : (
+        <a id={articleSectionId(index)} href={block.url} target="_blank" rel="noopener noreferrer" className="np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink">
+          <span>Виж публикацията в {EMBED_LABEL[block.provider]}</span>
+          <ExternalIcon width={18} height={18} />
+        </a>
+      );
     case "legacy_html":
       return <div id={articleSectionId(index)} className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }

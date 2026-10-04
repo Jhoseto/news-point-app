@@ -670,10 +670,30 @@
     background-clip: text;
     color: transparent;
   }
-  .np-prose .np-legacy img,
+  .np-prose .np-legacy img {
+    max-width: 100%;
+    height: auto;
+  }
   .np-prose .np-legacy iframe {
     max-width: 100%;
     height: auto;
+  }
+  @media (max-width: 63.999rem) {
+    .np-prose .np-legacy:has(iframe) {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      max-width: 100%;
+      border-radius: 1rem;
+    }
+    .np-prose .np-legacy iframe {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      max-width: none;
+      min-height: 0;
+    }
   }
 
   /* "New article" notification: gradient frame, glow, one light sweep on entry. */
@@ -2277,7 +2297,8 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 }
 .np-cat-tabs-scroll::-webkit-scrollbar { display: none; }
 .np-cat-tab {
-  min-height: 2.75rem;
+  min-height: 2.5rem;
+  box-shadow: none;
 }
 @media (prefers-reduced-motion: reduce) {
   .np-cat-tabs-scroll { scroll-behavior: auto; }

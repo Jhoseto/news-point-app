@@ -77,6 +77,20 @@ export function formatFull(date: Date): string {
   return fullFormat.format(date);
 }
 
+const articleMetaFormat = new Intl.DateTimeFormat("bg-BG", {
+  timeZone: TIME_ZONE,
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** Compact stamp for the article meta card (mobile-friendly). */
+export function formatArticleMeta(date: Date): string {
+  return articleMetaFormat.format(date).replace(/\s*г\.\s*,/, ",").replace(/\.$/, "");
+}
+
 const headerDayFormat = new Intl.DateTimeFormat("bg-BG", { timeZone: TIME_ZONE, weekday: "long", day: "numeric", month: "long" });
 
 /** "Четвъртък, 24 септември" for the header. */
