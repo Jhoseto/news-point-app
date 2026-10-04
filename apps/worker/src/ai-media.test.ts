@@ -5,12 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import sharp from "sharp";
-import { aiStorageKey, assertAudioTools, brandedCover, loadMedia, masterAudio, saveMedia } from "./ai-media";
+import { aiStorageKey, assertAudioTools, brandedCover, loadMedia, masterAudio, planPodcastTempo, saveMedia } from "./ai-media";
 
-function wav(seconds: number) {
+function wav(seconds: number, amplitude = 1800) {
   const frames = seconds * 24_000;
   const pcm = Buffer.alloc(frames * 2);
-  for (let i = 0; i < frames; i++) pcm.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / 24_000) * 1800), i * 2);
+  for (let i = 0; i < frames; i++) pcm.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / 24_000) * amplitude), i * 2);
   const header = Buffer.alloc(44);
   header.write("RIFF", 0); header.writeUInt32LE(36 + pcm.length, 4); header.write("WAVEfmt ", 8);
   header.writeUInt32LE(16, 16); header.writeUInt16LE(1, 20); header.writeUInt16LE(1, 22);
@@ -20,6 +20,15 @@ function wav(seconds: number) {
 }
 
 describe("AI podcast mastering", () => {
+  it("corrects a one-second duration miss without a large change in speech tempo", () => {
+    const tempo = planPodcastTempo(267, 300, 2);
+    expect(tempo).toBeGreaterThan(.97);
+    expect(tempo).toBeLessThan(1);
+    expect(267 / tempo + 2).toBeGreaterThanOrEqual(274);
+    expect(planPodcastTempo(298, 300, 2)).toBe(1);
+    expect(planPodcastTempo(210, 300, 2)).toBe(.94);
+    expect(planPodcastTempo(400, 300, 2)).toBe(1.06);
+  });
   it("places the real NewsPoint logo and Bulgarian title on a square cover", async () => {
     const background = await sharp({ create: { width: 1200, height: 1200, channels: 3, background: "#153d79" } }).png().toBuffer();
     const result = await brandedCover(background, "Новините от Пловдив днес");
@@ -57,6 +66,22 @@ describe("AI podcast mastering", () => {
     expect(result.bytes.length).toBeGreaterThan(1000);
     expect(result.bytes.toString("ascii", 0, 3)).toBe("ID3");
   });
+  it.skipIf(!process.env.FFMPEG_PATH || !process.env.FFPROBE_PATH)("applies bounded tempo correction to the speech mix", async () => {
+    const result = await masterAudio([wav(1)], null, 30);
+    expect(result.tempo).toBe(.94);
+    expect(result.bytes.toString("ascii", 0, 3)).toBe("ID3");
+  });
+  it.skipIf(!process.env.FFMPEG_PATH || !process.env.FFPROBE_PATH)("keeps encoded MP3 true peak below the mastering ceiling", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "np-ai-peak-"));
+    try {
+      const output = join(dir, "master.mp3");
+      await writeFile(output, (await masterAudio([wav(2, 30000)], null)).bytes);
+      const { stderr } = await promisify(execFile)(process.env.FFMPEG_PATH!, ["-hide_banner", "-nostats", "-i", output, "-af", "loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"]);
+      const truePeak = Number(/"input_tp"\s*:\s*"(-?[\d.]+)"/.exec(stderr)?.[1]);
+      expect(Number.isFinite(truePeak)).toBe(true);
+      expect(truePeak).toBeLessThanOrEqual(-1.5);
+    } finally { await rm(dir, { recursive: true, force: true }); }
+  });
   it.skipIf(!process.env.FFMPEG_PATH || !process.env.FFPROBE_PATH)("ducks a music bed under speech", async () => {
     const dir = await mkdtemp(join(tmpdir(), "np-ai-test-"));
     try {
@@ -64,7 +89,8 @@ describe("AI podcast mastering", () => {
       const mp3 = join(dir, "music.mp3");
       await writeFile(source, wav(3));
       await promisify(execFile)(process.env.FFMPEG_PATH!, ["-y", "-loglevel", "error", "-i", source, "-b:a", "128k", mp3]);
-      const result = await masterAudio([wav(1), wav(1)], await readFile(mp3));
+      const result = await masterAudio([wav(1), wav(1)], await readFile(mp3), 30);
+      expect(result.tempo).toBe(.94);
       expect(result.durationSec).toBeGreaterThanOrEqual(2);
       expect(result.bytes.length).toBeGreaterThan(1000);
       const output = join(dir, "master.mp3");

@@ -14,6 +14,7 @@ const action = z.discriminatedUnion("action", [
   z.strictObject({ action: z.literal("edit"), projectId: id, revision: z.number().int().positive(), segments: z.array(aiPodcastSegment).min(1).max(7), title: z.string().trim().min(2).max(180), summary: z.string().trim().min(1).max(600) }),
   z.strictObject({ action: z.literal("rewrite"), projectId: id, segmentId: id, direction: z.string().trim().min(2).max(1000) }),
   z.strictObject({ action: z.literal("produce"), projectId: id }),
+  z.strictObject({ action: z.literal("remix"), projectId: id }),
   z.strictObject({ action: z.literal("regenerateSegment"), projectId: id, segmentId: id }),
   z.strictObject({ action: z.literal("regenerateCover"), projectId: id }),
   z.strictObject({ action: z.literal("cancel"), jobId: id }),
@@ -69,15 +70,16 @@ export async function GET(request: Request) {
     const row = await project(parsed.data);
     if (!row) return json({ error: "Проектът не е намерен." }, 404);
     const jobs = await getDb().select().from(aiPodcastJobs).where(eq(aiPodcastJobs.projectId, row.id)).orderBy(desc(aiPodcastJobs.createdAt)).limit(20);
+    const [lastProduction] = await getDb().select({ usage: aiPodcastJobs.usage }).from(aiPodcastJobs).where(and(eq(aiPodcastJobs.projectId, row.id), eq(aiPodcastJobs.kind, "produce"), eq(aiPodcastJobs.status, "succeeded"))).orderBy(desc(aiPodcastJobs.createdAt)).limit(1);
     const [episode] = row.episodeId ? await getDb().select({ id: podcasts.id, audioKey: podcasts.audioKey, coverKey: podcasts.coverKey, durationSec: podcasts.durationSec, status: podcasts.status, slug: podcasts.slug }).from(podcasts).where(eq(podcasts.id, row.episodeId)).limit(1) : [];
     const settings = aiPodcastSettings.parse(row.settings);
     const [musicAsset] = row.musicAssetId
-      ? await getDb().select({ storageKey: aiPodcastAssets.storageKey, prompt: aiPodcastAssets.prompt }).from(aiPodcastAssets).where(eq(aiPodcastAssets.id, row.musicAssetId)).limit(1)
+      ? await getDb().select({ id: aiPodcastAssets.id, storageKey: aiPodcastAssets.storageKey, prompt: aiPodcastAssets.prompt }).from(aiPodcastAssets).where(eq(aiPodcastAssets.id, row.musicAssetId)).limit(1)
       : settings.music !== "none" && settings.music !== "custom"
-        ? await getDb().select({ storageKey: aiPodcastAssets.storageKey, prompt: aiPodcastAssets.prompt }).from(aiPodcastAssets).where(and(eq(aiPodcastAssets.preset, settings.music), eq(aiPodcastAssets.status, "approved"))).limit(1)
+        ? await getDb().select({ id: aiPodcastAssets.id, storageKey: aiPodcastAssets.storageKey, prompt: aiPodcastAssets.prompt }).from(aiPodcastAssets).where(and(eq(aiPodcastAssets.preset, settings.music), eq(aiPodcastAssets.status, "approved"))).limit(1)
         : [];
     const [voices] = await getDb().select({ alexVoice: aiPodcastVoiceSettings.alexVoice, mayaVoice: aiPodcastVoiceSettings.mayaVoice }).from(aiPodcastVoiceSettings).limit(1);
-    return json({ project: row, jobs, episode: episode ?? null, musicAsset: musicAsset ?? null, voices: voices ?? null });
+    return json({ project: row, jobs, episode: episode ?? null, musicAsset: musicAsset ?? null, mixedMusicAssetId: (lastProduction?.usage as { musicAssetId?: string | null } | null)?.musicAssetId ?? null, voices: voices ?? null });
   }
   if (view === "assets") {
     const assets = await getDb().select().from(aiPodcastAssets).orderBy(desc(aiPodcastAssets.createdAt)).limit(100);
@@ -132,7 +134,7 @@ export async function POST(request: Request) {
       if (input.projectId) {
         const row = await project(input.projectId);
         if (!row) return json({ error: "Проектът не е намерен." }, 404);
-        if (aiPodcastSettings.parse(row.settings).music !== "custom") return json({ error: "Проектът не използва нова музика." }, 409);
+        if (!["review", "ready"].includes(row.status)) return json({ error: "Проектът не е готов за музика." }, 409);
         if (await activeJob(row.id)) return json({ error: "За проекта вече има активна задача." }, 409);
         if (row.episodeId) {
           const [episode] = await getDb().select({ status: podcasts.status }).from(podcasts).where(eq(podcasts.id, row.episodeId)).limit(1);
@@ -203,13 +205,26 @@ export async function POST(request: Request) {
       const [job] = await getDb().insert(aiPodcastJobs).values({ projectId: row.id, kind: "script", payload: { segmentId: input.segmentId, direction: input.direction }, requestedBy: staff.id }).returning({ id: aiPodcastJobs.id });
       return json({ jobId: job!.id });
     }
-    if (input.action === "produce" || input.action === "regenerateSegment" || input.action === "regenerateCover") {
+    if (input.action === "produce" || input.action === "remix" || input.action === "regenerateSegment" || input.action === "regenerateCover") {
       if (!["review", "ready"].includes(row.status)) return json({ error: "Първо прегледайте сценария." }, 409);
       if (input.action === "regenerateSegment" && row.status !== "ready") return json({ error: "Първо създайте аудио чернова." }, 409);
+      if (input.action === "remix") {
+        if (row.status !== "ready" || !row.episodeId || !row.musicAssetId || aiPodcastSettings.parse(row.settings).music !== "custom") return json({ error: "Първо подгответе музика и аудио чернова." }, 409);
+        if ((row.segments as AiPodcastSegment[]).some((segment) => !segment.wavKey)) return json({ error: "Липсват запазени гласови сегменти. Нужна е нова аудио чернова." }, 409);
+        const [asset] = await getDb().select({ id: aiPodcastAssets.id }).from(aiPodcastAssets).where(and(eq(aiPodcastAssets.id, row.musicAssetId), eq(aiPodcastAssets.kind, "music"))).limit(1);
+        if (!asset) return json({ error: "Избраната музика не е намерена." }, 409);
+      }
       if (input.action === "produce") {
-        const planned = targetWords(aiPodcastSettings.parse(row.settings));
+        const settings = aiPodcastSettings.parse(row.settings);
+        const planned = targetWords(settings);
         const actual = scriptWords(aiPodcastSegment.array().parse(row.segments));
         if (actual < planned * .9 || actual > planned * 1.1) return json({ error: `Сценарият е приблизително ${Math.round(actual / 130)} минути. За избраната продължителност са нужни около ${planned} думи (сега ${actual}). Редактирайте сценария преди озвучаване.` }, 409);
+        if (settings.music === "custom" && !row.musicAssetId) return json({ error: "Първо генерирайте музиката за този епизод." }, 409);
+        if (settings.music !== "none" && settings.music !== "custom") {
+          const [approved] = await getDb().select({ id: aiPodcastAssets.id }).from(aiPodcastAssets)
+            .where(and(eq(aiPodcastAssets.preset, settings.music), eq(aiPodcastAssets.status, "approved"))).limit(1);
+          if (!approved) return json({ error: "Няма одобрена заставка за избрания музикален тип." }, 409);
+        }
       }
       if (input.action !== "regenerateCover") {
         const [voices] = await getDb().select().from(aiPodcastVoiceSettings).limit(1);
@@ -220,8 +235,8 @@ export async function POST(request: Request) {
         if (episode?.status === "published") return json({ error: "Първо скрийте публикувания епизод, преди да променяте аудиото или обложката." }, 409);
       }
       if (input.action === "regenerateSegment" && !(row.segments as AiPodcastSegment[]).some((segment) => segment.id === input.segmentId)) return json({ error: "Сюжетът не е намерен." }, 404);
-      const kind = input.action === "produce" ? "produce" : input.action === "regenerateCover" ? "cover" : "segment";
-      const payload = input.action === "regenerateSegment" ? { segmentId: input.segmentId } : {};
+      const kind = input.action === "produce" || input.action === "remix" ? "produce" : input.action === "regenerateCover" ? "cover" : "segment";
+      const payload = input.action === "regenerateSegment" ? { segmentId: input.segmentId } : input.action === "remix" ? { remixOnly: true } : {};
       const [job] = await getDb().insert(aiPodcastJobs).values({ projectId: row.id, kind, payload, requestedBy: staff.id }).returning({ id: aiPodcastJobs.id });
       await getDb().update(aiPodcastProjects).set({ status: "producing", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, row.id));
       await audit(row.id, staff.id, input.action, { jobId: job!.id });

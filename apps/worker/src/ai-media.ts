@@ -70,16 +70,28 @@ export async function brandedCover(background: Buffer, title: string): Promise<B
 export async function assertAudioTools(): Promise<void> {
   const ffmpeg = process.env.FFMPEG_PATH || "ffmpeg";
   const ffprobe = process.env.FFPROBE_PATH || "ffprobe";
-  const [filters] = await Promise.all([
+  const [filters, encoders] = await Promise.all([
     run(ffmpeg, ["-hide_banner", "-filters"], 15_000),
+    run(ffmpeg, ["-hide_banner", "-encoders"], 15_000),
     run(ffprobe, ["-version"], 15_000),
   ]);
-  for (const name of ["loudnorm", "sidechaincompress", "alimiter"]) {
+  for (const name of ["loudnorm", "sidechaincompress", "alimiter", "atempo"]) {
     if (!filters.includes(name)) throw new Error(`FFmpeg filter ${name} is unavailable`);
   }
+  if (!encoders.includes("libmp3lame")) throw new Error("FFmpeg encoder libmp3lame is unavailable");
 }
 
-export async function masterAudio(wavs: Buffer[], music: Buffer | null): Promise<{ bytes: Buffer; durationSec: number }> {
+export function planPodcastTempo(voiceSeconds: number, targetSeconds: number, fixedSeconds = 0): number {
+  if (!Number.isFinite(voiceSeconds) || voiceSeconds <= 0 || !Number.isFinite(targetSeconds) || targetSeconds <= fixedSeconds + 10) return 1;
+  const estimated = voiceSeconds + fixedSeconds;
+  const lower = targetSeconds * .9 + 4;
+  const upper = targetSeconds * 1.1 - 4;
+  if (estimated >= lower && estimated <= upper) return 1;
+  const desired = estimated < lower ? lower : upper;
+  return Math.max(.94, Math.min(1.06, voiceSeconds / (desired - fixedSeconds)));
+}
+
+export async function masterAudio(wavs: Buffer[], music: Buffer | null, targetSeconds?: number): Promise<{ bytes: Buffer; durationSec: number; tempo: number }> {
   if (!wavs.length) throw new Error("No voice segments");
   const dir = await mkdtemp(join(tmpdir(), "np-ai-podcast-"));
   try {
@@ -96,19 +108,22 @@ export async function masterAudio(wavs: Buffer[], music: Buffer | null): Promise
       await writeFile(path, music);
       inputs.push("-stream_loop", "-1", "-i", path);
     }
+    const speechSeconds = seconds.reduce((sum, value) => sum + value, 0) + (wavs.length - 1) * 0.18;
+    const fixedSeconds = music ? 2 : 0;
+    const tempo = targetSeconds ? planPodcastTempo(speechSeconds, targetSeconds, fixedSeconds) : 1;
     const pauses = wavs.map((_, index) => `[${index}:a]${index === wavs.length - 1 ? "anull" : "apad=pad_dur=0.18"}[voice${index}]`).join(";");
-    const voice = `${pauses};${wavs.map((_, index) => `[voice${index}]`).join("")}concat=n=${wavs.length}:v=0:a=1,aresample=48000,aformat=channel_layouts=stereo${music ? ",adelay=1000|1000,apad=pad_dur=1" : ""}[spoken]`;
-    const totalSeconds = seconds.reduce((sum, value) => sum + value, 0) + (wavs.length - 1) * 0.18 + 2;
+    const voice = `${pauses};${wavs.map((_, index) => `[voice${index}]`).join("")}concat=n=${wavs.length}:v=0:a=1${tempo === 1 ? "" : `,atempo=${tempo.toFixed(5)}`},aresample=48000,aformat=channel_layouts=stereo${music ? ",adelay=1000|1000,apad=pad_dur=1" : ""}[spoken]`;
+    const totalSeconds = speechSeconds / tempo + fixedSeconds;
     const filter = music
-      ? `${voice};[spoken]asplit=2[voice_mix][side];[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13,afade=t=in:st=0:d=0.6,afade=t=out:st=${Math.max(0, totalSeconds - 0.8).toFixed(2)}:d=0.8[bed];[bed][side]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[voice_mix][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`
-      : `${voice};[spoken]loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`;
+      ? `${voice};[spoken]asplit=2[voice_mix][side];[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13,afade=t=in:st=0:d=0.6,afade=t=out:st=${Math.max(0, totalSeconds - 0.8).toFixed(2)}:d=0.8[bed];[bed][side]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[voice_mix][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.72:level=false[out]`
+      : `${voice};[spoken]loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.72:level=false[out]`;
     const out = join(dir, "master.mp3");
     await run(process.env.FFMPEG_PATH || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-map", "[out]", "-ar", "48000", "-ac", "2", "-b:a", "128k", out], 600_000);
     const probe = await run(process.env.FFPROBE_PATH || "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", out], 30_000);
     const durationSec = Math.round(Number(probe.trim()));
     const bytes = await readFile(out);
     if (!Number.isFinite(durationSec) || durationSec < 1 || bytes.length > 80 * 1024 * 1024) throw new Error("Invalid mastered audio");
-    return { bytes, durationSec };
+    return { bytes, durationSec, tempo };
   } finally { await rm(dir, { recursive: true, force: true }); }
 }
 

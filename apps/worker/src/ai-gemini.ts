@@ -16,12 +16,20 @@ function apiKey() {
 }
 
 export async function interact(body: Record<string, unknown>): Promise<Interaction> {
-  const response = await fetch(API, {
-    method: "POST",
-    headers: { "content-type": "application/json", "x-goog-api-key": apiKey() },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(180_000),
-  });
+  const key = apiKey();
+  let response: Response;
+  try {
+    response = await fetch(API, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(180_000),
+    });
+  } catch (error) {
+    const cause = error instanceof Error && error.cause instanceof Error ? error.cause : error;
+    const detail = cause instanceof Error ? cause.message : "Unknown network error";
+    throw new Error(`Gemini connection failed: ${detail.slice(0, 300)}`, { cause: error });
+  }
   const result = await response.json().catch(() => null) as Interaction | null;
   if (!response.ok || !result) throw new Error(`Gemini ${String(body.model)}: HTTP ${response.status}${result?.error?.message ? ` — ${result.error.message.slice(0, 400)}` : ""}`);
   return result;

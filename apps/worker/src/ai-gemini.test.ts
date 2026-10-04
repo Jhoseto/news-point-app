@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { directPerformance, factPack, generateImage, generateMusic, storyScript, synthesize } from "./ai-gemini";
+import { directPerformance, factPack, generateImage, generateMusic, interact, storyScript, synthesize } from "./ai-gemini";
 
 const response = (text: string) => ({ ok: true, status: 200, json: async () => ({ steps: [{ type: "model_output", content: [{ type: "text", text }] }] }) });
 
 describe("Gemini podcast adapter", () => {
   beforeEach(() => { process.env.GEMINI_API_KEY = "test-only"; });
   afterEach(() => { vi.unstubAllGlobals(); delete process.env.GEMINI_API_KEY; });
+
+  it("reports the transport cause when Gemini cannot be reached", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause: new Error("unable to verify certificate") })));
+    await expect(interact({ model: "gemini-3.8-flash", input: "ping" })).rejects.toThrow("Gemini connection failed: unable to verify certificate");
+  });
 
   it("accepts only performance tags without changing words", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(JSON.stringify({ lines: [{ spoken: "<breath> Добро утро." }] }))));
