@@ -23,8 +23,31 @@ const SubscriptionSchema = z.object({
   }),
   categorySlug: z.string().min(1).max(64).nullable().optional(),
   locale: z.string().min(2).max(8).optional(),
-  userAgent: z.string().max(512).optional(),
+  userAgent: z.string().max(1024).optional(),
 });
+
+/**
+ * Push service endpoints come from a small allow-list (FCM, Mozilla, Apple).
+ * Anything else is suspicious — an attacker could push us to POST against
+ * an internal address or a third-party endpoint that records the payload.
+ */
+const ALLOWED_PUSH_ORIGINS = new Set([
+  "https://fcm.googleapis.com",
+  "https://updates.push.services.mozilla.com",
+  "https://updates-autopush.stage.mozaws.net",
+  "https://api.push.apple.com",
+  "https://web.push.apple.com",
+]);
+
+function isAllowedPushEndpoint(endpoint: string): boolean {
+  try {
+    const url = new URL(endpoint);
+    if (url.protocol !== "https:") return false;
+    return ALLOWED_PUSH_ORIGINS.has(url.origin);
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request: Request) {
   let body: unknown;
@@ -38,18 +61,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid subscription", details: parsed.error.flatten() }, { status: 400 });
   }
   const { endpoint, keys, categorySlug, locale, userAgent } = parsed.data;
+  if (!isAllowedPushEndpoint(endpoint)) {
+    return NextResponse.json({ error: "Unsupported push endpoint" }, { status: 400 });
+  }
   const ua = userAgent ?? request.headers.get("user-agent") ?? "";
   const db = getDb();
 
-  const existing = await db
-    .select({ id: pushSubscriptions.id })
-    .from(pushSubscriptions)
-    .where(eq(pushSubscriptions.endpoint, endpoint))
-    .limit(1);
-  if (existing[0]) {
-    await db
-      .update(pushSubscriptions)
-      .set({
+  // Upsert on the unique endpoint constraint. Avoids the SELECT-then-INSERT
+  // race that duplicated the row when two requests came in simultaneously.
+  const inserted = await db
+    .insert(pushSubscriptions)
+    .values({
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+      categorySlug: categorySlug ?? null,
+      locale: locale ?? "bg",
+      userAgent: ua,
+      enabled: true,
+    })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: {
         p256dh: keys.p256dh,
         auth: keys.auth,
         categorySlug: categorySlug ?? null,
@@ -57,26 +90,23 @@ export async function POST(request: Request) {
         userAgent: ua,
         enabled: true,
         updatedAt: new Date(),
-      })
-      .where(eq(pushSubscriptions.endpoint, endpoint));
-    return NextResponse.json({ ok: true, action: "updated" });
-  }
-  await db.insert(pushSubscriptions).values({
-    endpoint,
-    p256dh: keys.p256dh,
-    auth: keys.auth,
-    categorySlug: categorySlug ?? null,
-    locale: locale ?? "bg",
-    userAgent: ua,
-    enabled: true,
-  });
-  return NextResponse.json({ ok: true, action: "created" }, { status: 201 });
+      },
+    })
+    .returning({ id: pushSubscriptions.id, createdAt: pushSubscriptions.createdAt });
+  const row = inserted[0];
+  return NextResponse.json(
+    { ok: true, action: row ? "updated-or-created" : "noop" },
+    { status: 201 },
+  );
 }
 
 export async function DELETE(request: Request) {
   const url = new URL(request.url);
   const endpoint = url.searchParams.get("endpoint");
   if (!endpoint) return NextResponse.json({ error: "Missing endpoint" }, { status: 400 });
+  if (!isAllowedPushEndpoint(endpoint)) {
+    return NextResponse.json({ error: "Unsupported push endpoint" }, { status: 400 });
+  }
   const db = getDb();
   const deleted = await db
     .delete(pushSubscriptions)

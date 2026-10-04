@@ -7,7 +7,9 @@
  * - Brand and image files in /brand: cache-first with background revalidation.
  * - /api/*, /feed/, /sitemap.xml: never cached.
  *
- * No background sync, no push — those are added later under MOBILE_PLAN.md.
+ * Push notifications land here when the server sends `article.published`.
+ * Tapping a notification focuses an existing tab and navigates it to the
+ * article, or opens a new tab when none exists.
  */
 /* eslint-disable no-restricted-globals */
 
@@ -116,8 +118,15 @@ self.addEventListener("fetch", (event) => {
  * Push notifications: open the article in the existing tab when possible,
  * otherwise spawn a new one. Keep the payload small — it's shown as-is.
  */
+const DEFAULT_NOTIFICATION_TAG = "np-new-article";
+
 self.addEventListener("push", (event) => {
-  let payload = { title: "NewsPoint.bg", body: "Нова публикация", url: "/", tag: undefined };
+  let payload = {
+    title: "NewsPoint.bg",
+    body: "Нова публикация",
+    url: "/",
+    tag: DEFAULT_NOTIFICATION_TAG,
+  };
   try {
     if (event.data) payload = { ...payload, ...JSON.parse(event.data.text()) };
   } catch {
@@ -125,6 +134,8 @@ self.addEventListener("push", (event) => {
   }
   event.waitUntil(
     (async () => {
+      // Only collapse notifications from the reader PWA — leave any unrelated
+      // notifications (e.g. LivePoint indicator pings) alone.
       const all = await self.registration.getNotifications({ tag: payload.tag });
       for (const note of all) note.close();
       await self.registration.showNotification(payload.title, {
@@ -157,4 +168,10 @@ self.addEventListener("notificationclick", (event) => {
       await self.clients.openWindow(url);
     })(),
   );
+});
+
+self.addEventListener("notificationclose", (event) => {
+  // Could be wired to analytics in the future. Today: nothing to clean up;
+  // the server already tracks `lastNotifiedAt`.
+  event.waitUntil(Promise.resolve());
 });

@@ -20,24 +20,22 @@ const ANIMATION_MS = 900;
 const SHOW_DELAY_MS = 600;
 
 export function PwaSplash() {
+  // Start un-mounted on the server to avoid an SSR/CSR mismatch on non-PWA
+  // pages (the splash flashes for half a second otherwise). Only the standalone
+  // PWA path flips the state and shows the rings.
   const [show, setShow] = useState(false);
-  const [mounted, setMounted] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const isStandalone =
       window.matchMedia?.("(display-mode: standalone)").matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (!isStandalone) {
-      setMounted(false);
-      return;
-    }
+    if (!isStandalone) return;
     // Only show the splash for the first paint of the session.
-    if (sessionStorage.getItem("np-splash-shown")) {
-      setMounted(false);
-      return;
-    }
+    if (sessionStorage.getItem("np-splash-shown")) return;
     sessionStorage.setItem("np-splash-shown", "1");
+    setMounted(true);
     setShow(true);
     const fade = setTimeout(() => setShow(false), SHOW_DELAY_MS);
     const unmount = setTimeout(() => setMounted(false), ANIMATION_MS + 200);

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 export type CategoryTab = {
   name: string;
@@ -17,8 +17,10 @@ export type CategoryTab = {
  *     vertical motion, and within ~500 ms) to jump to the next/prev
  *     rubric. Vertical / diagonal motion is left to the page scroll and
  *     to the scrollable strip itself.
- *   - `videos: "use client"` because the swipe + scroll measurement need
- *     Pointer Events + ResizeObserver.
+ *   - Only one finger is tracked at a time; a second touch is ignored so a
+ *     multi-finger gesture never produces a double swipe.
+ *   - All pointer listeners are removed on component unmount, even if the
+ *     user is mid-swipe, so we never leak them.
  */
 export function CategoryTabs({ items }: { items: CategoryTab[] }) {
   const current = usePathname() ?? "/";
@@ -64,16 +66,47 @@ export function CategoryTabs({ items }: { items: CategoryTab[] }) {
     [activeIndex, items, router],
   );
 
+  // Single-touch tracking lives in a ref so the cleanup function can detach
+  // every listener even when the swipe is still in flight at unmount time.
+  const swipeState = useRef<{
+    target: HTMLElement;
+    onMove: (event: PointerEvent) => void;
+    onUp: (event: PointerEvent) => void;
+  } | null>(null);
+
+  const stopSwipe = useCallback(() => {
+    const state = swipeState.current;
+    if (!state) return;
+    state.target.removeEventListener("pointermove", state.onMove);
+    state.target.removeEventListener("pointerup", state.onUp);
+    state.target.removeEventListener("pointercancel", state.onUp);
+    swipeState.current = null;
+  }, []);
+
+  // Detach listeners on unmount even if a swipe is mid-flight.
+  useEffect(() => stopSwipe, [stopSwipe]);
+
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    // Ignore a second finger: only the first one drives a swipe.
+    if (swipeState.current) return;
     const target = event.currentTarget;
     const startX = event.clientX;
     const startY = event.clientY;
     const startTime = event.timeStamp;
     let tracking = true;
-    let dominant = "h" as "h" | "v";
+    let dominant: "h" | "v" = "h";
     let lastX = startX;
     let lastY = startY;
+
+    const finish = (dx: number, dt: number) => {
+      tracking = false;
+      stopSwipe();
+      if (dominant !== "h") return;
+      if (Math.abs(dx) < 60) return;
+      if (dt > 700) return;
+      onSwipe(dx < 0 ? 1 : -1);
+    };
 
     const onMove = (moveEvent: PointerEvent) => {
       if (!tracking) return;
@@ -89,33 +122,21 @@ export function CategoryTabs({ items }: { items: CategoryTab[] }) {
         // Vertical motion is taking over; stop tracking and let the page scroll.
         tracking = false;
         target.releasePointerCapture?.(moveEvent.pointerId);
+        stopSwipe();
+        return;
       }
       if (Math.abs(dx) > 80) {
         // Far enough horizontally to commit the swipe early.
-        target.removeEventListener("pointermove", onMove);
-        target.removeEventListener("pointerup", onUp);
-        target.removeEventListener("pointercancel", onUp);
         finish(dx, moveEvent.timeStamp - startTime);
       }
     };
 
-    const finish = (dx: number, dt: number) => {
-      tracking = false;
-      if (dominant !== "h") return;
-      if (Math.abs(dx) < 60) return;
-      if (dt > 700) return;
-      onSwipe(dx < 0 ? 1 : -1);
-    };
-
     const onUp = (upEvent: PointerEvent) => {
-      target.removeEventListener("pointermove", onMove);
-      target.removeEventListener("pointerup", onUp);
-      target.removeEventListener("pointercancel", onUp);
       const dx = upEvent.clientX - startX;
-      const dy = upEvent.clientY - startY;
       finish(dx, upEvent.timeStamp - startTime);
     };
 
+    swipeState.current = { target, onMove, onUp };
     target.addEventListener("pointermove", onMove);
     target.addEventListener("pointerup", onUp);
     target.addEventListener("pointercancel", onUp);

@@ -2,12 +2,18 @@
 
 import { useEffect, useState } from "react";
 
+const DISMISSED_KEY = "np-pwa-install-dismissed";
+
 /**
  * Читателски PWA инсталиране.
  * - Android (Chrome / Edge): `beforeinstallprompt` показва бутон. Не обещаваме инсталиране извън този диалог.
  * - iPhone (Safari): няма `beforeinstallprompt`. Показваме кратка инструкция за „Add to Home Screen"
  *   през системния лист за споделяне. Без отделен бутон, който обещава инсталиране без този лист.
  * - Вече инсталирано като PWA (`display-mode: standalone`): не показваме нищо.
+ *
+ * Dismissed state is persisted for the rest of the browser session so the
+ * banner doesn't pop back after every page navigation. Once the user
+ * installs the PWA the `appinstalled` handler hides it permanently.
  */
 export function PwaInstall() {
   const [androidPrompt, setAndroidPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -16,6 +22,11 @@ export function PwaInstall() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    try {
+      if (sessionStorage.getItem(DISMISSED_KEY) === "1") setDismissed(true);
+    } catch {
+      // sessionStorage may be unavailable in private browsing; fall through.
+    }
     // Already installed as PWA / iOS standalone / Android TWA.
     if (window.matchMedia("(display-mode: standalone)").matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true) {
       setInstalled(true);
@@ -26,13 +37,31 @@ export function PwaInstall() {
       setAndroidPrompt(event as BeforeInstallPromptEvent);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
-    const onInstalled = () => setInstalled(true);
+    const onInstalled = () => {
+      try {
+        sessionStorage.removeItem(DISMISSED_KEY);
+      } catch {
+        // ignore
+      }
+      setInstalled(true);
+    };
     window.addEventListener("appinstalled", onInstalled);
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
   }, []);
+
+  const dismiss = (persist: boolean) => {
+    if (persist) {
+      try {
+        sessionStorage.setItem(DISMISSED_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }
+    setDismissed(true);
+  };
 
   if (installed || dismissed) return null;
 
@@ -48,7 +77,7 @@ export function PwaInstall() {
         </div>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={() => dismiss(true)}
           aria-label="Затвори"
           className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
         >
@@ -65,7 +94,7 @@ export function PwaInstall() {
         await androidPrompt.userChoice;
       } finally {
         setAndroidPrompt(null);
-        setDismissed(true);
+        dismiss(true);
       }
     };
     return (
@@ -84,7 +113,7 @@ export function PwaInstall() {
         </button>
         <button
           type="button"
-          onClick={() => setDismissed(true)}
+          onClick={() => dismiss(true)}
           aria-label="Затвори"
           className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
         >

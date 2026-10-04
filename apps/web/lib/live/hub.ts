@@ -23,7 +23,7 @@ class LiveHub {
   private starting: Promise<void> | null = null;
   private failedAt = 0;
   private pumping: Promise<void> = Promise.resolve();
-  private pending = false;
+  private pumpPending = false;
 
   get currentId() {
     return this.lastId;
@@ -70,14 +70,18 @@ class LiveHub {
   }
 
   private schedule() {
-    if (this.pending) return;
-    this.pending = true;
+    // `pumpPending` is cleared at the END of pump(). Setting it at the start
+    // (instead of in the .then() body) avoids a race where two microtasks
+    // would both read the same `lastId` and deliver the same article twice.
+    if (this.pumpPending) return;
+    this.pumpPending = true;
     this.pumping = this.pumping.then(async () => {
-      this.pending = false;
       try {
         await this.pump();
       } catch (error) {
         console.error(`[live] delivery failed: ${(error as Error).message}`);
+      } finally {
+        this.pumpPending = false;
       }
     });
   }

@@ -37,13 +37,21 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   return out;
 }
 
+function isIosDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod/.test(navigator.userAgent);
+}
+
 function detectPushSupport(): { supported: boolean; status: Status; needInstall: boolean } {
   if (typeof window === "undefined") return { supported: false, status: "checking", needInstall: false };
   const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (!supported) return { supported: false, status: "unsupported", needInstall: false };
   if (Notification.permission === "denied") return { supported: true, status: "blocked", needInstall: false };
+  // Only iOS Safari truly requires the Home Screen step. Android Chrome,
+  // iOS Chrome, desktop browsers and iPadOS-Safari-as-Mac all expose
+  // push.serviceWorker / pushManager without an explicit install.
   const isIosSafariStandalone = detectIosSafariStandalone();
-  const needInstall = isIosSafariStandalone === false && /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const needInstall = !isIosSafariStandalone && isIosDevice();
   return { supported: true, status: "ready", needInstall };
 }
 

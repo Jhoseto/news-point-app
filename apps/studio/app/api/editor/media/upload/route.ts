@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { getDb, mediaAssets, mediaPresentations } from "@newspoint/db";
 import { studioOrigins } from "@/lib/auth";
 import { staffFromRequest } from "@/lib/session";
@@ -42,10 +43,12 @@ export async function POST(request: Request) {
     const folder = `news/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
     const fullKey = `${folder}/${base}.webp`;
     const variantKeys = photo.variants.map((variant) => ({ ...variant, key: `${folder}/${base}-w${variant.width}.webp` }));
-    await writeMediaFile(fullKey, photo.full.buffer);
-    for (const variant of variantKeys) {
-      await writeMediaFile(variant.key, variant.buffer);
-    }
+    // Parallel writes: variants go up to 6 today.
+    await Promise.all([
+      writeMediaFile(fullKey, photo.full.buffer),
+      ...variantKeys.map((variant) => writeMediaFile(variant.key, variant.buffer)),
+    ]);
+    let assetId: string | undefined;
     try {
       const [asset] = await getDb()
         .insert(mediaAssets)
@@ -58,6 +61,7 @@ export async function POST(request: Request) {
           alt,
         })
         .returning({ id: mediaAssets.id });
+      assetId = asset!.id;
       const variants = variantKeys.map((variant) => ({
         url: `/media/${variant.key}`,
         width: variant.width,
@@ -66,17 +70,25 @@ export async function POST(request: Request) {
       await getDb()
         .insert(mediaPresentations)
         .values({
-          mediaAssetId: asset!.id,
+          mediaAssetId: assetId,
           variants,
         })
         .onConflictDoNothing();
       return Response.json(
-        { id: asset!.id, url: `/media/${fullKey}`, variants, alt },
+        { id: assetId, url: `/media/${fullKey}`, variants, alt },
         { headers: { "cache-control": "no-store" } },
       );
     } catch (error) {
-      await removeMediaFile(fullKey).catch(() => undefined);
-      for (const variant of variantKeys) await removeMediaFile(variant.key).catch(() => undefined);
+      // Roll back files AND the media row so we don't leave orphans
+      // pointing at deleted keys. Variants are fire-and-forget — the
+      // disk path may be on a separate volume that survives the rollback.
+      await Promise.all([
+        removeMediaFile(fullKey).catch(() => undefined),
+        ...variantKeys.map((variant) => removeMediaFile(variant.key).catch(() => undefined)),
+      ]);
+      if (assetId) {
+        await getDb().delete(mediaAssets).where(eq(mediaAssets.id, assetId)).catch(() => undefined);
+      }
       throw error;
     }
   } catch (error) {

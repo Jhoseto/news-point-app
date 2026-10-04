@@ -41,23 +41,35 @@ export async function dispatch(sub: {
   p256dh: string;
   auth: string;
   id: string;
-}, payload: Payload): Promise<{ ok: true } | { ok: false; reason: "gone" | "error" }> {
-  if (!ensureConfigured()) return { ok: false, reason: "error" };
-  try {
-    await webpush.sendNotification(
-      {
-        endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth },
-      },
-      JSON.stringify(payload),
-      { TTL: 60 * 60, headers: { Urgency: "normal" } },
-    );
-    return { ok: true };
-  } catch (error) {
-    const statusCode = (error as { statusCode?: number }).statusCode;
-    if (statusCode === 404 || statusCode === 410) return { ok: false, reason: "gone" };
-    return { ok: false, reason: "error" };
+}, payload: Payload): Promise<{ ok: true; id: string } | { ok: false; id: string; reason: "gone" | "error" }> {
+  if (!ensureConfigured()) return { ok: false, id: sub.id, reason: "error" };
+  let lastStatus: number | undefined;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        },
+        JSON.stringify(payload),
+        { TTL: 60 * 60, headers: { Urgency: "normal" } },
+      );
+      return { ok: true, id: sub.id };
+    } catch (error) {
+      const statusCode = (error as { statusCode?: number }).statusCode;
+      lastStatus = statusCode;
+      // 404/410: subscription is permanently gone — no retry.
+      if (statusCode === 404 || statusCode === 410) return { ok: false, id: sub.id, reason: "gone" };
+      // 429 (rate limit) or 5xx: linear backoff, then give up.
+      if ((statusCode === 429 || (statusCode && statusCode >= 500)) && attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+        continue;
+      }
+      return { ok: false, id: sub.id, reason: "error" };
+    }
   }
+  void lastStatus; // mark used
+  return { ok: false, id: sub.id, reason: "error" };
 }
 
 /**
@@ -66,7 +78,25 @@ export async function dispatch(sub: {
  * The article must already be readable by the writer at this point.
  *
  * Errors per-subscriber are isolated; one bad endpoint never blocks the rest.
+ * Sends are issued in parallel with a concurrency cap so we don't hammer
+ * the push service with thousands of in-flight requests at once.
  */
+const PUSH_CONCURRENCY = 50;
+
+async function runWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const worker = async () => {
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) return;
+      results[index] = await fn(items[index]!);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
 export async function notifyArticlePublished(articleId: string): Promise<{ sent: number; removed: number }> {
   if (!ensureConfigured()) return { sent: 0, removed: 0 };
   const db = getDb();
@@ -110,25 +140,24 @@ export async function notifyArticlePublished(articleId: string): Promise<{ sent:
     tag: article.path,
   };
 
+  const results = await runWithConcurrency(target, PUSH_CONCURRENCY, (sub) =>
+    dispatch({ id: sub.id, endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth }, payload),
+  );
+
   let sent = 0;
   const gone: string[] = [];
-  for (const sub of target) {
-    const result = await dispatch(
-      { id: sub.id, endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-      payload,
-    );
+  for (const result of results) {
     if (result.ok) sent += 1;
-    else if (result.reason === "gone") gone.push(sub.id);
+    else if (result.reason === "gone") gone.push(result.id);
   }
   if (gone.length > 0) {
     await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, gone));
   }
-  const notified = target[0];
-  if (notified) {
+  if (target.length > 0) {
     await db
       .update(pushSubscriptions)
       .set({ lastNotifiedAt: new Date() })
-      .where(eq(pushSubscriptions.id, notified.id));
+      .where(inArray(pushSubscriptions.id, target.map((row) => row.id)));
   }
   return { sent, removed: gone.length };
 }
