@@ -90,9 +90,11 @@
 
 @layer base {
   html {
-    /* Height of the sticky header. The desktop rail starts directly below it. */
-    --np-header-h: 6.75rem;
-    --np-bar-h: 4rem;
+    /* Height of the sticky header. Mobile bar is 3.25rem + 2.75rem LivePoint row = 6rem. */
+    --np-header-h: 6rem;
+    --np-bar-h: 3.25rem;
+    /* Phone bottom-nav reservation: 3.5rem content + safe-area-inset-bottom. Used by sheets to stop above it. */
+    --np-bottom-nav-h: calc(3.5rem + env(safe-area-inset-bottom));
     --np-rail-w: 0px;
     --np-logo-h: 2rem;
     background: var(--np-page);
@@ -103,6 +105,8 @@
     @apply bg-page font-sans text-body antialiased;
     /* Manrope swaps in Bulgarian letterforms for lang="bg"; the mockups use the standard ones. */
     font-feature-settings: "locl" 0;
+    /* No horizontal page overflow on phones — the category tabs and any swiping live inside their own scroll containers. */
+    overflow-x: hidden;
   }
 
   /* Thin rounded thumb in the muted colour; the brand violet only while hovering it. */
@@ -133,6 +137,7 @@
       --np-lp-row-h: 2.5rem;
       --np-home-bar-h: 2.25rem;
       --np-header-h: calc(var(--np-bar-h) + var(--np-lp-row-h));
+      --np-bottom-nav-h: 0px;
       --np-livepoint-sticky-top: 9rem;
       --np-rail-w: 16.5rem;
       /* Logo stays sized for the expanded rail; only the list column narrows when collapsed. */
@@ -1630,7 +1635,7 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
 
   /* Touch-first leading strips: native inertial scrolling with a quiet premium edge treatment. */
   .np-mobile-touch-carousel {
-    touch-action: pan-x;
+    touch-action: pan-x pan-y;
     overscroll-behavior-x: contain;
     /* The autoplay ticker owns the offset on phones; native swipe remains inertial. */
     scroll-snap-type: none;
@@ -1999,3 +2004,66 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 @media (max-width: 1023px) { .np-audio-wave { height: 56px; } }
 @media (min-width: 64rem) and (max-height: 46rem) { .np-audio-wave { height: 42px; } }
 @media (prefers-reduced-motion: reduce) { .np-audio-wave-motion { animation: none; } }
+
+/* PWA install banner: phone-first, just above the bottom nav. */
+.np-pwa-install {
+  font-size: 0.8125rem;
+}
+@media (min-width: 64rem) {
+  .np-pwa-install {
+    /* Desktop has no bottom nav; place the banner in the lower-right corner. */
+    inset-inline: auto 1.25rem;
+    max-width: 22rem;
+  }
+}
+
+/* Phone bottom navigation. Slide it under the keyboard so the search field stays visible. */
+.np-bottom-nav {
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.np-bottom-nav[data-keyboard-open="true"] {
+  transform: translateY(110%);
+  pointer-events: none;
+}
+.np-bottom-nav [data-active="true"] {
+  color: var(--np-link);
+}
+/* Hairline above active item, mirroring the desktop rail. */
+.np-bottom-nav-mark {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 1.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transform: translate(-50%, 0) scaleX(0);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background 180ms;
+  transform-origin: center;
+}
+.np-bottom-nav [aria-current="page"] > .np-bottom-nav-mark,
+.np-bottom-nav [data-active="true"] > .np-bottom-nav-mark {
+  background: var(--np-accent);
+  transform: translate(-50%, 0) scaleX(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-bottom-nav { transition: none; }
+}
+
+/* Category tabs row on the home emission: native swipe, no horizontal page overflow. */
+.np-cat-tabs-scroll {
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 1rem;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(to right, transparent 0, #000 .75rem, #000 calc(100% - 1.5rem), transparent 100%);
+}
+.np-cat-tabs-scroll::-webkit-scrollbar { display: none; }
+.np-cat-tab {
+  min-height: 2.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-cat-tabs-scroll { scroll-behavior: auto; }
+}

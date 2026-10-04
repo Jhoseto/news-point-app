@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, type SVGProps } from "react";
 import { createPortal } from "react-dom";
 import type { CategoryRef } from "@/lib/queries";
+import { currentHeaderSheet, setHeaderSheet, useHeaderSheet } from "./header-state";
 import {
   BadgeIcon,
   BallotIcon,
@@ -233,18 +234,43 @@ function useModal(open: boolean, close: () => void, panel: RefObject<HTMLElement
 function Sheet({ open, onClose, label, side, children }: { open: boolean; onClose: () => void; label: string; side: "left" | "top"; children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
   useModal(open, onClose, panel);
+
+  // On iPhones the keyboard shrinks the visual viewport without changing 100dvh.
+  // We expose visualViewport.height as a CSS variable so max-h tracks the keyboard.
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      document.documentElement.style.setProperty("--np-vp-viewport", `${Math.round(vv.height)}px`);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+      document.documentElement.style.removeProperty("--np-vp-viewport");
+    };
+  }, [open]);
   if (!open) return null;
   // Portal: the header's backdrop-filter would otherwise contain this fixed layer.
   return createPortal(
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={label}>
-      <div className="np-sheet-backdrop absolute inset-0 bg-[#000516]/55 backdrop-blur-sm" aria-hidden="true" onClick={onClose} />
+      <div
+        className="np-sheet-backdrop absolute inset-x-0 top-0 bg-[#000516]/60"
+        aria-hidden="true"
+        onClick={onClose}
+        style={{ bottom: "var(--np-bottom-nav-h, 0px)" }}
+      />
       <div
         ref={panel}
         className={
           side === "left"
-            ? "np-sheet-left absolute inset-y-0 left-0 flex w-[min(21rem,86vw)] flex-col overflow-y-auto border-r border-line bg-surface shadow-card"
-            : "np-sheet-top absolute inset-x-0 top-0 flex max-h-[92dvh] flex-col overflow-y-auto rounded-b-3xl border-b border-line bg-surface shadow-card"
+            ? "np-sheet-left absolute inset-y-0 left-0 flex w-[min(21rem,86vw)] flex-col overflow-y-auto border-r border-line bg-surface shadow-card lg:bottom-auto"
+            : "np-sheet-top absolute inset-x-0 top-0 flex max-h-[calc(var(--np-vp-viewport,100dvh)-var(--np-bottom-nav-h))] flex-col overflow-y-auto rounded-b-3xl border-b border-line bg-surface shadow-card"
         }
+        style={side === "left" ? { bottom: "var(--np-bottom-nav-h, 0px)" } : undefined}
       >
         {children}
       </div>
@@ -294,13 +320,37 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   const current = usePathname() ?? "/";
   const [expanded, setExpanded] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const ownedEntry = useRef(false);
   const collapseBtn = useRef<HTMLButtonElement>(null);
   const expandBtn = useRef<HTMLButtonElement>(null);
   const focusCollapse = useRef(false);
 
-  const closeSheet = useCallback(() => setSheetOpen(false), []);
+  const closeSheet = useCallback(() => {
+    if (!sheetOpen) return;
+    setSheetOpen(false);
+    setHeaderSheet(null);
+    if (ownedEntry.current) {
+      ownedEntry.current = false;
+      history.back();
+    }
+  }, [sheetOpen]);
 
-  useEffect(() => setSheetOpen(false), [current]);
+  const openSheet = useCallback(() => {
+    setSheetOpen(true);
+    const other = currentHeaderSheet();
+    setHeaderSheet("rubrics");
+    if (other === null) {
+      history.pushState({ npSheet: "rubrics" }, "");
+      ownedEntry.current = true;
+    } else {
+      ownedEntry.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sheetOpen) closeSheet();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   useEffect(() => {
     document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
@@ -322,10 +372,21 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   useEffect(() => {
     const onOpen = () => {
       if (matchMedia(DESKTOP).matches) setExpanded(true);
-      else setSheetOpen(true);
+      else openSheet();
     };
     window.addEventListener(RUBRICS_EVENT, onOpen);
     return () => window.removeEventListener(RUBRICS_EVENT, onOpen);
+  }, [openSheet]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (!ownedEntry.current) return;
+      ownedEntry.current = false;
+      setSheetOpen(false);
+      setHeaderSheet(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
@@ -403,7 +464,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
             type="button"
             onClick={closeSheet}
             aria-label="Затвори менюто"
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
             data-autofocus
           >
             <CloseIcon width={22} height={22} />
@@ -439,21 +500,55 @@ export function RubricsButton() {
 /** Search on screens without the centred header field. */
 export function MobileSearch() {
   const [open, setOpen] = useState(false);
-  const close = useCallback(() => setOpen(false), []);
+  const ownedEntry = useRef(false);
   const current = usePathname();
 
+  const openSheet = useCallback(() => {
+    setOpen(true);
+    const other = currentHeaderSheet();
+    setHeaderSheet("search");
+    if (other === null) {
+      history.pushState({ npSheet: "search" }, "");
+      ownedEntry.current = true;
+    } else {
+      ownedEntry.current = false;
+    }
+  }, []);
+
+  const close = useCallback(() => {
+    if (!open) return;
+    setOpen(false);
+    setHeaderSheet(null);
+    if (ownedEntry.current) {
+      ownedEntry.current = false;
+      history.back();
+    }
+  }, [open]);
+
   useEffect(() => setOpen(false), [current]);
+
   useEffect(() => {
-    const onOpen = () => setOpen(true);
+    const onOpen = () => openSheet();
     window.addEventListener(SEARCH_EVENT, onOpen);
     return () => window.removeEventListener(SEARCH_EVENT, onOpen);
+  }, [openSheet]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (!ownedEntry.current) return;
+      ownedEntry.current = false;
+      setOpen(false);
+      setHeaderSheet(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openSheet}
         aria-label="Търсене"
         className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
       >
@@ -476,27 +571,75 @@ export function MobileSearch() {
 
 export function BottomNav() {
   const current = usePathname() ?? "/";
+  const sheet = useHeaderSheet();
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const check = () => {
+      // Mobile keyboards are ≥150 px on phones; the system UI alone is below that.
+      const delta = window.innerHeight - vv.height;
+      setKeyboardOpen(delta > 150);
+    };
+    check();
+    vv.addEventListener("resize", check);
+    window.addEventListener("resize", check);
+    return () => {
+      vv.removeEventListener("resize", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
+
+  const onHome =
+    current === "/" && !sheet && !current.startsWith("/#");
+  const onLatest = current === "/#posledni";
+  const searchActive = sheet === "search";
+  const rubricsActive = sheet === "rubrics";
   const itemClass =
-    "flex flex-1 flex-col items-center gap-1 py-2 text-[0.6875rem] font-semibold text-muted aria-[current=page]:text-accent dark:aria-[current=page]:text-link";
+    "relative flex min-h-11 flex-1 flex-col items-center gap-1 py-2 text-[0.6875rem] font-semibold text-muted aria-[current=page]:text-accent dark:aria-[current=page]:text-link";
+
   return (
     <nav
       aria-label="Бърза навигация"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+      data-keyboard-open={keyboardOpen || undefined}
+      className="np-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md">
-        <Link href="/" aria-current={current === "/" ? "page" : undefined} className={itemClass}>
+        <Link href="/" aria-current={onHome ? "page" : undefined} className={itemClass}>
+          <span aria-hidden="true" className="np-bottom-nav-mark" />
           <HomeIcon width={21} height={21} />
           Начало
         </Link>
-        <Link href="/#posledni" className={itemClass}>
+        <Link
+          href="/#posledni"
+          aria-current={onLatest ? "page" : undefined}
+          className={itemClass}
+        >
+          <span aria-hidden="true" className="np-bottom-nav-mark" />
           <BoltIcon width={21} height={21} />
           Последни
         </Link>
-        <button type="button" onClick={openSearch} className={itemClass}>
+        <button
+          type="button"
+          onClick={openSearch}
+          data-active={searchActive || undefined}
+          aria-pressed={searchActive}
+          className={itemClass}
+        >
+          <span aria-hidden="true" className="np-bottom-nav-mark" />
           <SearchIcon width={21} height={21} />
           Търсене
         </button>
-        <button type="button" onClick={openRubrics} className={itemClass}>
+        <button
+          type="button"
+          onClick={openRubrics}
+          data-active={rubricsActive || undefined}
+          aria-pressed={rubricsActive}
+          className={itemClass}
+        >
+          <span aria-hidden="true" className="np-bottom-nav-mark" />
           <GridIcon width={21} height={21} />
           Рубрики
         </button>

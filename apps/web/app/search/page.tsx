@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { ArticleCard } from "@/components/article-card";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { ArrowRightIcon, SearchIcon } from "@/components/icons";
+import { MobileCompactRow } from "@/components/mobile-home-cards";
 import { RecentSearches } from "@/components/recent-searches";
 import { SectionTitle } from "@/components/ui";
 import { getMenuCategories, getSearchArchive } from "@/lib/queries";
@@ -31,7 +32,11 @@ async function SearchResults({ filters, categoryId, cursor }: { filters: SearchF
     <section aria-labelledby="search-results">
       <SectionTitle id="search-results">{`${results.length} ${results.length === 1 ? "статия" : "статии"} на тази страница`}</SectionTitle>
       {cursor ? <p className="mb-5 text-sm text-muted">Разглеждате по-ранни резултати. <Link href={filteredSearchUrl(filters)} prefetch={false} className="font-semibold text-accent hover:underline">Към най-новите</Link></p> : null}
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
+      {/* Phone: compact rows. Desktop: card grid. */}
+      <div className="np-card flex flex-col divide-y divide-line overflow-hidden lg:hidden">
+        {results.map(article => <MobileCompactRow key={article.id} article={article} />)}
+      </div>
+      <div className="hidden gap-5 sm:grid-cols-2 lg:grid lg:grid-cols-3 2xl:grid-cols-4 3xl:grid-cols-5">
         {results.map(article => <ArticleCard key={article.id} article={article} showExcerpt />)}
       </div>
       {archive.previous || archive.next ? (

@@ -182,7 +182,7 @@ export function LatestNews24h({
     <section
       aria-labelledby={`${sectionId}-title`}
       id={sectionId}
-      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col overflow-visible scroll-mt-32 ${dense ? "p-4" : "p-5"} ${className}`}
+      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col overflow-visible scroll-mt-[var(--np-header-h)] ${dense ? "p-4" : "p-5"} ${className}`}
       onMouseLeave={() => setActive(null)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null);
@@ -196,7 +196,7 @@ export function LatestNews24h({
       {visible.length ? (
         <ol
           aria-label="Публикации от последните 24 часа"
-          className={`np-scroll-soft relative -mr-2 flex min-h-0 flex-1 flex-col overflow-y-auto pr-2 before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
+          className={`np-scroll-soft relative -mr-2 flex min-h-0 flex-1 flex-col ${dense ? "overflow-y-auto" : ""} pr-2 before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
           onScroll={(event) => {
             const focused = event.currentTarget.querySelector<HTMLAnchorElement>("a:focus[data-latest-id]");
             if (focused) {

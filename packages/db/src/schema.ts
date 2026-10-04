@@ -335,6 +335,28 @@ export const pageArrangements = pgTable(
   (table) => [index("page_arrangements_page_idx").on(table.pageKey, table.createdAt.desc())],
 );
 
+/** Reader PWA Web Push subscriptions. One row per browser/device endpoint. */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    endpoint: text("endpoint").notNull().unique(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    categorySlug: text("category_slug"),
+    locale: text("locale").notNull().default("bg"),
+    userAgent: text("user_agent").notNull().default(""),
+    enabled: boolean("enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("push_subscriptions_enabled_idx").on(table.enabled),
+    index("push_subscriptions_category_idx").on(table.categorySlug),
+  ],
+);
+
 export const podcastStatuses = ["draft", "published"] as const;
 
 /** One NewsPodcast episode. Drafts stay off the public site. */
@@ -440,4 +462,5 @@ export const schemaTables = {
   publishRequests,
   livepointSubmissions,
   pageArrangements,
+  pushSubscriptions,
 };

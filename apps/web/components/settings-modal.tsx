@@ -62,7 +62,7 @@ export function SettingsModal() {
                 <h2 ref={title} id={`${id}-title`} tabIndex={-1} className="flex items-center gap-2 text-lg font-extrabold tracking-tight text-ink outline-none"><span className="np-ring !size-5 shrink-0" aria-hidden="true" />Настройки на четене</h2>
                 <p id={`${id}-hint`} className="mt-1 text-xs leading-relaxed text-muted">Удобен изглед, съобразен с вас.</p>
               </div>
-              <button type="button" aria-label="Затвори настройките" onClick={() => setOpen(false)} className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"><CloseIcon width={18} height={18} /></button>
+              <button type="button" aria-label="Затвори настройките" onClick={() => setOpen(false)} className="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"><CloseIcon width={18} height={18} /></button>
             </div>
             <div className="np-scroll-soft min-h-0 overflow-y-auto overscroll-contain bg-page p-3 sm:p-4"><SettingsPanel compact /></div>
           </div>

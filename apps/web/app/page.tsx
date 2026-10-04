@@ -1,10 +1,12 @@
 import { ArticleCard, CompactCard, FeatureCard, HeroCard } from "@/components/article-card";
+import { CategoryTabs, type CategoryTab } from "@/components/category-tabs";
 import { HomeShineRoot } from "@/components/home-shine-root";
 import { Fragment } from "react";
 import { HomePoll } from "@/components/home-poll";
 import { LeadingCarousel } from "@/components/leading-carousel";
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
+import { MobileCompactRow, MobileLeadCard, MobileSupportingCard } from "@/components/mobile-home-cards";
 import { BrandBanner, PlovdivBanner } from "@/components/site-chrome";
 import { SectionTitle } from "@/components/ui";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
@@ -17,6 +19,14 @@ export const revalidate = 60;
 
 const FOCUS_LABEL = "na-fokus";
 const FOCUS_ARCHIVE_PATH = "/na-fokus/";
+
+const MOBILE_CATEGORY_TABS: CategoryTab[] = [
+  { name: "За теб", path: "/" },
+  { name: "Пловдив", path: "/plovdiv/" },
+  { name: "България", path: "/balgariya/" },
+  { name: "Свят", path: "/svetovni-novini/" },
+  { name: "Спорт", path: "/sportni-novini/" },
+];
 
 type Layout = "grid" | "feature";
 
@@ -118,22 +128,19 @@ export default async function HomePage() {
     <HomeShineRoot cycleSec={shineCycleSec}>
       <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
-        {/* Phone: lead, then a larger theme, two compact ones and the latest list. */}
-        <div className="flex flex-col gap-4 lg:hidden">
-          {hero ? <HeroCard article={hero} priority {...shineDelayProp(bandHero)} /> : null}
-          {support[0] ? <HeroCard article={support[0]} size="tile" {...shineDelayProp(bandSupport0)} /> : null}
+        {/* Phone: lead, horizontal supporting card, two compact rows, tabs row, then the latest list. */}
+        <div className="flex flex-col gap-5 lg:hidden">
+          {hero ? <MobileLeadCard article={hero} priority /> : null}
+          {support[0] ? <MobileSupportingCard article={support[0]} /> : null}
           {support.length > 1 ? (
-            <div className="np-card flex flex-col gap-4 p-4">
-              {support.slice(1).map((article, index) => (
-                <CompactCard
-                  key={article.id}
-                  article={article}
-                  {...shineDelayProp(index === 0 ? bandSupport1 : bandSupport2)}
-                />
+            <div className="np-card flex flex-col divide-y divide-line overflow-hidden">
+              {support.slice(1).map((article) => (
+                <MobileCompactRow key={article.id} article={article} />
               ))}
             </div>
           ) : null}
-          <LatestNews24h articles={latest} asOfMs={asOfMs} className="h-[30rem]" />
+          <CategoryTabs items={MOBILE_CATEGORY_TABS} />
+          <LatestNews24h articles={latest} asOfMs={asOfMs} />
         </div>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}

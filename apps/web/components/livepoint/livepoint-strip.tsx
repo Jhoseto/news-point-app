@@ -11,10 +11,12 @@ function StripItem({
   module,
   icon,
   children,
+  className,
 }: {
   module: LivePointModule;
   icon: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   const { active, open } = useLivePoint();
   const on = active === module;
@@ -26,7 +28,7 @@ function StripItem({
       aria-haspopup="dialog"
       aria-expanded={on}
       data-active={on || undefined}
-      className="np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold"
+      className={`np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold ${className ?? ""}`}
     >
       <span className="np-lp-item-icon" aria-hidden="true">{icon}</span>
       <span className="np-lp-item-label">{children}</span>

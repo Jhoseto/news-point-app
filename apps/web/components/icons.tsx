@@ -280,6 +280,12 @@ export const ExternalIcon = (props: IconProps) => (
   </Icon>
 );
 
+export const ShareIcon = (props: IconProps) => (
+  <Icon {...props}>
+    <path d="M12 4v12M7 9l5-5 5 5M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5" />
+  </Icon>
+);
+
 export const FacebookIcon = (props: IconProps) => (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true" {...props}>
     <path d="M13.5 21v-7.5H16l.4-3h-2.9V8.6c0-.9.3-1.5 1.5-1.5h1.5V4.4c-.3 0-1.2-.1-2.2-.1-2.2 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3Z" />

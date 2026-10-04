@@ -5,6 +5,8 @@ import "@fontsource-variable/manrope";
 import "./globals.css";
 import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
+import { PwaInstall } from "@/components/pwa-install";
+import { PwaRegister } from "@/components/pwa-register";
 import { PodcastProvider } from "@/components/podcast/player";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
@@ -32,10 +34,34 @@ export const metadata: Metadata = {
   description: "Новини от Пловдив, България и света.",
   robots: { index: false, follow: false },
   alternates: { types: { "application/rss+xml": "/feed/" } },
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
-    shortcut: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
-    apple: [{ url: "/brand/mark-favicon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/brand/mark-favicon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: [
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/brand/apple-touch-icon-167.png", sizes: "167x167", type: "image/png" },
+      { url: "/brand/apple-touch-icon-152.png", sizes: "152x152", type: "image/png" },
+      { url: "/brand/apple-touch-icon-120.png", sizes: "120x120", type: "image/png" },
+    ],
+    other: [
+      {
+        rel: "apple-touch-startup-image",
+        url: "/brand/splash-1170x2532.png",
+        media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
+      },
+      {
+        rel: "apple-touch-startup-image",
+        url: "/brand/splash-1170x2532-dark.png",
+        media: "(prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
+      },
+    ],
   },
 };
 
@@ -44,6 +70,7 @@ export const viewport: Viewport = {
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
     { media: "(prefers-color-scheme: dark)", color: "#000516" },
   ],
+  viewportFit: "cover",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -78,6 +105,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </PodcastProvider>
         <LiveUpdates />
         <SpotlightField />
+        <PwaInstall />
+        <PwaRegister />
       </body>
     </html>
   );

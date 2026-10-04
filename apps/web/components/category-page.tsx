@@ -7,6 +7,7 @@ import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
 import { LatestNews24h } from "./latest-news-24h";
+import { MobileCompactRow, MobileLeadCard, MobileSupportingCard } from "./mobile-home-cards";
 import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
@@ -41,11 +42,11 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
       <Breadcrumbs items={[{ name: category.name, path: category.path }]} />
 
       <header className="relative isolate overflow-hidden rounded-3xl shadow-card">
-        <ArticleImage media={lead?.hero ?? null} priority sizes="100vw" className="absolute inset-0 -z-10 h-full w-full object-[center_30%]" />
-        <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#020826]/90 via-[#020826]/60 to-[#020826]/20" aria-hidden="true" />
+        <ArticleImage media={lead?.hero ?? null} priority sizes="100vw" className="absolute inset-0 -z-10 hidden h-full w-full object-[center_30%] sm:block" />
+        <div className="absolute inset-0 -z-10 hidden bg-gradient-to-r from-[#020826]/90 via-[#020826]/60 to-[#020826]/20 sm:block" aria-hidden="true" />
         <div className="flex min-h-44 flex-col justify-end gap-2 p-6 sm:min-h-56 sm:p-8">
-          <span className="text-sm font-semibold text-white/75">Рубрика</span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">{category.name}</h1>
+          <span className="text-sm font-semibold text-white/75 sm:text-muted">Рубрика</span>
+          <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-white sm:text-5xl">{category.name}</h1>
         </div>
       </header>
 
@@ -64,17 +65,32 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
             <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
           ) : (
             <>
-            {lead ? <FeatureCard article={lead} /> : null}
-            {rest.length ? (
-              <section aria-labelledby="sec-more">
-                <SectionTitle id="sec-more">Още от {category.name}</SectionTitle>
-                <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4">
-                  {rest.map((article) => (
-                    <ArticleCard key={article.id} article={article} showExcerpt />
+            {/* Phone: vertical list — lead, then supporting/compact rows. No mosaic. */}
+            <div className="flex flex-col gap-5 lg:hidden">
+              {lead ? <MobileLeadCard article={lead} /> : null}
+              {articles[1] ? <MobileSupportingCard article={articles[1]} /> : null}
+              {articles.length > 2 ? (
+                <div className="np-card flex flex-col divide-y divide-line overflow-hidden">
+                  {articles.slice(2).map((article) => (
+                    <MobileCompactRow key={article.id} article={article} />
                   ))}
                 </div>
-              </section>
-            ) : null}
+              ) : null}
+            </div>
+            {/* Desktop: original FeatureCard + grid layout. */}
+            <div className="hidden lg:flex lg:flex-col lg:gap-6">
+              {lead ? <FeatureCard article={lead} /> : null}
+              {rest.length ? (
+                <section aria-labelledby="sec-more">
+                  <SectionTitle id="sec-more">Още от {category.name}</SectionTitle>
+                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 3xl:grid-cols-4">
+                    {rest.map((article) => (
+                      <ArticleCard key={article.id} article={article} showExcerpt />
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+            </div>
             {archive.previous || archive.next ? (
               <nav aria-label={`Страници на рубрика ${category.name}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
                 {archive.previous ? (
@@ -92,7 +108,7 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
             </>
           )}
         </div>
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport hidden lg:block" />
       </div>
     </div>
   );

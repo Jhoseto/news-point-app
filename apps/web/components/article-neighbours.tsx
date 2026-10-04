@@ -23,9 +23,20 @@ function NeighbourCard({ article, direction }: { article: ArticleSummary; direct
 export function ArticleNeighbours({ older, newer }: { older: ArticleSummary | null; newer: ArticleSummary | null }) {
   if (!older && !newer) return null;
   return (
-    <nav className="np-article-neighbours" aria-label="Предишна и следваща новина">
-      {older ? <NeighbourCard article={older} direction="previous" /> : <span />}
-      {newer ? <NeighbourCard article={newer} direction="next" /> : null}
-    </nav>
+    <>
+      {/* Phone: a single „Следваща новина" card; swipe gesture is added later. */}
+      {newer ? (
+        <nav className="lg:hidden" aria-label="Следваща новина">
+          <NeighbourCard article={newer} direction="next" />
+        </nav>
+      ) : null}
+      {/* Desktop and tablet: both chronological neighbours. */}
+      {older || newer ? (
+        <nav className="np-article-neighbours hidden lg:grid" aria-label="Предишна и следваща новина">
+          {older ? <NeighbourCard article={older} direction="previous" /> : <span />}
+          {newer ? <NeighbourCard article={newer} direction="next" /> : null}
+        </nav>
+      ) : null}
+    </>
   );
 }
