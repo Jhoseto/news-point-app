@@ -569,7 +569,7 @@ export function MobileSearch() {
   );
 }
 
-export function BottomNav() {
+export function BottomNav({ onOpenLatest }: { onOpenLatest?: () => void } = {}) {
   const current = usePathname() ?? "/";
   const sheet = useHeaderSheet();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
@@ -594,7 +594,7 @@ export function BottomNav() {
 
   const onHome =
     current === "/" && !sheet && !current.startsWith("/#");
-  const onLatest = current === "/#posledni";
+  const latestActive = current === "/#posledni";
   const searchActive = sheet === "search";
   const rubricsActive = sheet === "rubrics";
   const itemClass =
@@ -612,15 +612,16 @@ export function BottomNav() {
           <HomeIcon width={21} height={21} />
           Начало
         </Link>
-        <Link
-          href="/#posledni"
-          aria-current={onLatest ? "page" : undefined}
+        <button
+          type="button"
+          onClick={() => onOpenLatest?.()}
+          aria-current={latestActive ? "page" : undefined}
           className={itemClass}
         >
           <span aria-hidden="true" className="np-bottom-nav-mark" />
           <BoltIcon width={21} height={21} />
           Последни
-        </Link>
+        </button>
         <button
           type="button"
           onClick={openSearch}

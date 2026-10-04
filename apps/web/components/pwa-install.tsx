@@ -19,9 +19,18 @@ export function PwaInstall() {
   const [androidPrompt, setAndroidPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  // Navigator-only state stays null until mount so the server-rendered tree
+  // matches the desktop client tree. The brief moment before the effect
+  // runs renders nothing, which is identical on both sides.
+  const [isIosSafari, setIsIosSafari] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    setIsIosSafari(
+      /iPhone|iPad|iPod/.test(navigator.userAgent) &&
+        /Safari/.test(navigator.userAgent) &&
+        !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent),
+    );
     try {
       if (sessionStorage.getItem(DISMISSED_KEY) === "1") setDismissed(true);
     } catch {
@@ -65,11 +74,9 @@ export function PwaInstall() {
 
   if (installed || dismissed) return null;
 
-  const isIosSafari = typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
-
   if (isIosSafari) {
     return (
-      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-start gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:bottom-5">
+      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-start gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:bottom-5" suppressHydrationWarning>
         <div className="np-ring !size-9 shrink-0" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           <strong className="font-bold text-ink">Добави NewsPoint.bg към началния екран</strong>

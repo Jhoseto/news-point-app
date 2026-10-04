@@ -203,47 +203,51 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
         </form>
 
         <form onSubmit={changePassword} className="np-profile-card" autoComplete="off">
-          <h2 className="np-profile-card-title">Сигурност</h2>
-          <label className="np-profile-toggle">
-            <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
-            <span>Покажи паролите</span>
-          </label>
-          <p className="np-profile-hint">След промяната другите активни сесии ще бъдат прекратени.</p>
-          <div className="np-profile-fields">
-            <label className="np-profile-field">
-              <span>Текуща парола</span>
-              <input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
-            </label>
-            <label className="np-profile-field">
-              <span>Нова парола</span>
-              <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
-            </label>
-            <label className="np-profile-field">
-              <span>Повторете новата парола</span>
-              <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
-            </label>
+          <div className="np-profile-card-head np-profile-card-head--title">
+            <h2 className="np-profile-card-heading">Сигурност</h2>
           </div>
-          <ul className="np-profile-rules">
-            {PASSWORD_RULES.map((rule) => {
-              const ok = rule.test(newPassword);
-              return (
-                <li key={rule.id} className={`np-profile-rule ${ok ? "is-ok" : ""}`}>
-                  <span className="np-profile-rule-dot" aria-hidden="true">{ok ? "✓" : ""}</span>
-                  {rule.label}
-                </li>
-              );
-            })}
-          </ul>
-          {passwordNotice ? (
-            <p role={passwordNotice.tone === "error" ? "alert" : "status"} className={`np-profile-alert np-profile-alert--${passwordNotice.tone}`}>
-              {passwordNotice.text}
-            </p>
-          ) : null}
-          <div className="np-profile-foot">
-            <span />
-            <button type="submit" disabled={passwordPending} className="np-profile-btn np-profile-btn--primary">
-              {passwordPending ? "Смяна…" : "Смени паролата"}
-            </button>
+          <div className="np-profile-body">
+            <label className="np-profile-toggle">
+              <input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} />
+              <span>Покажи паролите</span>
+            </label>
+            <p className="np-profile-hint">След промяната другите активни сесии ще бъдат прекратени.</p>
+            <div className="np-profile-fields">
+              <label className="np-profile-field np-profile-field--full">
+                <span>Текуща парола</span>
+                <input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+              </label>
+              <label className="np-profile-field">
+                <span>Нова парола</span>
+                <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+              </label>
+              <label className="np-profile-field">
+                <span>Повторете новата парола</span>
+                <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+              </label>
+            </div>
+            <ul className="np-profile-rules">
+              {PASSWORD_RULES.map((rule) => {
+                const ok = rule.test(newPassword);
+                return (
+                  <li key={rule.id} className={`np-profile-rule ${ok ? "is-ok" : ""}`}>
+                    <span className="np-profile-rule-dot" aria-hidden="true">{ok ? "✓" : ""}</span>
+                    {rule.label}
+                  </li>
+                );
+              })}
+            </ul>
+            {passwordNotice ? (
+              <p role={passwordNotice.tone === "error" ? "alert" : "status"} className={`np-profile-alert np-profile-alert--${passwordNotice.tone}`}>
+                {passwordNotice.text}
+              </p>
+            ) : null}
+            <div className="np-profile-foot">
+              <span />
+              <button type="submit" disabled={passwordPending} className="np-profile-btn np-profile-btn--primary">
+                {passwordPending ? "Смяна…" : "Смени паролата"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

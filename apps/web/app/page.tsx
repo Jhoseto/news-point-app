@@ -6,7 +6,7 @@ import { HomePoll } from "@/components/home-poll";
 import { LeadingCarousel } from "@/components/leading-carousel";
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
-import { MobileCompactRow, MobileLeadCard, MobileSupportingCard } from "@/components/mobile-home-cards";
+import { MobileCompactRow, MobileLeadCard, MobileSmallPair, MobileSupportingCard } from "@/components/mobile-home-cards";
 import { BrandBanner, PlovdivBanner } from "@/components/site-chrome";
 import { SectionTitle } from "@/components/ui";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
@@ -128,19 +128,20 @@ export default async function HomePage() {
     <HomeShineRoot cycleSec={shineCycleSec}>
       <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
-        {/* Phone: lead, horizontal supporting card, two compact rows, tabs row, then the latest list. */}
+        {/* Phone: lead → medium → 2-up small pair → compact rows → tabs. The latest
+           * sidebar lives in LatestPanel (opened from BottomNav). */}
         <div className="flex flex-col gap-5 lg:hidden">
           {hero ? <MobileLeadCard article={hero} priority /> : null}
           {support[0] ? <MobileSupportingCard article={support[0]} /> : null}
-          {support.length > 1 ? (
+          {support[1] && support[2] ? <MobileSmallPair left={support[1]} right={support[2]} /> : null}
+          {support.length > 3 ? (
             <div className="np-card flex flex-col divide-y divide-line overflow-hidden">
-              {support.slice(1).map((article) => (
+              {support.slice(3).map((article) => (
                 <MobileCompactRow key={article.id} article={article} />
               ))}
             </div>
           ) : null}
           <CategoryTabs items={MOBILE_CATEGORY_TABS} />
-          <LatestNews24h articles={latest} asOfMs={asOfMs} />
         </div>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}

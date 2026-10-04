@@ -116,6 +116,57 @@ export function MobileCompactRow({ article }: { article: ArticleSummary }) {
   );
 }
 
+/**
+ * Mobile small card: 4/3 photo, category pill, two-line title and time.
+ * Used as the third and fourth slots on the leading composition — sits in a
+ * 2-up grid (`MobileSmallPair`) so each card stays readable on a 360 px
+ * viewport.
+ */
+export function MobileSmallCard({ article }: { article: ArticleSummary }) {
+  return (
+    <article
+      className="group np-news-card relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+      style={categoryAccentStyle(article.category?.slug)}
+    >
+      <Link href={article.path} prefetch={false} aria-label={article.title} className="flex h-full flex-col">
+        <div className="relative">
+          <ArticleImage
+            media={article.hero}
+            sizes="(min-width: 360px) 45vw, 50vw"
+            className="aspect-[4/3] w-full object-cover object-[center_30%]"
+          />
+          {article.category ? (
+            <CategoryPill category={article.category} className="absolute top-2 left-2" glass />
+          ) : null}
+        </div>
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
+          <Heading
+            level="h3"
+            className="text-sm leading-snug font-bold tracking-[-0.01em] text-balance text-ink"
+            text={article.title}
+            clampLines={3}
+          />
+          <TimeMeta date={article.publishedAt} relative className="mt-auto text-[0.6875rem]" />
+        </div>
+      </Link>
+    </article>
+  );
+}
+
+/**
+ * Two `MobileSmallCard` side by side. The pair reads as a single horizontal
+ * band between the medium supporting card and the dense compact rows below;
+ * the cards are equal-height via a grid row so titles line up across columns.
+ */
+export function MobileSmallPair({ left, right }: { left: ArticleSummary; right: ArticleSummary }) {
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <MobileSmallCard article={left} />
+      <MobileSmallCard article={right} />
+    </div>
+  );
+}
+
 function Heading({
   text,
   className,
