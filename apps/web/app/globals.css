@@ -2017,6 +2017,102 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   }
 }
 
+/* PWA opening animation. The system startup image is static; this layer runs
+ * the "live" continuation inside the app shell for installed PWAs.
+ * prefers-reduced-motion: the overlay never paints; the interface wins
+ * the first frame. */
+.np-pwa-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--np-page);
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+.np-pwa-splash:not([data-visible]) {
+  opacity: 0;
+}
+.np-pwa-splash[data-leaving] {
+  opacity: 0;
+}
+.np-pwa-splash-rings {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  animation: np-pwa-splash-bloom 780ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.np-pwa-splash-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  transform-origin: center;
+  background: conic-gradient(from -45deg, var(--np-accent), var(--np-magenta), var(--np-accent));
+  -webkit-mask: radial-gradient(circle 0.6rem at center, #000 99%, transparent 100%);
+          mask: radial-gradient(circle 0.6rem at center, #000 99%, transparent 100%);
+}
+.ring-a { animation: np-ring-a 720ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.ring-b { animation: np-ring-b 720ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 40ms; }
+.ring-c { animation: np-ring-c 720ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 80ms; }
+.ring-d { animation: np-ring-d 720ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: 120ms; }
+.np-pwa-splash-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  animation: np-pwa-splash-text 720ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.np-pwa-splash-wordmark {
+  font-family: "Manrope Variable", system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: linear-gradient(110deg, var(--np-accent), var(--np-magenta));
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+.np-pwa-splash-slogan {
+  font-family: "Literata Variable", Georgia, serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--np-muted);
+}
+@keyframes np-pwa-splash-bloom {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes np-pwa-splash-text {
+  from { opacity: 0; transform: translateY(0.4rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes np-ring-a {
+  from { transform: translate(-12px, -6px) rotate(-25deg); }
+  to   { transform: translate(0, 0) rotate(0); }
+}
+@keyframes np-ring-b {
+  from { transform: translate(12px, -6px) rotate(20deg); }
+  to   { transform: translate(0, 0) rotate(0); }
+}
+@keyframes np-ring-c {
+  from { transform: translate(-10px, 10px) rotate(18deg); }
+  to   { transform: translate(0, 0) rotate(0); }
+}
+@keyframes np-ring-d {
+  from { transform: translate(10px, 10px) rotate(-22deg); }
+  to   { transform: translate(0, 0) rotate(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-pwa-splash { display: none; }
+  .np-pwa-splash-rings,
+  .np-pwa-splash-mark,
+  .np-pwa-splash-ring { animation: none; }
+}
+
 /* Phone bottom navigation. Slide it under the keyboard so the search field stays visible. */
 .np-bottom-nav {
   transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -2066,4 +2162,17 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 }
 @media (prefers-reduced-motion: reduce) {
   .np-cat-tabs-scroll { scroll-behavior: auto; }
+}
+
+/* "Има нови новини" banner that appears above the sticky header when SSE
+ * pushes a new article. Sits above the cards without rearranging them. */
+.np-new-articles {
+  animation: np-new-articles-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes np-new-articles-in {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-new-articles { animation: none; }
 }

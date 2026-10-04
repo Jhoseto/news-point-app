@@ -8,6 +8,7 @@ import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
 import { LatestNews24h } from "./latest-news-24h";
 import { MobileCompactRow, MobileLeadCard, MobileSupportingCard } from "./mobile-home-cards";
+import { PushPermission } from "./push-permission";
 import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
@@ -51,6 +52,8 @@ export async function CategoryPage({ category, cursor }: { category: CategoryRef
       </header>
 
       <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" />
+
+      <PushPermission categorySlug={category.slug} />
 
       {archive.anchored ? (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">

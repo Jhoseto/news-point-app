@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import { getDb, mediaAssets } from "@newspoint/db";
+import { getDb, mediaAssets, mediaPresentations } from "@newspoint/db";
 import { studioOrigins } from "@/lib/auth";
 import { staffFromRequest } from "@/lib/session";
 import { writeMediaFile, removeMediaFile } from "@/lib/media-disk";
-import { prepareUploadedPhoto, UPLOADED_PHOTO_MAX_BYTES } from "@/lib/uploaded-photo";
+import { prepareUploadedPhotoWithVariants, UPLOADED_PHOTO_MAX_BYTES } from "@/lib/uploaded-photo";
 
 export const runtime = "nodejs";
 
@@ -36,14 +36,49 @@ export async function POST(request: Request) {
     const alt = String(form.get("alt") ?? "").trim().slice(0, 240);
     if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Изберете валидна снимка.");
     if (file.size > UPLOADED_PHOTO_MAX_BYTES) throw new Error("Снимката трябва да е до 25 MB.");
-    const photo = await prepareUploadedPhoto(Buffer.from(await file.arrayBuffer()));
+    const photo = await prepareUploadedPhotoWithVariants(Buffer.from(await file.arrayBuffer()));
     const now = new Date();
-    const key = `news/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.webp`;
-    await writeMediaFile(key, photo.buffer);
+    const base = randomUUID();
+    const folder = `news/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+    const fullKey = `${folder}/${base}.webp`;
+    const variantKeys = photo.variants.map((variant) => ({ ...variant, key: `${folder}/${base}-w${variant.width}.webp` }));
+    await writeMediaFile(fullKey, photo.full.buffer);
+    for (const variant of variantKeys) {
+      await writeMediaFile(variant.key, variant.buffer);
+    }
     try {
-      const [asset] = await getDb().insert(mediaAssets).values({ provider: "object_storage", storageKey: key, mime: "image/webp", width: photo.width, height: photo.height, alt }).returning({ id: mediaAssets.id });
-      return Response.json({ id: asset!.id, url: `/media/${key}`, alt }, { headers: { "cache-control": "no-store" } });
-    } catch (error) { await removeMediaFile(key).catch(() => undefined); throw error; }
+      const [asset] = await getDb()
+        .insert(mediaAssets)
+        .values({
+          provider: "object_storage",
+          storageKey: fullKey,
+          mime: "image/webp",
+          width: photo.full.width,
+          height: photo.full.height,
+          alt,
+        })
+        .returning({ id: mediaAssets.id });
+      const variants = variantKeys.map((variant) => ({
+        url: `/media/${variant.key}`,
+        width: variant.width,
+        height: variant.height,
+      }));
+      await getDb()
+        .insert(mediaPresentations)
+        .values({
+          mediaAssetId: asset!.id,
+          variants,
+        })
+        .onConflictDoNothing();
+      return Response.json(
+        { id: asset!.id, url: `/media/${fullKey}`, variants, alt },
+        { headers: { "cache-control": "no-store" } },
+      );
+    } catch (error) {
+      await removeMediaFile(fullKey).catch(() => undefined);
+      for (const variant of variantKeys) await removeMediaFile(variant.key).catch(() => undefined);
+      throw error;
+    }
   } catch (error) {
     return Response.json({ error: { message: error instanceof Error ? error.message : "Качването не беше успешно." } }, { status: 400, headers: { "cache-control": "no-store" } });
   }

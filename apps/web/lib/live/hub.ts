@@ -4,6 +4,7 @@ import { triggerRevalidate } from "@newspoint/content";
 import { getDb, listen, OUTBOX_CHANNEL, outboxEvents } from "@newspoint/db";
 import { getSummariesByIds } from "../queries";
 import { affectedPaths, toLiveCard, toLiveEvent, type LiveEvent } from "./events";
+import { isPushConfigured, notifyArticlePublished } from "../push";
 
 type Listener = (event: LiveEvent) => void;
 
@@ -88,6 +89,11 @@ class LiveHub {
       await revalidate(events);
       for (const event of events) {
         this.lastId = event.eventId;
+        if (event.type === "article.published" && isPushConfigured() && event.entityId) {
+          notifyArticlePublished(event.entityId).catch((error: unknown) => {
+            console.warn(`[push] notify failed: ${(error as Error).message}`);
+          });
+        }
         for (const listener of this.listeners) listener(event);
       }
       if (events.length < BATCH) return;

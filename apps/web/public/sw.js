@@ -111,3 +111,50 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 });
+
+/**
+ * Push notifications: open the article in the existing tab when possible,
+ * otherwise spawn a new one. Keep the payload small — it's shown as-is.
+ */
+self.addEventListener("push", (event) => {
+  let payload = { title: "NewsPoint.bg", body: "Нова публикация", url: "/", tag: undefined };
+  try {
+    if (event.data) payload = { ...payload, ...JSON.parse(event.data.text()) };
+  } catch {
+    // ignore malformed payload
+  }
+  event.waitUntil(
+    (async () => {
+      const all = await self.registration.getNotifications({ tag: payload.tag });
+      for (const note of all) note.close();
+      await self.registration.showNotification(payload.title, {
+        body: payload.body,
+        tag: payload.tag,
+        icon: "/brand/icon-192.png",
+        badge: "/brand/icon-maskable-512.png",
+        data: { url: payload.url },
+        requireInteraction: false,
+      });
+    })(),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      for (const client of all) {
+        if ("focus" in client) {
+          await client.focus();
+          try {
+            await client.navigate(url);
+          } catch {}
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })(),
+  );
+});

@@ -93,7 +93,11 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       headers: {
         "Content-Type": "application/octet-stream",
         "Content-Length": String(audio.byteLength),
-        "Cache-Control": "private, max-age=3600",
+        // Same audio bytes for the same article + version — CDN can serve a
+        // single entry across all readers. The endpoint itself blocks
+        // cross-site callers via fromThisSite, so public here only widens
+        // the cache key, not the attack surface.
+        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
         "X-Content-Type-Options": "nosniff",
       },
     });

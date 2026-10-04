@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 import { unstable_cache } from "next/cache";
 import "@fontsource-variable/manrope";
 import "./globals.css";
-import { BottomNav, SiteBody, SiteHeader } from "@/components/site-chrome";
+import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
+import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { PwaInstall } from "@/components/pwa-install";
 import { PwaRegister } from "@/components/pwa-register";
+import { PwaSplash } from "@/components/pwa-splash";
 import { PodcastProvider } from "@/components/podcast/player";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { LiveUpdates } from "@/components/live-updates";
@@ -100,13 +102,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           <SiteHeader />
           <SiteBody>{children}</SiteBody>
-          <BottomNav />
+          <MobileChromeIsland />
         </LivePointProvider>
         </PodcastProvider>
         <LiveUpdates />
         <SpotlightField />
         <PwaInstall />
         <PwaRegister />
+        <PwaSplash />
       </body>
     </html>
   );

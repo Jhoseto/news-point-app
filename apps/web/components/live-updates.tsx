@@ -1,34 +1,39 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { startTransition, useEffect, useState } from "react";
-import { formatClock } from "@/lib/format";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { LIVE_EVENT_NAME, type LiveEvent } from "@/lib/live/events";
 import { createLiveRefreshScheduler } from "@/lib/live/refresh";
-import { NewArticleToast } from "./live-toast";
 
 // Several events in a row produce one refresh.
 const REFRESH_DEBOUNCE_MS = 700;
-const REFRESHED_MS = 4000;
-const MAX_TOASTS = 3;
+const BANNER_MS = 9000;
 
 /**
  * Keeps the open page current without F5. router.refresh() re-renders the
  * server components in place, so scroll position and focus stay put.
+ *
+ * When new articles arrive, the plan calls for a single small banner that
+ * says "Има нови новини". Tapping it scrolls the new articles into view
+ * and refreshes the page. Individual per-article cards are noisy; the
+ * banner stays put even with 30 new stories and never rearranges the
+ * cards that the reader is currently looking at.
  */
 export function LiveUpdates() {
   const router = useRouter();
-  const [toasts, setToasts] = useState<LiveEvent[]>([]);
-  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null);
+  const [banner, setBanner] = useState<{ count: number; firstTitle: string } | null>(null);
+  const [bannerId, setBannerId] = useState(0);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const seenIds = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     const source = new EventSource("/api/live/");
-    // Archive readers explicitly navigate their fixed set. Keep the toast,
-    // but don't change their cards, sidebar, scroll or focused link via SSE.
-    const refresh = createLiveRefreshScheduler(() => {
-      startTransition(() => router.refresh());
-      setRefreshedAt(new Date());
-    }, () => !!document.querySelector("[data-np-category-archive], [data-np-search-archive]"), REFRESH_DEBOUNCE_MS);
+    const refresh = createLiveRefreshScheduler(
+      () => startTransition(() => router.refresh()),
+      () => !!document.querySelector("[data-np-category-archive], [data-np-search-archive]"),
+      REFRESH_DEBOUNCE_MS,
+    );
 
     const onEvent = (message: MessageEvent<string>) => {
       let event: LiveEvent;
@@ -40,19 +45,20 @@ export function LiveUpdates() {
       if (event.type === "layout.updated") {
         const here = window.location.pathname;
         const same = event.path === "/" ? here === "/" : here.replace(/\/$/, "") === event.path.replace(/\/$/, "");
-        if (same) {
-          startTransition(() => router.refresh());
-          setRefreshedAt(new Date());
-        }
+        if (same) startTransition(() => router.refresh());
         return;
       }
       if (event.type === "article.published" && event.card) {
-        setToasts((current) =>
-          [event, ...current.filter((toast) => toast.entityId !== event.entityId)].slice(0, MAX_TOASTS),
-        );
+        if (seenIds.current.has(event.eventId)) return;
+        seenIds.current.add(event.eventId);
+        setBanner((current) => {
+          const next = current ? { count: current.count + 1, firstTitle: current.firstTitle } : { count: 1, firstTitle: event.title };
+          setBannerId(event.eventId);
+          return next;
+        });
+        clearTimeout(hideTimer.current);
+        hideTimer.current = setTimeout(() => setBanner(null), BANNER_MS);
       }
-      // Category archives keep their fixed card snapshot, but their shared
-      // latest-news desk can refresh separately from a public endpoint.
       window.dispatchEvent(new Event("np:public-content-updated"));
       refresh.schedule();
     };
@@ -60,44 +66,52 @@ export function LiveUpdates() {
     source.addEventListener(LIVE_EVENT_NAME, onEvent as EventListener);
     return () => {
       refresh.cancel();
+      clearTimeout(hideTimer.current);
       source.removeEventListener(LIVE_EVENT_NAME, onEvent as EventListener);
       source.close();
     };
   }, [router]);
 
-  useEffect(() => {
-    if (!refreshedAt) return;
-    const timer = setTimeout(() => setRefreshedAt(null), REFRESHED_MS);
-    return () => clearTimeout(timer);
-  }, [refreshedAt]);
+  const onClick = () => {
+    clearTimeout(hideTimer.current);
+    setBanner(null);
+    seenIds.current.clear();
+    startTransition(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      router.refresh();
+    });
+  };
+
+  if (!banner) return null;
+
+  const label = banner.count === 1 ? "Има 1 нова новина" : `Има ${banner.count} нови новини`;
 
   return (
-    <>
-      <div
-        role="status"
-        aria-live="polite"
-        className="pointer-events-none fixed inset-x-4 top-[calc(var(--np-header-h)+1rem)] z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[25rem] lg:right-6"
+    <div
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none fixed inset-x-4 top-[calc(var(--np-header-h)+1rem)] z-50 flex flex-col items-end gap-3 sm:left-auto sm:w-[25rem] lg:right-6"
+    >
+      <button
+        key={bannerId}
+        type="button"
+        onClick={onClick}
+        className="np-new-articles pointer-events-auto flex w-full items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3 text-left shadow-card transition hover:bg-surface-2"
       >
-        {toasts.map((event) => (
-          <div key={event.eventId} className="w-full">
-            <NewArticleToast
-              event={event}
-              onDone={() => setToasts((current) => current.filter((toast) => toast.eventId !== event.eventId))}
-            />
-          </div>
-        ))}
-      </div>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4 lg:bottom-6"
-      >
-        {!toasts.length && refreshedAt ? (
-          <div className="np-card flex items-center gap-2 px-4 py-2 text-sm font-semibold text-ink">
-            <span className="np-gradient-bg size-2 shrink-0 rounded-full" />
-            Страницата е обновена · {formatClock(refreshedAt)}
-          </div>
-        ) : null}
-      </div>
-    </>
+        <span className="np-live-dot relative shrink-0" aria-hidden="true" />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="np-gradient-text text-[0.6875rem] font-extrabold tracking-[0.14em] uppercase">{label}</span>
+          <span className="line-clamp-1 text-sm font-semibold text-ink">{banner.firstTitle}</span>
+        </span>
+        <Link
+          href="/api/live/"
+          prefetch={false}
+          aria-label="Към емисията"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-body"
+        >
+          ↑
+        </Link>
+      </button>
+    </div>
   );
 }

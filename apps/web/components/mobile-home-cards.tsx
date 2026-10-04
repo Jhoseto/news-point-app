@@ -19,7 +19,7 @@ export function MobileLeadCard({
 }) {
   return (
     <article
-      className="group np-news-card relative isolate overflow-hidden rounded-3xl border border-line bg-surface shadow-card"
+      className="group np-news-card relative isolate min-h-[20rem] overflow-hidden rounded-3xl border border-line bg-surface shadow-card"
       style={categoryAccentStyle(article.category?.slug)}
     >
       <Link href={article.path} prefetch={false} aria-label={article.title} className="block">

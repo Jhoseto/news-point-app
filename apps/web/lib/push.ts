@@ -1,8 +1,7 @@
 import "server-only";
 import webpush from "web-push";
-import { eq, and } from "drizzle-orm";
-import { pushSubscriptions, articles, categories } from "@newspoint/db";
-import { getDb } from "@newspoint/db/node";
+import { eq, inArray } from "drizzle-orm";
+import { pushSubscriptions, articles, categories, getDb } from "@newspoint/db";
 
 /**
  * Web Push sender for the reader PWA.
@@ -91,7 +90,7 @@ export async function notifyArticlePublished(articleId: string): Promise<{ sent:
       categorySlug: categories.slug,
     })
     .from(articles)
-    .leftJoin(categories, eq(articles.categoryId, categories.id))
+    .leftJoin(categories, eq(articles.primaryCategoryId, categories.id))
     .where(eq(articles.id, articleId))
     .limit(1);
   const article = articleRows[0];
@@ -122,18 +121,14 @@ export async function notifyArticlePublished(articleId: string): Promise<{ sent:
     else if (result.reason === "gone") gone.push(sub.id);
   }
   if (gone.length > 0) {
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, gone[0]));
-    if (gone.length > 1) {
-      const rest = gone.slice(1);
-      await db.delete(pushSubscriptions).where(
-        // simple chained delete; one transaction
-        and(eq(pushSubscriptions.id, rest[0])),
-      );
-    }
+    await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.id, gone));
   }
-  await db
-    .update(pushSubscriptions)
-    .set({ lastNotifiedAt: new Date() })
-    .where(eq(pushSubscriptions.id, target[0].id));
+  const notified = target[0];
+  if (notified) {
+    await db
+      .update(pushSubscriptions)
+      .set({ lastNotifiedAt: new Date() })
+      .where(eq(pushSubscriptions.id, notified.id));
+  }
   return { sent, removed: gone.length };
 }
