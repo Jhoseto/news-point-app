@@ -83,3 +83,20 @@ export function targetWords(settings: AiPodcastSettings): number {
 export function scriptWords(segments: AiPodcastSegment[]): number {
   return segments.flatMap((segment) => segment.lines).reduce((sum, line) => sum + line.text.trim().split(/\s+/).filter(Boolean).length, 0);
 }
+
+/** Preserve existing audio only when the exact spoken turns have not changed. */
+export function prepareSegmentEdits(original: AiPodcastSegment[], edited: AiPodcastSegment[]): { segments: AiPodcastSegment[]; changedIds: string[] } {
+  const byId = new Map(original.map((segment) => [segment.id, segment]));
+  if (edited.length === 0 || new Set(edited.map((segment) => segment.id)).size !== edited.length || !edited.some((segment) => segment.sourceId)) throw new Error("Invalid podcast story selection");
+  const changedIds: string[] = [];
+  const segments = edited.map((segment) => {
+    const previous = byId.get(segment.id);
+    if (!previous || previous.sourceId !== segment.sourceId) throw new Error("Podcast story source cannot change");
+    const turns = (lines: AiPodcastLine[]) => lines.map(({ speaker, text, direction }) => ({ speaker, text, direction }));
+    const sameAudio = JSON.stringify(turns(previous.lines)) === JSON.stringify(turns(segment.lines));
+    const same = sameAudio && previous.label === segment.label;
+    if (!same) changedIds.push(segment.id);
+    return { ...segment, lines: sameAudio ? previous.lines : turns(segment.lines), wavKey: sameAudio ? previous.wavKey : null, version: same ? previous.version : previous.version + 1 };
+  });
+  return { segments, changedIds };
+}

@@ -1,10 +1,7 @@
 import { spawn } from "node:child_process";
-import { createWriteStream } from "node:fs";
-import { access, chmod, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.tts-voices");
@@ -45,8 +42,8 @@ async function exists(file: string): Promise<boolean> {
 async function download(url: string, file: string): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true });
   const response = await fetch(url, { signal: AbortSignal.timeout(180_000) });
-  if (!response.ok || !response.body) throw new Error(`Не се свали ${url} (${response.status}).`);
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(file));
+  if (!response.ok) throw new Error(`Не се свали ${url} (${response.status}).`);
+  await writeFile(file, Buffer.from(await response.arrayBuffer()));
 }
 
 async function extract(archive: string, dir: string): Promise<void> {

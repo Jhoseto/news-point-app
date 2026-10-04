@@ -16,8 +16,8 @@ export function mediaFile(storageKey: string): string | null {
   if (!PREFIXES.some((prefix) => storageKey.startsWith(prefix))) return null;
   const parts = storageKey.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
-  const full = resolve(root, ...parts);
-  const rootResolved = resolve(root);
+  const full = resolve(/* turbopackIgnore: true */ root, ...parts);
+  const rootResolved = resolve(/* turbopackIgnore: true */ root);
   if (full !== rootResolved && !full.startsWith(rootResolved + sep)) return null;
   return full;
 }
@@ -40,7 +40,7 @@ export async function readMediaFile(storageKey: string): Promise<Buffer | null> 
   const path = mediaFile(storageKey);
   if (!path) return null;
   try {
-    return await readFile(path);
+    return await readFile(/* turbopackIgnore: true */ path);
   } catch {
     return null;
   }

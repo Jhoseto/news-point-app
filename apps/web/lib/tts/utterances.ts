@@ -98,7 +98,7 @@ function pushText(
       kind,
       text: part,
       blockIndex,
-      anchorId,
+      ...(anchorId ? { anchorId } : {}),
     });
   });
 }

@@ -65,16 +65,16 @@ async function speakGemini(text: string): Promise<Uint8Array[]> {
   const chunks = speechByteChunks(text, 8_000);
   const out = new Array<Uint8Array>(chunks.length);
   let cursor = 0;
-  async function worker() {
+  async function worker(apiKey: string) {
     while (cursor < chunks.length) {
       const index = cursor;
       cursor += 1;
       const piece = chunks[index];
       if (!piece) continue;
-      out[index] = await requestGemini(piece, key);
+      out[index] = await requestGemini(piece, apiKey);
     }
   }
-  await Promise.all(Array.from({ length: Math.min(2, chunks.length) }, () => worker()));
+  await Promise.all(Array.from({ length: Math.min(2, chunks.length) }, () => worker(key)));
   return out.filter((part) => part && part.byteLength > 0);
 }
 

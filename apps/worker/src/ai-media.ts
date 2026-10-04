@@ -3,6 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { remoteDiskFromEnv, readRemoteFile, writeRemoteFile } from "@newspoint/content/disk";
 import sharp from "sharp";
 
@@ -60,8 +61,22 @@ function titleLines(title: string): string[] {
 
 export async function brandedCover(background: Buffer, title: string): Promise<Buffer> {
   const lines = titleLines(title).map((line, index) => `<text x="82" y="${600 + index * 95}" font-family="Arial,sans-serif" font-weight="800" font-size="76" fill="white">${escapeXml(line)}</text>`).join("");
-  const svg = Buffer.from(`<svg width="1200" height="1200" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050b22" stop-opacity=".25"/><stop offset="1" stop-color="#050b22" stop-opacity=".94"/></linearGradient></defs><rect width="1200" height="1200" fill="url(#shade)"/><circle cx="120" cy="126" r="49" fill="none" stroke="#a82df1" stroke-width="12"/><circle cx="120" cy="126" r="30" fill="none" stroke="#14b9f8" stroke-width="10"/><text x="195" y="143" font-family="Arial,sans-serif" font-size="55" font-weight="800" fill="white">NewsPoint.bg</text><text x="82" y="1080" font-family="Arial,sans-serif" font-size="43" letter-spacing="8" fill="#70d5ff">PODCAST</text>${lines}</svg>`);
-  return sharp(background, { limitInputPixels: 40_000_000 }).resize(1200, 1200, { fit: "cover" }).composite([{ input: svg }]).webp({ quality: 86 }).toBuffer();
+  const svg = Buffer.from(`<svg width="1200" height="1200" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050b22" stop-opacity=".25"/><stop offset="1" stop-color="#050b22" stop-opacity=".94"/></linearGradient></defs><rect width="1200" height="1200" fill="url(#shade)"/><rect x="58" y="64" width="690" height="238" rx="26" fill="#ffffff" fill-opacity=".94"/><text x="82" y="1080" font-family="Arial,sans-serif" font-size="43" letter-spacing="8" fill="#70d5ff">PODCAST</text>${lines}</svg>`);
+  const logo = await readFile(fileURLToPath(new URL("../../studio/public/brand/newspoint-logo-512w.webp", import.meta.url)));
+  const logoOverlay = await sharp(logo).resize({ width: 640 }).toBuffer();
+  return sharp(background, { limitInputPixels: 40_000_000 }).resize(1200, 1200, { fit: "cover" }).composite([{ input: svg }, { input: logoOverlay, left: 84, top: 82 }]).webp({ quality: 86 }).toBuffer();
+}
+
+export async function assertAudioTools(): Promise<void> {
+  const ffmpeg = process.env.FFMPEG_PATH || "ffmpeg";
+  const ffprobe = process.env.FFPROBE_PATH || "ffprobe";
+  const [filters] = await Promise.all([
+    run(ffmpeg, ["-hide_banner", "-filters"], 15_000),
+    run(ffprobe, ["-version"], 15_000),
+  ]);
+  for (const name of ["loudnorm", "sidechaincompress", "alimiter"]) {
+    if (!filters.includes(name)) throw new Error(`FFmpeg filter ${name} is unavailable`);
+  }
 }
 
 export async function masterAudio(wavs: Buffer[], music: Buffer | null): Promise<{ bytes: Buffer; durationSec: number }> {
@@ -74,14 +89,18 @@ export async function masterAudio(wavs: Buffer[], music: Buffer | null): Promise
       await writeFile(path, wavs[i]!);
       inputs.push("-i", path);
     }
+    const seconds = await Promise.all(wavs.map((_, i) => run(process.env.FFPROBE_PATH || "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", join(dir, `voice-${i}.wav`)], 30_000).then((value) => Number(value.trim()))));
+    if (seconds.some((value) => !Number.isFinite(value) || value <= 0)) throw new Error("Invalid voice segment duration");
     if (music) {
       const path = join(dir, "music.mp3");
       await writeFile(path, music);
       inputs.push("-stream_loop", "-1", "-i", path);
     }
-    const voice = `${wavs.map((_, index) => `[${index}:a]`).join("")}concat=n=${wavs.length}:v=0:a=1,aresample=48000,aformat=channel_layouts=stereo[spoken]`;
+    const pauses = wavs.map((_, index) => `[${index}:a]${index === wavs.length - 1 ? "anull" : "apad=pad_dur=0.18"}[voice${index}]`).join(";");
+    const voice = `${pauses};${wavs.map((_, index) => `[voice${index}]`).join("")}concat=n=${wavs.length}:v=0:a=1,aresample=48000,aformat=channel_layouts=stereo${music ? ",adelay=1000|1000,apad=pad_dur=1" : ""}[spoken]`;
+    const totalSeconds = seconds.reduce((sum, value) => sum + value, 0) + (wavs.length - 1) * 0.18 + 2;
     const filter = music
-      ? `${voice};[spoken]asplit=2[voice_mix][side];[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13[bed];[bed][side]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[voice_mix][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`
+      ? `${voice};[spoken]asplit=2[voice_mix][side];[${wavs.length}:a]aresample=48000,aformat=channel_layouts=stereo,volume=0.13,afade=t=in:st=0:d=0.6,afade=t=out:st=${Math.max(0, totalSeconds - 0.8).toFixed(2)}:d=0.8[bed];[bed][side]sidechaincompress=threshold=0.03:ratio=8:attack=30:release=600[duck];[voice_mix][duck]amix=inputs=2:duration=first:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`
       : `${voice};[spoken]loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84[out]`;
     const out = join(dir, "master.mp3");
     await run(process.env.FFMPEG_PATH || "ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", ...inputs, "-filter_complex", filter, "-map", "[out]", "-ar", "48000", "-ac", "2", "-b:a", "128k", out], 600_000);

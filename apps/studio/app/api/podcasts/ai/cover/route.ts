@@ -15,10 +15,11 @@ export async function POST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: "Заявката трябва да идва от Studio." }, 403);
   const staff = await staffFromRequest(request);
   if (!staff) return json({ error: "Влезте отново." }, 401);
+  if (!["editor", "admin", "master_admin"].includes(staff.role)) return json({ error: "Нямате достъп." }, 403);
   const form = await request.formData();
   const id = String(form.get("projectId") ?? "");
   const file = form.get("cover");
-  if (!/^[0-9a-f-]{36}$/i.test(id) || !(file instanceof File) || !file.type.startsWith("image/") || file.size > 25 * 1024 * 1024) return json({ error: "Изберете валидна снимка до 25 MB." }, 400);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || !(file instanceof File) || !file.type.startsWith("image/") || file.size > 25 * 1024 * 1024) return json({ error: "Изберете валидна снимка до 25 MB." }, 400);
   const [project] = await getDb().select().from(aiPodcastProjects).where(eq(aiPodcastProjects.id, id)).limit(1);
   if (!project || !["review", "ready"].includes(project.status)) return json({ error: "Проектът не е готов за обложка." }, 409);
   const [active] = await getDb().select({ id: aiPodcastJobs.id }).from(aiPodcastJobs).where(and(eq(aiPodcastJobs.projectId, id), inArray(aiPodcastJobs.status, ["queued", "running"]))).limit(1);

@@ -108,7 +108,7 @@ export function createPlayback(options: PlaybackOptions): PlaybackController {
     utt.onerror = (event: SpeechSynthesisErrorEvent) => {
       if (mine !== token) return;
       const code = event.error ?? "unknown";
-      if (code === "interrupted" || code === "canceled" || code === "cancelled") {
+      if (code === "interrupted" || code === "canceled") {
         const next = nextUtteranceIndex(index, utterances.length);
         if (next === null) {
           index = 0;

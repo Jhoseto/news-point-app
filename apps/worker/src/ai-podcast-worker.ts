@@ -2,8 +2,8 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { aiPodcastSegment, aiPodcastSettings, aiPodcastSource, aiPodcastWarning, podcastSlug, targetWords, type AiPodcastSegment, type AiPodcastWarning } from "@newspoint/content";
 import { aiPodcastAssets, aiPodcastAudit, aiPodcastJobs, aiPodcastProjects, aiPodcastVoiceSettings, podcasts, type ScriptDb } from "@newspoint/db/node";
-import { brandedCover, aiStorageKey, loadMedia, masterAudio, publicPodcastKey, saveMedia } from "./ai-media";
-import { automaticIntro, checkStory, directPerformance, episodeMetadata, factPack, generateImage, generateMusic, storyScript, synthesize } from "./ai-gemini";
+import { assertAudioTools, brandedCover, aiStorageKey, loadMedia, masterAudio, publicPodcastKey, saveMedia } from "./ai-media";
+import { automaticIntro, checkIntro, checkStory, directPerformance, episodeMetadata, factPack, generateImage, generateMusic, storyScript, synthesize } from "./ai-gemini";
 
 type Job = typeof aiPodcastJobs.$inferSelect;
 type Project = typeof aiPodcastProjects.$inferSelect;
@@ -54,7 +54,7 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
     const written = await storyScript(source, facts.value, previousWords, settings.style, settings.direction, payload.direction);
     await requireRunning(db, job.id);
     const changed: AiPodcastSegment = { ...previous, label: written.value.label, lines: written.value.lines, wavKey: null, version: previous.version + 1 };
-    const checked = await checkStory(source, changed.id, changed.lines);
+    const checked = await checkStory(source, changed.id, changed.lines, changed.label);
     const warnings = aiPodcastWarning.array().parse(project.warnings).filter((warning) => warning.segmentId !== changed.id).concat(checked.value);
     await db.update(aiPodcastProjects).set({ segments: old.map((item) => item.id === changed.id ? changed : item), warnings, revision: project.revision + 1, status: "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
     await history(db, project.id, "rewritten", { segmentId: changed.id, version: changed.version, previous, next: changed });
@@ -73,6 +73,9 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
     usage.push(intro.usage);
   }
   const introWords = segments[0]!.lines.reduce((sum, line) => sum + line.text.trim().split(/\s+/).length, 0);
+  const introCheck = await checkIntro(sources, segments[0]!.id, segments[0]!.lines);
+  warnings.push(...introCheck.value);
+  usage.push(introCheck.usage);
   const wordsPerStory = Math.max(80, Math.round((targetWords(settings) - introWords) / sources.length));
   for (const source of sources) {
     await requireRunning(db, job.id);
@@ -81,7 +84,7 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
     packMap[source.id] = facts.value;
     const written = await storyScript(source, facts.value, wordsPerStory, settings.style, settings.direction);
     const segment: AiPodcastSegment = { id: randomUUID(), sourceId: source.id, label: written.value.label, lines: written.value.lines, wavKey: null, version: 1 };
-    const checked = await checkStory(source, segment.id, segment.lines);
+    const checked = await checkStory(source, segment.id, segment.lines, segment.label);
     segments.push(segment);
     warnings.push(...checked.value);
     usage.push({ facts: facts.usage, script: written.usage, check: checked.usage });
@@ -97,14 +100,21 @@ async function script(db: ScriptDb, job: Job, project: Project): Promise<unknown
 async function checkEdited(db: ScriptDb, job: Job, project: Project): Promise<unknown> {
   const sources = aiPodcastSource.array().parse(project.sources);
   const segments = aiPodcastSegment.array().parse(project.segments);
-  const warnings: AiPodcastWarning[] = [];
+  const changedIds = (job.payload as { segmentIds?: string[] }).segmentIds;
+  const warnings: AiPodcastWarning[] = aiPodcastWarning.array().parse(project.warnings).filter((warning) => changedIds && !changedIds.includes(warning.segmentId));
   const usage = [];
   for (const segment of segments) {
-    if (!segment.sourceId) continue;
+    if (changedIds && !changedIds.includes(segment.id)) continue;
     await requireRunning(db, job.id);
+    if (!segment.sourceId) {
+      const result = await checkIntro(sources, segment.id, segment.lines);
+      warnings.push(...result.value);
+      usage.push(result.usage);
+      continue;
+    }
     const source = sources.find((item) => item.id === segment.sourceId);
     if (!source) throw new Error("Source snapshot missing");
-    const result = await checkStory(source, segment.id, segment.lines);
+    const result = await checkStory(source, segment.id, segment.lines, segment.label);
     warnings.push(...result.value);
     usage.push(result.usage);
   }
@@ -134,11 +144,12 @@ async function music(db: ScriptDb, job: Job): Promise<unknown> {
   await saveMedia(key, result.bytes);
   await requireRunning(db, job.id);
   const [asset] = await db.insert(aiPodcastAssets).values({ kind: "music", preset: payload.preset, storageKey: key, prompt: payload.prompt, model: "lyria-3.5", metadata: { synthId: true, usage: result.usage }, createdBy: job.requestedBy }).returning({ id: aiPodcastAssets.id });
-  if (job.projectId && asset) await db.update(aiPodcastProjects).set({ musicAssetId: asset.id, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, job.projectId));
+  if (job.projectId && asset) await db.update(aiPodcastProjects).set({ musicAssetId: asset.id, status: "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, job.projectId));
   return result.usage;
 }
 
 async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknown> {
+  await assertAudioTools();
   const settings = aiPodcastSettings.parse(project.settings);
   const sources = aiPodcastSource.array().parse(project.sources);
   const [voices] = await db.select().from(aiPodcastVoiceSettings).limit(1);
@@ -164,12 +175,14 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
   await requireRunning(db, job.id);
   const waveBytes = await Promise.all(segments.map((segment) => segment.wavKey ? loadMedia(segment.wavKey) : Promise.reject(new Error("Voice segment missing"))));
   let musicBytes: Buffer | null = null;
+  let musicAssetId: string | null = null;
   if (settings.music !== "none") {
     const [asset] = settings.music === "custom"
       ? await db.select().from(aiPodcastAssets).where(eq(aiPodcastAssets.id, project.musicAssetId ?? "00000000-0000-0000-0000-000000000000")).limit(1)
       : await db.select().from(aiPodcastAssets).where(and(eq(aiPodcastAssets.kind, "music"), eq(aiPodcastAssets.status, "approved"), eq(aiPodcastAssets.preset, settings.music))).limit(1);
     if (!asset) throw new Error(`Music ${settings.music} is not ready`);
     musicBytes = await loadMedia(asset.storageKey);
+    musicAssetId = asset.id;
   }
   let coverKey = project.coverKey;
   if (!coverKey) {
@@ -197,9 +210,9 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
     const [episode] = await db.insert(podcasts).values({ title: project.title!, slug: podcastSlug(project.title!, randomBytes(3).toString("hex")), summary: project.summary!, coverKey, audioKey, durationSec: mastered.durationSec, bytes: mastered.bytes.length, categoryId: settings.categoryId, status: "draft", createdBy: project.createdBy }).returning({ id: podcasts.id });
     await db.update(aiPodcastProjects).set({ episodeId: episode!.id }).where(eq(aiPodcastProjects.id, project.id));
   }
-  await db.update(aiPodcastProjects).set({ status: "ready", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
+  await db.update(aiPodcastProjects).set({ status: "ready", musicAssetId, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
   await history(db, project.id, "audio_ready", { durationSec: mastered.durationSec, audioKey });
-  return { calls: usage, durationSec: mastered.durationSec };
+  return { calls: usage, durationSec: mastered.durationSec, voices: { alex: voices.alexVoice, maya: voices.mayaVoice }, musicAssetId };
 }
 
 export async function processOneAiPodcastJob(db: ScriptDb): Promise<boolean> {

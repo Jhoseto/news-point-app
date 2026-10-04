@@ -64,7 +64,8 @@ function stopSource(engine: SpeechEngine): void {
 export async function decodeSpeechParts(context: AudioContext, parts: readonly Uint8Array[]): Promise<AudioBuffer> {
   const buffers: AudioBuffer[] = [];
   for (const part of parts) {
-    const copy = part.buffer.slice(part.byteOffset, part.byteOffset + part.byteLength);
+    const copy = new ArrayBuffer(part.byteLength);
+    new Uint8Array(copy).set(part);
     buffers.push(await context.decodeAudioData(copy));
   }
   if (!buffers.length) throw new Error("empty");

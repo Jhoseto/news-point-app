@@ -29,5 +29,7 @@
 .np-ai-line textarea { margin-bottom: .3rem; }
 .np-ai-asset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
 .np-ai-feedback { border: 1px solid var(--np-line); border-radius: .7rem; padding: .7rem; color: var(--np-body); background: var(--np-surface); font-size: .85rem; }
+.np-ai-warning-source { display: inline-block; margin-left: .4rem; color: var(--np-link); font-weight: 700; }
+.np-ai-transcript { white-space: pre-wrap; overflow-wrap: anywhere; color: var(--np-body); font: inherit; line-height: 1.7; max-height: 28rem; overflow: auto; }
 @media (max-width: 900px) { .np-ai-layout { grid-template-columns: 1fr; } .np-ai-asset-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .np-ai-grid, .np-ai-asset-grid { grid-template-columns: 1fr; } .np-ai-line { grid-template-columns: 1fr; } }

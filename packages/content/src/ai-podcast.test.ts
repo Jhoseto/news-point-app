@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aiPodcastSettings, articleText, targetWords, transcript, type AiPodcastSettings } from "./ai-podcast";
+import { aiPodcastSettings, articleText, prepareSegmentEdits, targetWords, transcript, type AiPodcastSegment, type AiPodcastSettings } from "./ai-podcast";
 
 const settings: AiPodcastSettings = { articleIds: ["550e8400-e29b-41d4-a716-446655440001", "550e8400-e29b-41d4-a716-446655440002", "550e8400-e29b-41d4-a716-446655440003"], minutes: 10, style: "natural", introMode: "automatic", intro: "", direction: "", music: "none", categoryId: null };
 
@@ -16,5 +16,20 @@ describe("AI podcast input", () => {
     expect(articleText([{ type: "heading", level: 2, text: "Новина" }, { type: "paragraph", html: "<p>Факт <strong>едно</strong>.</p>" }, { type: "image", mediaAssetId: "550e8400-e29b-41d4-a716-446655440001", caption: "Снимка" }])).toBe("Новина\n\nФакт едно .\n\nСнимка");
     expect(transcript([{ id: settings.articleIds[0]!, sourceId: null, label: "Увод", lines: [{ speaker: "alex", text: "Добро утро", direction: "", spoken: "<breath> Добро утро" }], wavKey: null, version: 1 }])).toContain("Алекс: Добро утро");
     expect(targetWords(settings)).toBe(1300);
+  });
+
+  it("keeps valid WAVs for reordered stories but invalidates edited dialogue", () => {
+    const originals: AiPodcastSegment[] = [
+      { id: "550e8400-e29b-41d4-a716-446655440011", sourceId: settings.articleIds[0]!, label: "Първи", lines: [{ speaker: "alex", text: "Факт едно.", direction: "", spoken: "<breath> Факт едно." }], wavKey: "ai-podcasts/a.wav", version: 2 },
+      { id: "550e8400-e29b-41d4-a716-446655440012", sourceId: settings.articleIds[1]!, label: "Втори", lines: [{ speaker: "maya", text: "Факт две.", direction: "" }], wavKey: "ai-podcasts/b.wav", version: 1 },
+    ];
+    const edited = [{ ...originals[1]!, lines: [{ speaker: "maya" as const, text: "Проверен факт две.", direction: "", spoken: "остарял текст" }] }, originals[0]!];
+    const result = prepareSegmentEdits(originals, edited);
+    expect(result.changedIds).toEqual([originals[1]!.id]);
+    expect(result.segments[0]).toMatchObject({ wavKey: null, version: 2 });
+    expect(result.segments[0]!.lines[0]).not.toHaveProperty("spoken");
+    expect(result.segments[1]).toMatchObject({ wavKey: "ai-podcasts/a.wav", version: 2 });
+    expect(() => prepareSegmentEdits(originals, [originals[0]!, originals[0]!])).toThrow();
+    expect(() => prepareSegmentEdits(originals, [{ ...originals[0]!, sourceId: null }])).toThrow();
   });
 });

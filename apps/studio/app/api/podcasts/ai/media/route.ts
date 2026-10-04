@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const staff = await staffFromRequest(request);
   if (!staff) return new Response("Unauthorized", { status: 401 });
+  if (!["editor", "admin", "master_admin"].includes(staff.role)) return new Response("Forbidden", { status: 403 });
   const url = new URL(request.url);
   const key = url.searchParams.get("key") ?? "";
   if (!/^(ai-podcasts|podcasts)\/[a-z0-9/-]+\.(mp3|webp)$/.test(key)) return new Response("Not found", { status: 404 });

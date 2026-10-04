@@ -30,7 +30,7 @@ export function remoteObjectPath(root: string, storageKey: string, prefixes: rea
   return `${base}/${parts.join("/")}`;
 }
 
-function runSsh(disk: RemoteDisk, command: string, stdin?: Buffer): Promise<{ code: number; stdout: Buffer }> {
+function runSsh(disk: RemoteDisk, command: string, stdin?: Buffer, maxOutput = 16_000_000, timeoutMs = 20_000): Promise<{ code: number; stdout: Buffer }> {
   return new Promise((resolve, reject) => {
     const child = spawn(
       "ssh",
@@ -43,10 +43,10 @@ function runSsh(disk: RemoteDisk, command: string, stdin?: Buffer): Promise<{ co
     const timer = setTimeout(() => {
       failed = true;
       child.kill();
-    }, 20_000);
+    }, timeoutMs);
     child.stdout.on("data", (chunk: Buffer) => {
       size += chunk.length;
-      if (size > 16_000_000) {
+      if (size > maxOutput) {
         failed = true;
         child.kill();
         return;
@@ -65,6 +65,9 @@ function runSsh(disk: RemoteDisk, command: string, stdin?: Buffer): Promise<{ co
       }
       resolve({ code: code ?? 1, stdout: Buffer.concat(out) });
     });
+    child.stdin.on("error", () => {
+      // SSH may close before a large upload completes; the close handler reports the failure.
+    });
     if (stdin) child.stdin.end(stdin);
     else child.stdin.end();
   });
@@ -74,7 +77,7 @@ export async function writeRemoteFile(disk: RemoteDisk, storageKey: string, byte
   const path = remoteObjectPath(disk.root, storageKey, prefixes);
   if (!path) throw new Error("storage unavailable");
   const dir = path.slice(0, path.lastIndexOf("/"));
-  const result = await runSsh(disk, `mkdir -p '${dir}' && cat > '${path}'`, bytes);
+  const result = await runSsh(disk, `mkdir -p '${dir}' && cat > '${path}'`, bytes, 1_000_000, 120_000);
   if (result.code !== 0) throw new Error("storage unavailable");
 }
 
@@ -82,7 +85,7 @@ export async function readRemoteFile(disk: RemoteDisk, storageKey: string, prefi
   const file = remoteObjectPath(disk.root, storageKey, prefixes);
   if (!file) return null;
   try {
-    const result = await runSsh(disk, `cat '${file}'`);
+    const result = await runSsh(disk, `cat '${file}'`, undefined, 90_000_000, 120_000);
     if (result.code !== 0 || !result.stdout.length) return null;
     return result.stdout;
   } catch {

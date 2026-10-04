@@ -4,7 +4,8 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { masterAudio } from "./ai-media";
+import sharp from "sharp";
+import { aiStorageKey, assertAudioTools, brandedCover, loadMedia, masterAudio, saveMedia } from "./ai-media";
 
 function wav(seconds: number) {
   const frames = seconds * 24_000;
@@ -19,6 +20,37 @@ function wav(seconds: number) {
 }
 
 describe("AI podcast mastering", () => {
+  it("places the real NewsPoint logo and Bulgarian title on a square cover", async () => {
+    const background = await sharp({ create: { width: 1200, height: 1200, channels: 3, background: "#153d79" } }).png().toBuffer();
+    const result = await brandedCover(background, "Новините от Пловдив днес");
+    expect(await sharp(result).metadata()).toMatchObject({ width: 1200, height: 1200, format: "webp" });
+    if (process.env.AI_STUDIO_COVER_PREVIEW === "1") {
+      const output = join(process.cwd(), "tests", "reports", "ai-studio", "cover-preview.webp");
+      await writeFile(output, result);
+    }
+  });
+  it.skipIf(!process.env.FFMPEG_PATH || !process.env.FFPROBE_PATH)("checks required encoders before generating paid speech", async () => {
+    await expect(assertAudioTools()).resolves.toBeUndefined();
+  });
+  it("round-trips a private AI asset under the configured media root", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "np-ai-storage-"));
+    const oldRoot = process.env.MEDIA_ROOT;
+    const oldTarget = process.env.MEDIA_SSH_TARGET;
+    const oldKey = process.env.MEDIA_SSH_KEY;
+    try {
+      process.env.MEDIA_ROOT = dir;
+      delete process.env.MEDIA_SSH_TARGET;
+      delete process.env.MEDIA_SSH_KEY;
+      const key = aiStorageKey("wav");
+      await saveMedia(key, Buffer.from("RIFF test"));
+      expect(await loadMedia(key)).toEqual(Buffer.from("RIFF test"));
+    } finally {
+      if (oldRoot === undefined) delete process.env.MEDIA_ROOT; else process.env.MEDIA_ROOT = oldRoot;
+      if (oldTarget === undefined) delete process.env.MEDIA_SSH_TARGET; else process.env.MEDIA_SSH_TARGET = oldTarget;
+      if (oldKey === undefined) delete process.env.MEDIA_SSH_KEY; else process.env.MEDIA_SSH_KEY = oldKey;
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   it.skipIf(!process.env.FFMPEG_PATH || !process.env.FFPROBE_PATH)("stitches WAV segments into a playable MP3", async () => {
     const result = await masterAudio([wav(1), wav(1)], null);
     expect(result.durationSec).toBeGreaterThanOrEqual(2);
