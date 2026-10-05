@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isPushConfigured } from "@/lib/push";
+import { hasPushSchema, isPushConfigured } from "../../../../lib/push";
 
 /**
  * Returns the VAPID public key so the reader service worker can subscribe.
@@ -8,9 +8,9 @@ import { isPushConfigured } from "@/lib/push";
  */
 export const dynamic = "force-dynamic";
 
-export function GET() {
+export async function GET() {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
-  if (!publicKey || !isPushConfigured()) {
+  if (!publicKey || !isPushConfigured() || !(await hasPushSchema())) {
     return NextResponse.json({ error: "Push not configured" }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
   return NextResponse.json({ publicKey }, {

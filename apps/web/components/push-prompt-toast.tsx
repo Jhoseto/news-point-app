@@ -54,7 +54,7 @@ export function PushPromptToast() {
       clearTimeout(timer.current);
       timer.current = setTimeout(async () => {
         const live = readPushSupport();
-        const sub = await getBrowserPushSubscription();
+        const sub = await getBrowserPushSubscription().catch(() => null);
         if (sub && live.permission === "granted" && readPushMasterEnabled()) return;
         setVisible(true);
       }, SHOW_DELAY_MS);
@@ -66,7 +66,7 @@ export function PushPromptToast() {
       void getBrowserPushSubscription().then((sub) => {
         const live = readPushSupport();
         if (sub && live.permission === "granted" && readPushMasterEnabled()) hide();
-      });
+      }).catch(() => {});
     };
     window.addEventListener("np-push-subscribed", onSub);
     window.addEventListener("focus", onFocus);

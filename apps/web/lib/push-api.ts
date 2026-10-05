@@ -1,10 +1,11 @@
 import "server-only";
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, ECDH, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
 import { and, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { categories, getDb, pushJobs, pushRateLimits, pushSubscriptions } from "@newspoint/db";
 import { isAllowedPushEndpoint, publicPushOrigin, type PushState } from "@newspoint/db/push-domain";
+import { readPushConfiguration } from "@newspoint/db/push-configuration";
 
 const schema = z.object({
   action: z.enum(["status", "subscribe", "preferences", "disable", "unsubscribe", "test"]).optional(),
@@ -76,10 +77,12 @@ export async function handlePushRequest(request: Request) {
   try {
     const result = schema.safeParse(await readBody(request));
     if (!result.success || Buffer.from(result.data.keys.p256dh, "base64url")[0] !== 4) return response({ error: "invalid" }, 400);
+    // Validate the curve point before persisting or invoking push encryption.
+    ECDH.convertKey(Buffer.from(result.data.keys.p256dh, "base64url"), "prime256v1");
     parsed = result.data;
   } catch { return response({ error: "invalid" }, 400); }
   const action = parsed.action ?? (parsed.enabled === false ? "disable" : "subscribe");
-  const configured = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && publicPushOrigin(process.env.WEB_URL));
+  const configured = readPushConfiguration() !== null;
   if ((action === "subscribe" || action === "test") && !configured) return response({ error: "config" }, 503);
   try {
     const db = getDb();
@@ -93,18 +96,22 @@ export async function handlePushRequest(request: Request) {
     const requestedSlugs = parsed.categorySlugs !== undefined ? parsed.categorySlugs
       : parsed.categorySlug !== undefined ? (parsed.categorySlug ? [parsed.categorySlug] : null) : undefined;
     const slugs = requestedSlugs === undefined ? undefined : requestedSlugs === null ? null : [...new Set(requestedSlugs)].sort();
+    if (action === "preferences" && slugs === undefined) return response({ error: "rubrics" }, 400);
     if (slugs?.length) {
       const menu = await db.select({ slug: categories.slug }).from(categories).where(eq(categories.inMenu, true));
       const allowed = new Set(menu.map((item) => item.slug));
       if (slugs.some((slug) => !allowed.has(slug))) return response({ error: "rubrics" }, 400);
     }
     return await db.transaction(async (tx) => {
+      await tx.execute(sql`set local statement_timeout = '5s'`);
+      await tx.execute(sql`set local lock_timeout = '3s'`);
       await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${parsed.endpoint}, 0))`);
       const [row] = await tx.select().from(pushSubscriptions).where(eq(pushSubscriptions.endpoint, parsed.endpoint));
       if (row && !samePushKeys(row, parsed.keys)) return response({ error: "ownership" }, 403);
       if (action === "status") return response({ state: row ? state(row) : null, configured });
       if (!row && action !== "subscribe") return response({ error: "missing" }, 404);
-      if (row && action !== "test" && parsed.revision !== row.revision) return response({ error: "conflict", state: state(row) }, 409);
+      // Explicit opt-out wins even if another view just saved preferences.
+      if (row && action !== "test" && action !== "disable" && parsed.revision !== row.revision) return response({ error: "conflict", state: state(row) }, 409);
       if (action === "test") {
         if (!row!.enabled) return response({ error: "disabled" }, 409);
         const recent = await tx.select({ id: pushJobs.id }).from(pushJobs).where(and(eq(pushJobs.subscriptionId, row!.id),
@@ -123,7 +130,8 @@ export async function handlePushRequest(request: Request) {
         return response({ state: state(created!) }, 201);
       }
       const [updated] = await tx.update(pushSubscriptions).set({ revision: row.revision + 1, updatedAt: new Date(),
-        ...(action === "subscribe" ? { enabled: true } : action === "disable" ? { enabled: false } : {}),
+        ...(action === "subscribe" ? { enabled: true, enabledAt: row.enabled ? row.enabledAt : new Date() }
+          : action === "disable" ? { enabled: false, enabledAt: null } : {}),
         ...((action === "subscribe" || action === "preferences") && slugs !== undefined ? { categorySlugs: slugs, categorySlug: null } : {}),
       }).where(eq(pushSubscriptions.id, row.id)).returning();
       return response({ state: state(updated!) });

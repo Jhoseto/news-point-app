@@ -15,7 +15,7 @@ export default function OfflinePage() {
       <div className="np-ring !size-12" aria-hidden="true" />
       <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Няма връзка с интернет</h1>
       <p className="max-w-md text-body">
-        Тази страница не е налична офлайн. Проверете мрежата и опитайте отново — последната посетена страница може да е запазена в кеша.
+        Тази страница не е налична офлайн. Проверете връзката с интернет и опитайте отново.
       </p>
       <Link
         href="/"

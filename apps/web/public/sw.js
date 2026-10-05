@@ -49,8 +49,10 @@ self.addEventListener("fetch", (event) => {
   }
   if (url.pathname.startsWith("/_next/static/") || url.pathname.startsWith("/brand/")) {
     event.respondWith((async () => {
-      const cache = await caches.open(ASSET_CACHE);
-      const cached = await cache.match(request);
+      let cache;
+      try { cache = await caches.open(ASSET_CACHE); } catch { return fetch(request); }
+      let cached;
+      try { cached = await cache.match(request); } catch { return fetch(request); }
       if (cached) return cached;
       const response = await fetch(request);
       // Cache failures cannot turn a successful network response into an error.
@@ -70,7 +72,7 @@ function readerUrl(value) {
   return self.location.origin + "/";
 }
 function text(value, fallback, limit) {
-  return typeof value === "string" && value.trim() ? value.slice(0, limit) : fallback;
+  return typeof value === "string" && value.trim() ? Array.from(value).slice(0, limit).join("") : fallback;
 }
 self.addEventListener("push", (event) => {
   let payload = {};
@@ -91,7 +93,8 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = readerUrl(event.notification.data?.url);
   event.waitUntil((async () => {
-    const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    let windows = [];
+    try { windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true }); } catch {}
     const readers = windows.filter((client) => {
       try { const current = new URL(client.url); return current.origin === self.location.origin && !privatePath(current.pathname); } catch { return false; }
     }).sort((a, b) => Number(b.url === url) - Number(a.url === url));

@@ -3,5 +3,11 @@
   "intrinsicHeight": 309,
   "aspectRatio": 3.1812,
   "sourceWidth": 983,
-  "sourceHeight": 309
+  "sourceHeight": 309,
+  "dark": {
+    "intrinsicWidth": 985,
+    "intrinsicHeight": 309,
+    "sourceWidth": 985,
+    "sourceHeight": 309
+  }
 }

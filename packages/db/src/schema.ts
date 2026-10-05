@@ -346,6 +346,7 @@ export const pushSubscriptions = pgTable(
     categorySlug: text("category_slug"),
     categorySlugs: jsonb("category_slugs").$type<string[] | null>(),
     revision: integer("revision").notNull().default(1),
+    enabledAt: timestamp("enabled_at", { withTimezone: true }).defaultNow(),
     locale: text("locale").notNull().default("bg"),
     userAgent: text("user_agent").notNull().default(""),
     enabled: boolean("enabled").notNull().default(true),

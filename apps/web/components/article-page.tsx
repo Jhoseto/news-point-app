@@ -54,8 +54,8 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
       <ReadingProgress />
       <div className="np-article-breadcrumb"><Breadcrumbs items={crumbs} /></div>
 
-      <article className="np-article-story">
-        <div className="np-article-main">
+      <article data-np-latest-frame className="np-article-story">
+        <div data-np-latest-stage className="np-article-main">
           {article.heroEmbedUrl ? (
             <ArticleEmbedFrame src={article.heroEmbedUrl} provider={embedProviderFromUrl(article.heroEmbedUrl)} title="Вградено hero съдържание" className="np-article-hero-embed" />
           ) : article.hero ? (
@@ -105,8 +105,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             </div>
           </div>
         </div>
-        {/* Direct sibling of the main column: the shared preview uses its geometry. */}
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest min-h-0 max-lg:hidden" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense size="rail" className="np-article-latest" />
       </article>
 
       <div className="hidden lg:block">

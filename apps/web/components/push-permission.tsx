@@ -1,158 +1,61 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-
-/**
- * Web Push permission for the reader PWA.
- *
- *   - iOS Safari requires the page to be installed to the Home Screen
- *     (display-mode: standalone) and iOS 16.4+ before the browser
- *     exposes `PushSubscriptionManager`. The UI hides the toggle until that
- *     condition is met.
- *   - Permission is requested only after the reader makes an explicit
- *     choice — clicking "Разрешавам нотификации" — never on first paint.
- *   - The subscription is upserted on /api/push/subscribe and removed
- *     on /api/push/subscribe?endpoint=... when the reader disables.
- */
+import { PushClientError, pushErrorText, readPushServerState, readPushSupport, setPushEnabled, subscribeForPush } from "@/lib/push-client";
 
 type Status = "checking" | "unsupported" | "blocked" | "ready" | "subscribed" | "denied";
 
-function detectIosSafariStandalone(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isIos = /iPhone|iPad|iPod/.test(ua);
-  const isWebkit = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  const standalone =
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return isIos && isWebkit && standalone;
-}
-
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = typeof window === "undefined" ? "" : window.atob(base64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
-  return out;
-}
-
-function isIosDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/.test(navigator.userAgent);
-}
-
-function detectPushSupport(): { supported: boolean; status: Status; needInstall: boolean } {
-  if (typeof window === "undefined") return { supported: false, status: "checking", needInstall: false };
-  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  if (!supported) return { supported: false, status: "unsupported", needInstall: false };
-  if (Notification.permission === "denied") return { supported: true, status: "blocked", needInstall: false };
-  // Only iOS Safari truly requires the Home Screen step. Android Chrome,
-  // iOS Chrome, desktop browsers and iPadOS-Safari-as-Mac all expose
-  // push.serviceWorker / pushManager without an explicit install.
-  const isIosSafariStandalone = detectIosSafariStandalone();
-  const needInstall = !isIosSafariStandalone && isIosDevice();
-  return { supported: true, status: "ready", needInstall };
-}
-
+/** Legacy rubric control uses the same ownership, lifecycle and server state. */
 export function PushPermission({ categorySlug }: { categorySlug?: string | null }) {
   const [status, setStatus] = useState<Status>("checking");
   const [busy, setBusy] = useState(false);
   const [supported, setSupported] = useState(true);
   const [needInstall, setNeedInstall] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    const { supported, status: next, needInstall: install } = detectPushSupport();
-    setSupported(supported);
-    setStatus(next);
-    setNeedInstall(install);
+    let mounted = true;
+    const support = readPushSupport();
+    setSupported(support.supported);
+    setNeedInstall(support.needInstall);
+    if (!support.supported || support.needInstall) { setStatus("unsupported"); return; }
+    if (support.permission === "denied") { setStatus("blocked"); return; }
+    void readPushServerState().then((state) => { if (mounted) setStatus(state?.enabled && support.permission === "granted" ? "subscribed" : "ready"); })
+      .catch((failure) => { if (mounted) { setStatus("ready"); setError(pushErrorText(failure)); } });
+    return () => { mounted = false; };
   }, []);
-
   const subscribe = useCallback(async () => {
     if (!supported || busy) return;
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setStatus(permission === "denied" ? "blocked" : "denied");
-        return;
-      }
-      const reg = await navigator.serviceWorker.ready;
-      const vapidRes = await fetch("/api/push/vapid", { cache: "no-store" });
-      if (!vapidRes.ok) {
-        setError("Сървърът не е конфигуриран за нотификации.");
-        return;
-      }
-      const { publicKey } = (await vapidRes.json()) as { publicKey: string };
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-      });
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        setError("Браузърът не върна валиден subscription.");
-        return;
-      }
-      const res = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: json.endpoint,
-          keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-          categorySlug: categorySlug ?? null,
-          locale: navigator.language,
-          userAgent: navigator.userAgent,
-        }),
-      });
-      if (!res.ok) {
-        setError("Заявката за абониране е неуспешна.");
-        return;
-      }
+      const result = await subscribeForPush({ categorySlug: categorySlug ?? null });
+      if (!result.ok) { setError(pushErrorText(new PushClientError(result.reason))); setStatus(result.reason === "blocked" ? "blocked" : "ready"); return; }
       setStatus("subscribed");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Неуспешна нотификация.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }, [busy, categorySlug, supported]);
-
   const unsubscribe = useCallback(async () => {
     if (!supported || busy) return;
-    setBusy(true);
-    setError(null);
+    setBusy(true); setError(null);
     try {
-      const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.getSubscription();
-      if (sub) {
-        const endpoint = sub.endpoint;
-        await sub.unsubscribe();
-        await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`, { method: "DELETE" });
-      }
+      if (!(await setPushEnabled(false))) { setError("Изключването не е потвърдено. Опитайте отново."); return; }
       setStatus("ready");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Грешка при отписване.");
-    } finally {
-      setBusy(false);
-    }
+    } finally { setBusy(false); }
   }, [busy, supported]);
 
   if (status === "checking") return null;
-  if (!supported) return null;
   if (needInstall) {
     return (
       <div role="status" aria-live="polite" className="np-card flex flex-col gap-2 p-4 text-sm">
         <strong className="font-bold text-ink">Нотификациите работят само в инсталираното приложение</strong>
-        <span className="text-muted">Добавете NewsPoint.bg към началния екран от Safari (сподели → „На началния екран"), за да включите нотификации.</span>
+        <span className="text-muted">Добавете NewsPoint.bg към началния екран от менюто за споделяне и отворете новата икона, за да включите известия.</span>
       </div>
     );
   }
+  if (!supported) return null;
   if (status === "blocked") {
     return (
       <div role="status" className="np-card flex flex-col gap-2 p-4 text-sm">
         <strong className="font-bold text-ink">Нотификациите са изключени от настройките на браузъра</strong>
-        <span className="text-muted">Отворете настройките на Safari и разрешете нотификации за NewsPoint.bg.</span>
+        <span className="text-muted">Разрешете известията за NewsPoint в системните настройки на устройството.</span>
       </div>
     );
   }

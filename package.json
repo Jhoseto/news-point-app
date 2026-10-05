@@ -21,6 +21,7 @@
     "studio:user": "pnpm --filter @newspoint/studio run studio:user"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@types/node": "24.13.6",
     "typescript": "6.0.3",
     "vitest": "5.0.1"

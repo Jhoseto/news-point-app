@@ -1,37 +1,44 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gt, inArray, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, lt, lte, or, sql } from "drizzle-orm";
 import webpush from "web-push";
-import { articles, categories, pushDeliveries, pushJobs, pushRateLimits, pushSubscriptions, type ScriptDb } from "@newspoint/db/node";
-import { isAllowedPushEndpoint, makePushPayload, publicPushOrigin, pushFilterMatches, pushRetry, readerNotificationUrl } from "@newspoint/db/push-domain";
+import { articleCategories, articles, categories, pushDeliveries, pushJobs, pushRateLimits, pushSubscriptions, type ScriptDb } from "@newspoint/db/node";
+import { readPushConfiguration } from "@newspoint/db/push-configuration";
+import { isAllowedPushEndpoint, makePushPayload, pushFilterMatches, pushRetry, readerNotificationUrl } from "@newspoint/db/push-domain";
 
 const LEASE_MS = 120_000;
-const BATCH = 10;
+const BATCH = 25;
 type Delivery = typeof pushDeliveries.$inferSelect;
 
 /** Row lock and INSERT SELECT keep fan-out atomic and independent of browsers. */
 export async function expandPushJob(db: ScriptDb): Promise<boolean> {
   return db.transaction(async (tx) => {
+    await tx.execute(sql`set local statement_timeout = '20s'`);
     const [job] = await tx.select().from(pushJobs).where(eq(pushJobs.status, "pending"))
       .orderBy(asc(pushJobs.createdAt)).limit(1).for("update", { skipLocked: true });
     if (!job) return false;
-    let category: string | null = null;
+    let categorySlugs: string[] = [];
     let eligible = job.expiresAt.getTime() > Date.now();
     if (job.kind === "article") {
       const [article] = await tx.select({ public: articles.isPublic, publishedAt: articles.publishedAt, slug: categories.slug })
         .from(articles).leftJoin(categories, eq(categories.id, articles.primaryCategoryId)).where(eq(articles.id, job.articleId!));
-      eligible &&= Boolean(article?.public && article.publishedAt && article.publishedAt.getTime() <= Date.now());
-      category = article?.slug ?? null;
+      eligible &&= Boolean(article?.public && article.publishedAt && article.publishedAt.getTime() <= Date.now()
+        && article.publishedAt.getTime() >= job.createdAt.getTime() - 3600_000);
+      const extra = await tx.select({ slug: categories.slug }).from(articleCategories)
+        .innerJoin(categories, eq(categories.id, articleCategories.categoryId)).where(eq(articleCategories.articleId, job.articleId!));
+      categorySlugs = [...new Set([...(article?.slug ? [article.slug] : []), ...extra.map((row) => row.slug)])];
     }
     if (eligible) {
       await tx.execute(sql`
         insert into push_deliveries (job_id, subscription_id)
         select ${job.id}::uuid, s.id from push_subscriptions s
         where s.enabled = true
-          and s.created_at <= ${job.createdAt.toISOString()}::timestamptz
+          and s.enabled_at <= ${job.createdAt.toISOString()}::timestamptz
           and (${job.kind} = 'test' and s.id = ${job.subscriptionId}::uuid
             or ${job.kind} = 'article' and (
-              s.category_slugs is not null and s.category_slugs ? ${category ?? ""}
-              or s.category_slugs is null and (s.category_slug is null or s.category_slug = ${category})))
+              s.category_slugs is null and s.category_slug is null
+              or exists (select 1 from jsonb_array_elements_text(${JSON.stringify(categorySlugs)}::jsonb) c(slug)
+                where s.category_slugs is not null and s.category_slugs ? c.slug
+                  or s.category_slugs is null and s.category_slug = c.slug)))
         on conflict (job_id, subscription_id) do nothing`);
     }
     await tx.update(pushJobs).set({ status: eligible ? "expanded" : "skipped" }).where(eq(pushJobs.id, job.id));
@@ -41,6 +48,7 @@ export async function expandPushJob(db: ScriptDb): Promise<boolean> {
 
 export async function claimPushDeliveries(db: ScriptDb): Promise<Delivery[]> {
   return db.transaction(async (tx) => {
+    await tx.execute(sql`set local statement_timeout = '20s'`);
     const now = new Date();
     const rows = await tx.select().from(pushDeliveries).where(or(
       and(eq(pushDeliveries.status, "pending"), lte(pushDeliveries.dueAt, now)),
@@ -73,18 +81,30 @@ export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: stri
   if (!row) return;
   const { job, subscription } = row;
   const url = readerNotificationUrl(job.kind === "test" ? "/" : row.path ?? "", origin);
-  if (!subscription.enabled || job.expiresAt.getTime() <= Date.now() || delivery.attempts > 6
+  const extra = job.articleId ? await db.select({ slug: categories.slug }).from(articleCategories)
+    .innerJoin(categories, eq(categories.id, articleCategories.categoryId)).where(eq(articleCategories.articleId, job.articleId)) : [];
+  const slugs = [...new Set([...(row.slug ? [row.slug] : []), ...extra.map((entry) => entry.slug)])];
+  if (!subscription.enabled || !subscription.enabledAt || subscription.enabledAt.getTime() > job.createdAt.getTime()
+    || job.expiresAt.getTime() <= Date.now() || delivery.attempts > 6
     || !isAllowedPushEndpoint(subscription.endpoint) || !url
     || (job.kind === "article" && (!row.public || !row.publishedAt || row.publishedAt.getTime() > Date.now()
-      || !pushFilterMatches(subscription.categorySlugs, subscription.categorySlug, row.slug)))) {
+      || row.publishedAt.getTime() < job.createdAt.getTime() - 3600_000
+      || !pushFilterMatches(subscription.categorySlugs, subscription.categorySlug, slugs)))) {
     await finish({ status: "skipped", errorCode: "ineligible" });
     return;
   }
   const payload = makePushPayload(job.kind === "test" ? "NewsPoint — тестово известие" : row.title!,
     job.kind === "test" ? "Известията работят на това устройство. Докоснете, за да отворите NewsPoint." : "Нова публикация в NewsPoint.bg",
     url, `np-${job.kind}-${job.kind === "test" ? job.id : job.articleId}`);
+  const encoded = JSON.stringify(payload);
+  // RFC 8291 leaves 3993 bytes for plaintext in a 4096-byte encrypted record.
+  // Preserve the canonical URL; an exceptional oversized article is not retried.
+  if (Buffer.byteLength(encoded) > 3993) {
+    await finish({ status: "failed", errorCode: "payload_too_large" });
+    return;
+  }
   try {
-    await send({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, JSON.stringify(payload),
+    await send({ endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, encoded,
       { TTL: Math.max(1, Math.ceil((job.expiresAt.getTime() - Date.now()) / 1000)), urgency: "normal", timeout: 15_000 });
     if (await finish({ status: "accepted", acceptedAt: new Date(), errorCode: null })) {
       await db.update(pushSubscriptions).set({ lastNotifiedAt: new Date() }).where(eq(pushSubscriptions.id, subscription.id));
@@ -112,25 +132,35 @@ export function startPushWorker(db: ScriptDb, log: (message: string) => void) {
   let lastWarning = 0;
   let lastMaintenance = 0;
   async function tick() {
+    let backlog = false;
     try {
-      const origin = publicPushOrigin(process.env.WEB_URL);
-      if (!origin || !process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) throw new Error("Configure WEB_URL and VAPID keys for reader push");
-      webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:push@newspoint.bg", process.env.VAPID_PUBLIC_KEY, process.env.VAPID_PRIVATE_KEY);
+      const config = readPushConfiguration();
+      if (!config) throw new Error("Configure WEB_URL and VAPID keys for reader push");
+      webpush.setVapidDetails(config.subject, config.publicKey, config.privateKey);
       // Missing migration must not stop sync/scheduled publication.
       if (Date.now() - lastMaintenance > 60_000) {
+        await db.update(pushJobs).set({ status: "skipped" }).where(and(eq(pushJobs.status, "pending"), lte(pushJobs.expiresAt, new Date())));
+        await db.execute(sql`update push_deliveries d set status = 'skipped', error_code = 'expired', lease_token = null, lease_until = null
+          from push_jobs j where d.job_id = j.id and j.expires_at <= now()
+          and (d.status = 'pending' or d.status = 'sending' and d.lease_until < now())`);
         await db.delete(pushJobs).where(lt(pushJobs.expiresAt, new Date(Date.now() - 7 * 86400_000)));
         await db.delete(pushRateLimits).where(lt(pushRateLimits.windowStart, new Date(Date.now() - 3600_000)));
         lastMaintenance = Date.now();
       }
       for (let i = 0; i < 5 && !stopped; i++) if (!(await expandPushJob(db))) break;
-      if (!stopped) await Promise.all((await claimPushDeliveries(db)).map((row) => deliverPush(db, row, origin)));
+      if (!stopped) {
+        const claimed = await claimPushDeliveries(db);
+        const results = await Promise.allSettled(claimed.map((row) => deliverPush(db, row, config.origin)));
+        if (results.some((result) => result.status === "rejected")) throw new Error("Delivery state unavailable");
+        backlog = claimed.length === BATCH;
+      }
     } catch {
       if (Date.now() - lastWarning > 60_000) {
         log("reader push paused: check migration 27, database, WEB_URL and VAPID configuration (no subscription details logged)");
         lastWarning = Date.now();
       }
     } finally {
-      if (!stopped) timer = setTimeout(() => { running = tick(); }, 2000);
+      if (!stopped) timer = setTimeout(() => { running = tick(); }, backlog ? 50 : 2000);
     }
   }
   running = tick();

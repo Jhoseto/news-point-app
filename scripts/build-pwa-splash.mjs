@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
 
 const LOGO = resolve(root, "apps/web/public/brand/newspoint-logo.webp");
+const DARK_LOGO = resolve(root, "apps/web/public/brand/newspoint-logo-dark.webp");
 const OUT_DIR = resolve(root, "apps/web/public/brand");
 const LIGHT_BG = { r: 255, g: 255, b: 255, alpha: 1 };
 const DARK_BG = { r: 5, g: 11, b: 34, alpha: 1 };
@@ -43,7 +44,10 @@ const logoBuf = await sharp(LOGO)
   .png()
   .toBuffer();
 
+const darkOnly = process.argv.includes("--dark");
+
 for (const { name, width, height, dark } of SPLASHES) {
+  if (darkOnly && !dark) continue;
   const target = resolve(OUT_DIR, name);
   const bg = dark ? DARK_BG : LIGHT_BG;
   const fg = dark ? { r: 199, g: 207, b: 219, alpha: 1 } : { r: 47, g: 61, b: 105, alpha: 1 };
@@ -57,11 +61,9 @@ for (const { name, width, height, dark } of SPLASHES) {
   const left = Math.round((width - logoWidth) / 2);
   const top = Math.round(height * 0.42);
 
-  const out = await sharp(LOGO)
+  const source = dark ? DARK_LOGO : LOGO;
+  const out = await sharp(source)
     .resize({ width: logoWidth, withoutEnlargement: false })
-    .composite([
-      // The wordmark already includes its own sub-tagline; we just keep it as-is.
-    ])
     .png()
     .toBuffer();
 

@@ -1,4 +1,4 @@
-import { BRAND_LOGO } from "@/lib/brand-logo";
+import { BRAND_LOGO, BRAND_LOGO_DARK } from "@/lib/brand-logo";
 
 type Props = {
   className?: string;
@@ -6,19 +6,33 @@ type Props = {
   fetchPriority?: "high" | "low" | "auto";
 };
 
-/** Responsive WebP logo with intrinsic dimensions from `BRAND_LOGO`. */
+/** Light wordmark by default; the dark artwork shows only under `[data-theme="dark"]`. */
 export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority }: Props) {
   return (
-    <img
-      src={BRAND_LOGO.src}
-      srcSet={BRAND_LOGO.srcSet}
-      sizes={sizes}
-      alt={BRAND_LOGO.alt}
-      width={BRAND_LOGO.width}
-      height={BRAND_LOGO.height}
-      decoding="async"
-      fetchPriority={fetchPriority}
-      className={className}
-    />
+    <>
+      <img
+        src={BRAND_LOGO.src}
+        srcSet={BRAND_LOGO.srcSet}
+        sizes={sizes}
+        alt={BRAND_LOGO.alt}
+        width={BRAND_LOGO.width}
+        height={BRAND_LOGO.height}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={`${className ?? ""} np-brand-logo-mark--light`}
+      />
+      <img
+        src={BRAND_LOGO_DARK.src}
+        srcSet={BRAND_LOGO_DARK.srcSet}
+        sizes={sizes}
+        alt=""
+        aria-hidden="true"
+        width={BRAND_LOGO_DARK.width}
+        height={BRAND_LOGO_DARK.height}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={`${className ?? ""} np-brand-logo-mark--dark`}
+      />
+    </>
   );
 }

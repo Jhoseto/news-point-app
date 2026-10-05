@@ -39,10 +39,27 @@ const displayHeight = Math.round((meta.height / meta.width) * displayWidth);
 const webpOpts = { quality: 88, alphaQuality: 100, effort: 6, smartSubsample: true };
 
 await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo.webp"));
-await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark.webp"));
 
 if (meta.width >= 512) {
   await cutout.clone().resize({ width: 512, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-512w.webp"));
+}
+
+const darkSource = join(brandDir, "newspoint-logo-dark-source.png");
+let darkManifest = null;
+try {
+  await access(darkSource);
+  const darkTrimmed = sharp(darkSource).rotate().trim({ threshold: 12 });
+  const darkCutout = await knockOutBlack(darkTrimmed);
+  const darkMeta = await darkCutout.metadata();
+  const darkWidth = Math.min(1024, darkMeta.width);
+  const darkHeight = Math.round((darkMeta.height / darkMeta.width) * darkWidth);
+  await darkCutout.clone().resize({ width: darkWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark.webp"));
+  if (darkMeta.width >= 512) {
+    await darkCutout.clone().resize({ width: 512, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark-512w.webp"));
+  }
+  darkManifest = { intrinsicWidth: darkWidth, intrinsicHeight: darkHeight, sourceWidth: darkMeta.width, sourceHeight: darkMeta.height };
+} catch {
+  await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark.webp"));
 }
 
 const manifest = {
@@ -51,11 +68,12 @@ const manifest = {
   aspectRatio: Number((displayWidth / displayHeight).toFixed(4)),
   sourceWidth: meta.width,
   sourceHeight: meta.height,
+  ...(darkManifest ? { dark: darkManifest } : {}),
 };
 await writeFile(join(outDir, "newspoint-logo.manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 
 const studioBrand = join(import.meta.dirname, "../../studio/public/brand");
-for (const name of ["newspoint-logo.webp", "newspoint-logo-512w.webp", "newspoint-logo-dark.webp"]) {
+for (const name of ["newspoint-logo.webp", "newspoint-logo-512w.webp", "newspoint-logo-dark.webp", "newspoint-logo-dark-512w.webp"]) {
   await copyFile(join(outDir, name), join(studioBrand, name));
 }
 

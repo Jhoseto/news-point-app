@@ -30,6 +30,8 @@
   .np-mobile-push-feedback { padding: .8rem; margin-top: .75rem; border: 1px solid var(--color-line); border-radius: .8rem; font-size: .8125rem; line-height: 1.5; background: var(--color-surface-2); }
   .np-mobile-push-footnote { margin: .9rem 0 0; color: var(--color-muted); font-size: .6875rem; line-height: 1.5; }
   @media (prefers-reduced-motion: no-preference) {
+    .np-mobile-push-prompt { animation: np-mobile-push-enter 240ms cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes np-mobile-push-enter { from { opacity: 0; transform: translateY(.65rem); } to { opacity: 1; transform: translateY(0); } }
     .np-mobile-push-choice, .np-mobile-push-secondary { transition: background-color 160ms ease, border-color 160ms ease; }
   }
 }

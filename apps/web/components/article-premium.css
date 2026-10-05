@@ -455,6 +455,13 @@
 .np-related-card-action { display: flex; align-items: center; justify-content: space-between; margin-top: auto; padding-top: 0.8rem; color: var(--np-muted); font-size: 0.65rem; font-weight: 720; }
 .np-related-card:hover .np-related-card-action { color: var(--np-link); }
 
+@media (min-width: 64rem) {
+  .np-related-card { flex-basis: clamp(14.25rem, 18vw, 16.75rem); }
+  .np-related-card-media { height: 7.35rem; }
+  .np-related-card-content { min-height: 7.5rem; padding: 0.75rem 0.85rem 0.85rem; }
+  .np-related-card-content > strong { margin-top: 0.45rem; font-size: 0.88rem; }
+}
+
 @media (max-width: 48rem) {
   .np-article-neighbours { grid-template-columns: 1fr; }
   .np-article-neighbours > span:empty { display: none; }

@@ -344,3 +344,7 @@
   width: 4.5rem;
   accent-color: var(--np-accent);
 }
+
+.np-brand-logo-mark--dark { display: none; }
+[data-theme="dark"] .np-brand-logo-mark--light { display: none; }
+[data-theme="dark"] .np-brand-logo-mark--dark { display: block; }

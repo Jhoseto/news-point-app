@@ -6,12 +6,12 @@ import "./mobile-push.css";
 
 export function MobilePushSettings({ push }: { push: PushController }) {
   const id = useId();
-  const { support, loading, busy, active, configured, error, notice, slugs, rubrics } = push;
+  const { support, loading, busy, active, configured, confirmed, error, notice, slugs, rubrics } = push;
   const install = support?.needInstall;
   const unsupported = support && !support.supported && !install;
   const blocked = support?.permission === "denied";
   const headline = loading ? "Проверяваме устройството…" : install ? "Първо добавете приложението" : unsupported ? "Известията не се поддържат"
-    : blocked ? "Разрешете известията" : active ? "Известията са включени" : "Вашите новини. Навреме.";
+    : blocked ? "Разрешете известията" : push.disablePending && !busy ? "Изключването изчаква връзка" : !confirmed ? "Проверете връзката" : active && !configured ? "Известията изчакват" : active ? "Известията са включени" : "Вашите новини. Навреме.";
   return (
     <section className="np-mobile-push" aria-labelledby={`${id}-title`} aria-busy={busy || loading}>
       <div className="np-mobile-push-heading">
@@ -26,11 +26,11 @@ export function MobilePushSettings({ push }: { push: PushController }) {
         </ol>
       ) : unsupported ? <p className="np-mobile-push-copy">На iPhone е нужен iOS 16.4 или по-нов и приложение на началния екран. На Android използвайте браузър с поддръжка на известия, например Chrome.</p>
         : blocked ? <p className="np-mobile-push-copy">Отворете системните настройки за известия на NewsPoint и разрешете показването им. След това се върнете тук и натиснете „Провери отново“.</p>
-        : <p className="np-mobile-push-copy">{active ? "Получавате нови публикации от избраните рубрики, включително когато приложението е затворено." : "Изберете рубриките, които ви интересуват. Вие решавате кога да включите известията."}</p>}
+        : <p className="np-mobile-push-copy">{active && configured && confirmed ? "Получавате нови публикации от избраните рубрики, включително когато приложението е затворено." : "Изберете рубриките, които ви интересуват. Вие решавате кога да включите известията."}</p>}
       {!install && !unsupported && !blocked ? <>
         <label className="np-mobile-push-master">
-          <span><strong>Новини по известие</strong><small>{loading ? "Проверка…" : active ? "Включени за това устройство" : "Изключени за това устройство"}</small></span>
-          <input type="checkbox" role="switch" checked={active} disabled={busy || loading || (!active && !configured)} onChange={() => void (active ? push.disable() : push.enable())} />
+          <span><strong>Новини по известие</strong><small>{loading ? "Проверка…" : busy ? push.pending === "test" ? "Заявяваме теста…" : "Потвърждаваме промяната…" : !confirmed ? "Статусът не е потвърден" : active ? "Разрешени за това устройство" : "Изключени за това устройство"}</small></span>
+          <input type="checkbox" role="switch" checked={active} disabled={busy || loading || !confirmed || (!active && !configured)} onChange={() => void (active ? push.disable() : push.enable())} />
         </label>
         {!configured && !loading ? <p className="np-mobile-push-copy">Известията още не са активирани на този сървър. Настройките ви се запазват.</p> : null}
         <fieldset className="np-mobile-push-rubrics" disabled={busy || loading}>

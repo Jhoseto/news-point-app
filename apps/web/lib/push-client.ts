@@ -1,7 +1,7 @@
 "use client";
 
 import type { PushAction, PushProof, PushState } from "@newspoint/db/push-domain";
-import { readStoredPushRubrics, writePushMasterEnabled, writeStoredPushRubrics } from "./push-preferences";
+import { readPushDisablePending, readStoredPushRubrics, writePushDisablePending, writePushMasterEnabled, writeStoredPushRubrics } from "./push-preferences";
 export type { PushState } from "@newspoint/db/push-domain";
 export type PushSupport = { supported: boolean; needInstall: boolean; installed: boolean; ios: boolean; permission: NotificationPermission | "unsupported" };
 
@@ -12,7 +12,7 @@ export function readPushSupport(): PushSupport {
   const installed = window.matchMedia("(display-mode: standalone)").matches
     || window.matchMedia("(display-mode: fullscreen)").matches
     || (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  const supported = window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const supported = window.isSecureContext && "serviceWorker" in navigator && ("PushManager" in window || "pushManager" in window) && "Notification" in window;
   return { supported, installed, ios, needInstall: ios && !installed,
     permission: "Notification" in window ? Notification.permission : "unsupported" };
 }
@@ -53,7 +53,7 @@ async function jsonFetch(url: string, body?: unknown) {
   try {
     const res = await fetch(url, { method: body === undefined ? "GET" : "POST", cache: "no-store", credentials: "same-origin",
       signal: abort.signal, ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }) });
-    const json = await res.json() as { error?: string; state?: PushState | null; configured?: boolean; publicKey?: string };
+    const json = await res.json() as { error?: string; state?: PushState | null; configured?: boolean; publicKey?: string; categories?: { slug: string; name: string }[] };
     if (!res.ok) throw new PushClientError(json.error ?? (res.status === 503 ? "config" : "network"));
     return json;
   } catch (error) {
@@ -75,7 +75,9 @@ export function ensureReaderServiceWorker(): Promise<ServiceWorkerRegistration> 
 export async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
   if (!readPushSupport().supported || readPushSupport().needInstall) return null;
   const registration = await bounded(navigator.serviceWorker.getRegistration("/"));
-  return registration ? bounded(registration.pushManager.getSubscription()) : null;
+  // Declarative Apple subscriptions can survive removal of the root SW.
+  const manager = registration?.pushManager ?? (window as Window & { pushManager?: PushManager }).pushManager;
+  return manager ? bounded(manager.getSubscription()) : null;
 }
 function proof(sub: PushSubscription): PushProof {
   const json = sub.toJSON();
@@ -83,7 +85,7 @@ function proof(sub: PushSubscription): PushProof {
   return { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } };
 }
 function remember(state: PushState | null) {
-  writePushMasterEnabled(Boolean(state?.enabled));
+  writePushMasterEnabled(Boolean(state?.enabled) && !readPushDisablePending());
   if (state) writeStoredPushRubrics(state.categorySlugs);
 }
 async function action(sub: PushSubscription, kind: PushAction, extra: { revision?: number; categorySlugs?: string[] | null } = {}) {
@@ -95,12 +97,27 @@ async function action(sub: PushSubscription, kind: PushAction, extra: { revision
 }
 export async function readPushServerState() {
   const sub = await getBrowserPushSubscription();
-  return sub ? action(sub, "status") : null;
+  if (!sub) return null;
+  if (!readPushDisablePending()) return action(sub, "status");
+  return serial(async () => {
+    let state = await action(sub, "status");
+    // A previous explicit opt-out is retried on resume, never an opt-in.
+    if (readPushDisablePending()) {
+      if (state?.enabled) state = await action(sub, "disable", { revision: state.revision });
+      writePushDisablePending(false); remember(state);
+    }
+    return state;
+  });
 }
 export async function getPushPublicKey(): Promise<string> {
   const response = await jsonFetch("/api/push/vapid/");
   if (!response.publicKey) throw new PushClientError("config");
   return response.publicKey;
+}
+export async function getPushMenu() {
+  const response = await jsonFetch("/api/push/menu/");
+  if (!Array.isArray(response.categories)) throw new PushClientError("rubrics");
+  return response.categories;
 }
 export function urlBase64ToUint8Array(value: string): Uint8Array {
   const raw = window.atob(value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4));
@@ -119,8 +136,8 @@ export async function subscribeForPush(options?: { categorySlug?: string | null;
   const support = readPushSupport();
   if (!support.supported || support.needInstall) return { ok: false, reason: "invalid" };
   // Must run directly in the user's click stack, before network/SW awaits.
-  const permission = support.permission === "granted" ? Promise.resolve("granted" as const) : Notification.requestPermission();
   try {
+    const permission = support.permission === "granted" ? Promise.resolve("granted" as const) : Notification.requestPermission();
     if (await permission !== "granted") return { ok: false, reason: Notification.permission === "denied" ? "blocked" : "denied" };
     const state = await serial(async () => {
       const publicKey = await getPushPublicKey();
@@ -142,6 +159,7 @@ export async function subscribeForPush(options?: { categorySlug?: string | null;
         categorySlugs: options?.categorySlugs !== undefined ? options.categorySlugs
           : options?.categorySlug ? [options.categorySlug] : current?.categorySlugs ?? readStoredPushRubrics() });
       if (!result) throw new PushClientError("network");
+      writePushDisablePending(false); remember(result);
       window.dispatchEvent(new Event("np-push-subscribed"));
       window.dispatchEvent(new Event("np-push-change"));
       return result;
@@ -151,17 +169,20 @@ export async function subscribeForPush(options?: { categorySlug?: string | null;
 }
 
 export async function mutatePush(kind: "preferences" | "disable" | "test", revision: number, categorySlugs?: string[] | null) {
+  if (kind === "disable") writePushDisablePending(true);
   return serial(async () => {
     const sub = await getBrowserPushSubscription();
     if (!sub) throw new PushClientError("missing");
     const state = await action(sub, kind, { revision, ...(categorySlugs !== undefined ? { categorySlugs } : {}) });
+    if (kind === "disable") { writePushDisablePending(false); remember(state); }
     window.dispatchEvent(new Event("np-push-change"));
     return state;
   });
 }
 export async function setPushEnabled(enabled: boolean): Promise<boolean> {
   if (enabled) return (await subscribeForPush()).ok;
-  try { const state = await readPushServerState(); if (!state) return false; await mutatePush("disable", state.revision); return true; } catch { return false; }
+  writePushDisablePending(true);
+  try { const state = await readPushServerState(); return Boolean(state && !state.enabled); } catch { return false; }
 }
 export async function syncPushCategorySlugs(slugs: string[] | null): Promise<boolean> {
   try { const state = await readPushServerState(); if (!state) return false; await mutatePush("preferences", state.revision, slugs); return true; } catch { return false; }

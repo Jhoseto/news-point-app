@@ -1,16 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { pushFilterMatches } from "@newspoint/db/push-domain";
 
-/** Mirrors notifyArticlePublished filter in push.ts */
+/** Exercises the shared production filter, including legacy subscriptions. */
 function matchesPushFilter(
   row: { categorySlug: string | null; categorySlugs: string[] | null },
   articleSlug: string | null,
 ): boolean {
-  const multi = row.categorySlugs;
-  if (Array.isArray(multi) && multi.length > 0) {
-    return Boolean(articleSlug && multi.includes(articleSlug));
-  }
-  if (row.categorySlug) return row.categorySlug === articleSlug;
-  return true;
+  return pushFilterMatches(row.categorySlugs, row.categorySlug, articleSlug);
 }
 
 describe("matchesPushFilter", () => {

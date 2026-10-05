@@ -3,9 +3,10 @@ export type PushState = { enabled: boolean; categorySlugs: string[] | null; revi
 export type PushProof = { endpoint: string; keys: { p256dh: string; auth: string } };
 export type PushAction = "status" | "subscribe" | "preferences" | "disable" | "unsubscribe" | "test";
 
-export function pushFilterMatches(slugs: string[] | null, legacy: string | null, articleSlug: string | null): boolean {
-  if (Array.isArray(slugs)) return articleSlug !== null && slugs.includes(articleSlug);
-  return legacy === null || legacy === articleSlug;
+export function pushFilterMatches(slugs: string[] | null, legacy: string | null, articleSlug: string | null | string[]): boolean {
+  const articleSlugs = Array.isArray(articleSlug) ? articleSlug : articleSlug === null ? [] : [articleSlug];
+  if (Array.isArray(slugs)) return articleSlugs.some((slug) => slugs.includes(slug));
+  return legacy === null || articleSlugs.includes(legacy);
 }
 
 export function isAllowedPushEndpoint(value: string): boolean {
@@ -38,8 +39,8 @@ export function readerNotificationUrl(path: string, origin: string): string | nu
 export function makePushPayload(title: string, body: string, url: string, tag: string) {
   // New Apple versions can display this without executing the service worker.
   // SW also reads this format for browsers without declarative support.
-  return { web_push: 8030, notification: { title: title.slice(0, 160), body: body.slice(0, 240), navigate: url,
-    lang: "bg", tag, icon: "/brand/icon-192.png", badge: "/brand/push-badge.png", silent: false, data: { url } } };
+  return { web_push: 8030, notification: { title: Array.from(title).slice(0, 160).join(""), body: Array.from(body).slice(0, 240).join(""), navigate: url,
+    lang: "bg", tag, icon: "/brand/icon-192.png", badge: "/brand/push-badge.png", silent: false } };
 }
 
 export function pushRetry(attempt: number, status: number | undefined, retryAfter: string | undefined, now: number, expiresAt: number) {

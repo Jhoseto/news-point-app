@@ -1,42 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
 import { formatCardTime, formatClock, isoDate, timelineDayBreak } from "@/lib/format";
+import { isLatestRowVisible, measureLatestFlyout, type LatestFlyout } from "@/lib/latest-preview";
 import { TimelineDayBreak } from "./timeline-day-break";
 import { inLatestWindow, nextLatestExpiryMs } from "@/lib/latest-window";
 import { ArticleImage, CategoryLabel, CategoryPill, SectionTitle } from "./ui";
 
-type ActivePreview = {
-  id: string;
-  anchorY: number;
-  left: number;
-  top: number;
-  height: number;
-  width: number;
-  backdropLeft: number;
-  backdropWidth: number;
-};
+type ActivePreview = LatestFlyout & { id: string };
+
+const SIZE_CLASS = {
+  /** Fills the short homepage lead band. */
+  band: "h-full min-h-0",
+  /** Sticky rail on rubric and article pages. */
+  rail: "np-latest-viewport min-h-0 max-lg:hidden",
+} as const;
 
 function NewsPreview({ article, position }: { article: ArticleSummary; position: ActivePreview }) {
+  const accent = categoryAccentStyle(article.category?.slug);
   return (
     <>
       <span
         aria-hidden="true"
-        className="np-latest-backdrop pointer-events-none absolute inset-y-0 z-20 hidden lg:block"
-        style={{ left: position.backdropLeft, width: position.backdropWidth }}
+        className="np-latest-backdrop pointer-events-none fixed z-30 hidden lg:block"
+        style={{ left: position.backdropLeft, top: position.backdropTop, width: position.backdropWidth, height: position.backdropHeight }}
       />
       <span
         aria-hidden="true"
-        className="np-latest-connector pointer-events-none absolute right-full z-30 hidden lg:block"
-        style={{ top: position.anchorY, width: -position.left - position.width, ...categoryAccentStyle(article.category?.slug) }}
+        className="np-latest-connector pointer-events-none fixed z-30 hidden lg:block"
+        style={{ left: position.connectorLeft, top: position.anchorY, width: position.connectorWidth, ...accent }}
       />
       <aside
         aria-hidden="true"
-        className="np-latest-preview-shell pointer-events-none absolute z-30 hidden lg:block"
-        style={{ left: position.left, top: position.top, width: position.width, height: position.height, ...categoryAccentStyle(article.category?.slug) }}
+        className="np-latest-preview-shell pointer-events-none fixed z-30 hidden lg:block"
+        style={{ left: position.cardLeft, top: position.cardTop, width: position.cardWidth, height: position.cardHeight, ...accent }}
       >
         <div key={article.id} className="np-latest-preview relative flex h-full flex-col overflow-hidden rounded-[1.4rem] border border-line bg-surface">
           <span className="np-category-accent-line absolute inset-x-6 top-0 z-10 h-0.5" />
@@ -65,23 +66,38 @@ function NewsPreview({ article, position }: { article: ArticleSummary; position:
   );
 }
 
-/** All published articles from a rolling day. Only the hovered preview mounts an image. */
+function samePreview(current: ActivePreview | null, next: ActivePreview | null): boolean {
+  if (current === next) return true;
+  if (!current || !next) return false;
+  return (Object.keys(next) as (keyof ActivePreview)[]).every((key) => current[key] === next[key]);
+}
+
+/**
+ * Desktop list of the last 24 hours.
+ * The hover card is portaled to the body and measured from `[data-np-latest-frame]`
+ * plus `[data-np-latest-stage]` (the column it floats over). Callers only choose `size`.
+ */
 export function LatestNews24h({
   articles,
   asOfMs,
   dense = false,
   liveRefresh = false,
+  size = "rail",
   className = "",
 }: {
   articles: ArticleSummary[];
   asOfMs: number;
   dense?: boolean;
   liveRefresh?: boolean;
+  size?: keyof typeof SIZE_CLASS;
   className?: string;
 }) {
   const [nowMs, setNowMs] = useState(asOfMs);
   const [feed, setFeed] = useState(articles);
   const [active, setActive] = useState<ActivePreview | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const pointerRef = useRef({ x: 0, y: 0, inside: false });
+  const placeRef = useRef<(link: HTMLElement) => void>(() => {});
   const sectionId = dense ? "posledni-desktop" : "posledni";
   const visible = useMemo(() => inLatestWindow(feed, nowMs), [feed, nowMs]);
   const activeArticle = visible.find((article) => article.id === active?.id);
@@ -139,55 +155,77 @@ export function LatestNews24h({
     };
   }, [visible, nowMs]);
 
+  placeRef.current = (link: HTMLElement) => {
+    const panel = panelRef.current;
+    const frame = panel?.closest("[data-np-latest-frame]");
+    const stage = frame?.querySelector("[data-np-latest-stage]");
+    if (!panel || !(stage instanceof HTMLElement) || !window.matchMedia("(min-width: 1024px)").matches) return;
+    const id = link.dataset.latestId;
+    if (!id) return;
+    const scroller = link.closest(".np-latest-panel-scroll");
+    if (scroller instanceof HTMLElement && !isLatestRowVisible(link.getBoundingClientRect(), scroller.getBoundingClientRect())) {
+      setActive((current) => current === null ? current : null);
+      return;
+    }
+    const flyout = measureLatestFlyout({
+      stage: stage.getBoundingClientRect(),
+      panel: panel.getBoundingClientRect(),
+      link: link.getBoundingClientRect(),
+      viewportHeight: window.innerHeight,
+    });
+    const next = flyout ? { id, ...flyout } : null;
+    setActive((current) => samePreview(current, next) ? current : next);
+  };
+
   useEffect(() => {
-    const clear = () => setActive(null);
-    window.addEventListener("resize", clear);
-    window.addEventListener("scroll", clear, { passive: true, capture: true });
+    let frame = 0;
+    const sync = () => {
+      frame = 0;
+      const panel = panelRef.current;
+      if (!panel) return;
+      if (pointerRef.current.inside) {
+        const hit = document.elementFromPoint(pointerRef.current.x, pointerRef.current.y);
+        const link = hit instanceof Element ? hit.closest("a[data-latest-id]") : null;
+        if (link instanceof HTMLElement && panel.contains(link)) {
+          placeRef.current(link);
+          return;
+        }
+      }
+      const focused = panel.querySelector("a:focus[data-latest-id]");
+      if (focused instanceof HTMLElement) {
+        placeRef.current(focused);
+        return;
+      }
+      setActive((current) => current === null ? current : null);
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(sync);
+    };
+    window.addEventListener("scroll", schedule, true);
+    window.addEventListener("resize", schedule);
     return () => {
-      window.removeEventListener("resize", clear);
-      window.removeEventListener("scroll", clear, true);
+      window.removeEventListener("scroll", schedule, true);
+      window.removeEventListener("resize", schedule);
+      if (frame) cancelAnimationFrame(frame);
     };
   }, []);
 
-  const activate = (id: string, link: HTMLElement) => {
-    if (!dense || !window.matchMedia("(min-width: 1024px)").matches) return;
-    const section = link.closest("section");
-    const support = section?.previousElementSibling;
-    if (!section || !(support instanceof HTMLElement)) return;
-    const sectionRect = section.getBoundingClientRect();
-    const supportRect = support.getBoundingClientRect();
-    // The middle column gets too narrow near the lg breakpoint; a flyout there would cover the lead headline.
-    if (supportRect.width < 220) {
-      setActive(null);
-      return;
-    }
-    const linkRect = link.getBoundingClientRect();
-    const anchorY = Math.max(24, Math.min(sectionRect.height - 24, linkRect.top + linkRect.height / 2 - sectionRect.top));
-    // The home preview is naturally compact because its panel lives in the
-    // shallow lead band. Viewport-height panels must keep that same card scale
-    // instead of stretching the preview to the full article/category rail.
-    const height = Math.min(sectionRect.height, window.innerHeight * 0.56, 544);
-    const top = Math.max(0, Math.min(sectionRect.height - height, anchorY - height / 2));
-    const width = Math.min(320, Math.max(240, Math.min(supportRect.width - 24, sectionRect.width * 0.78)));
-    const gap = 12;
-    setActive({
-      id,
-      anchorY,
-      left: -width - gap,
-      top,
-      height,
-      width,
-      backdropLeft: supportRect.left - sectionRect.left,
-      backdropWidth: supportRect.width,
-    });
+  const rememberPointer = (event: { clientX: number; clientY: number }) => {
+    pointerRef.current = { x: event.clientX, y: event.clientY, inside: true };
   };
 
   return (
     <section
+      ref={panelRef}
       aria-labelledby={`${sectionId}-title`}
       id={sectionId}
-      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col scroll-mt-[var(--np-header-h)] ${dense ? "p-4" : "p-5"} ${className}`}
-      onMouseLeave={() => setActive(null)}
+      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col scroll-mt-[var(--np-header-h)] ${dense ? "p-4" : "p-5"} ${SIZE_CLASS[size]} ${className}`}
+      onMouseMove={rememberPointer}
+      onMouseLeave={(event) => {
+        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
+        pointerRef.current.inside = false;
+        setActive(null);
+      }}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null);
       }}
@@ -199,21 +237,7 @@ export function LatestNews24h({
           <span className="tabular-nums">{visible.length} {visible.length === 1 ? "новина" : "новини"}</span>
         </p>
         {visible.length ? (
-          <div
-            className="np-scroll-soft np-latest-panel-scroll -mr-2 min-h-0 flex-1 pr-2"
-            onScroll={(event) => {
-              const focused = event.currentTarget.querySelector<HTMLAnchorElement>("a:focus[data-latest-id]");
-              if (focused) {
-                const listRect = event.currentTarget.getBoundingClientRect();
-                const linkRect = focused.getBoundingClientRect();
-                if (linkRect.bottom > listRect.top && linkRect.top < listRect.bottom) {
-                  activate(focused.dataset.latestId!, focused);
-                  return;
-                }
-              }
-              setActive(null);
-            }}
-          >
+          <div className="np-scroll-soft np-latest-panel-scroll min-h-0 flex-1 pr-2">
           <ol
             aria-label="Публикации от последните 24 часа"
             className={`np-latest-panel-list relative flex flex-col before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
@@ -232,8 +256,11 @@ export function LatestNews24h({
                   href={article.path}
                   data-latest-id={article.id}
                   prefetch={false}
-                  onMouseEnter={(event) => activate(article.id, event.currentTarget)}
-                  onFocus={(event) => activate(article.id, event.currentTarget)}
+                  onMouseEnter={(event) => {
+                    rememberPointer(event);
+                    placeRef.current(event.currentTarget);
+                  }}
+                  onFocus={(event) => placeRef.current(event.currentTarget)}
                   className="-m-1.5 block min-w-0 rounded-lg p-1.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
                 >
                   {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-latest-mobile-thumb" /> : null}
@@ -249,7 +276,7 @@ export function LatestNews24h({
           <p className="my-auto py-8 text-sm leading-relaxed text-muted">Няма публикувани новини през последните 24 часа.</p>
         )}
       </div>
-      {activeArticle && active ? <NewsPreview article={activeArticle} position={active} /> : null}
+      {activeArticle && active && typeof document !== "undefined" ? createPortal(<NewsPreview article={activeArticle} position={active} />, document.body) : null}
     </section>
   );
 }

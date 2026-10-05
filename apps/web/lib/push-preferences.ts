@@ -1,6 +1,16 @@
 const RUBRICS_KEY = "np-push-rubric-slugs";
 const MASTER_KEY = "np-push-master";
 
+const DISABLE_PENDING_KEY = "np-push-disable-pending";
+let pendingInMemory = false;
+export function readPushDisablePending() {
+  try { return localStorage.getItem(DISABLE_PENDING_KEY) === "1"; } catch { return pendingInMemory; }
+}
+export function writePushDisablePending(value: boolean) {
+  pendingInMemory = value;
+  try { localStorage.setItem(DISABLE_PENDING_KEY, value ? "1" : "0"); } catch {}
+}
+
 export function readPushMasterEnabled(): boolean {
   if (typeof window === "undefined") return true;
   try {

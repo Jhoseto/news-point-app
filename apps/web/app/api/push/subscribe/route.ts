@@ -1,4 +1,4 @@
-import { handlePushRequest } from "@/lib/push-api";
+import { handlePushRequest } from "../../../../lib/push-api";
 
 export const dynamic = "force-dynamic";
 export const POST = handlePushRequest;

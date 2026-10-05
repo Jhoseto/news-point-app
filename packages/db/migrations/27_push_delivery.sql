@@ -1,7 +1,17 @@
 -- Requires 25 and 26. Koce applies manually. No historical backfill.
 begin;
 
+do $$ begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public'
+    and table_name = 'push_subscriptions' and column_name = 'category_slugs') then
+    raise exception 'Apply push migrations 25 and 26 before 27';
+  end if;
+end $$;
+
 alter table public.push_subscriptions add column if not exists revision integer not null default 1;
+alter table public.push_subscriptions add column if not exists enabled_at timestamptz default now();
+update public.push_subscriptions set enabled_at = created_at where enabled = true and revision = 1;
+update public.push_subscriptions set enabled_at = null where enabled = false;
 
 create table if not exists public.push_jobs (
   id uuid primary key default gen_random_uuid(),
@@ -16,6 +26,8 @@ create table if not exists public.push_jobs (
       or (kind = 'test' and event_id is null and article_id is null and subscription_id is not null))
 );
 create index if not exists push_jobs_pending_idx on public.push_jobs(created_at) where status = 'pending';
+create index if not exists push_jobs_expiry_idx on public.push_jobs(expires_at);
+create index if not exists push_jobs_device_test_idx on public.push_jobs(subscription_id, created_at) where kind = 'test';
 
 create table if not exists public.push_deliveries (
   id uuid primary key default gen_random_uuid(),
@@ -33,6 +45,7 @@ create table if not exists public.push_deliveries (
 );
 create index if not exists push_deliveries_due_idx on public.push_deliveries(due_at) where status = 'pending';
 create index if not exists push_deliveries_lease_idx on public.push_deliveries(lease_until) where status = 'sending';
+create index if not exists push_deliveries_subscription_idx on public.push_deliveries(subscription_id);
 
 -- Durable rate limits shared by web processes; never store raw IPs/endpoints.
 create table if not exists public.push_rate_limits (

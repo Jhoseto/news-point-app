@@ -50,8 +50,8 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
         </div>
       ) : null}
 
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
-        <div className="flex min-w-0 flex-col gap-6">
+      <div data-np-latest-frame className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 2xl:grid-cols-[minmax(0,1fr)_24rem] 3xl:grid-cols-[minmax(0,1fr)_27rem] 3xl:gap-8">
+        <div data-np-latest-stage className="flex min-w-0 flex-col gap-6">
           {articles.length === 0 ? (
             <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
           ) : (
@@ -87,7 +87,7 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
             </>
           )}
         </div>
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport min-h-0 max-lg:hidden" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh size="rail" />
       </div>
     </div>
     </DesktopFeed>

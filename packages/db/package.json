@@ -10,7 +10,8 @@
     "./polls": "./src/polls.ts",
     "./poll-types": "./src/poll-types.ts",
     "./podcasts": "./src/podcasts.ts",
-    "./push-domain": "./src/push-domain.ts"
+    "./push-domain": "./src/push-domain.ts",
+    "./push-configuration": "./src/push-configuration.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
