@@ -345,6 +345,7 @@ export const pushSubscriptions = pgTable(
     auth: text("auth").notNull(),
     categorySlug: text("category_slug"),
     categorySlugs: jsonb("category_slugs").$type<string[] | null>(),
+    revision: integer("revision").notNull().default(1),
     locale: text("locale").notNull().default("bg"),
     userAgent: text("user_agent").notNull().default(""),
     enabled: boolean("enabled").notNull().default(true),
@@ -357,6 +358,37 @@ export const pushSubscriptions = pgTable(
     index("push_subscriptions_category_idx").on(table.categorySlug),
   ],
 );
+
+export const pushJobs = pgTable("push_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  eventId: bigint("event_id", { mode: "number" }).unique(),
+  articleId: uuid("article_id").references(() => articles.id, { onDelete: "cascade" }),
+  subscriptionId: uuid("subscription_id").references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+  kind: text("kind", { enum: ["article", "test"] }).notNull(),
+  status: text("status", { enum: ["pending", "expanded", "skipped"] }).notNull().default("pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull().default(sql`now() + interval '1 hour'`),
+});
+
+export const pushDeliveries = pgTable("push_deliveries", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  jobId: uuid("job_id").notNull().references(() => pushJobs.id, { onDelete: "cascade" }),
+  subscriptionId: uuid("subscription_id").notNull().references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["pending", "sending", "accepted", "failed", "skipped"] }).notNull().default("pending"),
+  attempts: integer("attempts").notNull().default(0),
+  dueAt: timestamp("due_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  leaseToken: uuid("lease_token"),
+  lastStatus: integer("last_status"),
+  errorCode: text("error_code"),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+}, (table) => [unique("push_deliveries_job_subscription_key").on(table.jobId, table.subscriptionId)]);
+
+export const pushRateLimits = pgTable("push_rate_limits", {
+  bucket: text("bucket").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
+  hits: integer("hits").notNull().default(1),
+});
 
 export const podcastStatuses = ["draft", "published"] as const;
 

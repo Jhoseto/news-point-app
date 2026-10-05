@@ -9,7 +9,8 @@
     "./orm": "./src/orm.ts",
     "./polls": "./src/polls.ts",
     "./poll-types": "./src/poll-types.ts",
-    "./podcasts": "./src/podcasts.ts"
+    "./podcasts": "./src/podcasts.ts",
+    "./push-domain": "./src/push-domain.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

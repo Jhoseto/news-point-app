@@ -6,6 +6,7 @@ import type { PublicEpisode } from "@/lib/podcast-types";
 import { displayedEpisode } from "@/lib/podcast-playback";
 import { PodcastPlayer, clock, usePodcastPlayer } from "./player";
 import { STUDIO_PHOTO } from "./studio-photo";
+import { ChevronRightIcon } from "../icons";
 import { AudioIcon, PodcastCover, PodcastOrbit } from "./visuals";
 
 function EpisodeCard({ episode, episodes, selected, compact }: { episode: PublicEpisode; episodes: PublicEpisode[]; selected: boolean; compact: boolean }) {
@@ -33,13 +34,55 @@ export function PodcastShow({ episodes, compact = false, activeSlug = null }: { 
   if (!episodes.length && !player.episode) return <PodcastState title="Историите скоро ще имат глас" description="Още няма публикувани епизоди. Тук ще откриете подкастите на NewsPoint." />;
   if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} />;
   // Only the LivePoint panel reaches this branch: the page always goes to the theatre.
-  return <div className="np-podcast-show np-podcast-show--panel">
-    <PodcastPlayer compact suggested={suggested} episodes={episodes} />
-    <section className="np-podcast-library" aria-label="Епизоди">
-      <div className="np-podcast-library-heading"><div><p className="np-podcast-eyebrow">Истории с глас</p><h2>Епизоди</h2></div><span>NewsPodcast</span></div>
-      {episodes.length ? <ul className="np-podcast-episodes">{episodes.map((episode) => <EpisodeCard key={episode.id} episode={episode} episodes={episodes} compact selected={selected?.id === episode.id} />)}</ul> : <p className="np-podcast-no-more">Няма други публикувани епизоди.</p>}
-    </section>
-  </div>;
+  return <PodcastPanelLayout episodes={episodes} suggested={suggested} selected={selected} />;
+}
+
+function PodcastPanelLayout({
+  episodes,
+  suggested,
+  selected,
+}: {
+  episodes: PublicEpisode[];
+  suggested: PublicEpisode | null;
+  selected: PublicEpisode | null;
+}) {
+  const [playerOpen, setPlayerOpen] = useState(true);
+  return (
+    <div className="np-podcast-show np-podcast-show--panel" data-player-open={playerOpen || undefined}>
+      <div id="np-podcast-player-region" className="np-podcast-player-shell">
+        <PodcastPlayer compact suggested={suggested} episodes={episodes} />
+      </div>
+      <button
+        type="button"
+        className="np-podcast-panel-split"
+        data-collapsed={playerOpen ? undefined : true}
+        aria-expanded={playerOpen}
+        aria-controls="np-podcast-player-region"
+        onClick={() => setPlayerOpen((open) => !open)}
+      >
+        <ChevronRightIcon width={14} height={14} aria-hidden="true" />
+        <span className="sr-only">{playerOpen ? "Прибери плеъра" : "Разпъни плеъра"}</span>
+      </button>
+      <section className="np-podcast-library" aria-label="Епизоди">
+        <div className="np-podcast-library-heading">
+          <div>
+            <p className="np-podcast-eyebrow">Истории с глас</p>
+            <h2>Епизоди</h2>
+          </div>
+          <span>NewsPodcast</span>
+        </div>
+        {episodes.length ? (
+          <ul className="np-podcast-episodes">
+            {episodes.map((episode) => (
+              <EpisodeCard key={episode.id} episode={episode} episodes={episodes} compact selected={selected?.id === episode.id} />
+            ))}
+          </ul>
+        ) : (
+          <p className="np-podcast-no-more">Няма други публикувани епизоди.</p>
+        )}
+      </section>
+    </div>
+  );
 }
 
 function PodcastTheater({ episodes, selected, activeSlug }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null }) {

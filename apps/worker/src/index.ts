@@ -3,6 +3,7 @@ import { applyDueViewBoosts, createScriptDb, loadRootEnv, publishDueScheduled } 
 import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
 import { processOneAiPodcastJob } from "./ai-podcast-worker";
+import { startPushWorker } from "./push-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
 
@@ -48,6 +49,7 @@ async function runWorker() {
     );
   }
 
+  const stopPush = startPushWorker(db, log);
   let stopping = false;
   let timer: NodeJS.Timeout | undefined;
   const boostTimer = setInterval(() => {
@@ -83,6 +85,7 @@ async function runWorker() {
     clearTimeout(timer);
     clearInterval(boostTimer);
     clearInterval(aiTimer);
+    await stopPush();
     await close();
   }
 
