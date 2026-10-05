@@ -12,7 +12,7 @@ import { MOBILE_RUBRIC_NAVIGATE, MOBILE_RUBRIC_STATUS, commitSwipe, idlePager, m
 
 type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFeed | null; targetPath: string | null;
   label: string; direction: -1 | 1; top: number; height: number; width: number; originOffset: number; targetOffset: number; distant: boolean;
-  originWindow: PreviewWindow; targetWindow?: PreviewWindow };
+  originWindow: PreviewWindow };
 type Gesture = { id: number; x: number; y: number; time: number; width: number; dx: number; held: number;
   samples: Array<{ x: number; at: number }>; origin: MobileRubricFeed; captured: boolean };
 const IGNORE = "[data-mobile-pager-ignore],button,input,textarea,select,option,video,audio,iframe,canvas,[contenteditable],[role='slider'],[role='button'],[role='dialog'],.np-carousel-viewport";
@@ -40,7 +40,7 @@ export function MobileRubricPager() {
     let operation = idlePager, token = 0, gesture: Gesture | null = null;
     let model: MobileRubricFeed | null = null, items: MobileRubric[] = [], sourceKey = "", signature = "";
     let queuedTap: string | null = null, routeTimer = 0, animationTimer = 0, paintFrame = 0, readFrame = 0, restoreFrame = 0, idleTimer = 0;
-    let restoreKey: string | null = location.hash ? location.pathname + location.search + location.hash : null;
+    let pendingRestore: { key: string; fromTop: boolean } | null = location.hash ? { key: location.pathname + location.search + location.hash, fromTop: false } : null;
     let disposed = false, lastDx = 0, clickSuppressedUntil = 0;
     let navigationInput: "swipe" | "tap" = "tap";
     let savedA11y: { inert: boolean; hidden: string | null; busy: string | null } | null = null;
@@ -84,10 +84,11 @@ export function MobileRubricPager() {
       };
       positions.save(sourceKey, position);
     };
-    const restore = (destination: string, focusBack = false, immediate = false) => {
+    const restore = (destination: string, focusBack = false, immediate = false, fromTop = false) => {
       cancelAnimationFrame(restoreFrame);
-      const value = positions.get(destination);
-      const hash = location.hash;
+      // Fresh rubric selections start at the beginning; only history navigation restores reading progress.
+      const value = fromTop ? undefined : positions.get(destination);
+      const hash = fromTop ? "" : location.hash;
       const apply = () => {
         restoreFrame = 0;
         if (disposed || key() !== destination || (visualRef.current && !immediate)) return;
@@ -144,7 +145,7 @@ export function MobileRubricPager() {
     const finish = () => {
       if (!operation.committed || !operation.motionDone || !operation.routeReady) return;
       const target = operation.target, wasSwipe = navigationInput === "swipe";
-      restore(sourceKey, false, true);
+      pendingRestore = null; restore(sourceKey, false, true, true);
       clearVisual(); releaseGesture(); update({ type: "reset", token: operation.token }); setNotice(null);
       if (wasSwipe) main.querySelector<HTMLElement>("[data-mobile-feed-heading]")?.focus({ preventScroll: true });
       if (target) setAnnouncement(`${items.find(item => item.path === target)?.name ?? "Новини"} — заредено`);
@@ -161,6 +162,7 @@ export function MobileRubricPager() {
     };
     const cancel = (reason = "") => {
       const committed = operation.committed, pendingTarget = operation.target;
+      if (reason === "pop" || reason === "external") pendingRestore = null;
       releaseGesture(); clearVisual(); queuedTap = null;
       update({ type: "reset", token: operation.token }); ++token;
       if (committed && pendingTarget && routePath() !== pendingTarget && reason !== "pop" && reason !== "external") {
@@ -174,7 +176,7 @@ export function MobileRubricPager() {
       const nextSignature = `${location.pathname}:${script.parentElement?.dataset.contentVersion}:${script.parentElement?.dataset.menuVersion}:${script.parentElement?.dataset.freshUntil}`;
       if (signature === nextSignature) {
         sourceKey = key();
-        if (restoreKey === key()) { restoreKey = null; restore(key(), true); }
+        if (pendingRestore?.key === key()) { const pending = pendingRestore; pendingRestore = null; restore(key(), !pending.fromTop, false, pending.fromTop); }
         return;
       }
       let next: MobileRubricFeed;
@@ -196,7 +198,7 @@ export function MobileRubricPager() {
       if (operation.committed && operation.target === next.canonicalPath) {
         // Mounted public model is the readiness gate; a pathname change alone is insufficient.
         update({ type: "ready", token: operation.token }); finish();
-      } else if (operation.phase === "idle" && restoreKey === sourceKey) { restoreKey = null; restore(sourceKey, true); }
+      } else if (operation.phase === "idle" && pendingRestore?.key === sourceKey) { const pending = pendingRestore; pendingRestore = null; restore(sourceKey, !pending.fromTop, false, pending.fromTop); }
     };
     const paint = (dx: number) => {
       lastDx = dx;
@@ -233,13 +235,9 @@ export function MobileRubricPager() {
       // The opaque viewport compositor covers the original page. Keeping its
       // subtree untouched during tracking avoids restyling thousands of nodes.
       document.documentElement.setAttribute("data-mobile-pager-visual", "");
-      const targetY = targetPath ? positions.get(new URL(targetPath, location.href).pathname)?.y ?? 0 : 0;
-      const cachedTarget = targetPath ? cache.get(targetPath) : undefined;
-      const targetGeometry = targetPath ? geometry.get(targetPath) : undefined;
-      const targetWindow = targetGeometry && targetGeometry.width === width && targetGeometry.version === cachedTarget?.contentVersion ? windowAt(targetGeometry.blocks, targetY) : undefined;
       setView({ token: operation.token, origin, target: targetPath ? cache.get(targetPath) ?? null : null, targetPath,
         label: items.find(item => item.path === targetPath)?.name ?? "Новини", direction, top, height: Math.max(0, bottom - top), width,
-        originOffset: mainBox.top - top, targetOffset: -targetY, distant, originWindow: windowAt(blocks, top - mainBox.top), ...(targetWindow ? { targetWindow } : {}) });
+        originOffset: mainBox.top - top, targetOffset: 0, distant, originWindow: windowAt(blocks, top - mainBox.top) });
       if (targetPath) void cache.load(targetPath).then(target => {
         const current = visualRef.current;
         if (current && current.token === operation.token && current.targetPath === targetPath && !gesture?.captured) setView({ ...current, target });
@@ -268,6 +266,7 @@ export function MobileRubricPager() {
     const commit = (path: string, input: "swipe" | "tap") => {
       if (operation.committed || (operation.phase !== "tracking" && operation.phase !== "dragging")) return;
       navigationInput = input; releaseGesture(); update({ type: "commit", token: operation.token, target: path });
+      pendingRestore = { key: path, fromTop: true };
       if (!savedA11y) { savedA11y = { inert: main.inert, hidden: main.getAttribute("aria-hidden"), busy: main.getAttribute("aria-busy") }; main.inert = true; main.setAttribute("aria-hidden", "true"); main.setAttribute("aria-busy", "true"); }
       // Exactly one push at settling start. Router navigation has no awaitable readiness promise.
       router.push(path, { scroll: false });
@@ -281,7 +280,7 @@ export function MobileRubricPager() {
       if (!items.some(item => item.path === path) || path === routePath() || blocked()) return;
       if (operation.committed) { queuedTap = path; return; }
       if (operation.phase !== "idle") cancel();
-      if (!model || !currentRoute().swipe) { savePosition(); router.push(path, { scroll: false }); restoreKey = path; return; }
+      if (!model || !currentRoute().swipe) { savePosition(); pendingRestore = { key: path, fromTop: true }; router.push(path, { scroll: false }); return; }
       savePosition(); update({ type: "track", token: ++token }); configure(path);
       const from = currentRoute().index, index = items.findIndex(item => item.path === path);
       const direction = index > from ? 1 : -1;
@@ -348,8 +347,12 @@ export function MobileRubricPager() {
       const path = (event as CustomEvent<string>).detail;
       if (items.some(item => item.path === path) && !blocked()) { event.preventDefault(); navigate(path, "tap"); }
     };
-    const pop = () => { savePosition(true); cancel("pop"); restoreKey = key(); readCanonical(); };
-    const manualScroll = () => { cancelAnimationFrame(restoreFrame); restoreFrame = 0; restoreKey = null; };
+    const pop = () => { savePosition(true); cancel("pop"); pendingRestore = { key: key(), fromTop: false }; readCanonical(); };
+    const manualScroll = () => {
+      cancelAnimationFrame(restoreFrame); restoreFrame = 0;
+      // Input on the outgoing page must not drop the start-at-top intent of a pending route.
+      if (!pendingRestore?.fromTop || pendingRestore.key === key()) pendingRestore = null;
+    };
     const interrupt = () => { if (operation.phase !== "idle") cancel(); };
     const overlay = () => interrupt();
     const visibility = () => { if (document.hidden) interrupt(); };
@@ -415,7 +418,7 @@ export function MobileRubricPager() {
         <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.originOffset}px)` }}><MobileFeed model={visual.origin} preview namespace={`preview-origin-${visual.token}`} window={visual.originWindow} /></div>
       </div>
       {visual.targetPath ? <div ref={targetFrame} className="np-mobile-pager-frame" style={{ transform: motion.current || visual.distant ? "translate3d(0,0,0)" : `translate3d(${visual.direction * visual.width}px,0,0)`, opacity: motion.current || visual.distant ? 0 : 1, willChange: visual.distant ? "opacity" : "transform" }}>
-        {visual.target && (visual.targetWindow || visual.targetOffset === 0) ? <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.targetOffset}px)` }}><MobileFeed model={visual.targetWindow ? visual.target : firstScreen(visual.target)} preview namespace={`preview-target-${visual.token}`} {...(visual.targetWindow ? { window: visual.targetWindow } : {})} /></div> : <div className="np-mobile-pager-skeleton"><span>{visual.label}</span><i /><i /><i /><i /></div>}
+        {visual.target ? <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.targetOffset}px)` }}><MobileFeed model={firstScreen(visual.target)} preview namespace={`preview-target-${visual.token}`} /></div> : <div className="np-mobile-pager-skeleton"><span>{visual.label}</span><i /><i /><i /><i /></div>}
       </div> : null}
     </div> : null}
     {notice ? <div className="np-mobile-pager-notice" role="status"><span>{notice}</span><button type="button" onClick={() => runtime.current?.retry()}>Опитай отново</button></div> : null}

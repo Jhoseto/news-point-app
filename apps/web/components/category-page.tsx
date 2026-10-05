@@ -87,7 +87,7 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
             </>
           )}
         </div>
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport hidden lg:block" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense liveRefresh className="np-latest-viewport min-h-0 max-lg:hidden" />
       </div>
     </div>
     </DesktopFeed>

@@ -106,7 +106,7 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
           </div>
         </div>
         {/* Direct sibling of the main column: the shared preview uses its geometry. */}
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest hidden lg:block" />
+        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense className="np-latest-viewport np-article-latest min-h-0 max-lg:hidden" />
       </article>
 
       <div className="hidden lg:block">

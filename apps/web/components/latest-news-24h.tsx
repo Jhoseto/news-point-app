@@ -142,7 +142,11 @@ export function LatestNews24h({
   useEffect(() => {
     const clear = () => setActive(null);
     window.addEventListener("resize", clear);
-    return () => window.removeEventListener("resize", clear);
+    window.addEventListener("scroll", clear, { passive: true, capture: true });
+    return () => {
+      window.removeEventListener("resize", clear);
+      window.removeEventListener("scroll", clear, true);
+    };
   }, []);
 
   const activate = (id: string, link: HTMLElement) => {
@@ -182,63 +186,69 @@ export function LatestNews24h({
     <section
       aria-labelledby={`${sectionId}-title`}
       id={sectionId}
-      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col overflow-visible scroll-mt-[var(--np-header-h)] ${dense ? "p-4" : "p-5"} ${className}`}
+      className={`np-card np-latest-panel z-20 flex min-h-0 flex-col scroll-mt-[var(--np-header-h)] ${dense ? "p-4" : "p-5"} ${className}`}
       onMouseLeave={() => setActive(null)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setActive(null);
       }}
     >
-      <SectionTitle id={`${sectionId}-title`}>Последни новини</SectionTitle>
-      <p className="mb-3 flex items-center justify-between gap-2 text-[0.6875rem] font-semibold tracking-wide text-muted uppercase">
-        <span>Последните 24 часа</span>
-        <span className="tabular-nums">{visible.length} {visible.length === 1 ? "новина" : "новини"}</span>
-      </p>
-      {visible.length ? (
-        <ol
-          aria-label="Публикации от последните 24 часа"
-          className={`np-scroll-soft relative -mr-2 flex min-h-0 flex-1 flex-col ${dense ? "overflow-y-auto" : ""} pr-2 before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
-          onScroll={(event) => {
-            const focused = event.currentTarget.querySelector<HTMLAnchorElement>("a:focus[data-latest-id]");
-            if (focused) {
-              const listRect = event.currentTarget.getBoundingClientRect();
-              const linkRect = focused.getBoundingClientRect();
-              if (linkRect.bottom > listRect.top && linkRect.top < listRect.bottom) {
-                activate(focused.dataset.latestId!, focused);
-                return;
+      <div className="np-latest-panel-body flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <SectionTitle id={`${sectionId}-title`}>Последни новини</SectionTitle>
+        <p className="mb-3 flex shrink-0 items-center justify-between gap-2 text-[0.6875rem] font-semibold tracking-wide text-muted uppercase">
+          <span>Последните 24 часа</span>
+          <span className="tabular-nums">{visible.length} {visible.length === 1 ? "новина" : "новини"}</span>
+        </p>
+        {visible.length ? (
+          <div
+            className="np-scroll-soft np-latest-panel-scroll -mr-2 min-h-0 flex-1 pr-2"
+            onScroll={(event) => {
+              const focused = event.currentTarget.querySelector<HTMLAnchorElement>("a:focus[data-latest-id]");
+              if (focused) {
+                const listRect = event.currentTarget.getBoundingClientRect();
+                const linkRect = focused.getBoundingClientRect();
+                if (linkRect.bottom > listRect.top && linkRect.top < listRect.bottom) {
+                  activate(focused.dataset.latestId!, focused);
+                  return;
+                }
               }
-            }
-            setActive(null);
-          }}
-        >
-          {visible.map((article, index) => (
-            <Fragment key={article.id}>
-              {timelineDayBreak(visible[index - 1]?.publishedAt, article.publishedAt) ? (
-                <TimelineDayBreak date={article.publishedAt} />
-              ) : null}
-              <li className={`group relative pl-16 pr-1 ${active?.id === article.id ? "np-latest-row-active" : ""}`} style={categoryAccentStyle(article.category?.slug)}>
-              <time dateTime={isoDate(article.publishedAt)} className="absolute top-0.5 left-0 text-xs font-bold text-muted tabular-nums">
-                {formatClock(article.publishedAt)}
-              </time>
-              <span className={`absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface ${active?.id === article.id ? "np-category-dot" : "np-gradient-bg"}`} aria-hidden="true" />
-              <Link
-                href={article.path}
-                data-latest-id={article.id}
-                prefetch={false}
-                onMouseEnter={(event) => activate(article.id, event.currentTarget)}
-                onFocus={(event) => activate(article.id, event.currentTarget)}
-                className="-m-1.5 block rounded-lg p-1.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
-              >
-                {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-latest-mobile-thumb" /> : null}
-                <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors group-hover:text-logo">{article.title}</h3>
-                {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
-              </Link>
-            </li>
-            </Fragment>
-          ))}
-        </ol>
-      ) : (
-        <p className="my-auto py-8 text-sm leading-relaxed text-muted">Няма публикувани новини през последните 24 часа.</p>
-      )}
+              setActive(null);
+            }}
+          >
+          <ol
+            aria-label="Публикации от последните 24 часа"
+            className={`np-latest-panel-list relative flex flex-col before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
+          >
+            {visible.map((article, index) => (
+              <Fragment key={article.id}>
+                {timelineDayBreak(visible[index - 1]?.publishedAt, article.publishedAt) ? (
+                  <TimelineDayBreak date={article.publishedAt} />
+                ) : null}
+                <li className={`group relative min-w-0 pl-16 pr-2 ${active?.id === article.id ? "np-latest-row-active" : ""}`} style={categoryAccentStyle(article.category?.slug)}>
+                <time dateTime={isoDate(article.publishedAt)} className="absolute top-0.5 left-0 text-xs font-bold text-muted tabular-nums">
+                  {formatClock(article.publishedAt)}
+                </time>
+                <span className={`absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface ${active?.id === article.id ? "np-category-dot" : "np-gradient-bg"}`} aria-hidden="true" />
+                <Link
+                  href={article.path}
+                  data-latest-id={article.id}
+                  prefetch={false}
+                  onMouseEnter={(event) => activate(article.id, event.currentTarget)}
+                  onFocus={(event) => activate(article.id, event.currentTarget)}
+                  className="-m-1.5 block min-w-0 rounded-lg p-1.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
+                >
+                  {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-latest-mobile-thumb" /> : null}
+                  <h3 className="line-clamp-2 min-w-0 break-words text-sm leading-snug font-semibold text-ink transition-colors group-hover:text-logo">{article.title}</h3>
+                  {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
+                </Link>
+              </li>
+              </Fragment>
+            ))}
+          </ol>
+          </div>
+        ) : (
+          <p className="my-auto py-8 text-sm leading-relaxed text-muted">Няма публикувани новини през последните 24 часа.</p>
+        )}
+      </div>
       {activeArticle && active ? <NewsPreview article={activeArticle} position={active} /> : null}
     </section>
   );

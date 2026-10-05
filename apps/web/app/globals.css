@@ -322,16 +322,49 @@
       0 0 34px -12px color-mix(in oklab, var(--np-category-accent) 62%, transparent);
   }
 
-  .np-latest-panel { position: relative; }
+  .np-latest-panel { position: relative; min-width: 0; overflow: visible; }
+  .np-latest-panel-body { flex: 1 1 0; min-height: 0; overflow: hidden; }
+  .np-latest-panel-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+  .np-latest-panel-scroll::-webkit-scrollbar { width: 7px; }
+  .np-latest-panel-scroll::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background-color: color-mix(in oklab, var(--np-muted) 55%, var(--np-line));
+  }
+  @media (min-width: 64rem) {
+    .np-latest-panel ol { min-width: 0; }
+    .np-latest-panel ol li > a h3 {
+      overflow-wrap: anywhere;
+      -webkit-box-orient: vertical;
+    }
+  }
 
   /* Shared category/article news desk: fixed viewport presence, own scrolling list. */
-  .np-latest-viewport { height: 30rem; }
+  .np-latest-viewport {
+    display: flex;
+    flex-direction: column;
+    height: 30rem;
+    max-height: 30rem;
+    min-height: 0;
+  }
   @media (min-width: 64rem) {
     .np-latest-viewport {
       position: sticky;
       top: calc(var(--np-header-h) + 0.75rem);
       align-self: start;
       height: calc(100dvh - var(--np-header-h) - 1.5rem);
+      max-height: calc(100dvh - var(--np-header-h) - 1.5rem);
+    }
+    /* Grid rows use min-height:auto; keep the desk from growing with the list. */
+    .np-article-story > .np-latest-viewport,
+    .np-mobile-legacy-feed .np-latest-viewport {
+      min-height: 0;
     }
   }
 
