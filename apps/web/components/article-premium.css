@@ -33,9 +33,9 @@
     justify-self: end;
   }
   .np-article-page .np-related-stories {
-    width: auto;
+    width: calc(100% + (2 * var(--np-article-gutter)));
     margin-left: calc(var(--np-article-gutter) * -1);
-    margin-right: 23.25rem;
+    margin-right: calc(var(--np-article-gutter) * -1);
   }
   .np-article-main .np-article-reading-layout {
     max-width: 100%;
@@ -434,16 +434,93 @@
 .np-article-neighbour-meta span::after { content: "·"; margin-left: 0.42rem; color: var(--np-muted); }
 .np-article-origin { display: flex; min-height: 3rem; align-items: center; gap: 1rem; margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid color-mix(in oklab, var(--np-line) 74%, transparent); }
 
-/* Semantic story carousel. */
-.np-related-stories { position: relative; width: calc(100% + (2 * var(--np-article-gutter))); margin: clamp(3.5rem, calc(7 * var(--np-desktop-vw, 1vw)), 6rem) calc(var(--np-article-gutter) * -1) 0; overflow: hidden; border-block: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent); background: linear-gradient(180deg, color-mix(in oklab, var(--np-surface) 56%, transparent), transparent); }
-.np-related-heading { display: flex; align-items: center; gap: 0.7rem; padding: 1.55rem var(--np-article-gutter) 1.1rem; }
+/* Related carousel: stays inside the content column (never under the rubrics rail). */
+.np-related-stories {
+  --np-related-edge: clamp(2.75rem, 4.5vw, 4.25rem);
+  position: relative;
+  width: calc(100% + (2 * var(--np-article-gutter)));
+  margin: clamp(3.5rem, calc(7 * var(--np-desktop-vw, 1vw)), 6rem) calc(var(--np-article-gutter) * -1) 0;
+  overflow: hidden;
+  border-block: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent);
+  background: linear-gradient(180deg, color-mix(in oklab, var(--np-surface) 56%, transparent), transparent);
+}
+.np-related-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 1.55rem var(--np-article-gutter) 1.1rem;
+}
 .np-related-heading .np-ring { width: 1.35rem; height: 1.35rem; flex: none; }
 .np-related-heading h2 { color: var(--np-ink); font-size: clamp(1.35rem, calc(2.15 * var(--np-desktop-vw, 1vw)), 1.9rem); font-weight: 790; letter-spacing: -0.04em; line-height: 1.12; }
-.np-related-carousel { position: relative; padding-bottom: 1.35rem; }
-.np-related-controls { position: absolute; z-index: 2; top: -3.75rem; right: var(--np-article-gutter); display: flex; gap: 0.45rem; }
+.np-related-carousel { position: relative; padding-bottom: 1.35rem; isolation: isolate; }
+.np-related-carousel::before,
+.np-related-carousel::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 1.1rem;
+  z-index: 2;
+  width: var(--np-related-edge);
+  pointer-events: none;
+  backdrop-filter: blur(12px) saturate(1.06);
+  -webkit-backdrop-filter: blur(12px) saturate(1.06);
+}
+.np-related-carousel::before {
+  left: 0;
+  background: linear-gradient(
+    90deg,
+    var(--np-surface) 0%,
+    color-mix(in oklab, var(--np-surface) 82%, transparent) 45%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 100%);
+  mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 100%);
+}
+.np-related-carousel::after {
+  right: 0;
+  background: linear-gradient(
+    270deg,
+    var(--np-surface) 0%,
+    color-mix(in oklab, var(--np-surface) 82%, transparent) 45%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(270deg, #000 0%, #000 40%, transparent 100%);
+  mask-image: linear-gradient(270deg, #000 0%, #000 40%, transparent 100%);
+}
+.np-related-controls {
+  position: absolute;
+  z-index: 3;
+  top: -3.75rem;
+  right: var(--np-article-gutter);
+  display: flex;
+  gap: 0.45rem;
+}
 .np-related-controls button { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; border: 1px solid var(--np-line); border-radius: 50%; background: color-mix(in oklab, var(--np-surface) 93%, transparent); color: var(--np-ink); cursor: pointer; box-shadow: 0 12px 25px -20px var(--np-ink); transition: transform 160ms ease, border-color 160ms ease, background 160ms ease; }
 .np-related-controls button:hover { transform: translateY(-2px); border-color: color-mix(in oklab, var(--np-accent) 54%, var(--np-line)); background: color-mix(in oklab, var(--np-surface) 94%, var(--np-accent)); color: var(--np-link); }
-.np-related-track { display: flex; gap: 0.9rem; padding: 0.25rem var(--np-article-gutter) 0.75rem; overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: var(--np-article-gutter); scroll-snap-type: x mandatory; scrollbar-width: thin; }
+.np-related-track {
+  display: flex;
+  gap: 0.9rem;
+  padding: 0.35rem var(--np-related-edge) 0.85rem;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: var(--np-related-edge);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 calc(var(--np-related-edge) * 0.65),
+    #000 calc(100% - var(--np-related-edge) * 0.65),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 calc(var(--np-related-edge) * 0.65),
+    #000 calc(100% - var(--np-related-edge) * 0.65),
+    transparent 100%
+  );
+}
 .np-related-card { display: flex; flex: 0 0 clamp(17.5rem, calc(27 * var(--np-desktop-vw, 1vw)), 20.5rem); min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in oklab, var(--np-line) 86%, transparent); border-radius: 1.2rem; background: var(--np-surface); color: inherit; cursor: pointer; scroll-snap-align: start; box-shadow: 0 22px 48px -40px color-mix(in oklab, var(--np-ink) 62%, transparent); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
 .np-related-card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--np-accent) 44%, var(--np-line)); box-shadow: 0 30px 58px -40px color-mix(in oklab, var(--np-accent) 46%, var(--np-ink)); }
 .np-related-card-media { position: relative; display: block; height: 9.2rem; overflow: hidden; background: var(--np-surface-2); }

@@ -810,7 +810,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
           multiple={mediaTarget === "body"}
           onClose={() => setPickerOpen(false)}
           onUpload={(item) => { setAvailableMedia((current) => [item, ...current]); if (mediaTarget === "hero") update("heroMediaId", item.id); else if (bodyRef.current) { restoreBodyRange(); document.execCommand("insertHTML", false, `<p><img data-media-id="${item.id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`); update("bodyText", htmlToBodyText(bodyRef.current.innerHTML)); } setPickerOpen(false); }}
-          onSelect={(id) => {
+          onSelect={(item) => {
+            const id = item.id;
             if (mediaTarget === "body" && bodyRef.current) {
               restoreBodyRange();
               document.execCommand("insertHTML", false, `<p><img data-media-id="${id}" data-size="large" data-align="center" data-shape="rectangle" data-frame="none" /></p><p><br></p>`);
@@ -818,11 +819,11 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             } else update("heroMediaId", id);
             setPickerOpen(false);
           }}
-          onSelectMany={(ids) => {
-            if (bodyRef.current && ids.length) {
+          onSelectMany={(items) => {
+            if (bodyRef.current && items.length) {
               bodyRef.current.focus();
               const group = crypto.randomUUID();
-              document.execCommand("insertHTML", false, `<div data-image-group="${group}">${ids.map((id) => `<img data-media-id="${id}" data-size="medium" data-align="center" data-shape="rounded" data-frame="none" />`).join("")}</div><p><br></p>`);
+              document.execCommand("insertHTML", false, `<div data-image-group="${group}">${items.map((item) => `<img data-media-id="${item.id}" data-size="medium" data-align="center" data-shape="rounded" data-frame="none" />`).join("")}</div><p><br></p>`);
               update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
             }
             setPickerOpen(false);

@@ -38,7 +38,7 @@ export default async function StoryThemesPage({ searchParams }: { searchParams: 
           <p className="mt-1 text-sm text-muted">Обединявайте публикувани статии в една редактирана хронология.</p>
         </div>
         <Link
-          href={withBase("/stories/new")}
+          href="/stories/new"
           className="np-btn np-btn-primary"
         >
           <span aria-hidden="true">+</span>

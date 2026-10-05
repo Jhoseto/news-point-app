@@ -13,9 +13,11 @@ type Props = {
   onConfirm: (next: Selection[]) => void;
 };
 
-function formatDate(value: Date | null) {
+function formatDate(value: Date | string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props) {

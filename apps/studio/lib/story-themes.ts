@@ -593,3 +593,16 @@ async function emitOutbox(themeId: string, slug: string, type: "story.published"
 async function revalidateThemePaths(slug: string): Promise<void> {
   await triggerRevalidate(["/temi", `/temi/${slug}/`]);
 }
+
+/**
+ * Pure validation hooks, exposed for unit tests in `tests/story-themes.test.ts`.
+ * These are internal helpers that enforce URL-space, slug-format and input
+ * length rules. They never touch the database, so the export is safe to keep.
+ *
+ * If you rename or move this export, update the test import in lockstep.
+ */
+export const __testHooks = {
+  assertSlug,
+  assertInput,
+  RESERVED_SLUGS: SLUG_RESERVED,
+};

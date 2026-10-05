@@ -20,9 +20,12 @@ export function MediaPicker({
 }: {
   media: MediaOption[];
   selected: string | null;
-  onSelect: (id: string) => void;
+  /** Receives the picked MediaOption so callers can read `url` directly —
+   * `media` prop and the picked item come from different fetches, so looking
+   * up the picked id in `media` would silently miss in the common case. */
+  onSelect: (item: MediaOption) => void;
   multiple?: boolean;
-  onSelectMany?: (ids: string[]) => void;
+  onSelectMany?: (items: MediaOption[]) => void;
   onUpload?: (item: MediaOption) => void;
   onClose: () => void;
 }) {
@@ -41,7 +44,7 @@ export function MediaPicker({
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
   const upload = async () => {
-    if (!uploadFiles.length || !onUpload) return;
+    if (!uploadFiles.length) return;
     setUploading(true);
     try {
       for (const file of uploadFiles) {
@@ -49,7 +52,12 @@ export function MediaPicker({
         const response = await fetch(withBase("/api/editor/media/upload/"), { method: "POST", body: form });
         if (!response.ok) throw new Error("Качването не беше успешно.");
         const item = await response.json() as MediaOption;
-        onUpload(item);
+        // Pickers that own their own selection logic (article body, cover)
+        // get the upload directly via onUpload; pickers that don't (cover
+        // picker when only `onSelect` is wired) still upload the file and
+        // auto-select the last one so the click does what users expect.
+        if (onUpload) onUpload(item);
+        else onSelect(item);
       }
       setUploadFiles([]); setMode("library");
     } finally { setUploading(false); }
@@ -166,7 +174,7 @@ export function MediaPicker({
                 <li key={item.id}>
                   <button
                     type="button"
-                    onClick={() => multiple ? setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]) : onSelect(item.id)}
+                    onClick={() => multiple ? setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]) : onSelect(item)}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
                   >
@@ -181,7 +189,7 @@ export function MediaPicker({
           </div>
         </div>
       ) : null}
-      {multiple ? <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3"><span className="mr-auto text-xs text-muted">{selectedMany.length} избрани</span><button type="button" disabled={!selectedMany.length} onClick={() => onSelectMany?.(selectedMany)} className="np-btn np-btn-primary px-3 py-1.5 text-xs">Вмъкни в статията</button></div> : null}
+      {multiple ? <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3"><span className="mr-auto text-xs text-muted">{selectedMany.length} избрани</span><button type="button" disabled={!selectedMany.length} onClick={() => onSelectMany?.(library.filter((item) => selectedMany.includes(item.id)))} className="np-btn np-btn-primary px-3 py-1.5 text-xs">Вмъкни в статията</button></div> : null}
     </dialog>
   );
 }

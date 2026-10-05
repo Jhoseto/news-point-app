@@ -14,8 +14,8 @@ const NAV = [
   { href: "/submissions", label: "Сигнали", icon: "M4 5h16v11H8l-4 4V5z" },
   { href: "/my-news", label: "Моята новина", icon: "M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11l5 4V6a2 2 0 0 0-2-2zM7 9h10M7 13h6" },
   { href: "/arrange", label: "Подреждане", icon: "M12 17v5M8 8a4 4 0 1 1 8 0c0 2-2 3-2 5H10c0-2-2-3-2-5" },
-  { href: "/stories", label: "Теми с продължение", icon: "M4 7h16M4 12h12M4 17h8" },
   { href: "/podcasts", label: "Подкасти", icon: "M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" },
+  { href: "/stories", label: "Теми с продължение", icon: "M4 7h16M4 12h12M4 17h8" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 

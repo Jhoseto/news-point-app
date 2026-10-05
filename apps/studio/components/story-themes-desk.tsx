@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { withBase } from "@/lib/paths";
 import type { StoryThemeListItem } from "@/lib/story-theme-types";
 
-function formatDate(value: Date | null) {
+function formatDate(value: Date | string | null) {
   if (!value) return "—";
-  return new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric" }).format(value);
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
 }
 
 function statusLabel(item: StoryThemeListItem) {
@@ -34,7 +36,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
     setBusyId(id);
     setFeedback(null);
     try {
-      const res = await fetch("/api/stories", {
+      const res = await fetch(withBase("/api/stories"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action, id }),
@@ -95,7 +97,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                 <tr key={theme.id} className="border-b border-line/60 last:border-b-0">
                   <td className="px-4 py-3">
                     <Link
-                      href={withBase(`/stories/${theme.id}`)}
+                      href={`/stories/${theme.id}`}
                       className="font-bold text-ink hover:text-accent"
                     >
                       {theme.title}
@@ -110,11 +112,11 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1.5">
                       {theme.isPublished ? (
-                        <Link href={withBase(`/temi/${theme.slug}/`)} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs" target="_blank" rel="noreferrer">
+                        <Link href={`/temi/${theme.slug}/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs" target="_blank" rel="noreferrer">
                           Виж
                         </Link>
                       ) : null}
-                      <Link href={withBase(`/stories/${theme.id}/preview`)} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
+                      <Link href={`/stories/${theme.id}/preview`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Preview
                       </Link>
                       {theme.isPublished ? (
@@ -136,7 +138,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                           Публикувай
                         </button>
                       )}
-                      <Link href={withBase(`/stories/${theme.id}`)} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
+                      <Link href={`/stories/${theme.id}`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Редакция
                       </Link>
                       <button

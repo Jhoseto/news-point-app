@@ -22,7 +22,9 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",
+    "@newspoint/db": "workspace:*",
     "@types/node": "24.13.6",
+    "drizzle-orm": "0.45.3",
     "typescript": "6.0.3",
     "vitest": "5.0.1"
   }

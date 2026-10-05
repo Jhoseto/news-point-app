@@ -137,7 +137,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         if (theme?.id) payload.id = theme.id;
       }
       if (extra) Object.assign(payload, extra);
-      const res = await fetch("/api/stories", {
+      const res = await fetch(withBase("/api/stories"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -166,7 +166,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
     if (!theme) return;
     setPending(true);
     try {
-      const res = await fetch("/api/stories", {
+      const res = await fetch(withBase("/api/stories"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "reorder", themeId: theme.id, articleIds: orderedIds }),
@@ -184,7 +184,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
     if (!theme) return;
     setPending(true);
     try {
-      const res = await fetch("/api/stories", {
+      const res = await fetch(withBase("/api/stories"), {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ action: "removeArticle", themeId: theme.id, articleId }),
@@ -464,9 +464,8 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
           media={mediaOptions}
           selected={cover.id}
           onClose={() => setCoverPickerOpen(false)}
-          onSelect={(id) => {
-            const asset = mediaOptions.find((item) => item.id === id);
-            if (asset) setCover({ id, url: asset.url });
+          onSelect={(item) => {
+            setCover({ id: item.id, url: item.url });
             setCoverPickerOpen(false);
           }}
         />
