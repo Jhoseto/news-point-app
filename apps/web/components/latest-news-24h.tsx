@@ -1,4 +1,5 @@
 "use client";
+import { DESKTOP_VIEWPORT_CHANGE, desktopRect, getDesktopViewport } from "@/lib/desktop-viewport";
 
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
@@ -163,15 +164,15 @@ export function LatestNews24h({
     const id = link.dataset.latestId;
     if (!id) return;
     const scroller = link.closest(".np-latest-panel-scroll");
-    if (scroller instanceof HTMLElement && !isLatestRowVisible(link.getBoundingClientRect(), scroller.getBoundingClientRect())) {
+    if (scroller instanceof HTMLElement && !isLatestRowVisible(desktopRect(link.getBoundingClientRect()), desktopRect(scroller.getBoundingClientRect()))) {
       setActive((current) => current === null ? current : null);
       return;
     }
     const flyout = measureLatestFlyout({
-      stage: stage.getBoundingClientRect(),
-      panel: panel.getBoundingClientRect(),
-      link: link.getBoundingClientRect(),
-      viewportHeight: window.innerHeight,
+      stage: desktopRect(stage.getBoundingClientRect()),
+      panel: desktopRect(panel.getBoundingClientRect()),
+      link: desktopRect(link.getBoundingClientRect()),
+      viewportHeight: getDesktopViewport().height,
     });
     const next = flyout ? { id, ...flyout } : null;
     setActive((current) => samePreview(current, next) ? current : next);
@@ -203,9 +204,11 @@ export function LatestNews24h({
     };
     window.addEventListener("scroll", schedule, true);
     window.addEventListener("resize", schedule);
+    window.addEventListener(DESKTOP_VIEWPORT_CHANGE, schedule);
     return () => {
       window.removeEventListener("scroll", schedule, true);
       window.removeEventListener("resize", schedule);
+      window.removeEventListener(DESKTOP_VIEWPORT_CHANGE, schedule);
       if (frame) cancelAnimationFrame(frame);
     };
   }, []);

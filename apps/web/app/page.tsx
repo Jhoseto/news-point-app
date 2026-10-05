@@ -88,7 +88,7 @@ export default async function HomePage() {
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
-        <div data-np-latest-frame className="hidden h-[min(56vh,34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(54vh,36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
+        <div data-np-latest-frame className="hidden h-[min(calc(56*var(--np-desktop-vh,1vh)),34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(calc(54*var(--np-desktop-vh,1vh)),36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
           {hero ? <HeroCard article={hero} priority fit="band" className="min-h-0" {...shineDelayProp(bandHero)} /> : null}
           <div data-np-latest-stage className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-4">
             {support[0] ? (

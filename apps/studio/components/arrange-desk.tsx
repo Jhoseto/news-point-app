@@ -27,7 +27,7 @@ import {
 import type { ArrangementArticle, ArrangementHistoryItem, MenuCategory } from "@/lib/arrangement-types";
 import { withBase } from "@/lib/paths";
 
-const field = "h-8 w-full rounded-md border border-white/15 bg-white/10 px-2 text-xs text-white outline-none placeholder:text-white/40 focus:border-white/40";
+const field = "h-8 w-full min-w-0 max-w-full rounded-md border border-white/15 bg-white/10 px-2 text-xs text-white outline-none placeholder:text-white/40 focus:border-white/40";
 
 const ACCENTS: Record<string, string> = {
   plovdiv: "#1396a3",
@@ -396,7 +396,7 @@ export function ArrangeDesk({
             role="dialog"
             aria-modal="true"
             aria-labelledby="arrange-slot-heading"
-            className="flex max-h-[min(92dvh,44rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.4rem] bg-[#101735] text-white shadow-2xl ring-1 ring-white/10 sm:rounded-[1.4rem]"
+            className="flex max-h-[min(92dvh,44rem)] w-full max-w-lg min-w-0 flex-col overflow-hidden rounded-t-[1.4rem] bg-[#101735] text-white shadow-2xl ring-1 ring-white/10 sm:rounded-[1.4rem]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 border-b border-white/10 px-4 py-3">
@@ -409,7 +409,7 @@ export function ArrangeDesk({
               <button type="button" className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold" onClick={closeInspector}>Затвори</button>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-3">
               {activeCarouselPrefix ? (
                 <CarouselOrderPanel
                   title={CAROUSEL_ROW_TITLES[activeCarouselPrefix]}
@@ -422,8 +422,8 @@ export function ArrangeDesk({
                 />
               ) : null}
 
-              <form onSubmit={search} className="mt-3 flex gap-1.5">
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсете новина" className={field} />
+              <form onSubmit={search} className="mt-3 flex min-w-0 gap-1.5">
+                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсете новина" className={`${field} flex-1`} />
                 <button type="submit" className="h-8 shrink-0 rounded-md bg-white px-3 text-xs font-bold text-[#101735]">Търси</button>
               </form>
               {results.length ? (
@@ -439,9 +439,9 @@ export function ArrangeDesk({
               ) : null}
 
               {headEdit ? (
-                <div className="mt-3 grid gap-3">
+                <div className="mt-3 grid min-w-0 gap-3">
                   <p className="text-[11px] font-semibold tracking-[0.12em] text-white/45 uppercase">Кога да е на мястото</p>
-                  <div>
+                  <div className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                       <span className="text-[11px] text-white/55">От</span>
                       <button
@@ -460,10 +460,10 @@ export function ArrangeDesk({
                     />
                     <p className="mt-1 text-[10px] text-white/40">Празно „От“ = веднага. „От сега“ попълва текущия час.</p>
                   </div>
-                  <div>
-                    <label className="mb-1 flex items-center gap-2 text-[11px] text-white/55">
+                  <div className="min-w-0">
+                    <label className="mb-1 flex min-w-0 items-center gap-2 text-[11px] text-white/55">
                       <span>До</span>
-                      <label className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-white/80">
+                      <label className="ml-auto flex shrink-0 items-center gap-1.5 text-xs font-semibold text-white/80">
                         <input
                           type="checkbox"
                           checked={headEdit.endsAt === null}
@@ -483,13 +483,13 @@ export function ArrangeDesk({
                     />
                   </div>
                   {editItems.length > 1 ? (
-                    <div className="border-t border-white/10 pt-2">
+                    <div className="min-w-0 border-t border-white/10 pt-2">
                       <p className="text-[11px] font-semibold text-white/45">След това (ред на опашката)</p>
                       {editItems.slice(1).map((item, index) => (
-                        <div key={`${item.articleId}-${index}`} className="mt-1.5 flex items-center gap-2 text-xs text-white/70">
-                          <span className="min-w-0 flex-1 truncate">{known[item.articleId]?.title ?? "Новина"}</span>
-                          <button type="button" className="rounded bg-white/10 px-1.5 py-0.5 font-bold" disabled={index === 0} onClick={() => moveQueueItemInDraft(index, -1)} aria-label="Нагоре">↑</button>
-                          <button type="button" className="rounded bg-white/10 px-1.5 py-0.5 font-bold" disabled={index >= editItems.length - 2} onClick={() => moveQueueItemInDraft(index, 1)} aria-label="Надолу">↓</button>
+                        <div key={`${item.articleId}-${index}`} className="mt-1.5 flex min-w-0 items-center gap-2 text-xs text-white/70">
+                          <span className="min-w-0 flex-1 truncate" title={known[item.articleId]?.title ?? "Новина"}>{known[item.articleId]?.title ?? "Новина"}</span>
+                          <button type="button" className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 font-bold" disabled={index === 0} onClick={() => moveQueueItemInDraft(index, -1)} aria-label="Нагоре">↑</button>
+                          <button type="button" className="shrink-0 rounded bg-white/10 px-1.5 py-0.5 font-bold" disabled={index >= editItems.length - 2} onClick={() => moveQueueItemInDraft(index, 1)} aria-label="Надолу">↓</button>
                           <button type="button" className="shrink-0 font-semibold text-white" onClick={() => setEditItems((items) => items.filter((_, itemIndex) => itemIndex !== index + 1))}>Махни</button>
                         </div>
                       ))}

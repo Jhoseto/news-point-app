@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { DESKTOP_VIEWPORT_CHANGE, desktopPoint, getDesktopViewport } from "@/lib/desktop-viewport";
 import type { TrafficIncident } from "@/lib/livepoint/types";
 import {
   TOMTOM_FLOW_REFRESH_MS,
@@ -238,6 +239,26 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
     const C = cesium.current;
     const map = viewer.current;
     if (!C || !map || !ready) return;
+    const syncPixels = () => {
+      const scale = getDesktopViewport().scale;
+      for (const id of entityIds.current) {
+        const point = map.entities.getById(id)?.point;
+        if (!point) continue;
+        point.pixelSize = new C.ConstantProperty(12 * scale);
+        point.outlineWidth = new C.ConstantProperty(2 * scale);
+      }
+      trafficLayer.current?.setPixelScale(scale);
+      map.scene.requestRender();
+    };
+    syncPixels();
+    window.addEventListener(DESKTOP_VIEWPORT_CHANGE, syncPixels);
+    return () => window.removeEventListener(DESKTOP_VIEWPORT_CHANGE, syncPixels);
+  }, [incidents, showMarkers, ready, photoMode]);
+
+  useEffect(() => {
+    const C = cesium.current;
+    const map = viewer.current;
+    if (!C || !map || !ready) return;
     const handler = new C.ScreenSpaceEventHandler(map.scene.canvas);
     handler.setInputAction((event: { position: import("cesium").Cartesian2 }) => {
       const picked = map.scene.pick(event.position);
@@ -248,7 +269,7 @@ export function TrafficMap3D({ className, token, focusPosition, incidents, showF
       const picked = map.scene.pick(event.endPosition);
       const rawId = picked?.id?.id as string | undefined;
       if (rawId?.startsWith(MARKER_PREFIX)) {
-        setHover({ id: rawId.slice(MARKER_PREFIX.length), x: event.endPosition.x, y: event.endPosition.y });
+        setHover({ id: rawId.slice(MARKER_PREFIX.length), ...desktopPoint(event.endPosition) });
       } else {
         setHover(null);
       }

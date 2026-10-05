@@ -214,7 +214,7 @@ export const articleCategories = pgTable(
   ],
 );
 
-export const outboxEventTypes = ["article.published", "article.updated", "layout.updated"] as const;
+export const outboxEventTypes = ["article.published", "article.updated", "layout.updated", "story.published", "story.updated"] as const;
 export type OutboxEventType = (typeof outboxEventTypes)[number];
 
 export interface OutboxPayload {
@@ -333,6 +333,54 @@ export const pageArrangements = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("page_arrangements_page_idx").on(table.pageKey, table.createdAt.desc())],
+);
+
+/**
+ * Editor-curated "Теми с продължение". A story theme groups already-published
+ * articles into a navigable timeline. The public reader sees the theme at
+ * `/temi/[slug]/` and can browse all included articles. Articles are not
+ * duplicated — the theme simply re-orders existing entries.
+ */
+export const storyThemes = pgTable(
+  "story_themes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    intro: text("intro").notNull().default(""),
+    coverMediaId: uuid("cover_media_id").references(() => mediaAssets.id, { onDelete: "set null" }),
+    coverCaption: text("cover_caption").notNull().default(""),
+    isPublished: boolean("is_published").notNull().default(false),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
+    ...timestamps,
+  },
+  (table) => [
+    index("story_themes_published_slug_key")
+      .on(table.slug)
+      .where(sql`is_published`),
+    index("story_themes_published_idx")
+      .on(table.publishedAt.desc())
+      .where(sql`is_published`),
+  ],
+);
+
+/** Many-to-many: which articles belong to a story theme and in what order. */
+export const storyThemeArticles = pgTable(
+  "story_theme_articles",
+  {
+    themeId: uuid("theme_id").notNull().references(() => storyThemes.id, { onDelete: "cascade" }),
+    articleId: uuid("article_id").notNull().references(() => articles.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+    addedBy: text("added_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.themeId, table.articleId] }),
+    index("story_theme_articles_theme_position_idx").on(table.themeId, table.position),
+    index("story_theme_articles_article_idx").on(table.articleId),
+  ],
 );
 
 /** Reader PWA Web Push subscriptions. One row per browser/device endpoint. */
@@ -496,5 +544,7 @@ export const schemaTables = {
   publishRequests,
   livepointSubmissions,
   pageArrangements,
+  storyThemes,
+  storyThemeArticles,
   pushSubscriptions,
 };

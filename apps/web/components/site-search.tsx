@@ -203,7 +203,7 @@ export function SiteSearch({ variant = "header", autoFocus = false, onNavigate }
             </div>
           ) : (
             <>
-              <ul id={listId} role="listbox" aria-label="Резултати" className={`flex flex-col ${sheet ? "gap-1" : "max-h-[min(28rem,70dvh)] overflow-y-auto p-1.5"}`}>
+              <ul id={listId} role="listbox" aria-label="Резултати" className={`flex flex-col ${sheet ? "gap-1" : "max-h-[min(28rem,calc(var(--np-desktop-height,100dvh)*.7))] overflow-y-auto p-1.5"}`}>
                 {hits.map((hit, index) => (
                   <li key={hit.id} id={`${listId}-${index}`} role="option" aria-selected={index === active}>
                     <Link

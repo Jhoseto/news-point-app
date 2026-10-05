@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon, SettingsIcon } from "./icons";
 import { OPEN_SETTINGS_EVENT } from "@/lib/push-client";
+import { lockDesktopViewport } from "@/lib/desktop-viewport";
 
 const SettingsPanel = dynamic(() => import("./settings-panel").then((module) => module.SettingsPanel), {
   loading: () => <p role="status" className="py-10 text-center text-sm text-muted">Зареждане на настройките…</p>,
@@ -32,12 +33,14 @@ export function SettingsModal() {
     const element = dialog.current;
     if (!element) return;
     const previousOverflow = document.body.style.overflow;
+    const releaseViewport = lockDesktopViewport();
     document.body.style.overflow = "hidden";
     element.showModal();
     title.current?.focus();
     return () => {
       element.close();
       document.body.style.overflow = previousOverflow;
+      releaseViewport();
       trigger.current?.focus({ preventScroll: true });
     };
   }, [open]);
@@ -62,8 +65,8 @@ export function SettingsModal() {
           } else if (!event.shiftKey && document.activeElement === last) {
             event.preventDefault(); first?.focus();
           }
-        }} className="np-settings-dialog fixed inset-0 m-auto max-h-[calc(100dvh-1rem)] w-[calc(100%_-_1rem)] max-w-[34rem] overflow-hidden rounded-2xl border border-line bg-surface p-0 text-ink shadow-[0_24px_90px_rgb(0_5_22_/_0.3)]">
-          <div className="flex max-h-[calc(100dvh-1rem)] flex-col">
+        }} className="np-settings-dialog fixed inset-0 m-auto max-h-[calc(var(--np-desktop-height,100dvh)-1rem)] w-[calc(100%_-_1rem)] max-w-[34rem] overflow-hidden rounded-2xl border border-line bg-surface p-0 text-ink shadow-[0_24px_90px_rgb(0_5_22_/_0.3)]">
+          <div className="flex max-h-[calc(var(--np-desktop-height,100dvh)-1rem)] flex-col">
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
               <h2 ref={title} id={`${id}-title`} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-base font-extrabold tracking-tight text-ink outline-none"><span className="np-ring !size-4 shrink-0" aria-hidden="true" />Настройки</h2>
               <button type="button" aria-label="Затвори настройките" onClick={() => setOpen(false)} className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"><CloseIcon width={16} height={16} /></button>

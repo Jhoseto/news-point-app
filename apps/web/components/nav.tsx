@@ -444,7 +444,12 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   useEffect(() => {
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+      if (event.key !== "Escape") return;
+      // In the proportional composition Escape belongs to the open dialog;
+      // closing LivePoint/settings must not also collapse the reference rail.
+      if (document.documentElement.hasAttribute("data-np-desktop-scaled")
+        && document.querySelector('[aria-modal="true"], dialog[open]')) return;
+      setExpanded(false);
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -456,7 +461,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
     <>
       <aside
         aria-label="Рубрики"
-        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
+        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(var(--np-desktop-height,100dvh)-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
           expanded ? "w-[16.5rem]" : "w-[4.25rem]"
         }`}
       >

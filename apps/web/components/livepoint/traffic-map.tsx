@@ -1,4 +1,5 @@
 "use client";
+import { desktopDistance } from "@/lib/desktop-viewport";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import type { TrafficIncident } from "@/lib/livepoint/types";
@@ -147,7 +148,7 @@ export function TrafficMap({ className = "", focusPosition, incidents = [], onSe
   function onPointerMove(event: PointerEvent<HTMLDivElement>) {
     if (!drag.current) return;
     const start = toPixels(drag.current.center, zoom);
-    setCenter(fromPixels(start.x - (event.clientX - drag.current.x), start.y - (event.clientY - drag.current.y), zoom));
+    setCenter(fromPixels(start.x - desktopDistance(event.clientX - drag.current.x), start.y - desktopDistance(event.clientY - drag.current.y), zoom));
   }
 
   function onPointerEnd(event: PointerEvent<HTMLDivElement>) {

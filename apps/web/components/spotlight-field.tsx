@@ -1,4 +1,5 @@
 "use client";
+import { desktopDistance } from "@/lib/desktop-viewport";
 
 import { useEffect } from "react";
 import { useReducedMotion } from "./reader-preferences";
@@ -21,8 +22,8 @@ export function SpotlightField() {
       frame = 0;
       if (!target) return;
       const rect = target.getBoundingClientRect();
-      target.style.setProperty("--np-spot-x", `${clientX - rect.left}px`);
-      target.style.setProperty("--np-spot-y", `${clientY - rect.top}px`);
+      target.style.setProperty("--np-spot-x", `${desktopDistance(clientX - rect.left)}px`);
+      target.style.setProperty("--np-spot-y", `${desktopDistance(clientY - rect.top)}px`);
     };
 
     const onMove = (event: PointerEvent) => {

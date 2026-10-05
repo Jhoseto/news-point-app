@@ -5,7 +5,7 @@ import { CategoryPage } from "@/components/category-page";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbList, newsArticle } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
-import { getArticleByPath, getCategoryByPath } from "@/lib/queries";
+import { getArticleByPath, getCategoryByPath, getStoryThemesForArticle } from "@/lib/queries";
 
 export const revalidate = 60;
 
@@ -86,10 +86,15 @@ export default async function PathPage({ params }: Props) {
       authorName: article.authorName,
       sectionName: article.category?.name,
     });
+    const storyThemes = await getStoryThemesForArticle(article.id);
+    // Skip the heavy query when the article is not part of any theme.
+    const compact = storyThemes.length > 0
+      ? await import("@/lib/queries").then((m) => m.getStoryThemeCompact(article.id))
+      : null;
     return (
       <>
         <JsonLd data={[breadcrumbs, articleLd]} id="np-ld-article" />
-        <ArticlePage article={article} />
+        <ArticlePage article={article} storyThemes={storyThemes} storyThemeCompact={compact} />
       </>
     );
   }

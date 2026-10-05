@@ -1,4 +1,5 @@
 "use client";
+import { desktopDistance } from "@/lib/desktop-viewport";
 
 import { useEffect, useRef, useState, type PointerEvent, type KeyboardEvent } from "react";
 import { PLOVDIV } from "@/lib/livepoint/config";
@@ -52,7 +53,7 @@ export function ReportLocationMap({ point, focusPoint, onSelect }: { point: MapP
   function pointerMove(event: PointerEvent<HTMLDivElement>) {
     const start = drag.current;
     if (!start) return;
-    const dx = event.clientX - start.x, dy = event.clientY - start.y;
+    const dx = desktopDistance(event.clientX - start.x), dy = desktopDistance(event.clientY - start.y);
     if (Math.hypot(dx, dy) > 6) start.moved = true;
     if (start.moved) setCenter(pointAtOffset(start.center, zoom, -dx, -dy));
   }
@@ -62,7 +63,7 @@ export function ReportLocationMap({ point, focusPoint, onSelect }: { point: MapP
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (!start || start.moved || event.type === "pointercancel") return;
     const rect = event.currentTarget.getBoundingClientRect();
-    onSelect(pointAtOffset(center, zoom, event.clientX - rect.left - rect.width / 2, event.clientY - rect.top - rect.height / 2));
+    onSelect(pointAtOffset(center, zoom, desktopDistance(event.clientX - rect.left - rect.width / 2), desktopDistance(event.clientY - rect.top - rect.height / 2)));
   }
   function mapKey(event: KeyboardEvent<HTMLDivElement>) {
     const offsets: Record<string, [number, number]> = { ArrowLeft: [-80, 0], ArrowRight: [80, 0], ArrowUp: [0, -80], ArrowDown: [0, 80] };
@@ -72,7 +73,7 @@ export function ReportLocationMap({ point, focusPoint, onSelect }: { point: MapP
   }
 
   return (
-    <div ref={host} className="relative h-[min(43dvh,22rem)] min-h-48 overflow-hidden rounded-2xl border border-line bg-surface-2 sm:h-[min(46dvh,25rem)]">
+    <div ref={host} className="relative h-[min(calc(43*var(--np-desktop-vh,1dvh)),22rem)] min-h-48 overflow-hidden rounded-2xl border border-line bg-surface-2 sm:h-[min(calc(46*var(--np-desktop-vh,1dvh)),25rem)]">
       <div role="region" tabIndex={0} aria-label="Избор на място върху картата. Натиснете за точка, плъзнете за преместване. С клавиатура: стрелки и Enter за точка в центъра." className="absolute inset-0 cursor-crosshair touch-none outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-accent/40" onKeyDown={mapKey} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerEnd} onPointerCancel={pointerEnd}>
         {tiles.map(tile => <img key={`${zoom}-${tile.x}-${tile.y}`} src={`https://api.tomtom.com/map/1/tile/basic/main/${zoom}/${tile.x}/${tile.y}.png?key=${encodeURIComponent(key!)}&language=bg-BG&view=Unified`} alt="" draggable={false} width={MAP_TILE_SIZE} height={MAP_TILE_SIZE} className="pointer-events-none absolute select-none" style={{ left: tile.left, top: tile.top, width: MAP_TILE_SIZE, height: MAP_TILE_SIZE }} onLoad={tile.center ? () => setReady(true) : undefined} onError={tile.center ? () => setError("Картата не се зареди от TomTom. Затворете и опитайте отново.") : undefined} />)}
         <span aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0b1552]/65 bg-white/30 shadow-[0_0_0_2px_white]" />

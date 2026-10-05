@@ -179,7 +179,7 @@ export function CamerasPanel({ variant = "page" }: { variant?: "panel" | "page" 
               Каталог <span className="font-bold text-muted">· {cameras.length}</span>
             </h3>
           </div>
-          <ul className="np-scroll-soft max-h-[22rem] overflow-y-auto xl:max-h-[min(36rem,calc(100vh-14rem))]">
+          <ul className="np-scroll-soft max-h-[22rem] overflow-y-auto xl:max-h-[min(36rem,calc(var(--np-desktop-height,100vh)-14rem))]">
             {cameras.map((camera) => (
               <CameraListRow
                 key={camera.slug}

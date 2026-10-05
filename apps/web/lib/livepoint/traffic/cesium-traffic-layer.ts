@@ -61,6 +61,7 @@ export class CesiumTrafficLayer {
   private enabled = false;
   private loading = false;
   private osmRoads: OverpassRoad[] | null = null;
+  private pixelScale = 1;
 
   constructor(
     private readonly viewer: import("cesium").Viewer,
@@ -74,6 +75,15 @@ export class CesiumTrafficLayer {
     if (this.collection) this.collection.show = on;
     if (on && this.dots.length === 0 && !this.loading) void this.refreshRoads([]);
     this.syncClock(on);
+  }
+
+  /** The containing map keeps its proportions while Cesium renders in physical pixels. */
+  setPixelScale(scale: number) {
+    if (scale === this.pixelScale) return;
+    const ratio = scale / this.pixelScale;
+    for (const dot of this.dots) dot.point.pixelSize *= ratio;
+    this.pixelScale = scale;
+    this.viewer.scene.requestRender();
   }
 
   dispose() {
@@ -188,7 +198,7 @@ export class CesiumTrafficLayer {
       this.C.Cartesian3.lerp(road.waypoints[segIdx]!, road.waypoints[segIdx + 1]!, t, this.scratch.lerp!);
       const point = this.collection.add({
         position: this.C.Cartesian3.clone(this.scratch.lerp!),
-        pixelSize: dotPixelSize(road, bucket),
+        pixelSize: dotPixelSize(road, bucket) * this.pixelScale,
         color: bucketColor(this.C, bucket),
         scaleByDistance: new this.C.NearFarScalar(100, 1.5, Math.max(8000, this.viewer.camera.positionCartographic.height * 1.5), bucket === "jam" ? 0.55 : 0.3),
         translucencyByDistance: new this.C.NearFarScalar(100, 1, Math.max(10_000, this.viewer.camera.positionCartographic.height * 1.8), 0),

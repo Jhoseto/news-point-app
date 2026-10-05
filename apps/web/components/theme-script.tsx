@@ -2,9 +2,10 @@
 
 import { useSyncExternalStore } from "react";
 import { READER_PREFERENCES_SCRIPT } from "@/lib/reader-preferences";
+import { DESKTOP_VIEWPORT_SCRIPT } from "@/lib/desktop-viewport";
 
 // Runs before first paint so the page never flashes the wrong theme.
-const THEME_SCRIPT = READER_PREFERENCES_SCRIPT;
+const THEME_SCRIPT = READER_PREFERENCES_SCRIPT + DESKTOP_VIEWPORT_SCRIPT;
 
 const emptySubscribe = () => () => {};
 

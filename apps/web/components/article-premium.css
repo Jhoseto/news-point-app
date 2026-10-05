@@ -1,3 +1,5 @@
+@reference "../app/globals.css";
+
 .np-article-page {
   --np-article-gutter: 1rem;
   max-width: none;
@@ -6,7 +8,9 @@
 }
 @media (min-width: 40rem) { .np-article-page { --np-article-gutter: 1.5rem; } }
 @media (min-width: 64rem) { .np-article-page { --np-article-gutter: 2rem; } }
-@media (min-width: 96rem) { .np-article-page { --np-article-gutter: 2.75rem; } }
+.np-article-page {
+  @variant 2xl { --np-article-gutter: 2.75rem; }
+}
 
 .np-article-breadcrumb > * { width: min(100%, 72rem); margin-inline: auto; }
 
@@ -42,7 +46,7 @@
 .np-article-hero-frame {
   position: relative;
   overflow: hidden;
-  border-radius: clamp(1.1rem, 2.5vw, 2rem);
+  border-radius: clamp(1.1rem, calc(2.5 * var(--np-desktop-vw, 1vw)), 2rem);
   background: var(--np-surface-2);
   border: 1px solid color-mix(in oklab, var(--np-line) 72%, transparent);
   box-shadow: 0 36px 90px -54px color-mix(in oklab, var(--np-ink) 58%, transparent), 0 1px 0 color-mix(in oklab, white 55%, transparent) inset;
@@ -51,7 +55,7 @@
 .np-article-hero-image {
   display: block;
   width: 100%;
-  max-height: min(52vh, 29rem);
+  max-height: min(calc(52 * var(--np-desktop-vh, 1vh)), 29rem);
   aspect-ratio: 2.25;
   object-fit: cover;
 }
@@ -66,7 +70,7 @@
     width: auto;
     max-width: 100%;
     height: auto;
-    max-height: min(38vh, 24rem);
+    max-height: min(calc(38 * var(--np-desktop-vh, 1vh)), 24rem);
     aspect-ratio: auto;
     object-fit: scale-down;
     margin-inline: auto;
@@ -74,8 +78,8 @@
 }
 .np-article-hero-category {
   position: absolute;
-  top: clamp(0.8rem, 2vw, 1.75rem);
-  left: clamp(0.8rem, 2vw, 1.75rem);
+  top: clamp(0.8rem, calc(2 * var(--np-desktop-vw, 1vw)), 1.75rem);
+  left: clamp(0.8rem, calc(2 * var(--np-desktop-vw, 1vw)), 1.75rem);
 }
 .np-article-hero figcaption {
   max-width: 76rem;
@@ -91,14 +95,14 @@
 
 .np-article-header {
   width: min(100%, 64rem);
-  margin: clamp(2rem, 4vw, 3.5rem) auto 0;
+  margin: clamp(2rem, calc(4 * var(--np-desktop-vw, 1vw)), 3.5rem) auto 0;
 }
 @media (min-width: 64rem) {
   .np-article-header {
     width: min(100%, 61rem);
   }
   .np-article-header h1 {
-    font-size: clamp(1.65rem, 1.85vw, 2.35rem);
+    font-size: clamp(1.65rem, calc(1.85 * var(--np-desktop-vw, 1vw)), 2.35rem);
   }
 }
 .np-article-no-hero-category { margin-bottom: 1.25rem; }
@@ -112,7 +116,7 @@
 .np-article-header h1 {
   max-width: none;
   color: var(--np-ink);
-  font-size: clamp(1.75rem, 2.1vw, 2.65rem);
+  font-size: clamp(1.75rem, calc(2.1 * var(--np-desktop-vw, 1vw)), 2.65rem);
   font-weight: 760;
   letter-spacing: -0.038em;
   line-height: 1.14;
@@ -122,7 +126,7 @@
   max-width: 48rem;
   margin-top: 1.25rem;
   color: var(--np-body);
-  font-size: clamp(1rem, 1.25vw, 1.2rem);
+  font-size: clamp(1rem, calc(1.25 * var(--np-desktop-vw, 1vw)), 1.2rem);
   line-height: 1.58;
   text-wrap: pretty;
 }
@@ -169,7 +173,7 @@
 
 .np-article-reading-layout {
   max-width: 78rem;
-  margin: clamp(2.1rem, 5vw, 4.5rem) auto 0;
+  margin: clamp(2.1rem, calc(5 * var(--np-desktop-vw, 1vw)), 4.5rem) auto 0;
 }
 .np-article-reading-column {
   width: min(100%, 50rem);
@@ -214,7 +218,7 @@
 .np-article-toc-disclosure summary:hover .np-article-toc-toggle { border-color: color-mix(in oklab, var(--np-accent) 48%, var(--np-line)); background: color-mix(in oklab, var(--np-surface) 95%, var(--np-accent)); }
 .np-article-toc-disclosure[open] .np-article-toc-toggle { transform: rotate(180deg); }
 .np-article-toc-disclosure[open] .np-article-toc-toggle::after { transform: translate(-50%, -50%) rotate(0); }
-.np-article-toc-content { max-height: min(46vh, 20rem); padding: 0.25rem 1rem 0.6rem; overflow: auto; animation: np-toc-reveal 180ms ease-out; }
+.np-article-toc-content { max-height: min(calc(46 * var(--np-desktop-vh, 1vh)), 20rem); padding: 0.25rem 1rem 0.6rem; overflow: auto; animation: np-toc-reveal 180ms ease-out; }
 .np-article-toc ol { position: relative; display: grid; margin: 0; }
 .np-article-toc ol::before { content: ""; position: absolute; top: 1.15rem; bottom: 1.15rem; left: 0.75rem; width: 1px; background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--np-accent) 34%, var(--np-line)) 12%, var(--np-line) 88%, transparent); }
 .np-article-toc li { position: relative; }
@@ -314,7 +318,7 @@
 .np-article-quote {
   position: relative;
   margin: 2.4rem 0;
-  padding: 1.4rem 0 1.4rem clamp(1.3rem, 4vw, 2.3rem);
+  padding: 1.4rem 0 1.4rem clamp(1.3rem, calc(4 * var(--np-desktop-vw, 1vw)), 2.3rem);
   border-left: 3px solid var(--np-accent);
   color: var(--np-ink);
   font-size: calc(1.2rem * var(--np-reader-scale, 1));
@@ -398,7 +402,7 @@
 }
 
 /* End-of-story navigation: compact chronological neighbours, not a category promo. */
-.np-article-end { margin-top: clamp(3rem, 7vw, 5rem); }
+.np-article-end { margin-top: clamp(3rem, calc(7 * var(--np-desktop-vw, 1vw)), 5rem); }
 .np-article-neighbours { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
 .np-article-neighbour {
   position: relative;
@@ -431,16 +435,16 @@
 .np-article-origin { display: flex; min-height: 3rem; align-items: center; gap: 1rem; margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid color-mix(in oklab, var(--np-line) 74%, transparent); }
 
 /* Semantic story carousel. */
-.np-related-stories { position: relative; width: calc(100% + (2 * var(--np-article-gutter))); margin: clamp(3.5rem, 7vw, 6rem) calc(var(--np-article-gutter) * -1) 0; overflow: hidden; border-block: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent); background: linear-gradient(180deg, color-mix(in oklab, var(--np-surface) 56%, transparent), transparent); }
+.np-related-stories { position: relative; width: calc(100% + (2 * var(--np-article-gutter))); margin: clamp(3.5rem, calc(7 * var(--np-desktop-vw, 1vw)), 6rem) calc(var(--np-article-gutter) * -1) 0; overflow: hidden; border-block: 1px solid color-mix(in oklab, var(--np-line) 80%, transparent); background: linear-gradient(180deg, color-mix(in oklab, var(--np-surface) 56%, transparent), transparent); }
 .np-related-heading { display: flex; align-items: center; gap: 0.7rem; padding: 1.55rem var(--np-article-gutter) 1.1rem; }
 .np-related-heading .np-ring { width: 1.35rem; height: 1.35rem; flex: none; }
-.np-related-heading h2 { color: var(--np-ink); font-size: clamp(1.35rem, 2.15vw, 1.9rem); font-weight: 790; letter-spacing: -0.04em; line-height: 1.12; }
+.np-related-heading h2 { color: var(--np-ink); font-size: clamp(1.35rem, calc(2.15 * var(--np-desktop-vw, 1vw)), 1.9rem); font-weight: 790; letter-spacing: -0.04em; line-height: 1.12; }
 .np-related-carousel { position: relative; padding-bottom: 1.35rem; }
 .np-related-controls { position: absolute; z-index: 2; top: -3.75rem; right: var(--np-article-gutter); display: flex; gap: 0.45rem; }
 .np-related-controls button { display: grid; width: 2.35rem; height: 2.35rem; place-items: center; border: 1px solid var(--np-line); border-radius: 50%; background: color-mix(in oklab, var(--np-surface) 93%, transparent); color: var(--np-ink); cursor: pointer; box-shadow: 0 12px 25px -20px var(--np-ink); transition: transform 160ms ease, border-color 160ms ease, background 160ms ease; }
 .np-related-controls button:hover { transform: translateY(-2px); border-color: color-mix(in oklab, var(--np-accent) 54%, var(--np-line)); background: color-mix(in oklab, var(--np-surface) 94%, var(--np-accent)); color: var(--np-link); }
 .np-related-track { display: flex; gap: 0.9rem; padding: 0.25rem var(--np-article-gutter) 0.75rem; overflow-x: auto; overscroll-behavior-inline: contain; scroll-padding-inline: var(--np-article-gutter); scroll-snap-type: x mandatory; scrollbar-width: thin; }
-.np-related-card { display: flex; flex: 0 0 clamp(17.5rem, 27vw, 20.5rem); min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in oklab, var(--np-line) 86%, transparent); border-radius: 1.2rem; background: var(--np-surface); color: inherit; cursor: pointer; scroll-snap-align: start; box-shadow: 0 22px 48px -40px color-mix(in oklab, var(--np-ink) 62%, transparent); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.np-related-card { display: flex; flex: 0 0 clamp(17.5rem, calc(27 * var(--np-desktop-vw, 1vw)), 20.5rem); min-width: 0; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in oklab, var(--np-line) 86%, transparent); border-radius: 1.2rem; background: var(--np-surface); color: inherit; cursor: pointer; scroll-snap-align: start; box-shadow: 0 22px 48px -40px color-mix(in oklab, var(--np-ink) 62%, transparent); transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
 .np-related-card:hover { transform: translateY(-4px); border-color: color-mix(in oklab, var(--np-accent) 44%, var(--np-line)); box-shadow: 0 30px 58px -40px color-mix(in oklab, var(--np-accent) 46%, var(--np-ink)); }
 .np-related-card-media { position: relative; display: block; height: 9.2rem; overflow: hidden; background: var(--np-surface-2); }
 .np-related-card-image, .np-related-card-placeholder { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform 300ms ease; }
@@ -456,7 +460,7 @@
 .np-related-card:hover .np-related-card-action { color: var(--np-link); }
 
 @media (min-width: 64rem) {
-  .np-related-card { flex-basis: clamp(14.25rem, 18vw, 16.75rem); }
+  .np-related-card { flex-basis: clamp(14.25rem, calc(18 * var(--np-desktop-vw, 1vw)), 16.75rem); }
   .np-related-card-media { height: 7.35rem; }
   .np-related-card-content { min-height: 7.5rem; padding: 0.75rem 0.85rem 0.85rem; }
   .np-related-card-content > strong { margin-top: 0.45rem; font-size: 0.88rem; }

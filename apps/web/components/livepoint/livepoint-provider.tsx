@@ -27,6 +27,7 @@ import { PodcastOrbit } from "../podcast/visuals";
 import { podcastPanelPlace } from "@/lib/podcast-playback";
 import { WeatherPanel } from "./weather-panel";
 import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
+import { DESKTOP_VIEWPORT_CHANGE, desktopRect, getDesktopViewport, lockDesktopViewport } from "@/lib/desktop-viewport";
 
 const MobileLivePointPanel = dynamic(() => import("./mobile-livepoint-panel").then(module => module.MobileLivePointPanel), { ssr: false });
 
@@ -68,11 +69,12 @@ type PanelPlace = { top: number; left: number; width: number; arrow: number };
 function placePanel(module: LivePointModule): PanelPlace | null {
   const button = document.querySelector<HTMLElement>(`[data-lp-module="${module}"]`);
   if (!button) return null;
-  const rect = button.getBoundingClientRect();
-  if (module === "podcast") return { top: rect.bottom + 10, ...podcastPanelPlace(window.innerWidth, rect.left, rect.width) };
+  const viewport = getDesktopViewport();
+  const rect = desktopRect(button.getBoundingClientRect(), viewport);
+  if (module === "podcast") return { top: rect.bottom + 10, ...podcastPanelPlace(viewport.width, rect.left, rect.width) };
   const margin = 12;
   const left = rect.left;
-  const width = Math.min(PANEL_MAX[module], Math.max(160, window.innerWidth - left - margin));
+  const width = Math.min(PANEL_MAX[module], Math.max(160, viewport.width - left - margin));
   return { top: rect.bottom + 10, left, width, arrow: Math.min(width - 18, Math.max(18, rect.width / 2)) };
 }
 
@@ -118,11 +120,19 @@ function useScrollLock(locked: boolean) {
     const previousOverflow = style.overflow;
     const previousPadding = style.paddingRight;
     const gutter = window.innerWidth - document.documentElement.clientWidth;
+    const releaseViewport = lockDesktopViewport();
     style.overflow = "hidden";
-    if (gutter > 0) style.paddingRight = `${gutter}px`;
+    // The scaled root already has a frozen logical width; padding would shrink it a second time.
+    const syncPadding = () => {
+      style.paddingRight = gutter > 0 && !getDesktopViewport().active ? `${gutter}px` : previousPadding;
+    };
+    syncPadding();
+    window.addEventListener(DESKTOP_VIEWPORT_CHANGE, syncPadding);
     return () => {
+      window.removeEventListener(DESKTOP_VIEWPORT_CHANGE, syncPadding);
       style.overflow = previousOverflow;
       style.paddingRight = previousPadding;
+      releaseViewport();
     };
   }, [locked]);
 }
@@ -238,10 +248,21 @@ export function LivePointProvider({
 
   useEffect(() => {
     if (!active || mobile) return;
+    let frame = 0;
     const measure = () => setPlace(placePanel(active));
+    // Resize updates root zoom before layout. Measure in the next frame so the
+    // trigger rectangle and the shared scale describe the same rendered layout.
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; measure(); });
+    };
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    window.addEventListener("resize", schedule);
+    window.addEventListener(DESKTOP_VIEWPORT_CHANGE, schedule);
+    return () => {
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener(DESKTOP_VIEWPORT_CHANGE, schedule);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [active, mobile]);
 
   useEffect(() => {
@@ -323,7 +344,7 @@ export function LivePointProvider({
                 aria-modal="true"
                 aria-labelledby={titleId}
                 className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "podcast" ? "np-podcast-panel" : active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
-                style={{ maxHeight: place ? `calc(100dvh - ${place.top + 16}px)` : "min(78dvh, 44rem)" }}
+                style={{ maxHeight: place ? `calc(var(--np-desktop-height, 100dvh) - ${place.top + 16}px)` : "min(78dvh, 44rem)" }}
               >
                 <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
                   <h2

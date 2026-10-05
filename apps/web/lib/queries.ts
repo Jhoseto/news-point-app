@@ -4,7 +4,7 @@ import { cache } from "react";
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
-import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers } from "@newspoint/db";
+import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers, storyThemeArticles, storyThemes } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -462,3 +462,283 @@ export const getArticleNeighbours = cache(async (article: ArticleSummary): Promi
   ]);
   return { older: olderRows.map(toSummary), newer: newerRows.map(toSummary) };
 });
+
+/* -------------------------------------------------------------------------- */
+/* Story themes (Теми с продължение)                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Safe wrapper for resolveMediaUrl. Throws if the asset is missing both
+ * storageKey and sourceUrl, which would otherwise 500 the public page.
+ */
+function safeResolveUrl(asset: { storageKey: string | null; sourceUrl: string | null; provider: "wordpress_origin" | "object_storage" }): string | null {
+  try {
+    return resolveMediaUrl(asset);
+  } catch {
+    return null;
+  }
+}
+
+export interface StoryThemeSummary {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  coverUrl: string | null;
+  coverCaption: string;
+  publishedAt: Date;
+  articleCount: number;
+}
+
+export interface StoryThemeArticle {
+  articleId: string;
+  title: string;
+  path: string;
+  category: CategoryRef | null;
+  heroUrl: string | null;
+  publishedAt: Date | null;
+  position: number;
+}
+
+export interface StoryThemeDetailPublic {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  intro: string;
+  coverUrl: string | null;
+  coverCaption: string;
+  publishedAt: Date;
+  articles: StoryThemeArticle[];
+}
+
+export interface StoryThemeRefPublic {
+  id: string;
+  slug: string;
+  title: string;
+  position: number;
+  totalArticles: number;
+}
+
+async function getPublishedStoryThemesInternal({ limit }: { limit: number }): Promise<StoryThemeSummary[]> {
+  const db = getDb();
+  if (!hasMediaPresentations(db)) {
+    return getPublishedStoryThemesLegacy({ limit });
+  }
+  const rows = await db
+    .select({
+      id: storyThemes.id,
+      slug: storyThemes.slug,
+      title: storyThemes.title,
+      summary: storyThemes.summary,
+      coverMediaId: storyThemes.coverMediaId,
+      coverCaption: storyThemes.coverCaption,
+      publishedAt: storyThemes.publishedAt,
+      coverKey: mediaAssets.storageKey,
+      coverSource: mediaAssets.sourceUrl,
+      coverProvider: mediaAssets.provider,
+    })
+    .from(storyThemes)
+    .leftJoin(mediaAssets, eq(mediaAssets.id, storyThemes.coverMediaId))
+    .where(eq(storyThemes.isPublished, true))
+    .orderBy(desc(storyThemes.publishedAt))
+    .limit(limit);
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const countRows = await db
+    .select({ themeId: storyThemeArticles.themeId, value: sql<number>`count(*)::int` })
+    .from(storyThemeArticles)
+    .where(inArray(storyThemeArticles.themeId, ids))
+    .groupBy(storyThemeArticles.themeId);
+  const counts = new Map<string, number>();
+  for (const row of countRows) counts.set(row.themeId, row.value);
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    summary: row.summary,
+    coverCaption: row.coverCaption,
+    publishedAt: row.publishedAt ?? new Date(0),
+    articleCount: counts.get(row.id) ?? 0,
+    coverUrl: row.coverMediaId
+      ? safeResolveUrl({ storageKey: row.coverKey, sourceUrl: row.coverSource, provider: row.coverProvider as "wordpress_origin" | "object_storage" })
+      : null,
+  }));
+}
+
+async function getPublishedStoryThemesLegacy({ limit }: { limit: number }): Promise<StoryThemeSummary[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: storyThemes.id,
+      slug: storyThemes.slug,
+      title: storyThemes.title,
+      summary: storyThemes.summary,
+      coverMediaId: storyThemes.coverMediaId,
+      coverCaption: storyThemes.coverCaption,
+      publishedAt: storyThemes.publishedAt,
+    })
+    .from(storyThemes)
+    .where(eq(storyThemes.isPublished, true))
+    .orderBy(desc(storyThemes.publishedAt))
+    .limit(limit);
+  if (rows.length === 0) return [];
+  const ids = rows.map((r) => r.id);
+  const countRows = await db
+    .select({ themeId: storyThemeArticles.themeId, value: sql<number>`count(*)::int` })
+    .from(storyThemeArticles)
+    .where(inArray(storyThemeArticles.themeId, ids))
+    .groupBy(storyThemeArticles.themeId);
+  const counts = new Map<string, number>();
+  for (const row of countRows) counts.set(row.themeId, row.value);
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    summary: row.summary,
+    coverCaption: row.coverCaption,
+    publishedAt: row.publishedAt ?? new Date(0),
+    articleCount: counts.get(row.id) ?? 0,
+    coverUrl: null,
+  }));
+}
+
+export const getPublishedStoryThemes = cache(({ limit = 24 }: { limit?: number } = {}): Promise<StoryThemeSummary[]> => {
+  return unstable_cache(
+    async () => getPublishedStoryThemesInternal({ limit }),
+    ["public-story-themes", String(limit)],
+    { revalidate: 60, tags: ["public-story-themes"] },
+  )();
+});
+
+async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDetailPublic | null> {
+  const db = getDb();
+  const [theme] = await db
+    .select({
+      id: storyThemes.id,
+      slug: storyThemes.slug,
+      title: storyThemes.title,
+      summary: storyThemes.summary,
+      intro: storyThemes.intro,
+      coverMediaId: storyThemes.coverMediaId,
+      coverCaption: storyThemes.coverCaption,
+      coverKey: mediaAssets.storageKey,
+      coverSource: mediaAssets.sourceUrl,
+      coverProvider: mediaAssets.provider,
+      publishedAt: storyThemes.publishedAt,
+    })
+    .from(storyThemes)
+    .leftJoin(mediaAssets, eq(mediaAssets.id, storyThemes.coverMediaId))
+    .where(and(eq(storyThemes.slug, slug), eq(storyThemes.isPublished, true)))
+    .limit(1);
+  if (!theme) return null;
+
+  const memberRows = await db
+    .select({
+      articleId: articles.id,
+      title: articles.title,
+      path: articles.path,
+      isPublic: articles.isPublic,
+      publishedAt: articles.publishedAt,
+      position: storyThemeArticles.position,
+      categoryName: categories.name,
+      categorySlug: categories.slug,
+      categoryPath: categories.path,
+      heroKey: mediaAssets.storageKey,
+      heroSource: mediaAssets.sourceUrl,
+      heroProvider: mediaAssets.provider,
+    })
+    .from(storyThemeArticles)
+    .innerJoin(articles, eq(articles.id, storyThemeArticles.articleId))
+    .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
+    .where(and(eq(storyThemeArticles.themeId, theme.id), eq(articles.isPublic, true)))
+    .orderBy(asc(storyThemeArticles.position));
+  return {
+    id: theme.id,
+    slug: theme.slug,
+    title: theme.title,
+    summary: theme.summary,
+    intro: theme.intro,
+    coverCaption: theme.coverCaption,
+    publishedAt: theme.publishedAt ?? new Date(0),
+    coverUrl: theme.coverMediaId
+      ? safeResolveUrl({ storageKey: theme.coverKey, sourceUrl: theme.coverSource, provider: theme.coverProvider as "wordpress_origin" | "object_storage" })
+      : null,
+    articles: memberRows.map((row) => ({
+      articleId: row.articleId,
+      title: row.title,
+      path: row.path,
+      publishedAt: row.publishedAt,
+      position: row.position,
+      category: row.categoryName
+        ? { id: row.articleId, slug: row.categorySlug ?? "", name: row.categoryName, path: row.categoryPath ?? "" }
+        : null,
+      heroUrl: row.heroKey
+        ? safeResolveUrl({ storageKey: row.heroKey, sourceUrl: row.heroSource, provider: row.heroProvider as "wordpress_origin" | "object_storage" })
+        : null,
+    })),
+  };
+}
+
+export const getStoryThemeBySlug = cache((slug: string): Promise<StoryThemeDetailPublic | null> => {
+  // Normalize the cache key — Next.js usually decodes params, but be defensive.
+  const normalized = decodeURIComponent(slug);
+  return unstable_cache(
+    async () => getStoryThemeBySlugInternal(normalized),
+    ["public-story-theme", normalized],
+    { revalidate: 60, tags: ["public-story-themes"] },
+  )();
+});
+
+export async function getStoryThemesForArticle(articleId: string): Promise<StoryThemeRefPublic[]> {
+  const db = getDb();
+  const memberRows = await db
+    .select({
+      themeId: storyThemes.id,
+      slug: storyThemes.slug,
+      title: storyThemes.title,
+      position: storyThemeArticles.position,
+    })
+    .from(storyThemeArticles)
+    .innerJoin(storyThemes, eq(storyThemes.id, storyThemeArticles.themeId))
+    .where(and(eq(storyThemeArticles.articleId, articleId), eq(storyThemes.isPublished, true)))
+    .orderBy(asc(storyThemeArticles.position));
+  if (memberRows.length === 0) return [];
+  const themeIds = memberRows.map((r) => r.themeId);
+  const totals = await db
+    .select({ themeId: storyThemeArticles.themeId, value: sql<number>`count(*)::int` })
+    .from(storyThemeArticles)
+    .where(inArray(storyThemeArticles.themeId, themeIds))
+    .groupBy(storyThemeArticles.themeId);
+  const totalByTheme = new Map<string, number>();
+  for (const row of totals) totalByTheme.set(row.themeId, row.value);
+  return memberRows.map((row) => ({
+    id: row.themeId,
+    slug: row.slug,
+    title: row.title,
+    position: row.position,
+    totalArticles: totalByTheme.get(row.themeId) ?? 0,
+  }));
+}
+
+export async function getStoryThemeCompact(articleId: string): Promise<{ theme: StoryThemeSummary; articles: StoryThemeArticle[]; currentPosition: number } | null> {
+  const refs = await getStoryThemesForArticle(articleId);
+  if (refs.length === 0) return null;
+  // Use the first theme the article belongs to (it can belong to multiple,
+  // but the reader only needs one roadmap).
+  const ref = refs[0]!;
+  const detail = await getStoryThemeBySlug(ref.slug);
+  if (!detail) return null;
+  const summary: StoryThemeSummary = {
+    id: detail.id,
+    slug: detail.slug,
+    title: detail.title,
+    summary: detail.summary,
+    coverUrl: detail.coverUrl,
+    coverCaption: detail.coverCaption,
+    publishedAt: detail.publishedAt,
+    articleCount: detail.articles.length,
+  };
+  return { theme: summary, articles: detail.articles, currentPosition: ref.position };
+}

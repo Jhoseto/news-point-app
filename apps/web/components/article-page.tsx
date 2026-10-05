@@ -2,7 +2,16 @@ import { articleSubtitle } from "@newspoint/content";
 import { articleSections } from "@/lib/article-reading";
 import { embedProviderFromUrl } from "@/lib/article-embed-url";
 import { formatArticleMeta, formatFull, isoDate, readingMinutes } from "@/lib/format";
-import { getArticleNeighbours, getLatest24Hours, getRecommendedArticles, publicAsOfMs, type ArticleDetail } from "@/lib/queries";
+import {
+  getArticleNeighbours,
+  getLatest24Hours,
+  getRecommendedArticles,
+  publicAsOfMs,
+  type ArticleDetail,
+  type StoryThemeRefPublic,
+  type StoryThemeSummary,
+  type StoryThemeArticle,
+} from "@/lib/queries";
 import { ArticleBody } from "./article-body";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ArticleHeroZoom } from "./article-hero-zoom";
@@ -11,6 +20,8 @@ import { ArticleReadCount } from "./article-read-count";
 import { ArticleNeighbours } from "./article-neighbours";
 import { ArticleTts } from "./article-tts";
 import { RelatedStories } from "./related-stories";
+import { StoryRoadmap } from "./story-roadmap";
+import { StoryThemeLink } from "./story-theme-link";
 import type { LightboxImage } from "./article-lightbox";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon } from "./icons";
@@ -21,13 +32,22 @@ import { ReadingProgress } from "./reading-progress";
 import { CategoryPill } from "./ui";
 import "./article-premium.css";
 
-export async function ArticlePage({ article }: { article: ArticleDetail }) {
+export async function ArticlePage({
+  article,
+  storyThemes = [],
+  storyThemeCompact = null,
+}: {
+  article: ArticleDetail;
+  storyThemes?: StoryThemeRefPublic[];
+  storyThemeCompact?: { theme: StoryThemeSummary; articles: StoryThemeArticle[]; currentPosition: number } | null;
+}) {
   const asOfMs = publicAsOfMs();
   const [timeline, latest24h] = await Promise.all([
     getArticleNeighbours(article),
     getLatest24Hours(asOfMs),
   ]);
   const neighbours = [timeline.older[0], timeline.newer[0]].filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const compact = storyThemeCompact;
   const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
   const subtitle = articleSubtitle(article.excerpt, article.body);
@@ -90,6 +110,12 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             />
           ) : null}
 
+          {storyThemes.length > 0 ? (
+            <div className="lg:hidden">
+              <StoryThemeLink themes={storyThemes} />
+            </div>
+          ) : null}
+
           <div className="np-article-reading-layout">
             <div className="np-article-reading-column">
               {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
@@ -105,7 +131,15 @@ export async function ArticlePage({ article }: { article: ArticleDetail }) {
             </div>
           </div>
         </div>
-        <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense size="rail" className="np-article-latest" />
+        {compact ? (
+          <StoryRoadmap
+            theme={compact.theme}
+            articles={compact.articles}
+            currentPosition={compact.currentPosition}
+          />
+        ) : (
+          <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense size="rail" className="np-article-latest" />
+        )}
       </article>
 
       <div className="hidden lg:block">

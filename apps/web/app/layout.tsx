@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <JsonLd data={[organization, website]} id="np-ld-org-website" />
       </head>
-      <body className="min-h-dvh">
+      <body className="min-h-[var(--np-desktop-height,100dvh)]">
         <ThemeScript />
         <a
           href="#main"

@@ -81,8 +81,8 @@ export function LatestHeadlineCapsule({ latest }: { latest: LatestHeadline }) {
       </Link>
 
       {open ? (
-        <div className="np-headline-flyout absolute top-full right-0 w-[22rem] max-w-[calc(100vw-2rem)] pt-3">
-          <div id={previewId} className="np-headline-preview np-scroll-soft relative max-h-[calc(100dvh-9rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-[0_22px_60px_-16px_rgb(10_20_84/0.3)] dark:shadow-[0_22px_60px_-16px_rgb(0_0_0/0.8)]" style={categoryAccentStyle(latest.category?.slug)}>
+        <div className="np-headline-flyout absolute top-full right-0 w-[22rem] max-w-[calc(100*var(--np-desktop-vw,1vw)-2rem)] pt-3">
+          <div id={previewId} className="np-headline-preview np-scroll-soft relative max-h-[calc(var(--np-desktop-height,100dvh)-9rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-[0_22px_60px_-16px_rgb(10_20_84/0.3)] dark:shadow-[0_22px_60px_-16px_rgb(0_0_0/0.8)]" style={categoryAccentStyle(latest.category?.slug)}>
             <span aria-hidden="true" className="np-category-accent-line absolute inset-x-0 top-0 z-10 h-0.5" />
             {latest.hero ? <div className="h-40 overflow-hidden"><ArticleImage media={{ ...latest.hero, alt: "" }} className="h-full w-full object-cover" sizes="352px" /></div> : null}
             <div className="p-5">

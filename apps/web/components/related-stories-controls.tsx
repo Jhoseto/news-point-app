@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { desktopDistance } from "@/lib/desktop-viewport";
 
 export function RelatedStoriesControls({ children }: { children: React.ReactNode }) {
   const track = useRef<HTMLDivElement>(null);
@@ -15,7 +16,7 @@ export function RelatedStoriesControls({ children }: { children: React.ReactNode
       if (max <= 0) return;
       if ((event.deltaY < 0 && element.scrollLeft <= 1) || (event.deltaY > 0 && element.scrollLeft >= max - 1)) return;
       event.preventDefault();
-      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 24 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? element.clientWidth * 0.85 : 1;
+      const unit = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 24 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? element.clientWidth * 0.85 : desktopDistance(1);
       element.scrollBy({ left: event.deltaY * unit, behavior: reducedMotion() ? "instant" : "smooth" });
     };
     element.addEventListener("wheel", onWheel, { passive: false });
@@ -26,7 +27,7 @@ export function RelatedStoriesControls({ children }: { children: React.ReactNode
     const element = track.current;
     if (!element) return;
     const card = element.querySelector<HTMLElement>(".np-related-card");
-    element.scrollBy({ left: direction * ((card?.getBoundingClientRect().width ?? 300) + 16), behavior: reducedMotion() ? "instant" : "smooth" });
+    element.scrollBy({ left: direction * ((card ? desktopDistance(card.getBoundingClientRect().width) : 300) + 16), behavior: reducedMotion() ? "instant" : "smooth" });
   };
 
   return (

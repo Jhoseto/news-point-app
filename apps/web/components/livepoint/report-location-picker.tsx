@@ -6,6 +6,7 @@ import { coordinateLabel, requestDeviceLocation, type ReportLocation, type Repor
 import { CloseIcon, PinIcon } from "../icons";
 import { TextField } from "./livepoint-field";
 import { ReportLocationMap } from "./report-location-map";
+import { lockDesktopViewport } from "@/lib/desktop-viewport";
 
 export function ReportLocationPicker({ initial, onConfirm, onClose }: { initial: ReportLocation | null; onConfirm: (location: ReportLocation) => void; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -29,12 +30,14 @@ export function ReportLocationPicker({ initial, onConfirm, onClose }: { initial:
     alive.current = true;
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
+    const releaseViewport = lockDesktopViewport();
     document.body.style.overflow = "hidden";
     dialog.current?.showModal();
     return () => {
       alive.current = false;
       dialog.current?.close();
       document.body.style.overflow = previousOverflow;
+      releaseViewport();
       if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, []);
@@ -97,7 +100,7 @@ export function ReportLocationPicker({ initial, onConfirm, onClose }: { initial:
       ref={dialog}
       data-report-location-dialog
       aria-labelledby={titleId}
-      className="np-report-location-dialog m-auto max-h-[calc(100dvh_-_1.5rem)] w-[calc(100vw_-_1.5rem)] max-w-3xl overflow-hidden rounded-3xl border border-line bg-surface p-0 text-ink shadow-[0_28px_100px_rgb(0_0_0/0.35)]"
+      className="np-report-location-dialog m-auto max-h-[calc(var(--np-desktop-height,100dvh)_-_1.5rem)] w-[calc(100*var(--np-desktop-vw,1vw)_-_1.5rem)] max-w-3xl overflow-hidden rounded-3xl border border-line bg-surface p-0 text-ink shadow-[0_28px_100px_rgb(0_0_0/0.35)]"
       onCancel={event => { event.preventDefault(); closeRef.current(); }}
       onKeyDown={event => {
         if (event.key !== "Tab") return;

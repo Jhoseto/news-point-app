@@ -1,4 +1,5 @@
 "use client";
+import { desktopDistance } from "@/lib/desktop-viewport";
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
@@ -190,7 +191,7 @@ export function LeadingCarousel({
         onPointerMove={(event) => {
           const element = viewport.current;
           if (!element || !drag.current.active) return;
-          const delta = event.clientX - drag.current.startX;
+          const delta = desktopDistance(event.clientX - drag.current.startX);
           if (Math.abs(delta) < DRAG_THRESHOLD) return;
           if (!drag.current.moved) {
             drag.current.moved = true;

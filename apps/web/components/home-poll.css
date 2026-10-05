@@ -1,11 +1,11 @@
 .np-home-shine { container-type:inline-size; }
 .np-poll-band { position:relative; isolation:isolate; width:100cqw; margin-inline-start:calc((100% - 100cqw) / 2); border-block:1px solid var(--np-line); background:var(--np-surface); }
 .np-poll-band::before { content:""; position:absolute; inset:0; z-index:-1; background:url('/brand/poll-background.webp') center 48%/cover no-repeat; opacity:.85; }
-.np-poll-inner { max-width:160rem; margin:auto; padding:2rem clamp(1rem,3.5vw,3.5rem); display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,1fr); gap:clamp(1.5rem,4vw,5rem); align-items:center; }
+.np-poll-inner { max-width:160rem; margin:auto; padding:2rem clamp(1rem,calc(3.5 * var(--np-desktop-vw, 1vw)),3.5rem); display:grid; grid-template-columns:minmax(0,1fr) minmax(320px,1fr); gap:clamp(1.5rem,calc(4 * var(--np-desktop-vw, 1vw)),5rem); align-items:center; }
 .np-poll-kicker { display:flex; align-items:center; gap:.7rem; font-size:.7rem; letter-spacing:.12em; font-weight:850; color:var(--np-accent); }
 .np-poll-symbol { display:grid; place-items:center; width:32px; height:32px; border-radius:10px; color:white; font-size:22px; background:linear-gradient(180deg, #24368f, #0c1654); box-shadow:inset 0 1px 0 rgb(255 255 255 / .28), 0 8px 16px -10px rgb(10 20 84 / .45); }
 .np-poll-state { letter-spacing:0; font-weight:600; color:var(--np-muted); border-left:1px solid var(--np-line); padding-left:.7rem; }
-.np-poll-intro h2 { font-size:clamp(1.3rem,1.7vw,2rem); font-weight:800; line-height:1.3; letter-spacing:-.025em; margin:.85rem 0 .55rem; color:var(--np-ink); text-wrap:balance; }
+.np-poll-intro h2 { font-size:clamp(1.3rem,calc(1.7 * var(--np-desktop-vw, 1vw)),2rem); font-weight:800; line-height:1.3; letter-spacing:-.025em; margin:.85rem 0 .55rem; color:var(--np-ink); text-wrap:balance; }
 .np-poll-intro p { font-size:.875rem; color:var(--np-body); max-width:58ch; }
 .np-poll-meta { display:flex; flex-wrap:wrap; gap:.4rem 1rem; margin-top:1.1rem; font-size:.72rem; color:var(--np-muted); }
 .np-poll-meta>span:first-child { font-weight:800; color:var(--np-accent); }

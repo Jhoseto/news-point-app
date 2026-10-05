@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
+import { desktopDistance, lockDesktopViewport } from "@/lib/desktop-viewport";
 
 export type LightboxImage = {
   src: string;
@@ -228,10 +229,12 @@ export function ArticleLightbox({
     };
     document.addEventListener("keydown", onKey);
     const previous = document.body.style.overflow;
+    const releaseViewport = lockDesktopViewport();
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = previous;
+      releaseViewport();
       if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
     };
   }, [close, go, index, zoomIn, zoomOut, resetZoom]);
@@ -279,8 +282,8 @@ export function ArticleLightbox({
       const distance = Math.hypot(a.x - b.x, a.y - b.y);
       setZoom(clamp(pinchStart.current.zoom * (distance / pinchStart.current.distance), MIN_ZOOM, MAX_ZOOM));
     } else if (pointers.current.size === 1 && panStart.current) {
-      const dx = event.clientX - panStart.current.pointer.x;
-      const dy = event.clientY - panStart.current.pointer.y;
+      const dx = desktopDistance(event.clientX - panStart.current.pointer.x);
+      const dy = desktopDistance(event.clientY - panStart.current.pointer.y);
       setPan({ x: panStart.current.pan.x + dx, y: panStart.current.pan.y + dy });
     }
   };
@@ -292,8 +295,8 @@ export function ArticleLightbox({
     if (pointers.current.size < 2) pinchStart.current = null;
     if (pointers.current.size === 0) {
       if (swipeStart.current && zoom <= 1 && total > 1) {
-        const dx = event.clientX - swipeStart.current.x;
-        const dy = event.clientY - swipeStart.current.y;
+        const dx = desktopDistance(event.clientX - swipeStart.current.x);
+        const dy = desktopDistance(event.clientY - swipeStart.current.y);
         const dt = Date.now() - swipeStart.current.t;
         if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 2 && dt < 600) {
           go(index + (dx < 0 ? 1 : -1));
@@ -320,7 +323,7 @@ export function ArticleLightbox({
     const py = (event.clientY - rect.top) / rect.height - 0.5;
     const target = 2.25;
     setZoom(target);
-    setPan({ x: -px * rect.width * (target - 1), y: -py * rect.height * (target - 1) });
+    setPan({ x: -px * desktopDistance(rect.width) * (target - 1), y: -py * desktopDistance(rect.height) * (target - 1) });
   };
 
   if (!current) return null;
@@ -408,7 +411,7 @@ export function ArticleLightbox({
               alt={current.alt}
               draggable={false}
               decoding="async"
-              className={`np-lb-img max-h-[calc(100dvh-13rem)] max-w-full select-none rounded-xl object-contain shadow-[0_30px_120px_-30px_rgba(0,0,0,0.7)] transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${imageOpacityClass}`}
+              className={`np-lb-img max-h-[calc(var(--np-desktop-height,100dvh)-13rem)] max-w-full select-none rounded-xl object-contain shadow-[0_30px_120px_-30px_rgba(0,0,0,0.7)] transition-opacity duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${imageOpacityClass}`}
               style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}
             />
           </div>
