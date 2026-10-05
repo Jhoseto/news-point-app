@@ -208,7 +208,7 @@ function stripSheetHistory(sheet: "rubrics" | "search") {
   history.replaceState(state, "");
 }
 
-/** Modal sheet: Escape and the close button close it, Tab stays inside, focus returns to the opener. */
+/** Desktop modal; on phones the focus loop also includes the usable bottom menu. */
 function useModal(open: boolean, close: () => void, panel: RefObject<HTMLElement | null>) {
   useEffect(() => {
     if (!open) return;
@@ -220,10 +220,21 @@ function useModal(open: boolean, close: () => void, panel: RefObject<HTMLElement
         event.preventDefault();
         close();
       } else if (event.key === "Tab" && panel.current) {
-        const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((item) => item.offsetParent !== null);
+        const mobile = matchMedia("(max-width: 63.999rem)").matches;
+        const menu = mobile ? document.querySelector<HTMLElement>(".np-bottom-nav") : null;
+        const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+          ...(menu?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])]
+          .filter((item) => item.offsetParent !== null && (!mobile || !item.closest("[inert]")));
         const first = items[0];
         const last = items.at(-1);
         if (!first || !last) return;
+        if (mobile) {
+          // Portals and the bottom menu have a different DOM order; own each Tab step.
+          const index = items.indexOf(document.activeElement as HTMLElement);
+          const next = index < 0 ? (event.shiftKey ? items.length - 1 : 0)
+            : (index + (event.shiftKey ? items.length - 1 : 1)) % items.length;
+          event.preventDefault(); items[next]?.focus(); return;
+        }
         if (event.shiftKey && document.activeElement === first) {
           event.preventDefault();
           last.focus();
@@ -246,6 +257,13 @@ function useModal(open: boolean, close: () => void, panel: RefObject<HTMLElement
 
 function Sheet({ open, onClose, label, side, children }: { open: boolean; onClose: () => void; label: string; side: "left" | "top"; children: ReactNode }) {
   const panel = useRef<HTMLDivElement>(null);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = matchMedia("(max-width: 63.999rem)");
+    const update = () => setMobile(query.matches);
+    update(); query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   useModal(open, onClose, panel);
 
   // On iPhones the keyboard shrinks the visual viewport without changing 100dvh.
@@ -269,7 +287,7 @@ function Sheet({ open, onClose, label, side, children }: { open: boolean; onClos
   if (!open) return null;
   // Portal: the header's backdrop-filter would otherwise contain this fixed layer.
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={label}>
+    <div className="np-mobile-nav-sheet-root fixed inset-0 z-50" role="dialog" aria-modal={mobile ? undefined : true} aria-label={label}>
       <div
         className="np-sheet-backdrop absolute inset-x-0 top-0 bg-[#000516]/60"
         aria-hidden="true"

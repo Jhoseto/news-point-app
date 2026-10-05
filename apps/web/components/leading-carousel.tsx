@@ -21,6 +21,9 @@ export function LeadingCarousel({
   href,
   linkLabel = "Всички",
   accentSlug,
+  preview = false,
+  previewOffset = 0,
+  mobileOnly = false,
 }: {
   articles: ArticleSummary[];
   /** Precomputed on the homepage (server); one delay per article, originals only. */
@@ -33,6 +36,9 @@ export function LeadingCarousel({
   href?: string;
   linkLabel?: string;
   accentSlug?: string;
+  preview?: boolean;
+  previewOffset?: number;
+  mobileOnly?: boolean;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const firstSet = useRef<HTMLDivElement>(null);
@@ -42,6 +48,10 @@ export function LeadingCarousel({
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
   const suppressClick = useRef(false);
   const reduceMotion = useReducedMotion();
+  const assignViewport = useCallback((element: HTMLDivElement | null) => {
+    viewport.current = element;
+    if (element && preview) element.scrollLeft = previewOffset;
+  }, [preview, previewOffset]);
 
   const pauseAfterTouch = useCallback(() => {
     paused.current = true;
@@ -60,13 +70,16 @@ export function LeadingCarousel({
   useEffect(() => {
     const element = viewport.current;
     const set = firstSet.current;
-    if (!element || !set || reduceMotion || articles.length < 2) return;
+    if (preview || (mobileOnly && !matchMedia("(max-width: 63.999rem)").matches) || !element || !set || reduceMotion || articles.length < 2) return;
     const isMobile = window.matchMedia("(max-width: 767px)").matches;
 
     let frame = 0;
     let previous = performance.now();
     let position = element.scrollLeft;
     const tick = (now: number) => {
+      if (document.documentElement.hasAttribute("data-mobile-pager-visual")) {
+        previous = now; frame = requestAnimationFrame(tick); return;
+      }
       const width = set.offsetWidth;
       const touchMomentumActive = isMobile && performance.now() < touchPausedUntil.current;
       const tickerPaused = isMobile ? touchMomentumActive : paused.current;
@@ -90,7 +103,7 @@ export function LeadingCarousel({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [articles.length, motion, reduceMotion]);
+  }, [articles.length, motion, reduceMotion, preview, mobileOnly]);
 
   const move = useCallback((direction: -1 | 1) => {
     const element = viewport.current;
@@ -124,6 +137,7 @@ export function LeadingCarousel({
   return (
     <section
       aria-labelledby={headingId}
+      data-mobile-pager-ignore
       className="group/carousel min-w-0"
       onPointerEnter={() => (paused.current = true)}
       onPointerLeave={() => (paused.current = false)}
@@ -157,7 +171,7 @@ export function LeadingCarousel({
       </div>
 
       <div
-        ref={viewport}
+        ref={assignViewport}
         className="np-carousel-viewport np-mobile-touch-carousel -mx-1 cursor-grab overflow-x-auto px-1 pb-3 select-none active:cursor-grabbing"
         aria-label={title}
         onDragStart={(event) => event.preventDefault()}

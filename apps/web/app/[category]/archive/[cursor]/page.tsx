@@ -31,7 +31,7 @@ export default async function CategoryArchivePage({ params }: Props) {
     return (
       <>
         <JsonLd data={breadcrumbs} id="np-ld-breadcrumb-archive" />
-        <CategoryPage category={category} cursor={cursor} />
+        <CategoryPage category={category} cursor={cursor} canonicalPath={`${category.path}archive/${decodeURIComponent(raw)}/`} />
       </>
     );
   } catch {

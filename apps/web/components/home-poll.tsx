@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PublicPoll } from "@newspoint/db/poll-types";
 import "./home-poll.css";
 
-export function HomePoll({ initial }: { initial: PublicPoll }) {
+export function HomePoll({ initial, preview = false, namespace = "", mobileOnly = false }: { initial: PublicPoll; preview?: boolean; namespace?: string; mobileOnly?: boolean }) {
   const [poll,setPoll] = useState(initial);
   const [selected,setSelected] = useState("");
   const [voted,setVoted] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function HomePoll({ initial }: { initial: PublicPoll }) {
   useEffect(() => {
     // Most readers need no personalized DB query. Only browsers that have
     // successfully voted before ask the server to restore their choice.
-    if (!hasVoteMarker()) return;
+    if (preview || (mobileOnly && !matchMedia("(max-width: 63.999rem)").matches) || !hasVoteMarker()) return;
     const controller = new AbortController();
     const observer = new IntersectionObserver(entries => {
       if (!entries.some(e => e.isIntersecting)) return;
@@ -28,9 +28,9 @@ export function HomePoll({ initial }: { initial: PublicPoll }) {
     },{ rootMargin: "200px" });
     if (ref.current) observer.observe(ref.current);
     return () => { observer.disconnect(); controller.abort(); };
-  },[initial.id]);
+  },[initial.id, preview, mobileOnly]);
   async function submit() {
-    if (!selected || busy) return;
+    if (preview || !selected || busy) return;
     setBusy(true); setMessage("");
     try {
       const send = async (body: unknown) => { const response = await fetch("/api/polls/",{ method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body) }); const data = await response.json(); if (!response.ok) throw new Error(data.error); return data; };
@@ -44,14 +44,15 @@ export function HomePoll({ initial }: { initial: PublicPoll }) {
     finally { setBusy(false); }
   }
   async function showResults() {
+    if (preview) return;
     setResults(true);
     try { const r = await fetch(`/api/polls/?id=${poll.id}`,{cache:"no-store"}); if (r.ok) accept(await r.json()); } catch { /* Keep the last known result. */ }
   }
-  return <section ref={ref} className="np-poll-band" aria-labelledby={`poll-${poll.id}`}>
+  return <section ref={ref} className="np-poll-band" aria-labelledby={`${namespace}poll-${poll.id}`}>
     <div className="np-poll-inner">
       <div className="np-poll-intro">
         <div className="np-poll-kicker"><span className="np-poll-symbol" aria-hidden="true">↗</span> АНКЕТА <span className="np-poll-state">{poll.open ? "Вашето мнение" : "Резултати"}</span></div>
-        <h2 id={`poll-${poll.id}`}>{poll.question}</h2>
+        <h2 id={`${namespace}poll-${poll.id}`}>{poll.question}</h2>
         {poll.description && <p>{poll.description}</p>}
         <div className="np-poll-meta"><span>{poll.total.toLocaleString("bg-BG")} {poll.total === 1 ? "глас" : "гласа"}</span><span>Един избор. Вашият глас.</span>{poll.endsAt && <span>До {new Intl.DateTimeFormat("bg-BG",{dateStyle:"short",timeStyle:"short",timeZone:"Europe/Sofia"}).format(new Date(poll.endsAt))}</span>}</div>
       </div>

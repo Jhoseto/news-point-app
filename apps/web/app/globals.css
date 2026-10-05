@@ -2317,6 +2317,39 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-new-articles { animation: none; }
 }
 
+/* Mobile rubric navigation and temporary compositor. Desktop remains the canonical composition. */
+@media (max-width: 63.999rem) {
+  .np-mobile-legacy-feed { display: none; }
+  html:has(.np-mobile-rubric-tabs) { --np-header-h: calc(var(--np-bar-h) + 6.25rem + env(safe-area-inset-top) + 1px); scroll-padding-top: var(--np-header-h); }
+  .np-mobile-rubric-tabs { height: 2.75rem; min-width: 0; border-top: 1px solid var(--np-line); background: var(--np-surface); }
+  .np-mobile-rubric-tabs-scroll { position: relative; display: flex; height: 100%; gap: .125rem; padding-inline: .75rem; overflow-x: auto; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; scrollbar-width: none; }
+  .np-mobile-rubric-tabs-scroll::-webkit-scrollbar { display: none; }
+  .np-mobile-rubric-tabs a { position: relative; display: inline-flex; flex: 0 0 auto; min-height: 44px; align-items: center; padding-inline: .75rem; color: var(--np-muted); font-size: .8125rem; font-weight: 800; white-space: nowrap; }
+  .np-mobile-rubric-tabs a[aria-current="page"] { color: var(--np-ink); }
+  .np-mobile-rubric-tab-line { position: absolute; inset-inline: .75rem; bottom: 3px; height: 2px; border-radius: 2px; background: var(--np-gradient); transform: scaleX(0); opacity: 0; transition: transform 180ms ease, opacity 180ms ease; }
+  [aria-current="page"] > .np-mobile-rubric-tab-line { transform: scaleX(1); opacity: 1; }
+  .np-mobile-rubric-tabs a[data-pending] { opacity: .6; }
+  /* Retained, closed sheets must not change native gesture arbitration.
+     The mobile controller excludes active overlays; their touch surfaces sit outside main. */
+  html:has([data-mobile-rubric-canonical]) #main { touch-action: pan-y pinch-zoom; }
+  #main [data-mobile-pager-ignore], #main .np-carousel-viewport { touch-action: pan-x pan-y pinch-zoom; }
+  /* Search/rubrics sheets reserve the bottom menu; only their actual surfaces take hits. */
+  .np-mobile-nav-sheet-root { pointer-events: none; }
+  .np-mobile-nav-sheet-root > * { pointer-events: auto; }
+  .np-mobile-pager-layer { position: fixed; inset-inline: 0; overflow: clip; z-index: 30; pointer-events: none; background: var(--np-page); contain: layout paint; }
+  .np-mobile-pager-frame { position: absolute; inset: 0; overflow: clip; background: var(--np-page); }
+  .np-mobile-pager-content { width: 100%; }
+  [data-mobile-image-failed] { opacity: 0; }
+  .np-mobile-image-fallback { background: linear-gradient(135deg, var(--np-surface-2), var(--np-surface)); border-radius: inherit; }
+  .np-mobile-image-fallback > span:not(:has(.np-new-badge)) { color: var(--np-ink); background: var(--np-surface); border-color: var(--np-line); }
+  .np-mobile-pager-skeleton { padding: 1rem; display: grid; gap: 1rem; }
+  .np-mobile-pager-skeleton i { display: block; height: 1rem; border-radius: .5rem; background: var(--np-surface-2); }
+  .np-mobile-pager-skeleton i:first-of-type { height: min(42svh,16rem); border-radius: 1.5rem; border: 1px solid var(--np-line); }
+  .np-mobile-pager-notice { position: fixed; inset-inline: 1rem; bottom: calc(var(--np-mobile-nav-h, 4rem) + env(safe-area-inset-bottom) + 1rem); z-index: 35; display: flex; align-items: center; gap: .75rem; padding: 1rem; border: 1px solid var(--np-line); border-radius: 1rem; background: var(--np-surface); color: var(--np-ink); box-shadow: var(--np-shadow); }
+  .np-mobile-pager-notice button { min-height: 44px; padding-inline: .75rem; font-weight: 800; color: var(--np-accent); }
+  html[data-reduced-motion="true"] .np-mobile-rubric-tab-line { transition: none; }
+}
+
 /* Phone-only LivePoint: full-width utility rail and a single, calm sheet language. */
 @media (max-width: 63.999rem) {
   html { --np-header-h: calc(var(--np-bar-h) + 3.5rem + env(safe-area-inset-top)); }

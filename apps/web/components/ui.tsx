@@ -71,11 +71,11 @@ export function SectionTitle({
   );
 }
 
-export function TimeMeta({ date, className = "", relative = false }: { date: Date; className?: string; relative?: boolean }) {
+export function TimeMeta({ date, className = "", relative = false, now }: { date: Date; className?: string; relative?: boolean; now?: Date }) {
   return (
     <span className={`inline-flex items-center gap-1 text-xs font-medium text-muted ${className}`}>
       <ClockIcon width={13} height={13} />
-      <time dateTime={isoDate(date)}>{relative ? formatCardTime(date) : formatShort(date)}</time>
+      <time dateTime={isoDate(date)}>{relative ? formatCardTime(date, now) : formatShort(date, now)}</time>
     </span>
   );
 }

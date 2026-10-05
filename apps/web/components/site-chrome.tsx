@@ -10,13 +10,15 @@ import { BottomNav, MobileSearch, RubricsButton, RubricsNav } from "./nav";
 import { SiteSearch } from "./site-search";
 import { ThemeToggle } from "./theme";
 import { SettingsModal } from "./settings-modal";
+import { MobileRubricTabs } from "./mobile-rubric-tabs";
 
 /**
  * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
  * The logo sits in an overlay aligned to the expanded rubrics column (--np-rail-w-logo), not in the grid.
  * The LivePoint utility line is the second row (DEC-119).
  */
-export function SiteHeader() {
+export async function SiteHeader() {
+  const menu = await getMenuCategories();
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="np-masthead relative flex h-[3.25rem] items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
@@ -50,6 +52,7 @@ export function SiteHeader() {
         </div>
       </div>
       <LivePointStrip />
+      <MobileRubricTabs menu={menu.map(({ name, path }) => ({ name, path }))} />
     </header>
   );
 }

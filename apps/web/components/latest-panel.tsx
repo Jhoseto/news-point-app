@@ -55,12 +55,14 @@ export function LatestPanel({ open, onClose }: { open: boolean; onClose: () => v
       if (event.key !== "Tab") return;
       // Include the bottom menu in the keyboard loop; it remains part of this flow.
       const candidates = [...(sheetRef.current?.querySelectorAll<HTMLElement>('a[href], button:not(:disabled)') ?? []),
-        ...document.querySelectorAll<HTMLElement>('.np-bottom-nav a[href], .np-bottom-nav button:not(:disabled)')];
+        ...document.querySelectorAll<HTMLElement>('.np-bottom-nav a[href], .np-bottom-nav button:not(:disabled)')]
+        .filter(element => element.offsetParent !== null && !element.closest("[inert]"));
+      if (!candidates.length) return;
       const index = candidates.indexOf(document.activeElement as HTMLElement);
-      if (index === -1 || (!event.shiftKey && index === candidates.length - 1) || (event.shiftKey && index === 0)) {
-        event.preventDefault();
-        (event.shiftKey ? candidates.at(-1) : candidates[0])?.focus();
-      }
+      // These surfaces are separate portals: browser DOM order cannot provide this loop.
+      const next = index < 0 ? (event.shiftKey ? candidates.length - 1 : 0)
+        : (index + (event.shiftKey ? candidates.length - 1 : 1)) % candidates.length;
+      event.preventDefault(); candidates[next]?.focus();
     };
     window.addEventListener("keydown", onKey);
     const switchPanel = (event: Event) => { if ((event as CustomEvent<MobileOverlay>).detail !== "latest" && !event.defaultPrevented) onClose(); };

@@ -33,6 +33,7 @@ const loadPublicShell = unstable_cache(async () => {
 
 export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
+  appleWebApp: { title: "NewsPoint" },
   description: "Новини от Пловдив, България и света.",
   robots: { index: false, follow: false },
   alternates: { types: { "application/rss+xml": "/feed/" } },

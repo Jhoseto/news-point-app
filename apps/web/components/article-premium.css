@@ -41,6 +41,23 @@
   aspect-ratio: 2.25;
   object-fit: cover;
 }
+@media (min-width: 64rem) {
+  .np-article-hero-frame {
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+    background: transparent;
+  }
+  .np-article-hero-image {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    max-height: min(38vh, 24rem);
+    aspect-ratio: auto;
+    object-fit: scale-down;
+    margin-inline: auto;
+  }
+}
 .np-article-hero-category {
   position: absolute;
   top: clamp(0.8rem, 2vw, 1.75rem);
@@ -65,6 +82,9 @@
 @media (min-width: 64rem) {
   .np-article-header {
     width: min(100%, 61rem);
+  }
+  .np-article-header h1 {
+    font-size: clamp(1.65rem, 1.85vw, 2.35rem);
   }
 }
 .np-article-no-hero-category { margin-bottom: 1.25rem; }

@@ -10,7 +10,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "NewsPoint.bg – Гласът на истината",
-    short_name: "NewsPoint.bg",
+    /** Launcher label under the home-screen icon (keep short so it is not truncated). */
+    short_name: "NewsPoint",
     description: "Новини от Пловдив, България и света.",
     lang: "bg",
     dir: "ltr",

@@ -13,9 +13,11 @@ import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from ".
 export function MobileLeadCard({
   article,
   priority = false,
+  now = new Date(),
 }: {
   article: ArticleSummary;
   priority?: boolean;
+  now?: Date;
 }) {
   return (
     <article
@@ -31,9 +33,9 @@ export function MobileLeadCard({
             className="aspect-[3/2] max-h-[min(42svh,16rem)] w-full object-cover object-[center_30%]"
           />
           {article.category ? (
-            <CategoryPill category={article.category} className="absolute top-3 left-3" glass />
+            <CategoryPill category={article.category} className="absolute top-3 left-3" glass={!!article.hero} />
           ) : null}
-          {isRecentArticle(article.publishedAt) ? (
+          {isRecentArticle(article.publishedAt, now) ? (
             <span className="absolute top-3 right-3"><NewBadge publishedAt={article.publishedAt} /></span>
           ) : null}
         </div>
@@ -44,7 +46,7 @@ export function MobileLeadCard({
             text={article.title}
           />
           <div className="flex items-center gap-2 text-xs font-semibold text-muted">
-            <TimeMeta date={article.publishedAt} relative />
+            <TimeMeta date={article.publishedAt} relative now={now} />
             <span className="text-line" aria-hidden="true">•</span>
             <span className="truncate">{article.authorName}</span>
           </div>
@@ -59,7 +61,7 @@ export function MobileLeadCard({
  * right. The image is small (~7.5rem) and 16/9 so it sits beside the title
  * without dominating it.
  */
-export function MobileSupportingCard({ article }: { article: ArticleSummary }) {
+export function MobileSupportingCard({ article, priority = false, now = new Date() }: { article: ArticleSummary; priority?: boolean; now?: Date }) {
   return (
     <article
       className="group np-news-card overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
@@ -69,6 +71,7 @@ export function MobileSupportingCard({ article }: { article: ArticleSummary }) {
         <div className="relative shrink-0 self-start">
           <ArticleImage
             media={article.hero}
+            priority={priority}
             sizes="120px"
             className="aspect-[16/9] w-[7.5rem] rounded-xl object-cover"
           />
@@ -81,7 +84,7 @@ export function MobileSupportingCard({ article }: { article: ArticleSummary }) {
             text={article.title}
             clampLines={2}
           />
-          <TimeMeta date={article.publishedAt} relative className="mt-auto text-xs" />
+          <TimeMeta date={article.publishedAt} relative now={now} className="mt-auto text-xs" />
         </div>
       </Link>
     </article>
@@ -92,7 +95,7 @@ export function MobileSupportingCard({ article }: { article: ArticleSummary }) {
  * Elongated rubric-feed card: photo left, title and meta right. Used on
  * category archive pages after the lead and two supporting cards.
  */
-export function MobileHorizonCard({ article }: { article: ArticleSummary }) {
+export function MobileHorizonCard({ article, priority = false, now = new Date() }: { article: ArticleSummary; priority?: boolean; now?: Date }) {
   return (
     <article
       className="group np-news-card overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
@@ -102,6 +105,7 @@ export function MobileHorizonCard({ article }: { article: ArticleSummary }) {
         <div className="relative w-[8.75rem] shrink-0 overflow-hidden rounded-xl sm:w-36">
           <ArticleImage
             media={article.hero}
+            priority={priority}
             sizes="144px"
             className="h-full min-h-[5.25rem] w-full object-cover object-[center_30%]"
           />
@@ -114,7 +118,7 @@ export function MobileHorizonCard({ article }: { article: ArticleSummary }) {
             text={article.title}
             clampLines={3}
           />
-          <TimeMeta date={article.publishedAt} relative className="text-xs text-muted" />
+          <TimeMeta date={article.publishedAt} relative now={now} className="text-xs text-muted" />
         </div>
       </Link>
     </article>
@@ -125,7 +129,7 @@ export function MobileHorizonCard({ article }: { article: ArticleSummary }) {
  * Mobile compact row: title, category and time in one card without a second
  * big photo. Used on the homepage feed after the supporting cards.
  */
-export function MobileCompactRow({ article }: { article: ArticleSummary }) {
+export function MobileCompactRow({ article, now = new Date() }: { article: ArticleSummary; now?: Date }) {
   return (
     <article className="group" style={categoryAccentStyle(article.category?.slug)}>
       <Link
@@ -136,7 +140,7 @@ export function MobileCompactRow({ article }: { article: ArticleSummary }) {
       >
         <div className="flex items-center justify-between gap-2 text-[0.6875rem] font-semibold tracking-wide text-muted">
           {article.category ? <CategoryLabel category={article.category} /> : <span />}
-          <TimeMeta date={article.publishedAt} relative />
+          <TimeMeta date={article.publishedAt} relative now={now} />
         </div>
         <Heading
           level="h3"
@@ -155,7 +159,7 @@ export function MobileCompactRow({ article }: { article: ArticleSummary }) {
  * 2-up grid (`MobileSmallPair`) so each card stays readable on a 360 px
  * viewport.
  */
-export function MobileSmallCard({ article }: { article: ArticleSummary }) {
+export function MobileSmallCard({ article, priority = false, now = new Date() }: { article: ArticleSummary; priority?: boolean; now?: Date }) {
   return (
     <article
       className="group np-news-card relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
@@ -165,11 +169,12 @@ export function MobileSmallCard({ article }: { article: ArticleSummary }) {
         <div className="relative">
           <ArticleImage
             media={article.hero}
+            priority={priority}
             sizes="(min-width: 360px) 45vw, 50vw"
             className="aspect-[4/3] w-full object-cover object-[center_30%]"
           />
           {article.category ? (
-            <CategoryPill category={article.category} className="absolute top-2 left-2" glass />
+            <CategoryPill category={article.category} className="absolute top-2 left-2" glass={!!article.hero} />
           ) : null}
         </div>
         <div className="flex flex-1 flex-col gap-1.5 p-3">
@@ -179,7 +184,7 @@ export function MobileSmallCard({ article }: { article: ArticleSummary }) {
             text={article.title}
             clampLines={3}
           />
-          <TimeMeta date={article.publishedAt} relative className="mt-auto text-[0.6875rem]" />
+          <TimeMeta date={article.publishedAt} relative now={now} className="mt-auto text-[0.6875rem]" />
         </div>
       </Link>
     </article>
@@ -191,11 +196,11 @@ export function MobileSmallCard({ article }: { article: ArticleSummary }) {
  * band between the medium supporting card and the dense compact rows below;
  * the cards are equal-height via a grid row so titles line up across columns.
  */
-export function MobileSmallPair({ left, right }: { left: ArticleSummary; right: ArticleSummary }) {
+export function MobileSmallPair({ left, right, priority = false, now = new Date() }: { left: ArticleSummary; right: ArticleSummary; priority?: boolean; now?: Date }) {
   return (
     <div className="grid grid-cols-2 gap-3">
-      <MobileSmallCard article={left} />
-      <MobileSmallCard article={right} />
+      <MobileSmallCard article={left} priority={priority} now={now} />
+      <MobileSmallCard article={right} priority={priority} now={now} />
     </div>
   );
 }
