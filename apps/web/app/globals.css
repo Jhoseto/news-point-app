@@ -132,6 +132,9 @@
   }
 
   @media (min-width: 64rem) {
+    /* Keep the desktop header sticky while LivePoint locks html scrolling.
+       Unlike hidden, clip does not create a second scroll container on body. */
+    body:has(> .np-lp-layer) { overflow-x: clip; }
     html {
       --np-bar-h: 4.75rem;
       --np-lp-row-h: 2.5rem;
@@ -1991,7 +1994,21 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-podcast-feature-about { max-height: min(24vh, 220px); }
   .np-podcast-feature-about .np-podcast-cover { width: min(24vh, 220px); height: min(24vh, 220px); }
   .np-podcast-feature-details p { max-height: min(24vh, 220px); }
-  .np-podcast-carousel .np-podcast-episode--row { flex-basis: min(330px, 76vw); }
+  /* Mobile / tablet: vertical episode list (desktop theatre keeps horizontal carousel). */
+  .np-podcast-carousel > ul {
+    flex-direction: column;
+    overflow: visible;
+    scroll-snap-type: none;
+    gap: 8px;
+    padding: 0 0 10px;
+  }
+  .np-podcast-carousel-actions button { display: none; }
+  .np-podcast-carousel .np-podcast-episode--row {
+    flex: none;
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+  }
 }
 @media (max-width: 639px) {
   .np-podcast-breadcrumb { top: 8px; left: 16px; }
@@ -2015,8 +2032,7 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-podcast-carousel { margin-top: 10px; padding: 8px 12px 0; }
   .np-podcast-carousel-heading { margin-bottom: 8px; }
   .np-podcast-carousel-heading h2 { font-size: 16px; }
-  .np-podcast-carousel-actions button { width: 44px; height: 44px; }
-  .np-podcast-carousel .np-podcast-episode--row { flex-basis: min(292px, 84vw); grid-template-columns: 68px minmax(0, 1fr) 44px; min-height: 86px; }
+  .np-podcast-carousel .np-podcast-episode--row { grid-template-columns: 68px minmax(0, 1fr) 44px; min-height: 86px; }
   .np-podcast-carousel .np-podcast-cover { width: 68px; height: 68px; }
 }
 
@@ -2512,7 +2528,48 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-mobile-lp-sheet .np-podcast-player-content > .np-podcast-eyebrow, .np-mobile-lp-sheet .np-podcast-player-content > .np-podcast-category, .np-mobile-lp-sheet .np-podcast-player-content > h2 { grid-column: 2; margin: 0; }
   .np-mobile-lp-sheet .np-podcast-player--compact h2 { font-size: .9375rem; line-height: 1.45; }
   .np-mobile-lp-sheet .np-podcast-player-content > :nth-child(n+4) { grid-column: 1 / -1; min-width: 0; }
-  .np-mobile-lp-sheet .np-podcast-player-summary { margin: .375rem 0 0; font-size: .75rem; }
+  .np-mobile-lp-sheet .np-podcast-player-summary { margin: .375rem 0 0; font-size: .75rem; line-height: 1.55; color: var(--np-muted); }
+  .np-mobile-lp-sheet .np-podcast-player-summary--expandable {
+    display: flex;
+    align-items: flex-start;
+    gap: .375rem;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+  }
+  .np-mobile-lp-sheet .np-podcast-player-summary-text {
+    flex: 1;
+    min-width: 0;
+    white-space: pre-line;
+  }
+  .np-mobile-lp-sheet .np-podcast-player-summary--expandable:not([data-expanded]) .np-podcast-player-summary-text {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .np-mobile-lp-sheet .np-podcast-player-summary-chevron {
+    display: grid;
+    flex: none;
+    width: 1.625rem;
+    height: 1.625rem;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid var(--np-line);
+    background: var(--np-surface-2);
+    color: var(--np-muted);
+    transition: transform 180ms ease, color 180ms ease, border-color 180ms ease;
+  }
+  .np-mobile-lp-sheet .np-podcast-player-summary-chevron svg { transform: rotate(90deg); transition: transform 180ms ease; }
+  .np-mobile-lp-sheet .np-podcast-player-summary--expandable[data-expanded] .np-podcast-player-summary-chevron svg { transform: rotate(-90deg); }
+  .np-mobile-lp-sheet .np-podcast-player-summary--expandable[data-expanded] .np-podcast-player-summary-chevron {
+    color: var(--np-link);
+    border-color: color-mix(in oklab, var(--np-accent) 35%, var(--np-line));
+  }
   .np-mobile-lp-sheet .np-podcast-transport { justify-content: space-between; gap: .25rem; margin-top: .25rem; }
   .np-mobile-lp-sheet .np-podcast-play { width: 3.5rem; height: 3.5rem; }
   .np-mobile-lp-sheet .np-podcast-tools { gap: .375rem; justify-content: space-between; margin-top: .5rem; }

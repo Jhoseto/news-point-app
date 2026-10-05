@@ -35,6 +35,11 @@ class LiveHub {
     return () => this.listeners.delete(listener);
   }
 
+  /** Dev-only: push a synthetic event to open SSE clients without touching the outbox. */
+  broadcastSynthetic(event: LiveEvent) {
+    for (const listener of this.listeners) listener(event);
+  }
+
   async since(afterId: number, limit = BATCH): Promise<LiveEvent[]> {
     const rows = await getDb()
       .select()

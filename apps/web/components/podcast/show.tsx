@@ -47,13 +47,17 @@ function PodcastTheater({ episodes, selected, activeSlug }: { episodes: PublicEp
   const [shareOpen, setShareOpen] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
   const [message, setMessage] = useState("");
-  const [aboutMounted, setAboutMounted] = useState(false);
-  const [aboutOpen, setAboutOpen] = useState(false);
+  const [aboutMounted, setAboutMounted] = useState(true);
+  const [aboutOpen, setAboutOpen] = useState(true);
   const published = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(selected.publishedAt));
   const shareUrl = new URL(selected.path, "https://newspoint.bg").href;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(selected.title);
   useEffect(() => setCanNativeShare(typeof navigator.share === "function"), []);
+  useEffect(() => {
+    setAboutMounted(true);
+    setAboutOpen(true);
+  }, [selected.id]);
   useEffect(() => {
     if (!shareOpen) return;
     const close = (event: KeyboardEvent) => { if (event.key === "Escape") setShareOpen(false); };

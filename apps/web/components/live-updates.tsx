@@ -125,6 +125,15 @@ export function LiveUpdates() {
     return () => clearTimeout(timer);
   }, [refreshedAt]);
 
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    if (new URLSearchParams(window.location.search).get("liveToastDemo") !== "1") return;
+    const timer = window.setTimeout(() => {
+      void fetch("/api/live/demo/", { method: "POST", cache: "no-store" });
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const onBannerClick = () => {
     clearTimeout(hideTimer.current);
     setBanner(null);

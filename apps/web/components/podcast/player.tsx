@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PublicEpisode } from "@/lib/podcast-types";
 import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock } from "@/lib/podcast-playback";
+import { ChevronRightIcon } from "../icons";
 import { AudioIcon, PodcastCover } from "./visuals";
 import { PodcastTimeline } from "./timeline";
 
@@ -240,12 +241,16 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
   const played = duration ? current / duration * 100 : 0;
   const buffered = loaded && duration ? Math.min(100, player.buffered / duration * 100) : 0;
   const [copied, setCopied] = useState("");
+  const [summaryOpen, setSummaryOpen] = useState(false);
   const toolsId = useId();
   const [tools, setTools] = useState(false);
   const queue = loaded ? player.queue : episodes;
   const canPrevious = !!adjacentEpisode(queue, episode?.id ?? null, -1);
   const canNext = !!adjacentEpisode(queue, episode?.id ?? null, 1);
-  useEffect(() => setCopied(""), [episode?.id]);
+  useEffect(() => {
+    setCopied("");
+    setSummaryOpen(false);
+  }, [episode?.id]);
 
   async function copyLink() {
     if (!episode) return;
@@ -297,7 +302,23 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
         <div className="np-podcast-eyebrow"><span className="np-podcast-dot" />{loaded ? player.playing ? "Слушате" : "Пауза" : "Готов за слушане"}</div>
         <p className="np-podcast-category">{episode.categoryName ?? "NewsPodcast"}</p>
         <h2>{episode.title}</h2>
-        <p className="np-podcast-player-summary">{episode.summary}</p>
+        {compact ? (
+          <button
+            type="button"
+            className="np-podcast-player-summary np-podcast-player-summary--expandable"
+            data-expanded={summaryOpen || undefined}
+            aria-expanded={summaryOpen}
+            aria-label={summaryOpen ? "Свий описанието" : "Разгъни описанието"}
+            onClick={() => setSummaryOpen((open) => !open)}
+          >
+            <span className="np-podcast-player-summary-text">{episode.summary}</span>
+            <span className="np-podcast-player-summary-chevron" aria-hidden="true">
+              <ChevronRightIcon width={16} height={16} />
+            </span>
+          </button>
+        ) : (
+          <p className="np-podcast-player-summary">{episode.summary}</p>
+        )}
         <PodcastTimeline current={current} duration={duration} buffered={buffered} playing={player.playing && !player.waiting} waiting={player.waiting} disabled={!loaded || !duration} onSeek={player.seek} />
         <div className="np-podcast-transport">
           <button className="np-podcast-control" onClick={() => step(-1)} disabled={!canPrevious} aria-label="Предишен епизод"><AudioIcon name="previous" /></button>
