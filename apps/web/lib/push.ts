@@ -108,6 +108,7 @@ export async function notifyArticlePublished(articleId: string): Promise<{ sent:
       auth: pushSubscriptions.auth,
       locale: pushSubscriptions.locale,
       categorySlug: pushSubscriptions.categorySlug,
+      categorySlugs: pushSubscriptions.categorySlugs,
     })
     .from(pushSubscriptions)
     .where(eq(pushSubscriptions.enabled, true));
@@ -126,9 +127,15 @@ export async function notifyArticlePublished(articleId: string): Promise<{ sent:
   const article = articleRows[0];
   if (!article) return { sent: 0, removed: 0 };
 
-  const target = rows.filter(
-    (row) => row.categorySlug === null || row.categorySlug === article.categorySlug,
-  );
+  const target = rows.filter((row) => {
+    const slug = article.categorySlug;
+    const multi = row.categorySlugs;
+    if (Array.isArray(multi) && multi.length > 0) {
+      return Boolean(slug && multi.includes(slug));
+    }
+    if (row.categorySlug) return row.categorySlug === slug;
+    return true;
+  });
   if (target.length === 0) return { sent: 0, removed: 0 };
 
   const origin = process.env.WEB_URL ?? "https://newspoint.bg";

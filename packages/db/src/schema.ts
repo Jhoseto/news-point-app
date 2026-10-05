@@ -344,6 +344,7 @@ export const pushSubscriptions = pgTable(
     p256dh: text("p256dh").notNull(),
     auth: text("auth").notNull(),
     categorySlug: text("category_slug"),
+    categorySlugs: jsonb("category_slugs").$type<string[] | null>(),
     locale: text("locale").notNull().default("bg"),
     userAgent: text("user_agent").notNull().default(""),
     enabled: boolean("enabled").notNull().default(true),

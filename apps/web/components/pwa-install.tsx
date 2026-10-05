@@ -76,7 +76,7 @@ export function PwaInstall() {
 
   if (isIosSafari) {
     return (
-      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-start gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:bottom-5" suppressHydrationWarning>
+      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-start gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:hidden" suppressHydrationWarning>
         <div className="np-ring !size-9 shrink-0" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           <strong className="font-bold text-ink">Добави NewsPoint.bg към началния екран</strong>
@@ -105,7 +105,7 @@ export function PwaInstall() {
       }
     };
     return (
-      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-center gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:bottom-5">
+      <div role="region" aria-label="Инсталиране на приложението" className="np-pwa-install fixed inset-x-3 bottom-20 z-30 flex items-center gap-3 rounded-2xl border border-line bg-surface/95 p-3 shadow-card backdrop-blur lg:hidden">
         <div className="np-ring !size-9 shrink-0" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
           <strong className="font-bold text-ink">Инсталирай NewsPoint.bg</strong>

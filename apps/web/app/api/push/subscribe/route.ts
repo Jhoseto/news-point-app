@@ -22,6 +22,8 @@ const SubscriptionSchema = z.object({
     auth: z.string().min(10).max(64),
   }),
   categorySlug: z.string().min(1).max(64).nullable().optional(),
+  categorySlugs: z.array(z.string().min(1).max(64)).max(32).nullable().optional(),
+  enabled: z.boolean().optional(),
   locale: z.string().min(2).max(8).optional(),
   userAgent: z.string().max(1024).optional(),
 });
@@ -60,12 +62,19 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Invalid subscription", details: parsed.error.flatten() }, { status: 400 });
   }
-  const { endpoint, keys, categorySlug, locale, userAgent } = parsed.data;
+  const { endpoint, keys, categorySlug, categorySlugs, enabled, locale, userAgent } = parsed.data;
   if (!isAllowedPushEndpoint(endpoint)) {
     return NextResponse.json({ error: "Unsupported push endpoint" }, { status: 400 });
   }
   const ua = userAgent ?? request.headers.get("user-agent") ?? "";
   const db = getDb();
+  const slugFilter =
+    categorySlugs !== undefined
+      ? categorySlugs && categorySlugs.length > 0
+        ? categorySlugs
+        : null
+      : undefined;
+  const legacySlug = categorySlug !== undefined ? categorySlug ?? null : undefined;
 
   // Upsert on the unique endpoint constraint. Avoids the SELECT-then-INSERT
   // race that duplicated the row when two requests came in simultaneously.
@@ -75,20 +84,22 @@ export async function POST(request: Request) {
       endpoint,
       p256dh: keys.p256dh,
       auth: keys.auth,
-      categorySlug: categorySlug ?? null,
+      categorySlug: legacySlug ?? null,
+      categorySlugs: slugFilter ?? null,
       locale: locale ?? "bg",
       userAgent: ua,
-      enabled: true,
+      enabled: enabled ?? true,
     })
     .onConflictDoUpdate({
       target: pushSubscriptions.endpoint,
       set: {
         p256dh: keys.p256dh,
         auth: keys.auth,
-        categorySlug: categorySlug ?? null,
+        ...(legacySlug !== undefined ? { categorySlug: legacySlug } : {}),
+        ...(slugFilter !== undefined ? { categorySlugs: slugFilter } : {}),
         locale: locale ?? "bg",
         userAgent: ua,
-        enabled: true,
+        ...(enabled !== undefined ? { enabled } : { enabled: true }),
         updatedAt: new Date(),
       },
     })

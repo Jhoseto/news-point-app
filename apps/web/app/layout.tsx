@@ -7,6 +7,7 @@ import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
 import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { PwaInstall } from "@/components/pwa-install";
+import { PushPromptToast } from "@/components/push-prompt-toast";
 import { PwaRegister } from "@/components/pwa-register";
 import { PwaSplash } from "@/components/pwa-splash";
 import { PodcastProvider } from "@/components/podcast/player";
@@ -109,6 +110,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <LiveUpdates />
         <SpotlightField />
         <PwaInstall />
+        <PushPromptToast />
         <PwaRegister />
         <PwaSplash />
       </body>

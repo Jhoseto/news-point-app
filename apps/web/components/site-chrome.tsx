@@ -150,7 +150,7 @@ export async function SiteFooter() {
         <div className="flex flex-col gap-3">
           <Logo className="h-10" />
           <p className="max-w-xs text-sm text-muted">Новини от Пловдив, България и света.</p>
-          <Link href="/settings/" prefetch={false} className="inline-flex min-h-11 w-fit items-center text-sm font-semibold text-accent hover:underline dark:text-link">Настройки на четене</Link>
+          <Link href="/settings/" prefetch={false} className="inline-flex min-h-11 w-fit items-center text-sm font-semibold text-accent hover:underline dark:text-link">Настройки</Link>
           <Link href="/team/" prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-sm font-semibold text-accent hover:underline dark:text-link">Екип</Link>
         </div>
         <nav aria-label="Рубрики във футъра">
