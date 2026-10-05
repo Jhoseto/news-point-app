@@ -39,7 +39,7 @@ export function makePushPayload(title: string, body: string, url: string, tag: s
   // New Apple versions can display this without executing the service worker.
   // SW also reads this format for browsers without declarative support.
   return { web_push: 8030, notification: { title: title.slice(0, 160), body: body.slice(0, 240), navigate: url,
-    lang: "bg", tag, icon: "/brand/icon-192.png", badge: "/brand/push-badge.svg", silent: false, data: { url } } };
+    lang: "bg", tag, icon: "/brand/icon-192.png", badge: "/brand/push-badge.png", silent: false, data: { url } } };
 }
 
 export function pushRetry(attempt: number, status: number | undefined, retryAfter: string | undefined, now: number, expiresAt: number) {

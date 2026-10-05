@@ -336,7 +336,7 @@ export function LivePointProvider({
                     {MODULE_LABELS[active]}
                   </h2>
                   <span className="hidden text-xs font-semibold text-muted sm:inline">{PANEL_SUBTITLES[active]}</span>
-                  {active === "traffic" && <Link href={MODULE_PATHS.traffic} aria-label="Подробности за трафика" className="inline-flex shrink-0 rounded-full border border-accent/30 bg-surface-2 px-3 py-2 text-xs font-extrabold text-link transition-colors hover:border-accent hover:bg-accent hover:text-on-accent sm:px-4"><span className="sm:hidden">Още ↗</span><span className="hidden sm:inline">Подробности за трафика ↗</span></Link>}
+                  {active === "traffic" && <Link href={MODULE_PATHS.traffic} aria-label="Подробности за трафика" className="inline-flex shrink-0 rounded-full border border-accent/30 bg-surface-2 px-3 py-2 text-xs font-extrabold text-link transition-colors hover:bg-accent hover:text-on-accent sm:px-4"><span className="sm:hidden">Още ↗</span><span className="hidden sm:inline">Подробности за трафика ↗</span></Link>}
                   <button
                     type="button"
                     aria-label="Затвори"

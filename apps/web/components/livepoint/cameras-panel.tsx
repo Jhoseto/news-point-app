@@ -160,7 +160,7 @@ export function CamerasPanel({ variant = "page" }: { variant?: "panel" | "page" 
               type="button"
               aria-pressed={category === id}
               onClick={() => setCategory(id)}
-              className="min-h-11 min-w-11 shrink-0 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent sm:px-3 sm:text-xs"
+              className="min-h-11 min-w-11 shrink-0 rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px] font-extrabold text-body transition-colors hover:border-line hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent sm:px-3 sm:text-xs"
             >
               {label} <span className="ml-0.5 opacity-70">{COUNTS[id]}</span>
             </button>

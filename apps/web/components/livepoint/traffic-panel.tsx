@@ -24,13 +24,13 @@ const TRAFFIC_SELECT =
   "np-traffic-select min-h-9 w-full rounded-full border border-line bg-surface-2 px-3.5 py-1.5 text-xs font-extrabold text-body";
 
 function layerToggle(compact: boolean) {
-  return `rounded-full border border-line bg-surface-2 font-bold text-body transition-colors hover:text-ink aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink ${
+  return `rounded-full border border-line bg-surface-2 font-bold text-body transition-colors hover:text-ink hover:border-line aria-pressed:border-accent/40 aria-pressed:bg-accent/10 aria-pressed:text-ink ${
     compact ? "min-h-9 px-2.5 py-1 text-[11px]" : "min-h-11 px-3 py-1.5 text-xs"
   }`;
 }
 
 function filterChip(compact: boolean) {
-  return `shrink-0 rounded-full border border-line bg-surface-2 font-extrabold text-body transition-colors hover:border-accent/40 hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent ${
+  return `shrink-0 rounded-full border border-line bg-surface-2 font-extrabold text-body transition-colors hover:border-line hover:text-ink aria-pressed:border-accent aria-pressed:bg-accent aria-pressed:text-on-accent ${
     compact ? "min-h-9 px-2.5 py-1 text-[11px]" : "min-h-11 px-3 py-1.5 text-xs sm:text-sm"
   }`;
 }

@@ -1,137 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
-import {
-  getBrowserPushSubscription,
-  readPushSupport,
-  setPushEnabled,
-  subscribeForPush,
-  syncPushCategorySlugs,
-} from "@/lib/push-client";
-import {
-  readPushMasterEnabled,
-  readStoredPushRubrics,
-  writePushMasterEnabled,
-  writeStoredPushRubrics,
-} from "@/lib/push-preferences";
+import { useId, useSyncExternalStore } from "react";
+import { usePushSettings } from "./use-push-settings";
+import { MobilePushSettings } from "./mobile-push-settings";
 
-type Rubric = { slug: string; name: string };
-
+function subscribeWidth(callback: () => void) {
+  const media = window.matchMedia("(max-width: 63.999rem)");
+  media.addEventListener("change", callback);
+  return () => media.removeEventListener("change", callback);
+}
 export function PushSettings({ compact = true }: { compact?: boolean }) {
   const id = useId();
-  const [rubrics, setRubrics] = useState<Rubric[]>([]);
-  const [allRubrics, setAllRubrics] = useState(true);
-  const [picked, setPicked] = useState<Set<string>>(() => new Set());
-  const [active, setActive] = useState(false);
-  const [needInstall, setNeedInstall] = useState(false);
-  const [unsupported, setUnsupported] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
+  const push = usePushSettings();
+  const mobile = useSyncExternalStore(subscribeWidth, () => window.matchMedia("(max-width: 63.999rem)").matches, () => false);
+  if (mobile) return <MobilePushSettings push={push} />;
+  const { busy, active, error, rubrics } = push;
+  const allRubrics = push.slugs === null;
+  const picked = new Set(push.slugs ?? []);
   const card = compact ? "np-card p-2.5 sm:p-3" : "np-card p-5 sm:p-7";
   const legend = compact ? "mb-0.5 text-xs font-extrabold text-ink" : "mb-2 text-lg font-extrabold text-ink";
   const hint = compact ? "mb-2 text-[11px] leading-snug text-muted" : "mb-5 text-sm leading-relaxed text-muted";
-
-  const slugsForServer = useCallback((): string[] | null => {
-    if (allRubrics) return null;
-    const list = [...picked];
-    return list.length > 0 ? list : null;
-  }, [allRubrics, picked]);
-
-  const syncPermissionState = useCallback(() => {
-    const support = readPushSupport();
-    void (async () => {
-      const sub = await getBrowserPushSubscription();
-      const granted = support.permission === "granted" && Boolean(sub);
-      setActive(granted && readPushMasterEnabled());
-    })();
-  }, []);
-
-  useEffect(() => {
-    const support = readPushSupport();
-    setUnsupported(!support.supported);
-    setNeedInstall(support.needInstall);
-    syncPermissionState();
-    const stored = readStoredPushRubrics();
-    if (stored && stored.length > 0) {
-      setAllRubrics(false);
-      setPicked(new Set(stored));
-    }
-    void fetch("/api/push/menu", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: { categories?: Rubric[] } | null) => {
-        if (data?.categories?.length) setRubrics(data.categories);
-      })
-      .catch(() => {});
-    const onFocus = () => syncPermissionState();
-    window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", onFocus);
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      document.removeEventListener("visibilitychange", onFocus);
-    };
-  }, [syncPermissionState]);
-
-  const enable = async () => {
-    if (busy || unsupported || needInstall) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await subscribeForPush({ categorySlugs: slugsForServer(), categorySlug: null });
-      if (!result.ok) {
-        setError(result.reason === "config" ? "Сървърът не е конфигуриран за нотификации." : "Неуспешно включване.");
-        setActive(false);
-        return;
-      }
-      writePushMasterEnabled(true);
-      setActive(true);
-      window.dispatchEvent(new Event("np-push-subscribed"));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const disable = async () => {
-    if (busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const ok = await setPushEnabled(false);
-      if (!ok) {
-        setError("Неуспешно изключване.");
-        return;
-      }
-      writePushMasterEnabled(false);
-      setActive(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const applyRubrics = async (nextAll: boolean, nextPicked: Set<string>) => {
-    const slugs = nextAll ? null : nextPicked.size > 0 ? [...nextPicked] : null;
-    writeStoredPushRubrics(slugs);
-    if (!active) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const ok = await syncPushCategorySlugs(slugs);
-      if (!ok) setError("Рубриките не бяха запазени.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (unsupported) return null;
-
-  if (needInstall) {
-    return (
-      <fieldset className={card}>
-        <legend className={legend}>Нотификации</legend>
-        <p className={hint}>На iPhone добавете NewsPoint към началния екран (Safari → сподели), за да получавате известия.</p>
-      </fieldset>
-    );
-  }
+  if (push.support && !push.support.supported) return null;
 
   const btn = compact ? "min-h-9 text-xs" : "min-h-11 text-sm";
 
@@ -149,8 +38,8 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
             role="switch"
             aria-checked
             checked
-            disabled={busy}
-            onChange={() => void disable()}
+            disabled={busy || push.loading}
+            onChange={() => void push.disable()}
             className="size-4 shrink-0 accent-accent"
           />
         </label>
@@ -158,7 +47,7 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
         <button
           type="button"
           disabled={busy}
-          onClick={() => void enable()}
+          onClick={() => void push.enable()}
           className={`np-gradient-bg inline-flex w-full items-center justify-center rounded-lg px-3 py-2 font-bold text-on-accent disabled:opacity-50 ${btn}`}
         >
           {busy ? "…" : "Включи нотификации"}
@@ -171,9 +60,7 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
               type="checkbox"
               checked={allRubrics}
               onChange={(e) => {
-                const on = e.target.checked;
-                setAllRubrics(on);
-                void applyRubrics(on, picked);
+                void push.choose(e.target.checked ? null : []);
               }}
               className="size-3.5 accent-accent"
             />
@@ -190,8 +77,7 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
                       const next = new Set(picked);
                       if (e.target.checked) next.add(item.slug);
                       else next.delete(item.slug);
-                      setPicked(next);
-                      void applyRubrics(false, next);
+                      void push.choose([...next]);
                     }}
                     className="size-3 shrink-0 accent-accent"
                   />

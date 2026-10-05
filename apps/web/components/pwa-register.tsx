@@ -1,51 +1,49 @@
 "use client";
 
 import { useEffect } from "react";
+import { ensureReaderServiceWorker, readPushServerState, readPushSupport } from "@/lib/push-client";
 
-/**
- * Register the reader service worker once per page load. Skips registration in
- * development so HMR stays simple.
- */
 export function PwaRegister() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (process.env.NODE_ENV !== "production") return;
-    if (!("serviceWorker" in navigator)) return;
-    const controller = navigator.serviceWorker.controller;
-    if (controller) return;
-    const onLoad = () => {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .catch(() => {
-          // Silent: SW registration failure must not break the page.
-        });
-    };
-    if (document.readyState === "complete") onLoad();
-    else window.addEventListener("load", onLoad, { once: true });
-    return () => window.removeEventListener("load", onLoad);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (process.env.NODE_ENV !== "production") return;
-    if (!("serviceWorker" in navigator)) return;
-    const onUpdate = () => {
-      // The new worker is waiting; reload once when the page first becomes hidden,
-      // so the next visit starts with the fresh shell.
-      if (controller_installed()) {
-        navigator.serviceWorker.ready.then((registration) => {
-          if (registration.waiting) {
-            registration.waiting.postMessage({ type: "SKIP_WAITING" });
-          }
-        });
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    let registration: ServiceWorkerRegistration | null = null;
+    let closed = false;
+    let reconciling = false;
+    let updatedAt = 0;
+    const check = async () => {
+      if (document.visibilityState === "hidden") {
+        registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+        return;
       }
+      if (reconciling) return;
+      reconciling = true;
+      try {
+        registration = await ensureReaderServiceWorker();
+        if (closed) return;
+        if (Date.now() - updatedAt > 60 * 60_000) {
+          updatedAt = Date.now();
+          void registration.update().catch(() => {});
+        }
+        if (readPushSupport().permission === "granted") await readPushServerState();
+        if (!closed) window.dispatchEvent(new Event("np-pwa-ready"));
+      } catch {
+        // Push UI reports retryable errors. Normal reading continues.
+      } finally { reconciling = false; }
     };
-    function controller_installed() {
-      return navigator.serviceWorker.controller !== null;
-    }
-    navigator.serviceWorker.addEventListener("controllerchange", onUpdate);
-    return () => navigator.serviceWorker.removeEventListener("controllerchange", onUpdate);
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGED") void check();
+    };
+    const onResume = () => { void check(); };
+    void check();
+    window.addEventListener("online", onResume);
+    document.addEventListener("visibilitychange", onResume);
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => {
+      closed = true;
+      window.removeEventListener("online", onResume);
+      document.removeEventListener("visibilitychange", onResume);
+      navigator.serviceWorker.removeEventListener("message", onMessage);
+    };
   }, []);
-
   return null;
 }

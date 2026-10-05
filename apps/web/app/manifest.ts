@@ -16,6 +16,7 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "bg",
     dir: "ltr",
     start_url: "/",
+    id: "/",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

@@ -13,6 +13,7 @@ const LatestPanel = dynamic(
   { ssr: false, loading: () => null },
 );
 const MobileRubricPager = dynamic(() => import("./mobile-rubric-pager").then(module => module.MobileRubricPager), { ssr: false, loading: () => null });
+const MobilePushPrompt = dynamic(() => import("./mobile-push-prompt").then(module => module.MobilePushPrompt), { ssr: false, loading: () => null });
 
 export function MobileChromeIsland() {
   // Start as `false` so the server-rendered tree matches the desktop client
@@ -42,6 +43,7 @@ export function MobileChromeIsland() {
       <BottomNav onOpenLatest={openLatest} latestOpen={latestOpen} onNavigate={closeLatest} />
       <LatestPanel open={latestOpen} onClose={closeLatest} />
       <MobileRubricPager />
+      <MobilePushPrompt />
     </>
   );
 }

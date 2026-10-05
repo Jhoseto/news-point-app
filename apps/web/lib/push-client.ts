@@ -1,146 +1,182 @@
 "use client";
 
-/** Shared Web Push helpers for settings, category follow and desktop prompt. */
-
-export type PushSupport = {
-  supported: boolean;
-  needInstall: boolean;
-  permission: NotificationPermission | "unsupported";
-};
-
-function detectIosSafariStandalone(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  const isIos = /iPhone|iPad|iPod/.test(ua);
-  const isWebkit = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  const standalone =
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return isIos && isWebkit && standalone;
-}
-
-function isIosDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/.test(navigator.userAgent);
-}
+import type { PushAction, PushProof, PushState } from "@newspoint/db/push-domain";
+import { readStoredPushRubrics, writePushMasterEnabled, writeStoredPushRubrics } from "./push-preferences";
+export type { PushState } from "@newspoint/db/push-domain";
+export type PushSupport = { supported: boolean; needInstall: boolean; installed: boolean; ios: boolean; permission: NotificationPermission | "unsupported" };
 
 export function readPushSupport(): PushSupport {
-  if (typeof window === "undefined") {
-    return { supported: false, needInstall: false, permission: "unsupported" };
-  }
-  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  if (!supported) return { supported: false, needInstall: false, permission: "unsupported" };
-  const needInstall = !detectIosSafariStandalone() && isIosDevice();
-  return { supported: true, needInstall, permission: Notification.permission };
+  if (typeof window === "undefined") return { supported: false, needInstall: false, installed: false, ios: false, permission: "unsupported" };
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const installed = window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const supported = window.isSecureContext && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return { supported, installed, ios, needInstall: ios && !installed,
+    permission: "Notification" in window ? Notification.permission : "unsupported" };
 }
 
-export function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = window.atob(base64);
-  const out = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i += 1) out[i] = raw.charCodeAt(i);
-  return out;
+export class PushClientError extends Error {
+  constructor(public code: string) { super(code); }
+}
+export function pushErrorText(error: unknown): string {
+  const code = error instanceof PushClientError ? error.code : "network";
+  const messages: Record<string, string> = {
+    blocked: "Известията са блокирани. Разрешете ги от системните настройки за NewsPoint и опитайте отново.",
+    denied: "Не дадохте разрешение. Можете да включите известията по-късно.",
+    config: "Известията още не са активирани на този сървър.",
+    conflict: "Настройките бяха променени в друг прозорец. Обновете ги и опитайте отново.",
+    ownership: "Абонаментът не може да бъде потвърден. Опитайте след презареждане.",
+    unavailable: "Сървърът за известия временно не е достъпен. Опитайте отново.",
+    worker: "Приложението още не е готово за известия. Презаредете и опитайте отново.",
+    rubrics: "Списъкът с рубрики се промени. Обновете настройките.",
+    rate_limit: "Твърде много заявки. Изчакайте една минута.",
+    test_rate_limit: "Можете да заявите един тест на минута.",
+    disabled: "Първо включете известията за това устройство.",
+    missing: "Абонаментът вече не е активен. Включете известията отново.",
+    invalid: "Това устройство не е готово за известия.",
+    network: "Няма връзка. Промяната не е потвърдена; опитайте отново.",
+  };
+  return messages[code] ?? messages.network!;
 }
 
-export type PushUpsertBody = {
-  endpoint: string;
-  keys: { p256dh: string; auth: string };
-  categorySlug?: string | null;
-  categorySlugs?: string[] | null;
-  enabled?: boolean;
-  locale?: string;
-  userAgent?: string;
-};
+function bounded<T>(promise: Promise<T>, code = "worker", ms = 8000): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new PushClientError(code)), ms);
+    promise.then((value) => { clearTimeout(timer); resolve(value); }, (error) => { clearTimeout(timer); reject(error); });
+  });
+}
+async function jsonFetch(url: string, body?: unknown) {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 8000);
+  try {
+    const res = await fetch(url, { method: body === undefined ? "GET" : "POST", cache: "no-store", credentials: "same-origin",
+      signal: abort.signal, ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }) });
+    const json = await res.json() as { error?: string; state?: PushState | null; configured?: boolean; publicKey?: string };
+    if (!res.ok) throw new PushClientError(json.error ?? (res.status === 503 ? "config" : "network"));
+    return json;
+  } catch (error) {
+    throw error instanceof PushClientError ? error : new PushClientError("network");
+  } finally { clearTimeout(timer); }
+}
+
+let registrationPromise: Promise<ServiceWorkerRegistration> | null = null;
+export function ensureReaderServiceWorker(): Promise<ServiceWorkerRegistration> {
+  if (registrationPromise) return registrationPromise;
+  registrationPromise = (async () => {
+    if (!window.isSecureContext || !("serviceWorker" in navigator)) throw new PushClientError("worker");
+    await bounded(navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }));
+    return bounded(navigator.serviceWorker.ready);
+  })().catch((error) => { registrationPromise = null; throw error; });
+  return registrationPromise;
+}
 
 export async function getBrowserPushSubscription(): Promise<PushSubscription | null> {
-  if (!("serviceWorker" in navigator)) return null;
-  const reg = await navigator.serviceWorker.ready;
-  return reg.pushManager.getSubscription();
+  if (!readPushSupport().supported || readPushSupport().needInstall) return null;
+  const registration = await bounded(navigator.serviceWorker.getRegistration("/"));
+  return registration ? bounded(registration.pushManager.getSubscription()) : null;
+}
+function proof(sub: PushSubscription): PushProof {
+  const json = sub.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) throw new PushClientError("invalid");
+  return { endpoint: json.endpoint, keys: { p256dh: json.keys.p256dh, auth: json.keys.auth } };
+}
+function remember(state: PushState | null) {
+  writePushMasterEnabled(Boolean(state?.enabled));
+  if (state) writeStoredPushRubrics(state.categorySlugs);
+}
+async function action(sub: PushSubscription, kind: PushAction, extra: { revision?: number; categorySlugs?: string[] | null } = {}) {
+  const result = await jsonFetch("/api/push/subscribe/", { ...proof(sub), action: kind, ...extra,
+    locale: navigator.language.slice(0, 32), userAgent: navigator.userAgent.slice(0, 1024) });
+  const state = result.state ?? null;
+  remember(state);
+  return state;
+}
+export async function readPushServerState() {
+  const sub = await getBrowserPushSubscription();
+  return sub ? action(sub, "status") : null;
+}
+export async function getPushPublicKey(): Promise<string> {
+  const response = await jsonFetch("/api/push/vapid/");
+  if (!response.publicKey) throw new PushClientError("config");
+  return response.publicKey;
+}
+export function urlBase64ToUint8Array(value: string): Uint8Array {
+  const raw = window.atob(value.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - value.length % 4) % 4));
+  return Uint8Array.from(raw, (character) => character.charCodeAt(0));
 }
 
-export async function upsertPushOnServer(body: PushUpsertBody): Promise<boolean> {
-  const res = await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      ...body,
-      locale: body.locale ?? navigator.language,
-      userAgent: body.userAgent ?? navigator.userAgent,
-    }),
-  });
-  return res.ok;
+let mutationTail: Promise<unknown> = Promise.resolve();
+function serial<T>(run: () => Promise<T>): Promise<T> {
+  const pending = mutationTail.then(run, run);
+  mutationTail = pending.catch(() => {});
+  return pending;
 }
 
-export async function subscribeForPush(options?: {
-  categorySlug?: string | null;
-  categorySlugs?: string[] | null;
-}): Promise<{ ok: true } | { ok: false; reason: "denied" | "blocked" | "config" | "invalid" | "network" }> {
+export async function subscribeForPush(options?: { categorySlug?: string | null; categorySlugs?: string[] | null })
+  : Promise<{ ok: true; state: PushState } | { ok: false; reason: string }> {
   const support = readPushSupport();
   if (!support.supported || support.needInstall) return { ok: false, reason: "invalid" };
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    return { ok: false, reason: permission === "denied" ? "blocked" : "denied" };
-  }
-  const reg = await navigator.serviceWorker.ready;
-  const vapidRes = await fetch("/api/push/vapid", { cache: "no-store" });
-  if (!vapidRes.ok) return { ok: false, reason: "config" };
-  const { publicKey } = (await vapidRes.json()) as { publicKey: string };
-  let subscription = await reg.pushManager.getSubscription();
-  if (!subscription) {
-    subscription = await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+  // Must run directly in the user's click stack, before network/SW awaits.
+  const permission = support.permission === "granted" ? Promise.resolve("granted" as const) : Notification.requestPermission();
+  try {
+    if (await permission !== "granted") return { ok: false, reason: Notification.permission === "denied" ? "blocked" : "denied" };
+    const state = await serial(async () => {
+      const publicKey = await getPushPublicKey();
+      const key = urlBase64ToUint8Array(publicKey);
+      const reg = await ensureReaderServiceWorker();
+      let sub = await bounded(reg.pushManager.getSubscription());
+      if (sub?.options.applicationServerKey) {
+        const oldKey = new Uint8Array(sub.options.applicationServerKey);
+        if (oldKey.length !== key.length || oldKey.some((byte, index) => byte !== key[index])) {
+          const oldState = await action(sub, "status");
+          if (oldState) await action(sub, "unsubscribe", { revision: oldState.revision });
+          if (!(await bounded(sub.unsubscribe()))) throw new PushClientError("worker");
+          sub = null;
+        }
+      }
+      sub ??= await bounded(reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key as BufferSource }));
+      const current = await action(sub, "status");
+      const result = await action(sub, "subscribe", { ...(current ? { revision: current.revision } : {}),
+        categorySlugs: options?.categorySlugs !== undefined ? options.categorySlugs
+          : options?.categorySlug ? [options.categorySlug] : current?.categorySlugs ?? readStoredPushRubrics() });
+      if (!result) throw new PushClientError("network");
+      window.dispatchEvent(new Event("np-push-subscribed"));
+      window.dispatchEvent(new Event("np-push-change"));
+      return result;
     });
-  }
-  const json = subscription.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return { ok: false, reason: "invalid" };
-  const ok = await upsertPushOnServer({
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    categorySlug: options?.categorySlug ?? null,
-    categorySlugs: options?.categorySlugs ?? null,
-    enabled: true,
-  });
-  return ok ? { ok: true } : { ok: false, reason: "network" };
+    return { ok: true, state };
+  } catch (error) { return { ok: false, reason: error instanceof PushClientError ? error.code : "network" }; }
 }
 
+export async function mutatePush(kind: "preferences" | "disable" | "test", revision: number, categorySlugs?: string[] | null) {
+  return serial(async () => {
+    const sub = await getBrowserPushSubscription();
+    if (!sub) throw new PushClientError("missing");
+    const state = await action(sub, kind, { revision, ...(categorySlugs !== undefined ? { categorySlugs } : {}) });
+    window.dispatchEvent(new Event("np-push-change"));
+    return state;
+  });
+}
 export async function setPushEnabled(enabled: boolean): Promise<boolean> {
-  const sub = await getBrowserPushSubscription();
-  if (!sub) return false;
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
-  return upsertPushOnServer({
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    enabled,
+  if (enabled) return (await subscribeForPush()).ok;
+  try { const state = await readPushServerState(); if (!state) return false; await mutatePush("disable", state.revision); return true; } catch { return false; }
+}
+export async function syncPushCategorySlugs(slugs: string[] | null): Promise<boolean> {
+  try { const state = await readPushServerState(); if (!state) return false; await mutatePush("preferences", state.revision, slugs); return true; } catch { return false; }
+}
+export async function unsubscribePush() {
+  await serial(async () => {
+    const sub = await getBrowserPushSubscription();
+    if (!sub) return;
+    const state = await action(sub, "status");
+    // Stop server delivery before touching the browser subscription.
+    if (state) await action(sub, "unsubscribe", { revision: state.revision });
+    await bounded(sub.unsubscribe());
+    remember(null);
+    window.dispatchEvent(new Event("np-push-change"));
   });
 }
-
-export async function syncPushCategorySlugs(categorySlugs: string[] | null): Promise<boolean> {
-  const sub = await getBrowserPushSubscription();
-  if (!sub) return false;
-  const json = sub.toJSON();
-  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) return false;
-  return upsertPushOnServer({
-    endpoint: json.endpoint,
-    keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-    categorySlugs,
-    categorySlug: null,
-    enabled: true,
-  });
-}
-
-export async function unsubscribePush(): Promise<void> {
-  const sub = await getBrowserPushSubscription();
-  if (!sub) return;
-  const endpoint = sub.endpoint;
-  await sub.unsubscribe();
-  await fetch(`/api/push/subscribe?endpoint=${encodeURIComponent(endpoint)}`, { method: "DELETE" });
-}
-
 export const OPEN_SETTINGS_EVENT = "np-open-settings";
-
-export function openReaderSettings() {
-  window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT));
-}
+export function openReaderSettings() { window.dispatchEvent(new Event(OPEN_SETTINGS_EVENT)); }

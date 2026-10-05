@@ -55,7 +55,8 @@ const nextConfig: NextConfig = {
       source: "/brand/:path*",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
-    return [noindex, brandCache];
+    const workerCache = { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] };
+    return [noindex, brandCache, workerCache];
   },
 };
 

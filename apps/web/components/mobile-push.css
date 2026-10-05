@@ -1,0 +1,35 @@
+@media (max-width: 63.999rem) {
+  .np-mobile-push-prompt { position: fixed; z-index: 35; left: .75rem; right: .75rem; bottom: calc(5rem + env(safe-area-inset-bottom, 0px)); display: flex; align-items: flex-start; gap: .75rem; padding: 1rem; border: 1px solid var(--color-line); border-radius: 1.25rem; box-shadow: var(--shadow-card); background: var(--color-surface); color: var(--color-ink); }
+  .np-mobile-push-prompt > div { flex: 1; min-width: 0; }
+  .np-mobile-push-prompt strong { font-size: .875rem; }
+  .np-mobile-push-prompt p { margin: .3rem 0 .7rem; color: var(--color-muted); font-size: .75rem; line-height: 1.45; }
+  .np-mobile-push-prompt button { min-height: 2.75rem; min-width: 2.75rem; border-radius: .75rem; padding: .6rem .8rem; font-size: .8125rem; font-weight: 700; }
+  .np-mobile-push { min-width: 0; border: 1px solid var(--color-line); border-radius: 1.25rem; padding: 1rem; background: var(--color-surface); color: var(--color-ink); }
+  .np-mobile-push-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: .8rem; }
+  .np-mobile-push-icon { display: grid; place-items: center; flex: 0 0 2.8rem; height: 2.8rem; border-radius: 1rem; color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 9%, var(--color-surface)); }
+  .np-mobile-push-eyebrow { margin: 0 0 .2rem; color: var(--color-muted); font-size: .625rem; font-weight: 800; letter-spacing: .12em; }
+  .np-mobile-push h3 { margin: 0; font-size: 1rem; line-height: 1.35; font-weight: 800; }
+  .np-mobile-push-copy, .np-mobile-push-steps { margin: .65rem 0; color: var(--color-muted); font-size: .8125rem; line-height: 1.55; }
+  .np-mobile-push-steps { padding-left: 1.4rem; }
+  .np-mobile-push-steps li + li { margin-top: .5rem; }
+  .np-mobile-push-master { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .85rem; margin-top: 1rem; background: var(--color-surface-2); border: 1px solid var(--color-line); border-radius: .9rem; min-height: 4rem; }
+  .np-mobile-push-master strong { display: block; font-size: .875rem; }
+  .np-mobile-push-master small { display: block; margin-top: .2rem; color: var(--color-muted); font-size: .6875rem; }
+  .np-mobile-push-master input { flex: 0 0 auto; width: 1.5rem; height: 1.5rem; accent-color: var(--color-accent); }
+  .np-mobile-push-rubrics { min-width: 0; padding: 0; border: 0; margin: 1rem 0; }
+  .np-mobile-push-rubrics legend { padding: 0; margin-bottom: .7rem; font-size: .8125rem; font-weight: 800; }
+  .np-mobile-push-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; margin-top: .5rem; }
+  .np-mobile-push-choice { display: flex; align-items: center; gap: .5rem; min-height: 2.75rem; padding: .6rem; border-radius: .75rem; border: 1px solid var(--color-line); background: var(--color-surface-2); font-size: .75rem; line-height: 1.35; }
+  .np-mobile-push-choice:has(:checked) { border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-line)); background: color-mix(in srgb, var(--color-accent) 7%, var(--color-surface)); }
+  .np-mobile-push-choice input { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; accent-color: var(--color-accent); }
+  .np-mobile-push-choice span { min-width: 0; overflow-wrap: anywhere; }
+  .np-mobile-push-all { font-weight: 700; }
+  .np-mobile-push-secondary { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 2.75rem; padding: .7rem; margin-top: .65rem; border: 1px solid var(--color-line); border-radius: .85rem; background: var(--color-surface-2); color: var(--color-ink); font-size: .8125rem; font-weight: 700; }
+  .np-mobile-push :is(button,input):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  .np-mobile-push :disabled { opacity: .55; cursor: default; }
+  .np-mobile-push-feedback { padding: .8rem; margin-top: .75rem; border: 1px solid var(--color-line); border-radius: .8rem; font-size: .8125rem; line-height: 1.5; background: var(--color-surface-2); }
+  .np-mobile-push-footnote { margin: .9rem 0 0; color: var(--color-muted); font-size: .6875rem; line-height: 1.5; }
+  @media (prefers-reduced-motion: no-preference) {
+    .np-mobile-push-choice, .np-mobile-push-secondary { transition: background-color 160ms ease, border-color 160ms ease; }
+  }
+}

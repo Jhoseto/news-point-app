@@ -946,7 +946,12 @@
     overflow-wrap: anywhere;
     transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), text-shadow 220ms ease;
   }
-  .np-lp-item:is(:hover, :focus-visible),
+  .np-lp-item:is(:hover, :focus-visible) {
+    color: var(--np-ink);
+    border-color: transparent;
+    box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--np-accent) 72%, transparent);
+    transform: translateY(-1px);
+  }
   .np-lp-item[data-active] {
     color: var(--np-ink);
     border-color: color-mix(in oklab, var(--np-accent) 16%, transparent);
@@ -1048,8 +1053,14 @@
     pointer-events: none;
   }
   .np-lp-choice:hover {
-    border-color: color-mix(in oklab, var(--np-accent) 36%, var(--np-line));
     color: var(--np-ink);
+  }
+  /* LivePoint panels: hover without a new border ring (pressed/checked states keep theirs). */
+  .np-lp-panel :is(button, a)[class*="border"]:hover:not([aria-pressed="true"]):not(:disabled) {
+    border-color: var(--np-line);
+  }
+  .np-lp-panel a[class*="border-accent"]:hover {
+    border-color: color-mix(in oklab, var(--np-accent) 30%, var(--np-line));
   }
   .peer:checked + .np-lp-choice {
     border-color: color-mix(in oklab, var(--np-accent) 62%, var(--np-line));
@@ -2555,7 +2566,11 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-lp-item-label { transition: none; }
   .np-lp-item::before { background: color-mix(in srgb, var(--np-accent) 8%, var(--np-surface)); transition: opacity 180ms ease; transform: none; }
   .np-lp-item::after { bottom: .125rem; box-shadow: none; }
-  .np-lp-item:is(:hover, :focus-visible), .np-lp-item[data-active] { transform: none; box-shadow: none; }
+  .np-lp-item:is(:hover, :focus-visible) { transform: none; box-shadow: none; border-color: transparent; }
+  .np-lp-item[data-active] { transform: none; box-shadow: none; }
+  .np-mobile-lp-sheet :is(button, a)[class*="border"]:hover:not([aria-pressed="true"]):not(:disabled) {
+    border-color: var(--np-line);
+  }
   .np-lp-item:is(:hover, :focus-visible) .np-lp-item-icon, .np-lp-item[data-active] .np-lp-item-icon { transform: none; box-shadow: none; background: transparent; }
   .np-lp-item:is(:hover, :focus-visible) .np-lp-item-label { text-shadow: none; }
   .np-lp-item:active { transform: scale(.95); }

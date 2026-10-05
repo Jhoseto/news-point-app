@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { readPushSupport } from "@/lib/push-client";
 
 const DISMISSED_KEY = "np-pwa-install-dismissed";
 
@@ -26,11 +27,7 @@ export function PwaInstall() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    setIsIosSafari(
-      /iPhone|iPad|iPod/.test(navigator.userAgent) &&
-        /Safari/.test(navigator.userAgent) &&
-        !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent),
-    );
+    setIsIosSafari(readPushSupport().ios);
     try {
       if (sessionStorage.getItem(DISMISSED_KEY) === "1") setDismissed(true);
     } catch {
@@ -80,7 +77,7 @@ export function PwaInstall() {
         <div className="np-ring !size-9 shrink-0" aria-hidden="true" />
         <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
           <strong className="font-bold text-ink">Добави NewsPoint.bg към началния екран</strong>
-          <span className="text-muted">В Safari: сподели → „На началния екран".</span>
+          <span className="text-muted">Меню за споделяне → „На началния екран“.</span>
         </div>
         <button
           type="button"

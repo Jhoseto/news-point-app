@@ -20,7 +20,7 @@ export function writePushMasterEnabled(on: boolean) {
   }
 }
 
-/** null = all rubrics; non-empty = filter to these slugs. */
+/** null = all rubrics; [] = none; otherwise the selected rubric slugs. */
 export function readStoredPushRubrics(): string[] | null {
   if (typeof window === "undefined") return null;
   try {
@@ -36,7 +36,7 @@ export function readStoredPushRubrics(): string[] | null {
 
 export function writeStoredPushRubrics(slugs: string[] | null) {
   try {
-    if (!slugs || slugs.length === 0) localStorage.setItem(RUBRICS_KEY, "all");
+    if (slugs === null) localStorage.setItem(RUBRICS_KEY, "all");
     else localStorage.setItem(RUBRICS_KEY, JSON.stringify(slugs));
   } catch {
     // ignore
