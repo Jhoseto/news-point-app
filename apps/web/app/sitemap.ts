@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { articles, categories, getDb } from "@newspoint/db";
 import { PUBLIC_MENU } from "@newspoint/content";
 import { shareOrigin } from "@/lib/share-card";
+import { PUBLIC_INFO_PAGES } from "@/lib/public-contact";
 
 export const revalidate = 3600;
 
@@ -15,6 +16,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const menu = new Set(PUBLIC_MENU.map((entry) => entry.slug));
   return [
     { url: `${origin}/`, changeFrequency: "hourly", priority: 1 },
+    ...Object.values(PUBLIC_INFO_PAGES).map((page) => ({ url: `${origin}${page.path}`, changeFrequency: "monthly" as const, priority: 0.3 })),
     ...sections.filter((section) => menu.has(section.slug)).map((section) => ({
       url: `${origin}${section.path}`,
       changeFrequency: "hourly" as const,

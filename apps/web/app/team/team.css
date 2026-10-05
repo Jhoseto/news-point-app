@@ -110,6 +110,34 @@
 }
 .np-team-signature span { color: var(--np-team-cyan-bright); }
 
+.np-team-hero h1 {
+  max-width: 16em;
+  font-size: clamp(2.05rem, 3.6vw, 3.45rem);
+  line-height: 1.08;
+}
+
+.np-team-about {
+  background: var(--np-surface);
+  padding: clamp(2.4rem, 5vw, 4.2rem) clamp(1.25rem, 4vw, 5rem);
+}
+.np-team-about-follow { border-top: 1px solid var(--np-line); }
+.np-team-about-inner { max-width: 46rem; margin-inline: auto; }
+.np-team-about h2,
+.np-team-about h3 {
+  color: var(--np-ink);
+  font-weight: 800;
+  letter-spacing: -.03em;
+  line-height: 1.25;
+}
+.np-team-about h2 { font-size: clamp(1.45rem, 2.2vw, 2rem); }
+.np-team-about h3 { margin-top: 2.1rem; font-size: clamp(1.15rem, 1.5vw, 1.4rem); }
+.np-team-about p {
+  margin-top: .9rem;
+  color: var(--np-body);
+  font-size: 1.02rem;
+  line-height: 1.72;
+}
+
 .np-team-member {
   display: grid;
   grid-template-columns: 1fr 1fr;

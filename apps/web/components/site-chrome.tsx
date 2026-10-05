@@ -11,6 +11,8 @@ import { SiteSearch } from "./site-search";
 import { ThemeToggle } from "./theme";
 import { SettingsModal } from "./settings-modal";
 import { MobileRubricTabs } from "./mobile-rubric-tabs";
+import { MobileFooter } from "./mobile-footer";
+import { DesktopFooter } from "./desktop-footer";
 
 /**
  * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
@@ -142,32 +144,11 @@ export function BrandBanner() {
   );
 }
 
-export async function SiteFooter() {
-  const menu = await getMenuCategories();
+export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-line bg-surface pb-20 lg:pb-0">
-      <div className="np-container grid gap-8 py-10 md:grid-cols-[1fr_2fr]">
-        <div className="flex flex-col gap-3">
-          <Logo className="h-10" />
-          <p className="max-w-xs text-sm text-muted">Новини от Пловдив, България и света.</p>
-          <Link href="/settings/" prefetch={false} className="inline-flex min-h-11 w-fit items-center text-sm font-semibold text-accent hover:underline dark:text-link">Настройки</Link>
-          <Link href="/team/" prefetch={false} className="inline-flex min-h-11 min-w-11 items-center text-sm font-semibold text-accent hover:underline dark:text-link">Екип</Link>
-        </div>
-        <nav aria-label="Рубрики във футъра">
-          <ul className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
-            {menu.map((category) => (
-              <li key={category.id}>
-                <Link href={category.path} className="inline-flex min-h-11 min-w-11 items-center text-sm font-semibold text-body hover:text-accent dark:hover:text-link">
-                  {category.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </div>
-      <div className="border-t border-line">
-        <p className="np-container py-4 text-xs text-muted">© {new Date().getFullYear()} NewsPoint.bg · Локален преглед на NewsPoint 2.0</p>
-      </div>
+    <footer className="np-mobile-footer-host np-desktop-footer-host mt-16 border-t border-line bg-surface pb-20 lg:pb-0">
+      <MobileFooter />
+      <DesktopFooter />
     </footer>
   );
 }
