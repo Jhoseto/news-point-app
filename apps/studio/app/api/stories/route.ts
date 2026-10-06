@@ -6,6 +6,7 @@ import {
   deleteStoryTheme,
   publishStoryTheme,
   removeArticleFromTheme,
+  replaceThemeArticles,
   reorderThemeArticles,
   saveStoryTheme,
   unpublishStoryTheme,
@@ -41,6 +42,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("addArticle"), themeId: z.uuid(), articleId: z.uuid(), position: z.number().int().min(1) }).strict(),
   z.object({ action: z.literal("removeArticle"), themeId: z.uuid(), articleId: z.uuid() }).strict(),
   z.object({ action: z.literal("reorder"), themeId: z.uuid(), articleIds: z.array(z.uuid()).min(1).max(200) }).strict(),
+  z.object({ action: z.literal("replaceArticles"), themeId: z.uuid(), articleIds: z.array(z.uuid()).max(200) }).strict(),
 ]);
 
 export async function POST(request: Request) {
@@ -94,6 +96,9 @@ export async function POST(request: Request) {
         return { action: input.action, themeId: input.themeId, articleId: input.articleId };
       case "reorder":
         await reorderThemeArticles(resolvedStaff, input.themeId, input.articleIds);
+        return { action: input.action, themeId: input.themeId };
+      case "replaceArticles":
+        await replaceThemeArticles(resolvedStaff, input.themeId, input.articleIds);
         return { action: input.action, themeId: input.themeId };
     }
   });

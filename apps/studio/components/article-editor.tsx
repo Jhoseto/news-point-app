@@ -405,7 +405,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       </div>
 
       <div className="grid flex-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
-        <div className={`studio-editor-pane min-w-0 space-y-2.5 px-2.5 py-3 sm:px-4 lg:block lg:py-4 xl:px-5 ${mobileTab === "edit" ? "" : "hidden"}`}>
+        <div className={`studio-editor-pane min-w-0 space-y-2 px-2.5 py-2 sm:px-4 lg:block lg:py-3 xl:px-5 ${mobileTab === "edit" ? "" : "hidden"}`}>
           {bodyLocked && !readOnly ? (
             <p className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
               Част от текста е в стар формат и остава непроменена. Заглавие, рубрика, автор, снимка и прегледи се записват.
@@ -464,6 +464,127 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </div>
           ) : null}
 
+          <div className="studio-meta np-card overflow-hidden">
+            <div className="studio-meta-fields">
+              <label htmlFor="category" className="studio-meta-field">
+                <span>Рубрика</span>
+                <select
+                  id="category"
+                  value={draft.primaryCategoryId ?? ""}
+                  disabled={readOnly}
+                  onChange={(event) => update("primaryCategoryId", event.target.value || null)}
+                  className="np-input"
+                >
+                  <option value="">— Изберете рубрика —</option>
+                  {sections.map((section) => (
+                    <option key={section.id} value={section.id}>
+                      {section.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label htmlFor="author-kind" className="studio-meta-field">
+                <span>Автор</span>
+                <select
+                  id="author-kind"
+                  aria-label="Публичен автор"
+                  value={draft.authorKind}
+                  disabled={readOnly}
+                  onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
+                  className="np-input"
+                >
+                  <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
+                  <option value="newsroom">NewsPoint.bg</option>
+                  <option value="manual">Друг автор</option>
+                </select>
+              </label>
+              {draft.authorKind === "manual" ? (
+                <label htmlFor="manual-author" className="studio-meta-field studio-meta-field-span">
+                  <span>Име</span>
+                  <input
+                    id="manual-author"
+                    value={draft.authorName}
+                    maxLength={AUTHOR_NAME_MAX}
+                    disabled={readOnly}
+                    onChange={(event) => update("authorName", event.target.value)}
+                    placeholder="Име и фамилия"
+                    className="np-input"
+                    autoComplete="off"
+                  />
+                </label>
+              ) : null}
+
+              <div className="studio-meta-field">
+                <span>Снимка</span>
+                <div className="studio-meta-hero">
+                  {hero ? (
+                    <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="studio-meta-thumb" />
+                  ) : null}
+                  {!readOnly ? (
+                    <>
+                      <button type="button" onClick={() => openMediaPicker("hero")} className="np-btn np-btn-secondary">
+                        {hero ? "Смени" : "Избери"}
+                      </button>
+                      <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary">Embed</button>
+                      {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary">Махни embed</button> : null}
+                      {hero ? (
+                        <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary">
+                          Махни
+                        </button>
+                      ) : null}
+                    </>
+                  ) : (
+                    <span className="truncate text-[11px] text-muted">{hero?.alt || "—"}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="studio-meta-field">
+                <span>Прегледи</span>
+                <div className="studio-meta-views">
+                  <input
+                    aria-label="Прегледи при публикуване"
+                    inputMode="numeric"
+                    disabled={readOnly || seedLocked}
+                    value={draft.viewSeed ?? ""}
+                    onChange={(event) => update("viewSeed", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+                    placeholder="старт"
+                    className="np-input np-views-input tabular-nums"
+                  />
+                  <input
+                    aria-label="Интервал"
+                    inputMode="numeric"
+                    disabled={readOnly}
+                    value={draft.viewEvery ?? ""}
+                    onChange={(event) => update("viewEvery", event.target.value === "" ? null : Math.max(1, Math.trunc(Number(event.target.value) || 1)))}
+                    placeholder="всеки"
+                    className="np-input np-views-input tabular-nums"
+                  />
+                  <select
+                    aria-label="Мярка за времето"
+                    disabled={readOnly}
+                    value={draft.viewUnit}
+                    onChange={(event) => update("viewUnit", event.target.value as Draft["viewUnit"])}
+                    className="np-input np-views-input"
+                  >
+                    <option value="seconds">сек</option>
+                    <option value="minutes">мин</option>
+                    <option value="hours">ч</option>
+                  </select>
+                  <input
+                    aria-label="Краен брой прегледи"
+                    inputMode="numeric"
+                    disabled={readOnly}
+                    value={draft.viewTarget ?? ""}
+                    onChange={(event) => update("viewTarget", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
+                    placeholder="до"
+                    className="np-input np-views-input tabular-nums"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="np-card p-3">
             <label htmlFor="title" className="np-label">
               Заглавие
@@ -476,9 +597,9 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               disabled={readOnly}
               onChange={(event) => update("title", event.target.value.replace(/\n/g, " "))}
               placeholder="Заглавие на материала"
-              className="w-full resize-none bg-transparent text-xl leading-tight font-extrabold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint sm:text-[1.4rem]"
+              className="w-full resize-none bg-transparent text-[0.95rem] leading-snug font-bold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint"
             />
-            <div className="mt-1.5 flex flex-wrap items-center gap-1 border-t border-line pt-1.5 text-xs text-muted">
+            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
               <span className="font-semibold">Адрес:</span>
               <span className="text-faint">newspoint.bg/</span>
               <input
@@ -490,158 +611,12 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                   update("slug", event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
                 }}
                 placeholder="adres-na-statiyata"
-                className="min-w-40 flex-1 rounded-md bg-transparent px-1 py-0.5 font-semibold text-ink outline-none focus:bg-surface-2 disabled:text-muted"
+                className="min-w-40 flex-1 rounded-md bg-transparent px-1 py-0 font-semibold text-ink outline-none focus:bg-surface-2 disabled:text-muted"
               />
-              {published.isPublic ? <span className="text-xs text-faint">(не се сменя след публикуване)</span> : null}
-            </div>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="np-card p-3">
-              <label htmlFor="category" className="np-label">
-                Рубрика
-              </label>
-              <select
-                id="category"
-                value={draft.primaryCategoryId ?? ""}
-                disabled={readOnly}
-                onChange={(event) => update("primaryCategoryId", event.target.value || null)}
-                className="np-input"
-              >
-                <option value="">— Изберете рубрика —</option>
-                {sections.map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.name}
-                  </option>
-                ))}
-              </select>
+              {published.isPublic ? <span className="text-[11px] text-faint">(не се сменя след публикуване)</span> : null}
             </div>
 
-            <fieldset className="np-card min-w-0 p-3" disabled={readOnly}>
-              <label htmlFor="author-kind" className="np-label">Публичен автор</label>
-              <select
-                id="author-kind"
-                aria-label="Публичен автор"
-                value={draft.authorKind}
-                disabled={readOnly}
-                onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
-                className="np-input py-2 text-sm"
-              >
-                <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
-                <option value="newsroom">NewsPoint.bg</option>
-                <option value="manual">Друг автор</option>
-              </select>
-              {draft.authorKind === "manual" ? (
-                <div className="mt-2">
-                  <label htmlFor="manual-author" className="np-label">Име на автора</label>
-                  <input
-                    id="manual-author"
-                    value={draft.authorName}
-                    maxLength={AUTHOR_NAME_MAX}
-                    onChange={(event) => update("authorName", event.target.value)}
-                    placeholder="Име и фамилия"
-                    className="np-input"
-                    autoComplete="off"
-                  />
-                </div>
-              ) : null}
-            </fieldset>
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-2">
-          <div className="np-card flex h-full items-center gap-2.5 p-3">
-            {hero ? (
-              <img src={browserMediaSrc(hero.url)} alt={hero.alt} className="aspect-[4/3] w-16 shrink-0 rounded-lg bg-surface-2 object-cover" />
-            ) : (
-              <div className="flex aspect-[4/3] w-16 shrink-0 items-center justify-center rounded-lg border border-dashed border-line text-[0.625rem] font-bold text-faint">
-                Няма
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <p className="np-label">Основна снимка</p>
-              {!readOnly ? (
-                <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => openMediaPicker("hero")} className="np-btn np-btn-secondary px-3 py-1.5">
-                    {hero ? "Смени" : "Избери"}
-                  </button>
-                  <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary px-3 py-1.5">Embed</button>
-                  {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary px-3 py-1.5">Махни embed</button> : null}
-                  {hero ? (
-                    <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary px-3 py-1.5">
-                      Махни
-                    </button>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="truncate text-sm text-muted">{hero?.alt || "—"}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="np-card flex h-full min-w-0 flex-col justify-center px-2.5 py-2">
-            <div className="mb-1 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-bold tracking-wide text-muted uppercase">Прегледи</p>
-              <p className="truncate text-[10px] text-faint tabular-nums">
-                {published.isPublic ? `${(article.viewReal + article.viewAdded).toLocaleString("bg-BG")} на сайта` : "сбор на сайта"}
-              </p>
-            </div>
-            <div className="flex items-end gap-1.5">
-              <label className="w-16 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-semibold text-faint">Старт</span>
-                <input
-                  aria-label="Прегледи при публикуване"
-                  inputMode="numeric"
-                  disabled={readOnly || seedLocked}
-                  value={draft.viewSeed ?? ""}
-                  onChange={(event) => update("viewSeed", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
-                  placeholder="—"
-                  className="np-input np-views-input tabular-nums"
-                />
-              </label>
-              <label className="w-14 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-semibold text-faint">На всеки</span>
-                <input
-                  aria-label="Интервал"
-                  inputMode="numeric"
-                  disabled={readOnly}
-                  value={draft.viewEvery ?? ""}
-                  onChange={(event) => update("viewEvery", event.target.value === "" ? null : Math.max(1, Math.trunc(Number(event.target.value) || 1)))}
-                  placeholder="—"
-                  className="np-input np-views-input tabular-nums"
-                />
-              </label>
-              <label className="w-14 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-semibold text-transparent" aria-hidden="true">.</span>
-                <select
-                  aria-label="Мярка за времето"
-                  disabled={readOnly}
-                  value={draft.viewUnit}
-                  onChange={(event) => update("viewUnit", event.target.value as Draft["viewUnit"])}
-                  className="np-input np-views-input"
-                >
-                  <option value="seconds">сек</option>
-                  <option value="minutes">мин</option>
-                  <option value="hours">ч</option>
-                </select>
-              </label>
-              <label className="w-16 shrink-0">
-                <span className="mb-0.5 block text-[10px] font-semibold text-faint">До</span>
-                <input
-                  aria-label="Краен брой прегледи"
-                  inputMode="numeric"
-                  disabled={readOnly}
-                  value={draft.viewTarget ?? ""}
-                  onChange={(event) => update("viewTarget", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
-                  placeholder="—"
-                  className="np-input np-views-input tabular-nums"
-                />
-              </label>
-            </div>
-          </div>
-          </div>
-
-          <div className="np-card p-3">
-            <label htmlFor="excerpt" className="np-label">
+            <label htmlFor="excerpt" className="np-label mt-3">
               Кратко резюме
             </label>
             <textarea

@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 
 const number = new Intl.NumberFormat("bg-BG");
 
-const control = "h-8 w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-accent";
+const control = "h-8 w-full min-w-0 max-w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-accent";
 const caption = "mb-0.5 block text-[10px] font-semibold tracking-wide text-faint uppercase";
 
 function StatusBadge({ article }: { article: ArticleListItem }) {
@@ -98,7 +98,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
           <button type="submit" className="np-btn np-btn-primary h-8 shrink-0 px-2.5 py-0 text-xs">Търси</button>
         </div>
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Източник</span>
             <select name="source" defaultValue={query.source} className={control}>
               <option value="all">Всички</option>
@@ -106,7 +106,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <option value="studio">Създадени в Studio</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Рубрика</span>
             <select name="category" defaultValue={query.category} className={control}>
               <option value="">Всички</option>
@@ -115,7 +115,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               ))}
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Автор</span>
             <select name="author" defaultValue={query.author} className={control}>
               <option value="">Всички</option>
@@ -126,7 +126,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               ))}
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Снимка</span>
             <select name="hero" defaultValue={query.hero} className={control}>
               <option value="all">С и без</option>
@@ -134,7 +134,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <option value="without">Липсва</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Подредба</span>
             <select name="sort" defaultValue={query.sort} className={control}>
               <option value="updated">Последна промяна</option>
@@ -144,21 +144,21 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <option value="views">Прегледи</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Посока</span>
             <select name="dir" defaultValue={query.dir} className={control}>
               <option value="desc">Низходящо</option>
               <option value="asc">Възходящо</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Дата</span>
             <select name="date" defaultValue={query.dateField} className={control}>
               <option value="updated">Промяна</option>
               <option value="published">Публикуване</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>Брой</span>
             <select name="size" defaultValue={String(query.pageSize)} className={control}>
               <option value="25">25</option>
@@ -166,11 +166,11 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <option value="100">100</option>
             </select>
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>От</span>
             <input name="from" type="date" defaultValue={query.from} className={control} />
           </label>
-          <label>
+          <label className="min-w-0">
             <span className={caption}>До</span>
             <input name="to" type="date" defaultValue={query.to} className={control} />
           </label>
@@ -199,59 +199,68 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
         })}
       </nav>
 
-      <div className="np-card overflow-hidden">
+      <div className="np-card np-articles-desk overflow-x-auto">
         <table className="w-full table-fixed text-left text-[13px] leading-snug">
             <colgroup>
-              <col className="w-12" />
               <col className="w-10" />
+              <col className="w-9" />
               <col />
+              <col className="np-articles-col-secondary w-28" />
+              <col className="np-articles-col-secondary w-28" />
+              <col className="w-24" />
+              <col className="np-articles-col-secondary w-24" />
+              <col className="np-articles-col-secondary w-32" />
+              <col className="np-articles-col-secondary w-32" />
               <col className="w-36" />
-              <col className="w-36" />
-              <col className="w-28" />
-              <col className="w-28" />
-              <col className="w-40" />
-              <col className="w-36" />
-              <col className="w-44" />
             </colgroup>
             <thead className="border-b border-line bg-surface-2/60 text-[10px] font-semibold tracking-wide text-faint uppercase">
               <tr>
-                <th scope="col" className="px-3 py-2.5 text-right">№</th>
-                <th scope="col" className="px-2 py-2.5"><span className="sr-only">На сайта</span></th>
-                <SortHeader query={query} sort="title" label="Заглавие" className="px-3 py-2.5" />
-                <th scope="col" className="px-3 py-2.5">Рубрика</th>
-                <SortHeader query={query} sort="author" label="Автор" className="px-3 py-2.5" />
-                <th scope="col" className="px-3 py-2.5">Статус</th>
-                <SortHeader query={query} sort="views" label="Реални / добавени" className="px-3 py-2.5 text-right" />
-                <SortHeader query={query} sort="published" label="Публикуване" className="px-3 py-2.5" />
-                <SortHeader query={query} sort="updated" label="Промяна" className="px-3 py-2.5 text-right" />
-                <th scope="col" className="px-3 py-2.5 text-right"><span className="sr-only">Редакция</span></th>
+                <th scope="col" className="px-2 py-2 text-right">№</th>
+                <th scope="col" className="px-1 py-2"><span className="sr-only">На сайта</span></th>
+                <SortHeader query={query} sort="title" label="Заглавие" className="px-2 py-2" />
+                <th scope="col" className="np-articles-col-secondary px-2 py-2">Рубрика</th>
+                <SortHeader query={query} sort="author" label="Автор" className="np-articles-col-secondary px-2 py-2" />
+                <th scope="col" className="px-2 py-2">Статус</th>
+                <SortHeader query={query} sort="views" label="Прегледи" className="np-articles-col-secondary px-2 py-2 text-right" />
+                <SortHeader query={query} sort="published" label="Публикуване" className="np-articles-col-secondary px-2 py-2" />
+                <SortHeader query={query} sort="updated" label="Промяна" className="np-articles-col-secondary px-2 py-2 text-right" />
+                <th scope="col" className="np-articles-actions px-2 py-2 text-right"><span className="sr-only">Редакция</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {desk.items.map((item, index) => (
                 <tr key={item.id} className="group transition hover:bg-surface-2/50">
-                  <td className="px-3 py-2.5 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
-                  <td className="px-2 py-2.5"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
-                  <td className="px-3 py-2.5">
+                  <td className="px-2 py-2 text-right text-[11px] text-faint tabular-nums">{number.format(start + index)}</td>
+                  <td className="px-1 py-2"><ArticleVisibility id={item.id} visible={item.isPublic} /></td>
+                  <td className="min-w-0 px-2 py-2">
                     <ArticleDeskPreview id={item.id} title={item.title || "Без заглавие"} />
                     <span className="block truncate text-[11px] text-faint">
                       {item.path}
                       <span className="ml-1.5 font-semibold tracking-wide uppercase">{item.sourceSystem === "wordpress" ? "WP" : "Studio"}</span>
                     </span>
+                    <span className="np-articles-desk-extra">
+                      {[
+                        item.categoryName,
+                        item.authorName,
+                        item.readCount === null ? null : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`,
+                        item.publishedAt ? formatStamp(item.publishedAt) : null,
+                        `промяна ${formatStamp(item.updatedAt)}`,
+                      ].filter(Boolean).join(" · ")}
+                    </span>
                   </td>
-                  <td className="truncate px-3 py-2.5 text-xs text-muted">{item.categoryName ?? "—"}</td>
-                  <td className="truncate px-3 py-2.5 text-xs text-muted">{item.authorName ?? "—"}</td>
-                  <td className="px-3 py-2.5"><StatusBadge article={item} /></td>
-                  <td className="px-3 py-2.5 text-right text-xs whitespace-nowrap text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
-                  <td className="px-3 py-2.5 text-xs whitespace-nowrap text-muted tabular-nums">
+                  <td className="np-articles-col-secondary truncate px-2 py-2 text-xs text-muted">{item.categoryName ?? "—"}</td>
+                  <td className="np-articles-col-secondary truncate px-2 py-2 text-xs text-muted">{item.authorName ?? "—"}</td>
+                  <td className="px-2 py-2"><StatusBadge article={item} /></td>
+                  <td className="np-articles-col-secondary px-2 py-2 text-right text-xs text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
+                  <td className="np-articles-col-secondary px-2 py-2 text-xs text-muted tabular-nums">
                     {item.publishedAt ? formatStamp(item.publishedAt) : "—"}
                     {item.isPublic ? (
                       <a href={`${web}${item.path.startsWith("/") ? item.path : `/${item.path}`}`} target="_blank" rel="noreferrer" className="ml-1.5 font-semibold text-link">сайт</a>
                     ) : null}
                   </td>
-                  <td className="px-3 py-2.5 text-right text-xs whitespace-nowrap text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
-                  <td className="px-3 py-2.5 text-right">
-                    <span className="inline-flex items-center gap-1">
+                  <td className="np-articles-col-secondary px-2 py-2 text-right text-xs text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
+                  <td className="np-articles-actions px-2 py-2 text-right">
+                    <span className="inline-flex flex-wrap items-center justify-end gap-1">
                       <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
                       <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
                     </span>

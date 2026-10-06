@@ -107,7 +107,10 @@ beforeAll(async () => {
       title text not null,
       path text not null unique,
       is_public boolean not null default false,
-      published_at timestamptz
+      published_at timestamptz,
+      excerpt text,
+      primary_category_id uuid,
+      hero_media_id uuid
     );
     create table categories (
       id uuid primary key,
@@ -147,8 +150,8 @@ beforeEach(async () => {
     const id = randomUUID();
     articleIds.push(id);
     await pg.query(
-      "insert into articles(id, title, path, is_public, published_at) values ($1, $2, $3, true, now())",
-      [id, `Article ${i}`, `/article-${i}-${id.slice(0, 8)}/`],
+      "insert into articles(id, title, path, is_public, published_at) values ($1, $2, $3, true, now() - ($4::int * interval '1 hour'))",
+      [id, `Article ${i}`, `/article-${i}-${id.slice(0, 8)}/`, 5 - i],
     );
   }
   // index 5 is the draft
@@ -350,6 +353,20 @@ describe("publishStoryTheme invariants", () => {
   });
 });
 
+describe("createStoryTheme chronology", () => {
+  it("stores selected articles oldest-to-newest regardless of pick order", async () => {
+    const { createStoryTheme } = await import("../apps/studio/lib/story-themes");
+    const result = await createStoryTheme(
+      STAFF,
+      { ...validInput, slug: "chrono-theme" },
+      [articleIds[3]!, articleIds[0]!, articleIds[2]!],
+    );
+    const rows = await positionsForCurrentTheme(result.id);
+    expect(rows.map((row) => row.articleId)).toEqual([articleIds[0], articleIds[2], articleIds[3]]);
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 3]);
+  });
+});
+
 describe("createStoryTheme uniqueness", () => {
   it("rejects a duplicate slug on the same theme table", async () => {
     const { createStoryTheme } = await import("../apps/studio/lib/story-themes");
@@ -431,5 +448,39 @@ describe("deleteStoryTheme", () => {
       .select({ type: schema.outboxEvents.type })
       .from(schema.outboxEvents);
     expect(events.some((e) => e.type === "story.updated")).toBe(true);
+  });
+});
+
+describe("searchPublicArticlesForTheme", () => {
+  it("pages public matches and reports when more remain", async () => {
+    const { searchPublicArticlesForTheme } = await import("../apps/studio/lib/story-themes");
+    const first = await searchPublicArticlesForTheme(STAFF, "Article", 2, 0);
+    expect(first.articles).toHaveLength(2);
+    expect(first.hasMore).toBe(true);
+    const rest = await searchPublicArticlesForTheme(STAFF, "Article", 2, 2);
+    expect(rest.articles).toHaveLength(2);
+    expect(rest.hasMore).toBe(true);
+    const last = await searchPublicArticlesForTheme(STAFF, "Article", 2, 4);
+    expect(last.articles).toHaveLength(1);
+    expect(last.hasMore).toBe(false);
+    const ids = [...first.articles, ...rest.articles, ...last.articles].map((row) => row.id);
+    expect(new Set(ids).size).toBe(5);
+  });
+});
+
+describe("replaceThemeArticles", () => {
+  it("replaces the member set and keeps the given order", async () => {
+    const { replaceThemeArticles } = await import("../apps/studio/lib/story-themes");
+    await replaceThemeArticles(STAFF, themeId, [articleIds[4]!, articleIds[0]!, articleIds[3]!]);
+    const rows = await positionsForCurrentTheme(themeId);
+    expect(rows.map((row) => row.articleId)).toEqual([articleIds[4], articleIds[0], articleIds[3]]);
+    expect(rows.map((row) => row.position)).toEqual([1, 2, 3]);
+  });
+
+  it("rejects a draft article", async () => {
+    const { replaceThemeArticles } = await import("../apps/studio/lib/story-themes");
+    await expect(
+      replaceThemeArticles(STAFF, themeId, [articleIds[0]!, articleIds[5]!]),
+    ).rejects.toMatchObject({ code: "article_not_published", status: 422 });
   });
 });

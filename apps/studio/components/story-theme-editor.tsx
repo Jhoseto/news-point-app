@@ -3,7 +3,9 @@
 import { useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { withBase } from "@/lib/paths";
-import { slugify } from "@/lib/editor/slug";
+import { browserMediaSrc } from "@/lib/media-src";
+import { slugify, SLUG_PATTERN } from "@/lib/editor/slug";
+import { isChronologicalThemeOrder, sortThemeArticlesChronologically } from "@/lib/story-theme-order";
 import { MediaPicker } from "@/components/media-picker";
 import { StoryArticleSearch } from "@/components/story-article-search";
 import type { MediaOption } from "@/lib/articles";
@@ -64,6 +66,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerInitial, setPickerInitial] = useState<ArticleSelection[]>([]);
   const [pending, setPending] = useState(false);
+  const [created, setCreated] = useState(false);
   const [feedback, setFeedback] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const deferredTitle = useDeferredValue(title);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
@@ -105,9 +108,14 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
 
   const send = async (action: "create" | "save" | "publish" | "unpublish" | "addArticle" | "removeArticle" | "reorder", extra?: Record<string, unknown>) => {
     if (action !== "publish" && pending) return;
+    if (action === "create" && created) return;
     if (action === "create" || action === "save") {
       if (title.trim().length < 5) {
         setFeedback({ kind: "err", text: "Заглавието трябва да е поне 5 символа." });
+        return;
+      }
+      if (slug.length < 3 || slug.length > 80 || !SLUG_PATTERN.test(slug)) {
+        setFeedback({ kind: "err", text: "URL адресът трябва да е 3–80 символа: малки латински букви, цифри и тирета." });
         return;
       }
     }
@@ -143,18 +151,21 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         body: JSON.stringify(payload),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: { message?: string } }).error?.message ?? `Грешка ${res.status}`);
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string; details?: unknown } };
+        const details = body.error?.details;
+        const extra = Array.isArray(details) ? ` ${details.filter((item) => typeof item === "string").join(" ")}` : "";
+        throw new Error(`${body.error?.message ?? `Грешка ${res.status}`}${extra}`.trim());
       }
       const data = (await res.json().catch(() => ({}))) as { id?: string; slug?: string; action?: string };
-      setFeedback({ kind: "ok", text: successMessage(action, data) });
-      if (action === "create" && data.id) {
-        // Don't navigate away — keep the editor instance and refresh so the
-        // user can add more articles without losing their in-progress picks.
-        startTransition(() => router.refresh());
-      } else {
-        startTransition(() => router.refresh());
+      if (action === "create") {
+        if (!data.id) throw new Error("Темата не беше записана. Опитайте отново.");
+        setCreated(true);
+        setFeedback({ kind: "ok", text: "Темата е създадена." });
+        router.push(`/stories/${data.id}/`);
+        return;
       }
+      setFeedback({ kind: "ok", text: successMessage(action, data) });
+      startTransition(() => router.refresh());
     } catch (err) {
       setFeedback({ kind: "err", text: err instanceof Error ? err.message : "Грешка при заявката." });
     } finally {
@@ -205,8 +216,42 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
   };
 
   const onPickerConfirm = (selected: ArticleSelection[]) => {
+    const ordered = sortThemeArticlesChronologically(selected);
     setPickerOpen(false);
-    setArticles(selected);
+    setArticles(ordered);
+    if (theme) void replaceArticles(ordered.map((a) => a.id));
+  };
+
+  const replaceArticles = async (articleIds: string[]) => {
+    if (!theme) return;
+    setPending(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(withBase("/api/stories"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: "replaceArticles", themeId: theme.id, articleIds }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
+        throw new Error(body.error?.message ?? `Грешка ${res.status}`);
+      }
+      setFeedback({ kind: "ok", text: `Записани са ${articleIds.length} статии.` });
+      startTransition(() => router.refresh());
+    } catch (err) {
+      setFeedback({ kind: "err", text: err instanceof Error ? err.message : "Грешка при запис на статиите." });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const alreadyChronological = articles.length < 2 || isChronologicalThemeOrder(articles);
+
+  const onSortChronologically = () => {
+    if (alreadyChronological) return;
+    const next = sortThemeArticlesChronologically(articles);
+    setArticles(next);
+    if (theme) void reorder(next.map((a) => a.id));
   };
 
   const onMoveUp = (index: number) => {
@@ -227,15 +272,6 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
 
   return (
     <div className="flex flex-col gap-5">
-      {feedback ? (
-        <div
-          role={feedback.kind === "err" ? "alert" : "status"}
-          className={`np-card p-3 text-sm ${feedback.kind === "err" ? "border-danger/40 text-danger" : "border-success/40 text-success"}`}
-        >
-          {feedback.text}
-        </div>
-      ) : null}
-
       <section className="np-card flex flex-col gap-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="np-label gap-1">
@@ -298,7 +334,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         <div className="grid gap-3 sm:grid-cols-[12rem_1fr]">
           <div className="aspect-[16/9] overflow-hidden rounded-2xl border border-line bg-surface-2">
             {cover.url ? (
-              <img src={cover.url} alt="" className="h-full w-full object-cover" />
+              <img src={browserMediaSrc(cover.url)} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-xs text-muted">Няма корица</div>
             )}
@@ -341,17 +377,27 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             <h2 className="text-sm font-bold tracking-wide text-muted uppercase">Статии в темата</h2>
             <p className="mt-1 text-xs text-faint">
               {articles.length === 0
-                ? "Добавете поне една публикувана статия."
-                : `${articles.length} ${articles.length === 1 ? "статия" : "статии"} в хронологията.`}
+                ? "Добавете поне една публикувана статия. Подреждат се от най-стара към най-нова."
+                : `${articles.length} ${articles.length === 1 ? "статия" : "статии"} в списъка.`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => openPicker(articles)}
-            className="np-btn np-btn-secondary"
-          >
-            {articles.length === 0 ? "+ Добави статии" : "Управление на статиите"}
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onSortChronologically}
+              disabled={pending || alreadyChronological}
+              className="np-btn np-btn-secondary"
+            >
+              Подреди хронологично
+            </button>
+            <button
+              type="button"
+              onClick={() => openPicker(articles)}
+              className="np-btn np-btn-secondary"
+            >
+              {articles.length === 0 ? "+ Добави статии" : "Управление на статиите"}
+            </button>
+          </div>
         </div>
         {articles.length ? (
           <ol className="flex flex-col gap-1">
@@ -364,7 +410,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                   {index + 1}
                 </span>
                 {article.heroUrl ? (
-                  <img src={article.heroUrl} alt="" className="size-12 rounded-md object-cover" />
+                  <img src={browserMediaSrc(article.heroUrl)} alt="" className="size-12 rounded-md object-cover" />
                 ) : (
                   <span className="size-12 rounded-md bg-surface-2" />
                 )}
@@ -408,15 +454,23 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         ) : null}
       </section>
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        {feedback ? (
+          <p
+            role={feedback.kind === "err" ? "alert" : "status"}
+            className={`max-w-md text-sm font-semibold ${feedback.kind === "err" ? "text-danger" : "text-success"}`}
+          >
+            {feedback.text}
+          </p>
+        ) : null}
         {mode === "create" ? (
           <button
             type="button"
             onClick={() => void send("create")}
-            disabled={pending}
+            disabled={pending || created}
             className="np-btn np-btn-primary"
           >
-            {pending ? "Запазване..." : "Създай тема"}
+            {created ? "Създадена" : pending ? "Запазване..." : "Създай тема"}
           </button>
         ) : (
           <>

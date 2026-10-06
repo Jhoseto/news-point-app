@@ -1,6 +1,5 @@
 import "server-only";
 import { and, asc, desc, eq, gte, ilike, inArray, ne, or, sql } from "drizzle-orm";
-import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import { randomUUID } from "node:crypto";
 import {
@@ -15,6 +14,7 @@ import {
 } from "@newspoint/db";
 import { resolveMediaUrl, triggerRevalidate } from "@newspoint/content";
 import { EditorError } from "./articles";
+import { sortThemeArticlesChronologically } from "./story-theme-order";
 import { requireStaff, type Staff } from "./session";
 import type {
   StoryThemeArticleEntry,
@@ -168,11 +168,7 @@ async function listThemesInternal(status: "draft" | "published" | "all" = "all")
 }
 
 export const listStoryThemes = cache(async (status: "draft" | "published" | "all" = "all"): Promise<StoryThemeListItem[]> => {
-  return unstable_cache(
-    async () => listThemesInternal(status),
-    ["studio-story-themes", status],
-    { revalidate: 60, tags: ["studio-story-themes"] },
-  )();
+  return listThemesInternal(status);
 });
 
 type MemberRow = {
@@ -331,11 +327,19 @@ export async function createStoryTheme(
       createdBy: staff.id,
     });
     if (articleIds.length) {
-      const deduped = Array.from(new Set(articleIds));
+      const uniqueIds = Array.from(new Set(articleIds));
+      const dated = await tx
+        .select({ id: articles.id, publishedAt: articles.publishedAt })
+        .from(articles)
+        .where(inArray(articles.id, uniqueIds));
+      const byId = new Map(dated.map((row) => [row.id, row]));
+      const ordered = sortThemeArticlesChronologically(
+        uniqueIds.map((id) => ({ id, publishedAt: byId.get(id)?.publishedAt ?? null })),
+      );
       await tx.insert(storyThemeArticles).values(
-        deduped.map((articleId, i) => ({
+        ordered.map((item, i) => ({
           themeId: id,
-          articleId,
+          articleId: item.id,
           position: i + 1,
           addedBy: staff.id,
         })),
@@ -526,12 +530,58 @@ export async function reorderThemeArticles(
   await revalidateThemePaths(theme.slug);
 }
 
+export async function replaceThemeArticles(
+  staff: Staff,
+  themeId: string,
+  articleIds: string[],
+): Promise<void> {
+  if (articleIds.length > 200) {
+    throw new EditorError(400, "too_many_articles", "В една тема могат да влязат най-много 200 статии.");
+  }
+  const uniqueIds = Array.from(new Set(articleIds));
+  const db = getDb();
+  const [theme] = await db.select().from(storyThemes).where(eq(storyThemes.id, themeId)).limit(1);
+  if (!theme) throw new EditorError(404, "not_found", "Темата не съществува.");
+  if (theme.isPublished && uniqueIds.length < 1) {
+    throw new EditorError(422, "not_ready", "Публикуваната тема трябва да има поне една статия.");
+  }
+  if (uniqueIds.length) {
+    const found = await db
+      .select({ id: articles.id, isPublic: articles.isPublic })
+      .from(articles)
+      .where(inArray(articles.id, uniqueIds));
+    if (found.length !== uniqueIds.length) {
+      throw new EditorError(404, "article_not_found", "Някоя от избраните статии не съществува.");
+    }
+    if (found.some((row) => !row.isPublic)) {
+      throw new EditorError(422, "article_not_published", "Само публикувани статии могат да се добавят в тема.");
+    }
+  }
+  await db.transaction(async (tx) => {
+    await tx.delete(storyThemeArticles).where(eq(storyThemeArticles.themeId, themeId));
+    if (!uniqueIds.length) return;
+    await tx.insert(storyThemeArticles).values(
+      uniqueIds.map((articleId, index) => ({
+        themeId,
+        articleId,
+        position: index + 1,
+        addedBy: staff.id,
+      })),
+    );
+  });
+  await emitOutbox(themeId, theme.slug, "story.updated");
+  await revalidateThemePaths(theme.slug);
+}
+
 export async function searchPublicArticlesForTheme(
   staff: Staff,
   query: string,
-  limit = 20,
-): Promise<StoryThemeArticleSearchResult[]> {
+  limit = 50,
+  offset = 0,
+): Promise<{ articles: StoryThemeArticleSearchResult[]; hasMore: boolean }> {
   const q = query.trim();
+  const pageSize = Math.min(100, Math.max(1, limit));
+  const pageOffset = Math.max(0, offset);
   const db = getDb();
   const pattern = `%${q.replace(/[%_]/g, (ch) => `\\${ch}`)}%`;
   const rows = await db
@@ -559,25 +609,31 @@ export async function searchPublicArticlesForTheme(
       ),
     )
     .orderBy(desc(articles.publishedAt))
-    .limit(limit);
-  return rows.map((row) => {
-    const heroUrl = row.heroStorageId && row.heroProvider
-      ? resolveMediaUrl({
-          storageKey: row.heroStorageKey,
-          sourceUrl: row.heroSourceUrl,
-          provider: row.heroProvider as "wordpress_origin" | "object_storage",
-        })
-      : null;
-    return {
-      id: row.id,
-      title: row.title,
-      path: row.path,
-      categoryName: row.categoryName,
-      heroUrl,
-      publishedAt: row.publishedAt,
-      isPublic: row.isPublic,
-    };
-  });
+    .limit(pageSize + 1)
+    .offset(pageOffset);
+  const hasMore = rows.length > pageSize;
+  const page = hasMore ? rows.slice(0, pageSize) : rows;
+  return {
+    hasMore,
+    articles: page.map((row) => {
+      const heroUrl = row.heroStorageId && row.heroProvider
+        ? resolveMediaUrl({
+            storageKey: row.heroStorageKey,
+            sourceUrl: row.heroSourceUrl,
+            provider: row.heroProvider as "wordpress_origin" | "object_storage",
+          })
+        : null;
+      return {
+        id: row.id,
+        title: row.title,
+        path: row.path,
+        categoryName: row.categoryName,
+        heroUrl,
+        publishedAt: row.publishedAt,
+        isPublic: row.isPublic,
+      };
+    }),
+  };
 }
 
 async function emitOutbox(themeId: string, slug: string, type: "story.published" | "story.updated"): Promise<void> {

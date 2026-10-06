@@ -97,7 +97,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                 <tr key={theme.id} className="border-b border-line/60 last:border-b-0">
                   <td className="px-4 py-3">
                     <Link
-                      href={`/stories/${theme.id}`}
+                      href={`/stories/${theme.id}/`}
                       className="font-bold text-ink hover:text-accent"
                     >
                       {theme.title}
@@ -112,11 +112,11 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1.5">
                       {theme.isPublished ? (
-                        <Link href={`/temi/${theme.slug}/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs" target="_blank" rel="noreferrer">
+                        <a href={`/temi/${theme.slug}/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs" target="_blank" rel="noreferrer">
                           Виж
-                        </Link>
+                        </a>
                       ) : null}
-                      <Link href={`/stories/${theme.id}/preview`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
+                      <Link href={`/stories/${theme.id}/preview/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Preview
                       </Link>
                       {theme.isPublished ? (
@@ -138,7 +138,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                           Публикувай
                         </button>
                       )}
-                      <Link href={`/stories/${theme.id}`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
+                      <Link href={`/stories/${theme.id}/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Редакция
                       </Link>
                       <button

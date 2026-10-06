@@ -12,3 +12,9 @@ it("loads media from the site when Studio is opened on its own dev port", () => 
   expect(browserMediaSrc("/media/news/2026/09/zholej.webp", "3001")).toBe("http://localhost:3000/media/news/2026/09/zholej.webp");
   expect(browserMediaSrc("https://newspoint.bg/wp-content/a.jpg", "3001")).toBe("https://newspoint.bg/wp-content/a.jpg");
 });
+
+it("rewrites on local Studio SSR the same way as the 3001 browser", () => {
+  expect(browserMediaSrc("/media/news/2026/09/zholej.webp")).toBe(
+    "http://localhost:3000/media/news/2026/09/zholej.webp",
+  );
+});

@@ -1,13 +1,18 @@
 import { formatClock } from "@/lib/format";
 import type { StoryThemeDetail } from "@/lib/story-theme-types";
 
+function mediaSrc(url: string): string {
+  if (!url.startsWith("/media/")) return url;
+  return `${(process.env.WEB_URL ?? "http://localhost:3000").replace(/\/+$/, "")}${url}`;
+}
+
 /** Studio-only render of the public theme timeline. Server component. */
 export function StoryTimelinePreview({ theme }: { theme: StoryThemeDetail }) {
   return (
     <article className="np-card overflow-hidden">
       {theme.coverUrl ? (
         <div className="aspect-[16/9] w-full overflow-hidden bg-surface-2">
-          <img src={theme.coverUrl} alt="" className="h-full w-full object-cover" />
+          <img src={mediaSrc(theme.coverUrl)} alt="" className="h-full w-full object-cover" />
         </div>
       ) : null}
       <header className="flex flex-col gap-3 border-b border-line p-6">
@@ -29,7 +34,7 @@ export function StoryTimelinePreview({ theme }: { theme: StoryThemeDetail }) {
               </span>
               <div className="flex min-w-0 flex-1 gap-3">
                 {article.heroUrl ? (
-                  <img src={article.heroUrl} alt="" className="size-16 shrink-0 rounded-md object-cover" />
+                  <img src={mediaSrc(article.heroUrl)} alt="" className="size-16 shrink-0 rounded-md object-cover" />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <h2 className="line-clamp-2 text-base font-bold text-ink">{article.title}</h2>
