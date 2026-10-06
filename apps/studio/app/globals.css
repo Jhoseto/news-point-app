@@ -114,6 +114,17 @@
   }
 
   /* Compact editorial controls: keep metadata dense so the writing surface stays primary. */
+  .studio-editor-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 64rem) {
+    .studio-editor-split {
+      grid-template-columns: minmax(0, 1fr) minmax(20rem, 38vw);
+    }
+    .studio-editor-split.is-preview-collapsed {
+      grid-template-columns: minmax(0, 1fr) 3rem;
+    }
+  }
   .studio-editor-pane .np-label { margin-bottom: .35rem; font-size: .65rem; letter-spacing: .06em; }
   .studio-editor-pane fieldset { min-inline-size: 0; margin: 0; }
   .studio-editor-pane .np-input { border-radius: .65rem; padding: .45rem .7rem; font-size: .8125rem; }

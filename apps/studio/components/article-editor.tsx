@@ -117,10 +117,31 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [device, setDevice] = useState<Device>("desktop");
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
+  const [previewCollapsed, setPreviewCollapsed] = useState(false);
   const [availableMedia, setAvailableMedia] = useState(media);
   const publishKey = useRef<string | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
   const savedBodyRange = useRef<Range | null>(null);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("np-studio-preview-collapsed") === "1") setPreviewCollapsed(true);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function togglePreview() {
+    setPreviewCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem("np-studio-preview-collapsed", next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }
 
   const readOnly = !article.canEdit;
   const bodyLocked = readOnly || !article.editableBody;
@@ -404,7 +425,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         </div>
       </div>
 
-      <div className="grid flex-1 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+      <div className={`studio-editor-split grid flex-1 ${previewCollapsed ? "is-preview-collapsed" : ""}`}>
         <div className={`studio-editor-pane min-w-0 space-y-2 px-2.5 py-2 sm:px-4 lg:block lg:py-3 xl:px-5 ${mobileTab === "edit" ? "" : "hidden"}`}>
           {bodyLocked && !readOnly ? (
             <p className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
@@ -706,16 +727,24 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
         <section
           aria-label="Как ще изглежда на сайта"
-          className={`min-w-0 flex-col border-line bg-surface-2/70 lg:sticky lg:top-[3.75rem] lg:flex lg:h-[calc(100dvh-3.75rem)] lg:border-l ${mobileTab === "preview" ? "flex" : "hidden"}`}
+          className={`min-w-0 flex-col border-line bg-surface-2/70 lg:sticky lg:top-[3.75rem] lg:flex lg:h-[calc(100dvh-3.75rem)] lg:border-l ${mobileTab === "preview" ? "flex" : "hidden"} ${previewCollapsed ? "is-preview-collapsed" : ""}`}
         >
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-line bg-surface/80 px-4 py-2 sm:px-5">
-            <span className="mr-auto inline-flex items-center gap-2 text-xs font-extrabold tracking-wide text-ink uppercase">
-              <span className="relative flex size-2">
-                <span className="absolute inset-0 animate-ping rounded-full bg-success/60" aria-hidden="true" />
-                <span className="relative size-2 rounded-full bg-success" aria-hidden="true" />
-              </span>
-              На живо
-            </span>
+          <div className={`flex items-center gap-1.5 border-b border-line bg-surface/80 ${previewCollapsed ? "flex-col px-1 py-2" : "flex-wrap px-2 py-2 sm:px-3"}`}>
+            <button
+              type="button"
+              onClick={togglePreview}
+              aria-pressed={previewCollapsed}
+              aria-label={previewCollapsed ? "Покажи прегледа" : "Прибери прегледа"}
+              title={previewCollapsed ? "Покажи прегледа" : "Прибери прегледа"}
+              className="hidden size-11 shrink-0 items-center justify-center rounded-lg text-ink transition hover:bg-surface-2 lg:inline-flex"
+            >
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d={previewCollapsed ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"} />
+              </svg>
+            </button>
+            {previewCollapsed ? null : (
+              <>
+            <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <Segmented
               label="Устройство"
               value={device}
@@ -743,8 +772,12 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             >
               Цял екран ↗
             </button>
+            </div>
+              </>
+            )}
           </div>
 
+          {previewCollapsed ? null : (
           <div className="flex-1 overflow-y-auto p-3 sm:p-4">
             {device === "desktop" ? (
               <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-card">
@@ -775,6 +808,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               </div>
             )}
           </div>
+          )}
         </section>
       </div>
 
