@@ -1,110 +1,204 @@
 import Link from "next/link";
-import { ArticleImage, TimeMeta } from "./ui";
-import type { StoryThemeDetailPublic } from "@/lib/queries";
+import { formatArticleMeta, formatFull, formatTime, isoDate } from "@/lib/format";
+import { articleCountLabel, asDate } from "@/lib/story-route";
+import type { StoryThemeArticle, StoryThemeDetailPublic } from "@/lib/queries";
+import { ArticleHeroZoom } from "./article-hero-zoom";
+import { Breadcrumbs } from "./breadcrumbs";
+import { BookIcon, ClockIcon } from "./icons";
+import { ShareButtons } from "./share";
+import { StoryRouteObserver } from "./story-route-observer";
+import { ArticleImage, CategoryPill } from "./ui";
+import "./article-premium.css";
+import "./story-theme-premium.css";
 
-const TIMELINE_FORMAT = new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "long", year: "numeric" });
+const THEME_RUBRIC = { id: "temi", slug: "temi", name: "Тема", path: "/temi/" };
 
-function formatDate(value: Date | null) {
-  if (!value) return null;
-  return TIMELINE_FORMAT.format(value);
+const STOP_DATE = new Intl.DateTimeFormat("bg-BG", {
+  timeZone: "Europe/Sofia",
+  day: "numeric",
+  month: "short",
+});
+
+const STOP_WEEKDAY = new Intl.DateTimeFormat("bg-BG", { timeZone: "Europe/Sofia", weekday: "long" });
+const STOP_DAY_NUM = new Intl.DateTimeFormat("bg-BG", { timeZone: "Europe/Sofia", day: "numeric" });
+const STOP_MONTH_YEAR = new Intl.DateTimeFormat("bg-BG", { timeZone: "Europe/Sofia", month: "long", year: "numeric" });
+
+function stopDate(value: Date | null) {
+  return value ? STOP_DATE.format(value) : null;
 }
 
-/** Premium vertical timeline for the public theme page. Server component. */
+function titled(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function datedArticles(articles: StoryThemeArticle[]) {
+  return articles.map((article) => asDate(article.publishedAt)).filter((value): value is Date => Boolean(value));
+}
+
 export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
+  const dates = datedArticles(theme.articles);
+  const themePublished = asDate(theme.publishedAt);
+  const first = dates[0] ?? themePublished;
+  const last = dates[dates.length - 1] ?? themePublished;
+  const cover = theme.coverUrl
+    ? {
+        url: theme.coverUrl,
+        alt: theme.title,
+        width: null,
+        height: null,
+        caption: theme.coverCaption,
+        credit: "",
+      }
+    : null;
+
   return (
-    <article className="flex flex-col gap-8">
-      {theme.coverUrl ? (
-        <figure className="overflow-hidden rounded-3xl bg-surface-2 shadow-card">
-          <div className="aspect-[16/9] w-full overflow-hidden">
-            <ArticleImage
-              media={{
-                url: theme.coverUrl,
-                alt: "",
-                width: null,
-                height: null,
-                caption: theme.coverCaption,
-                credit: "",
-              }}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          {theme.coverCaption ? (
-            <figcaption className="px-4 py-2 text-xs text-muted">{theme.coverCaption}</figcaption>
-          ) : null}
-        </figure>
-      ) : null}
-      <header className="flex flex-col gap-3">
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
-          {theme.title}
-        </h1>
-        {theme.summary ? <p className="text-base text-muted">{theme.summary}</p> : null}
-      </header>
-      {theme.intro ? (
-        <section className="prose prose-base max-w-none whitespace-pre-line text-base leading-relaxed text-body">
-          {theme.intro}
-        </section>
-      ) : null}
-      {theme.articles.length ? (
-        <section>
-          <h2 className="mb-5 text-sm font-bold tracking-wide text-muted uppercase">Хронология</h2>
-          <ol className="relative flex flex-col">
-            <span
-              aria-hidden="true"
-              className="absolute top-2 bottom-2 left-[1.125rem] w-px bg-line"
-            />
-            {theme.articles.map((article, index) => {
-              const date = formatDate(article.publishedAt);
-              return (
-                <li key={article.articleId} className="relative flex gap-4 pb-6 last:pb-0">
-                  <span className="z-10 mt-1 flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface text-sm font-extrabold text-accent tabular-nums">
-                    {index + 1}
+    <div className="np-container np-article-page np-story-theme-page">
+      <div className="np-article-breadcrumb">
+        <Breadcrumbs
+          items={[
+            { name: "Теми с продължение", path: "/temi/" },
+            { name: theme.title },
+          ]}
+        />
+      </div>
+
+      <article>
+      <StoryRouteObserver className="np-article-story" count={theme.articles.length}>
+        <div className="np-article-main">
+          {cover ? <ArticleHeroZoom hero={cover} category={THEME_RUBRIC} lightboxImages={[{ src: cover.url, alt: cover.alt, caption: cover.caption, credit: cover.credit }]} /> : null}
+
+          <header className="np-article-header">
+            {!cover ? <CategoryPill category={THEME_RUBRIC} glass={false} className="np-article-no-hero-category" /> : null}
+            <div className="np-article-heading-accent" aria-hidden="true" />
+            <h1>{theme.title}</h1>
+            {theme.summary ? <p className="np-article-deck">{theme.summary}</p> : null}
+            <div className="np-article-meta">
+              <div className="np-article-byline">
+                <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
+                <span><small>Тема</small><strong>с продължение</strong></span>
+              </div>
+              <div className="np-article-meta-facts">
+                <span>
+                  <ClockIcon width={16} height={16} />
+                  <span>
+                    <strong>По пътя</strong>
+                    {first ? (
+                    <time dateTime={isoDate(first)}>
+                      <span className="lg:hidden">{formatArticleMeta(first)}</span>
+                      <span className="hidden lg:inline">{formatFull(first)}</span>
+                    </time>
+                    ) : (
+                      "—"
+                    )}
                   </span>
-                  <article className="flex-1 overflow-hidden rounded-2xl border border-line bg-surface shadow-card transition hover:shadow-lg">
-                    <Link
-                      href={article.path}
-                      className="flex flex-col gap-3 p-4 sm:flex-row sm:items-stretch sm:gap-5 sm:p-5"
-                    >
-                      {article.heroUrl ? (
-                        <div className="aspect-[16/9] w-full shrink-0 overflow-hidden rounded-xl bg-surface-2 sm:aspect-square sm:size-32">
-                          <ArticleImage
-                            media={{
-                              url: article.heroUrl,
-                              alt: "",
-                              width: null,
-                              height: null,
-                              caption: "",
-                              credit: "",
-                            }}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : null}
-                      <div className="flex min-w-0 flex-1 flex-col gap-2">
-                        {date ? (
-                          <time
-                            dateTime={article.publishedAt?.toISOString()}
-                            className="text-xs font-bold tracking-wide text-muted uppercase"
-                          >
-                            {date}
+                </span>
+                <span>
+                  <BookIcon width={16} height={16} />
+                  <span>
+                    <strong>Хронология</strong>
+                    {articleCountLabel(theme.articles.length)}
+                  </span>
+                </span>
+              </div>
+              <ShareButtons url={`/temi/${theme.slug}/`} title={theme.title} />
+            </div>
+          </header>
+
+          {theme.intro ? <p className="np-story-intro">{theme.intro}</p> : null}
+
+          {theme.articles.length ? (
+              <div className="np-story-journey">
+                <p className="np-story-journey-kicker">Редакционен маршрут</p>
+                <nav className="np-story-map-jump" aria-label="Спирки в темата">
+                  {theme.articles.map((article, index) => (
+                    <a key={article.articleId} href={`#np-stop-${article.articleId}`} data-story-nav={index}>
+                      {stopDate(asDate(article.publishedAt)) ?? index + 1}
+                    </a>
+                  ))}
+                </nav>
+                <div className="np-story-route">
+                  <span className="np-story-spine" aria-hidden="true">
+                    <span className="np-story-spine-fill" />
+                  </span>
+                  <ol>
+                  {theme.articles.map((article, index) => {
+                    const publishedAt = asDate(article.publishedAt);
+                    const side = index % 2 === 0 ? "west" : "east";
+                    return (
+                      <li
+                        key={article.articleId}
+                        id={`np-stop-${article.articleId}`}
+                        className={`np-story-stop np-story-stop--${side}`}
+                        data-story-stop={index}
+                      >
+                        <span className="np-story-marker">
+                          <span className="np-story-pin">{index + 1}</span>
+                        </span>
+                        {publishedAt ? (
+                          <time className="np-story-when" dateTime={isoDate(publishedAt)}>
+                            <span className="np-story-when-weekday">{titled(STOP_WEEKDAY.format(publishedAt))}</span>
+                            <span className="np-story-when-day">{STOP_DAY_NUM.format(publishedAt)}</span>
+                            <span className="np-story-when-month">{STOP_MONTH_YEAR.format(publishedAt)}</span>
+                            <span className="np-story-when-rule" aria-hidden="true" />
+                            <span className="np-story-when-time">{formatTime(publishedAt)}</span>
+                            <span className="np-story-when-label">публикувана</span>
                           </time>
                         ) : null}
-                        <h3 className="line-clamp-3 text-base font-extrabold leading-snug text-ink sm:text-lg">
-                          {article.title}
-                        </h3>
-                        {article.category ? (
-                          <span className="text-xs text-muted">
-                            {article.category.name}
-                          </span>
-                        ) : null}
-                      </div>
-                    </Link>
-                  </article>
+                        <Link href={article.path} className="np-story-card">
+                          <div className={`np-story-card-visual${article.heroUrl ? "" : " np-story-card-empty"}`}>
+                            {article.heroUrl ? (
+                              <ArticleImage
+                                media={{
+                                  url: article.heroUrl,
+                                  alt: "",
+                                  width: null,
+                                  height: null,
+                                  caption: "",
+                                  credit: "",
+                                }}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="np-story-card-body">
+                            <div className="np-story-card-meta">
+                              {article.category ? <span>{article.category.name}</span> : null}
+                            </div>
+                            <h2>{article.title}</h2>
+                            <span className="np-story-card-go">Отвори новината</span>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                  </ol>
+                </div>
+              </div>
+          ) : null}
+        </div>
+
+        {theme.articles.length ? (
+          <aside className="np-story-map-rail" aria-label="Карта на темата">
+            <p className="np-story-journey-kicker">Карта</p>
+            <h2>{theme.title}</h2>
+            <p>
+              {articleCountLabel(theme.articles.length)}
+              {first && last && dates.length > 1 ? ` · ${STOP_DATE.format(first)} — ${STOP_DATE.format(last)}` : null}
+            </p>
+            <ol>
+              {theme.articles.map((article, index) => (
+                <li key={article.articleId}>
+                  <a href={`#np-stop-${article.articleId}`} data-story-nav={index}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <span>{article.title}</span>
+                  </a>
                 </li>
-              );
-            })}
-          </ol>
-        </section>
-      ) : null}
-    </article>
+              ))}
+            </ol>
+          </aside>
+        ) : null}
+      </StoryRouteObserver>
+      </article>
+    </div>
   );
 }

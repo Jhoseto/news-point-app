@@ -8,10 +8,12 @@ import {
   getRecommendedArticles,
   publicAsOfMs,
   type ArticleDetail,
+  type ArticleSummary,
   type StoryThemeRefPublic,
   type StoryThemeSummary,
   type StoryThemeArticle,
 } from "@/lib/queries";
+import { asDate, themeChronologyNeighbours } from "@/lib/story-route";
 import { ArticleBody } from "./article-body";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ArticleHeroZoom } from "./article-hero-zoom";
@@ -32,6 +34,21 @@ import { ReadingProgress } from "./reading-progress";
 import { CategoryPill } from "./ui";
 import "./article-premium.css";
 
+function themeStopToSummary(stop: StoryThemeArticle): ArticleSummary {
+  return {
+    id: stop.articleId,
+    path: stop.path,
+    title: stop.title,
+    excerpt: "",
+    authorName: "",
+    publishedAt: asDate(stop.publishedAt) ?? new Date(Number.NaN),
+    category: stop.category,
+    hero: stop.heroUrl
+      ? { url: stop.heroUrl, width: null, height: null, alt: "", caption: "", credit: "" }
+      : null,
+  };
+}
+
 export async function ArticlePage({
   article,
   storyThemes = [],
@@ -41,13 +58,16 @@ export async function ArticlePage({
   storyThemes?: StoryThemeRefPublic[];
   storyThemeCompact?: { theme: StoryThemeSummary; articles: StoryThemeArticle[]; currentPosition: number } | null;
 }) {
-  const asOfMs = publicAsOfMs();
-  const [timeline, latest24h] = await Promise.all([
-    getArticleNeighbours(article),
-    getLatest24Hours(asOfMs),
-  ]);
-  const neighbours = [timeline.older[0], timeline.newer[0]].filter((item): item is NonNullable<typeof item> => Boolean(item));
   const compact = storyThemeCompact;
+  const asOfMs = publicAsOfMs();
+  const themeStops = compact ? themeChronologyNeighbours(compact.articles, article.id) : null;
+  const [timeline, latest24h] = await Promise.all([
+    compact ? Promise.resolve({ older: [] as ArticleSummary[], newer: [] as ArticleSummary[] }) : getArticleNeighbours(article),
+    compact ? Promise.resolve([] as ArticleSummary[]) : getLatest24Hours(asOfMs),
+  ]);
+  const older = themeStops ? (themeStops.previous ? themeStopToSummary(themeStops.previous) : null) : (timeline.older[0] ?? null);
+  const newer = themeStops ? (themeStops.next ? themeStopToSummary(themeStops.next) : null) : (timeline.newer[0] ?? null);
+  const neighbours = [older, newer].filter((item): item is ArticleSummary => Boolean(item));
   const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
   const subtitle = articleSubtitle(article.excerpt, article.body);
@@ -121,7 +141,12 @@ export async function ArticlePage({
               {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
               <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
               <footer className="np-article-end">
-                <ArticleNeighbours older={timeline.older[0] ?? null} newer={timeline.newer[0] ?? null} />
+                <ArticleNeighbours
+                  older={older}
+                  newer={newer}
+                  previousLabel={compact ? "Предишна в темата" : "Предишна новина"}
+                  nextLabel={compact ? "Следваща в темата" : "Следваща новина"}
+                />
                 {article.categories.length ? (
                   <div className="np-article-origin">
                     <CategoryChips categories={article.categories} activeId={article.category?.id} title="Рубрики на статията" />
@@ -135,7 +160,7 @@ export async function ArticlePage({
           <StoryRoadmap
             theme={compact.theme}
             articles={compact.articles}
-            currentPosition={compact.currentPosition}
+            currentArticleId={article.id}
           />
         ) : (
           <LatestNews24h articles={latest24h} asOfMs={asOfMs} dense size="rail" className="np-article-latest" />

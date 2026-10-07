@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { ArticleImage, TimeMeta } from "./ui";
+import { asDate } from "@/lib/story-route";
 import type { StoryThemeSummary } from "@/lib/queries";
 
 /** Listing card for the public theme index. Server component. */
 export function StoryThemeCard({ theme }: { theme: StoryThemeSummary }) {
+  const publishedAt = asDate(theme.publishedAt);
   return (
     <Link
       href={`/temi/${theme.slug}/`}
@@ -37,7 +39,7 @@ export function StoryThemeCard({ theme }: { theme: StoryThemeSummary }) {
               ? "1 статия"
               : `${theme.articleCount} статии`}
           </span>
-          <TimeMeta date={theme.publishedAt} relative />
+          {publishedAt ? <TimeMeta date={publishedAt} relative /> : null}
         </div>
       </div>
     </Link>

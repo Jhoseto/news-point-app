@@ -26,10 +26,22 @@
     gap: 1.25rem;
   }
   .np-article-breadcrumb { margin-right: 23.25rem; }
-  .np-article-story > .np-article-latest {
+  .np-article-story > .np-article-latest:not(.np-story-article-rail) {
     min-width: 0;
     width: 100%;
     max-width: 22rem;
+    justify-self: end;
+  }
+  .np-article-story:has(> .np-story-article-rail) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 32rem);
+  }
+  .np-article-page:has(.np-story-article-rail) .np-article-breadcrumb {
+    margin-right: 33.25rem;
+  }
+  .np-article-story > .np-story-article-rail {
+    min-width: 0;
+    width: 100%;
+    max-width: 32rem;
     justify-self: end;
   }
   .np-article-page .np-related-stories {

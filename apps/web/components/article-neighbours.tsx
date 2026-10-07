@@ -4,14 +4,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, type PointerEvent as ReactPointerEvent } from "react";
 import { formatFull, isoDate } from "@/lib/format";
+import { asDate } from "@/lib/story-route";
 import type { ArticleSummary } from "@/lib/queries";
 import { ArticleImage } from "./ui";
 
-function NeighbourCard({ article, direction, enablePointerTracking }: {
+function NeighbourCard({ article, direction, enablePointerTracking, label }: {
   article: ArticleSummary;
   direction: "previous" | "next";
   enablePointerTracking?: boolean;
+  label: string;
 }) {
+  const publishedAt = asDate(article.publishedAt);
   const previous = direction === "previous";
   const router = useRouter();
 
@@ -89,32 +92,42 @@ function NeighbourCard({ article, direction, enablePointerTracking }: {
     >
       {article.hero ? <ArticleImage media={article.hero} sizes="(min-width: 640px) 112px, 96px" className="np-article-neighbour-image" /> : <span className="np-article-neighbour-image np-article-neighbour-placeholder" aria-hidden="true" />}
       <span className="np-article-neighbour-copy">
-        <span className="np-article-neighbour-direction"><span aria-hidden="true">{previous ? "←" : "→"}</span>{previous ? "Предишна новина" : "Следваща новина"}</span>
+        <span className="np-article-neighbour-direction"><span aria-hidden="true">{previous ? "←" : "→"}</span>{label}</span>
         <strong>{article.title}</strong>
         <span className="np-article-neighbour-meta">
           {article.category?.name ? <span>{article.category.name}</span> : null}
-          <time dateTime={isoDate(article.publishedAt)}>{formatFull(article.publishedAt)}</time>
+          {publishedAt ? <time dateTime={isoDate(publishedAt)}>{formatFull(publishedAt)}</time> : null}
         </span>
       </span>
     </Link>
   );
 }
 
-export function ArticleNeighbours({ older, newer }: { older: ArticleSummary | null; newer: ArticleSummary | null }) {
+export function ArticleNeighbours({
+  older,
+  newer,
+  previousLabel = "Предишна новина",
+  nextLabel = "Следваща новина",
+}: {
+  older: ArticleSummary | null;
+  newer: ArticleSummary | null;
+  previousLabel?: string;
+  nextLabel?: string;
+}) {
   if (!older && !newer) return null;
   return (
     <>
       {/* Phone: a single „Следваща новина" card; left-swipe navigates to it. */}
       {newer ? (
-        <nav className="lg:hidden" aria-label="Следваща новина">
-          <NeighbourCard article={newer} direction="next" enablePointerTracking />
+        <nav className="lg:hidden" aria-label={nextLabel}>
+          <NeighbourCard article={newer} direction="next" enablePointerTracking label={nextLabel} />
         </nav>
       ) : null}
       {/* Desktop and tablet: both chronological neighbours. */}
       {older || newer ? (
-        <nav className="np-article-neighbours hidden lg:grid" aria-label="Предишна и следваща новина">
-          {older ? <NeighbourCard article={older} direction="previous" /> : <span />}
-          {newer ? <NeighbourCard article={newer} direction="next" /> : null}
+        <nav className="np-article-neighbours hidden lg:grid" aria-label={`${previousLabel} и ${nextLabel}`}>
+          {older ? <NeighbourCard article={older} direction="previous" label={previousLabel} /> : <span />}
+          {newer ? <NeighbourCard article={newer} direction="next" label={nextLabel} /> : null}
         </nav>
       ) : null}
     </>

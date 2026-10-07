@@ -13,6 +13,7 @@ import { archiveBoundary, archiveFilter, archiveNow, archiveOrder, archiveTimest
 import { searchArchiveFilter, searchMatches } from "./search-query";
 import { searchCursorUrl, type SearchCursor } from "./search-pagination";
 import type { SearchFilters } from "./search";
+import { asDate } from "./story-route";
 
 export interface Media {
   url: string;
@@ -126,6 +127,24 @@ function toMedia(row: {
 
 function reviveSummary(article: ArticleSummary): ArticleSummary {
   return article.publishedAt instanceof Date ? article : { ...article, publishedAt: new Date(article.publishedAt) };
+}
+
+function reviveThemeSummary(theme: StoryThemeSummary): StoryThemeSummary {
+  const publishedAt = asDate(theme.publishedAt);
+  return publishedAt && publishedAt !== theme.publishedAt ? { ...theme, publishedAt } : theme;
+}
+
+function reviveThemeDetail(theme: StoryThemeDetailPublic | null): StoryThemeDetailPublic | null {
+  if (!theme) return null;
+  const publishedAt = asDate(theme.publishedAt) ?? theme.publishedAt;
+  return {
+    ...theme,
+    publishedAt,
+    articles: theme.articles.map((article) => ({
+      ...article,
+      publishedAt: asDate(article.publishedAt),
+    })),
+  };
 }
 
 function toSummary(row: SummaryRow): ArticleSummary {
@@ -608,7 +627,7 @@ export const getPublishedStoryThemes = cache(({ limit = 24 }: { limit?: number }
     async () => getPublishedStoryThemesInternal({ limit }),
     ["public-story-themes", String(limit)],
     { revalidate: 60, tags: ["public-story-themes"] },
-  )();
+  )().then((themes) => themes.map(reviveThemeSummary));
 });
 
 async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDetailPublic | null> {
@@ -688,7 +707,7 @@ export const getStoryThemeBySlug = cache((slug: string): Promise<StoryThemeDetai
     async () => getStoryThemeBySlugInternal(normalized),
     ["public-story-theme", normalized],
     { revalidate: 60, tags: ["public-story-themes"] },
-  )();
+  )().then(reviveThemeDetail);
 });
 
 export async function getStoryThemesForArticle(articleId: string): Promise<StoryThemeRefPublic[]> {
@@ -740,5 +759,6 @@ export async function getStoryThemeCompact(articleId: string): Promise<{ theme: 
     publishedAt: detail.publishedAt,
     articleCount: detail.articles.length,
   };
-  return { theme: summary, articles: detail.articles, currentPosition: ref.position };
+  const current = detail.articles.find((article) => article.articleId === articleId);
+  return { theme: summary, articles: detail.articles, currentPosition: current?.position ?? ref.position };
 }

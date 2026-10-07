@@ -54,7 +54,10 @@ const RUBRIC_ICONS: Record<string, IconComponent> = {
   lajfstajl: CupIcon,
   izbori: BallotIcon,
   "glasat-na-istinata": BoltIcon,
+  temi: ColumnsIcon,
 };
+
+const STORIES_NAV: NavItem = { name: "Теми с продължение", path: "/temi/", slug: "temi" };
 
 function RubricIcon({ slug, ...props }: { slug: string } & SVGProps<SVGSVGElement>) {
   const Icon = RUBRIC_ICONS[slug] ?? GridIcon;
@@ -338,6 +341,11 @@ function RubricLinks({ items, current, onNavigate, autoFocusActive }: { items: N
           </ul>
         </div>
       ))}
+      <ul className="mt-1 flex flex-col gap-1">
+        <li>
+          <RubricRow item={STORIES_NAV} current={current} onNavigate={onNavigate} />
+        </li>
+      </ul>
     </div>
   );
 }
@@ -511,6 +519,11 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
               </ul>
             </section>
           ))}
+            <ul className="mt-0.5 flex flex-col gap-0.5">
+              <li>
+                <RubricRow item={STORIES_NAV} current={current} compact={!expanded} />
+              </li>
+            </ul>
           </div>
         </nav>
       </aside>

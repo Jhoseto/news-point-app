@@ -7,7 +7,7 @@ type Props = {
   isCurrent: boolean;
   isPending: boolean;
   onSelect: (path: string) => void;
-  formatDate: (value: Date | null) => string;
+  formatDate: (value: Date | string | null) => string;
 };
 
 /** One row in the compact story roadmap. Renders as a button so the click
