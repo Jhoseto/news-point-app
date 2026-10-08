@@ -12,7 +12,7 @@ describe("media cache", () => {
       "public, max-age=2592000, stale-while-revalidate=86400",
     );
     expect(mediaCacheControl("news/2026/09/not-a-hash.webp")).toBe(
-      "public, max-age=604800, stale-while-revalidate=86400",
+      "public, max-age=2592000, stale-while-revalidate=86400",
     );
   });
 });

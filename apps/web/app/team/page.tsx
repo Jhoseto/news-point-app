@@ -4,6 +4,7 @@ import { Breadcrumbs } from "@/components/breadcrumbs";
 import { JsonLd } from "@/components/json-ld";
 import { person } from "@/lib/jsonld";
 import { getPublicTeam } from "@/lib/queries";
+import { featuredPeople } from "@/lib/public-team";
 import { shareOrigin } from "@/lib/share-card";
 import "./team.css";
 
@@ -26,27 +27,6 @@ const portraitByName: Record<string, TeamPhoto> = {
   "атанас доминов": { small: "/brand/team-atanas-800-79a10b0e.webp", large: "/brand/team-atanas-1600-79a10b0e.webp", alt: "Атанас Доминов" },
   "николай мутавски": { small: "/brand/team-nikolai-800-358ea9af.webp", large: "/brand/team-nikolai-1600-358ea9af.webp", alt: "Николай Мутавски" },
 };
-
-// These four names and portraits were supplied explicitly for the public team page.
-// They are editorial content, separate from private Studio staff profiles.
-const featuredPeople = [
-  {
-    id: "team-atanas", name: "Атанас Доминов", role: "Главен редактор",
-    bio: "Ръководи редакционната политика и определя основните теми и приоритети на медията. Отговаря за журналистическите стандарти, достоверността на информацията и цялостното развитие на редакционното съдържание.", isPublic: true,
-  },
-  {
-    id: "team-stanimir", name: "Станимир Дикелов", role: "Репортер",
-    bio: "Работи там, където се случват новините. Следи актуалните събития, търси различните гледни точки и предава информацията от място бързо, точно и достъпно за читателите.", isPublic: true,
-  },
-  {
-    id: "team-petar", name: "Петър Георгиев", role: "Редактор – разследващ журналист",
-    bio: "Следи новините от Пловдив, страната и света и работи за тяхното точно и навременно представяне. Фокусът му е върху ясния новинарски текст, проверената информация и темите с обществено значение.", isPublic: true,
-  },
-  {
-    id: "team-nikolai", name: "Николай Мутавски", role: "Разследващ журналист",
-    bio: "Следи темите отвъд официалните версии и търси фактите зад събитията. Работи по разследвания, обществени казуси и истории, които изискват задълбочена проверка и журналистическа последователност.", isPublic: true,
-  },
-] as const;
 
 function Photo({ photo, className = "", priority = false }: { photo: TeamPhoto; className?: string; priority?: boolean }) {
   return (

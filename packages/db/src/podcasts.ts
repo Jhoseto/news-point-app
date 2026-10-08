@@ -56,7 +56,7 @@ export async function publishedPodcastAudio(id: string) {
     title: podcasts.title,
     audioKey: podcasts.audioKey,
     status: podcasts.status,
-  }).from(podcasts).where(eq(podcasts.id, id)).limit(1);
+  }).from(podcasts).where(and(eq(podcasts.id, id), eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`))).limit(1);
   return row?.status === "published" ? row : null;
 }
 

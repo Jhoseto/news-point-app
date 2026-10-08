@@ -6,7 +6,7 @@ export function mediaCacheControl(storageKey: string): string {
   if (/-w\d+\.webp$/i.test(name) || /-card\.webp$/i.test(name)) {
     return "public, max-age=2592000, stale-while-revalidate=86400";
   }
-  // Masters may be replaced on rare re-import; keep a week with SWR.
-  if (/\.webp$/i.test(name)) return "public, max-age=604800, stale-while-revalidate=86400";
+  // Masters change rarely; 30d matches ladder so PSI “efficient cache” stops flagging them.
+  if (/\.webp$/i.test(name)) return "public, max-age=2592000, stale-while-revalidate=86400";
   return "public, max-age=86400";
 }

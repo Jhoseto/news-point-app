@@ -1,5 +1,3 @@
-import "@fontsource-variable/literata/wght.css";
-import "@fontsource-variable/literata/wght-italic.css";
 import Link from "next/link";
 import { LivePointStrip } from "@/components/livepoint/livepoint-strip";
 import { getMenuCategories } from "@/lib/queries";

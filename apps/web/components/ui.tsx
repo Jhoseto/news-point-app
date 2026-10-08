@@ -94,11 +94,17 @@ function parseSrcSet(srcSet: string | undefined): SrcEntry[] {
     .filter((entry): entry is SrcEntry => Boolean(entry.url));
 }
 
-/** Keep ~320/768/1440 + largest so mid cards do not jump to the full master. */
-function compactSrcSet(srcSet: string | undefined): string | undefined {
-  const entries = parseSrcSet(srcSet);
-  if (entries.length <= 4) return srcSet;
-  const targets = [320, 768, 1440, entries[entries.length - 1]!.width];
+/** Card/list srcset: mid rungs only (never pull a 2–4k master for a 22vw tile). */
+function compactSrcSet(srcSet: string | undefined, maxWidth = 1440): string | undefined {
+  let entries = parseSrcSet(srcSet);
+  if (!entries.length) return undefined;
+  const capped = entries.filter((entry) => entry.width <= maxWidth);
+  if (capped.length >= 2) entries = capped;
+  if (entries.length <= 3) {
+    return entries.map((entry) => `${entry.url} ${entry.width}w`).join(", ");
+  }
+  const largest = entries[entries.length - 1]!.width;
+  const targets = [320, 768, largest];
   const picked: SrcEntry[] = [];
   for (const target of targets) {
     const best = entries.reduce((a, b) => (Math.abs(b.width - target) < Math.abs(a.width - target) ? b : a));

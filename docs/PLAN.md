@@ -101,6 +101,8 @@
 
 08.10 — Origin perf без Cloudflare: compact srcset ~320/768/1440 + master; `src` по `sizes`; LivePoint панели + DeferredChrome (LiveUpdates/Spotlight/PWA) след idle; Manrope само Cyrillic+Latin; media Cache-Control 30d за `-w*` / 7d за WebP master. `media:refresh-presentations` пълни thin `media_presentations` до цялата стълба от диска (преди backfill спираше на 3). Cloudflare edge остава отделно след deploy.
 
+08.10 — Desktop PSI ~88 (TBT/CSS/font chain): Literata махнат от критичния CSS (само Cyrillic+Latin след idle); card srcset capped ≤1440w; carousel autoplay след idle + кеширан `offsetWidth` (по-малко forced reflow); WebP master Cache-Control 30d. Invalid `preconnect /` и `email-decode` са от staging Cloudflare — не от origin.
+
 08.10 — При избор на стара снимка от архива в Studio MediaPicker тя минава през същата responsive стълба (320–1920 WebP), както ново качване. Оригиналът не се презаписва; добавят се sibling `-w{N}.webp` от оригиналните пиксели (без втора загуба на качество). API: `POST /api/editor/media/optimize/`.
 
 08.10 — WP sync (`mirrorNewsImage`) за **нови** огледални снимки вече пише същата стълба 320–1920 (+ master ≤4096, q84) от оригиналните байтове, не само large+card. Старите master+card двойки не се презаписват на всеки sync tick; `-card.webp` остава на диска за съвместимост.

@@ -14,6 +14,7 @@ import { searchArchiveFilter, searchMatches } from "./search-query";
 import { searchCursorUrl, type SearchCursor } from "./search-pagination";
 import type { SearchFilters } from "./search";
 import { asDate } from "./story-route";
+import { publicAuthorAnchor } from "./public-team";
 
 export interface Media {
   url: string;
@@ -48,6 +49,7 @@ export interface ArticleSummary {
 export interface ArticleDetail extends ArticleSummary {
   updatedAt?: Date;
   authorKind?: "staff" | "newsroom" | "manual";
+  publicAuthorAnchor?: string | undefined;
   authorName: string;
   sourceUrl: string | null;
   body: ArticleBody;
@@ -337,12 +339,16 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       ...summaryColumns(ready),
       authorName: articles.authorName,
       authorKind: articles.authorKind,
+      publicAuthorId: authorProfiles.staffUserId,
+      publicAuthorName: staffUsers.name,
       sourceUrl: articles.sourceUrl,
       body: articles.body,
       listenEnabled: articles.listenEnabled,
       updatedAt: articles.updatedAt,
     })
     .from(articles)
+    .leftJoin(authorProfiles, and(eq(articles.authorKind, "staff"), eq(authorProfiles.staffUserId, articles.authorUserId), eq(authorProfiles.isPublic, true)))
+    .leftJoin(staffUsers, eq(staffUsers.id, authorProfiles.staffUserId))
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
   const [row] = await (ready ? query.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id)) : query)
@@ -385,6 +391,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     ...toSummary(row),
     authorName: row.authorName,
     authorKind: row.authorKind,
+    publicAuthorAnchor: publicAuthorAnchor(row.authorName, row.publicAuthorId && row.publicAuthorName ? { id: row.publicAuthorId, name: row.publicAuthorName } : null),
     sourceUrl: row.sourceUrl,
     body,
     media,

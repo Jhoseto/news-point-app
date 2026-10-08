@@ -101,13 +101,29 @@ export function LeadingCarousel({
     element.addEventListener("scroll", onUserScroll, { passive: true });
     element.addEventListener("scrollend", onScrollEnd);
 
+    // Cache strip width — reading offsetWidth every frame forces layout (PSI reflow).
+    let width = set.offsetWidth;
+    let autoplayReady = false;
+    const refreshWidth = () => {
+      width = set.offsetWidth;
+    };
+    window.addEventListener("resize", refreshWidth);
+    const armAutoplay = () => {
+      autoplayReady = true;
+      refreshWidth();
+    };
+    const idleId =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback(armAutoplay, { timeout: 2000 })
+        : 0;
+    const autoplayTimer = idleId ? 0 : window.setTimeout(armAutoplay, 400);
+
     const tick = (now: number) => {
       if (document.documentElement.hasAttribute("data-mobile-pager-visual")) {
         previous = now; frame = requestAnimationFrame(tick); return;
       }
-      const width = set.offsetWidth;
       const touchMomentumActive = isMobile && performance.now() < touchPausedUntil.current;
-      const tickerPaused = isMobile ? touchMomentumActive : paused.current;
+      const tickerPaused = !autoplayReady || (isMobile ? touchMomentumActive : paused.current);
       if (!tickerPaused && width > 0) {
         const step = ((now - previous) / 1000) * SPEED_PX_PER_SECOND;
         if (motion === "to-right") {
@@ -134,6 +150,9 @@ export function LeadingCarousel({
     frame = requestAnimationFrame(tick);
     return () => {
       cancelAnimationFrame(frame);
+      window.removeEventListener("resize", refreshWidth);
+      if (idleId && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+      if (autoplayTimer) window.clearTimeout(autoplayTimer);
       element.removeEventListener("scroll", onUserScroll);
       element.removeEventListener("scrollend", onScrollEnd);
     };

@@ -6,12 +6,15 @@ export function discoveryRobots(origin: string): MetadataRoute.Robots {
   return { rules: { userAgent: "*", allow: "/", disallow: ["/admin/", "/api/", "/draft/"] }, sitemap: `${origin}/sitemap.xml` };
 }
 
-function link(origin: string, path: string, title: string): string {
-  const label = title.replace(/\s+/g, " ").replace(/[\\[\]]/g, "\\$&");
-  return `- [${label}](<${origin}${path}>)`;
+function markdownText(value: string): string {
+  return value.trim().replace(/\s+/g, " ").replace(/[\\`*_\[\]<>]/g, "\\$&");
 }
 
-export function llmsText(origin: string, articles: { path: string; title: string }[], themes: { slug: string; title: string }[]): string {
+function link(origin: string, path: string, title: string): string {
+  return `- [${markdownText(title)}](<${origin}${path}>)`;
+}
+
+export function llmsText(origin: string, articles: { path: string; title: string; excerpt?: string; publishedAt?: Date }[], themes: { slug: string; title: string }[]): string {
   return [
     "# NewsPoint.bg", "",
     "> Независим новинарски портал за Пловдив, България и света. Публикациите са на български език.", "",
@@ -24,6 +27,10 @@ export function llmsText(origin: string, articles: { path: string; title: string
     link(origin, "/temi/", "Теми с продължение"),
     link(origin, "/livepoint/podcast/", "NewsPodcast"), "",
     ...(themes.length ? ["## Публикувани теми", "", ...themes.map((theme) => link(origin, `/temi/${theme.slug}/`, theme.title)), ""] : []),
-    ...(articles.length ? ["## Последни публикации", "", ...articles.map((article) => link(origin, article.path, article.title)), ""] : []),
+    ...(articles.length ? ["## Последни публикации", "", ...articles.map((article) => {
+      const date = article.publishedAt && Number.isFinite(article.publishedAt.getTime()) ? `Публикувано: ${article.publishedAt.toISOString()}.` : "";
+      const details = [date, article.excerpt ? markdownText(article.excerpt) : ""].filter(Boolean).join(" ");
+      return `${link(origin, article.path, article.title)}${details ? `: ${details}` : ""}`;
+    }), ""] : []),
   ].join("\n");
 }

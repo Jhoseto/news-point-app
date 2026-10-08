@@ -20,7 +20,10 @@ export function DeferredChrome() {
   useEffect(() => {
     let cancelled = false;
     const arm = () => {
-      if (!cancelled) setReady(true);
+      if (cancelled) return;
+      // Banner/footer Literata — keep off the render-blocking CSS + font chain.
+      void import("../app/literata-bg.css");
+      setReady(true);
     };
     if (typeof window.requestIdleCallback === "function") {
       const idleId = window.requestIdleCallback(arm, { timeout: 2500 });

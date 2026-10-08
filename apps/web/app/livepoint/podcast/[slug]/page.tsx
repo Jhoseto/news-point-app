@@ -5,7 +5,9 @@ import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisode, publicEpisodes } from "@/lib/podcasts";
-import { publicMetadata } from "@/lib/public-metadata";
+import { PUBLIC_SEO_PAGES, publicMetadata } from "@/lib/public-metadata";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList, podcastEpisode, podcastSeries } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 
 export const revalidate = 60;
@@ -30,9 +32,15 @@ export default async function PodcastEpisodePage({ params }: Props) {
   const [episode, episodes] = await Promise.all([publicEpisode(slug), publicEpisodes()]);
   if (!episode) notFound();
   const ordered = [episode, ...episodes.filter((item) => item.id !== episode.id)];
+  const origin = shareOrigin();
   return (
     <PodcastPageShell title={episode.title}>
-      <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={shareOrigin()} />
+      <JsonLd id="np-ld-podcast" data={[
+        podcastSeries(origin, PUBLIC_SEO_PAGES.podcast.description, ordered.slice(0, 10)),
+        podcastEpisode(origin, episode),
+        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "NewsPodcast", path: "/livepoint/podcast/" }, { name: episode.title }]),
+      ]} />
+      <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={origin} />
     </PodcastPageShell>
   );
 }

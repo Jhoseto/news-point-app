@@ -26,11 +26,13 @@ PageSpeed API квотата беше изчерпана; CrUX за времен
 
 ### Origin-only follow-up (без Cloudflare), 08.10
 
-- `ArticleImage`: compact srcset ~320/768/1440 + largest; default `src` from `sizes`.
+- `ArticleImage`: compact srcset capped ≤1440w for non-LCP cards; default `src` from `sizes`.
 - LivePoint panels + `DeferredChrome` (LiveUpdates / Spotlight / PWA) след `requestIdleCallback`.
-- Manrope: само Cyrillic + Latin (`app/manrope-bg.css`).
-- Media `Cache-Control`: `-w*` / `-card` → 30d + SWR; WebP master → 7d + SWR.
-- Backfill presentation upgrade: refresh DB variants when thinner than full ladder (was stuck at 3). `pnpm --filter @newspoint/wp-import media:refresh-presentations` (SSH exists-check only, no re-encode).
+- Manrope: само Cyrillic + Latin (`app/manrope-bg.css`). Literata: deferred (`literata-bg.css` след idle) — без italic/greek на критичния път.
+- Leading carousel: idle before autoplay; `offsetWidth` cached (fewer forced reflows / TBT).
+- Media `Cache-Control`: `-w*` / `-card` / WebP master → 30d + SWR.
+- Backfill presentation upgrade: `pnpm --filter @newspoint/wp-import media:refresh-presentations`.
+- Staging PSI noise: invalid `preconnect` to `/` + `email-decode.min.js` come from the host’s Cloudflare email obfuscation, not Next.
 
 Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 

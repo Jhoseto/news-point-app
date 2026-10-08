@@ -73,7 +73,7 @@ export default async function PathPage({ params }: Props) {
       authorName: article.authorName,
       ...(article.authorKind === "newsroom" && article.authorName.trim().toLowerCase() === "newspoint.bg"
         ? { authorType: "Organization" as const, authorId: `${origin}/#organization`, authorUrl: `${origin}/` }
-        : {}),
+        : article.publicAuthorAnchor ? { authorId: `${origin}/team/#${article.publicAuthorAnchor}`, authorUrl: `${origin}/team/#${article.publicAuthorAnchor}` } : {}),
       sectionName: article.category?.name,
     });
     const storyThemes = await getStoryThemesForArticle(article.id);

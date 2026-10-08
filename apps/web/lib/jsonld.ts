@@ -8,6 +8,8 @@
  * Values are JSON encoded; '<' is escaped so text cannot close the script tag.
  */
 
+import type { PublicEpisode } from "./podcast-types";
+
 export type JsonLdObject = Record<string, unknown>;
 
 /** @return JSON-safe string value (quotes, backslashes, control characters). */
@@ -143,6 +145,8 @@ export function newsArticle(input: NewsArticlePayload): JsonLdObject {
   const article: Record<string, unknown> = {
     "@type": "NewsArticle",
     "@id": `${input.origin}${input.path}`,
+    url: `${input.origin}${input.path}`,
+    isPartOf: { "@id": `${input.origin}/#website` },
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": `${input.origin}${input.path}`,
@@ -187,6 +191,38 @@ export function person(input: PersonPayload): JsonLdObject {
   if (input.jobTitle) person.jobTitle = input.jobTitle;
   if (input.bio) person.description = input.bio;
   if (input.imageUrl) person.image = input.imageUrl;
-  if (input.publicProfile) person.url = `${input.origin}/team/`;
+  if (input.publicProfile) person.url = `${input.origin}/team/#${input.slug}`;
   return person;
+}
+
+export function podcastSeries(origin: string, description: string, episodes: Pick<PublicEpisode, "path" | "title">[]): JsonLdObject {
+  const url = `${origin}/livepoint/podcast/`;
+  return {
+    "@type": "PodcastSeries", "@id": `${url}#series`, url,
+    name: "NewsPodcast", description, inLanguage: "bg-BG",
+    publisher: { "@id": `${origin}/#organization` },
+    isPartOf: { "@id": `${origin}/#website` },
+    // Only episodes represented in the visible page, without an invented total or numbering.
+    hasPart: episodes.map((episode) => ({ "@type": "PodcastEpisode", "@id": `${origin}${episode.path}#episode`, url: `${origin}${episode.path}`, name: episode.title })),
+  };
+}
+
+export function podcastEpisode(origin: string, episode: PublicEpisode): JsonLdObject {
+  const url = `${origin}${episode.path}`;
+  const duration = Number.isFinite(episode.durationSec) && episode.durationSec > 0 ? `PT${episode.durationSec}S` : undefined;
+  return {
+    "@type": "PodcastEpisode", "@id": `${url}#episode`, url,
+    name: episode.title, description: episode.summary, datePublished: episode.publishedAt,
+    image: new URL(episode.coverUrl, origin).href, inLanguage: "bg-BG",
+    publisher: { "@id": `${origin}/#organization` },
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    partOfSeries: { "@id": `${origin}/livepoint/podcast/#series` },
+    ...(duration ? { duration } : {}),
+    audio: {
+      "@type": "AudioObject", "@id": `${url}#audio`,
+      name: episode.title, contentUrl: new URL(episode.audioUrl, origin).href,
+      inLanguage: "bg-BG", ...(duration ? { duration } : {}),
+      encodesCreativeWork: { "@id": `${url}#episode` },
+    },
+  };
 }
