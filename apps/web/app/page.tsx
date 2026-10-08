@@ -1,4 +1,5 @@
 import { DesktopFeed } from "@/components/desktop-feed";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { HeroCard } from "@/components/article-card";
 import { HomeCategorySection as CategorySection } from "@/components/home-category-section";
 import { MobileCanonicalFeed } from "@/components/mobile-rubric-feed";
@@ -19,6 +20,8 @@ import { loadPublicHome } from "@/lib/public-home";
 import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 
 export const revalidate = 60;
+const homeMetadata = publicPageMetadata("home");
+export const metadata = { ...homeMetadata, title: { absolute: "NewsPoint.bg – Гласът на истината" } };
 
 const FOCUS_LABEL = "na-fokus";
 const FOCUS_ARCHIVE_PATH = "/na-fokus/";

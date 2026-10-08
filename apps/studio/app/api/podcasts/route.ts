@@ -25,7 +25,7 @@ function json(data: unknown, status = 200) {
 async function refresh(slug: string | null) {
   // The episode must reach the RSS feed and the sitemap too, not only the podcast pages.
   const paths = ["/", "/livepoint/podcast/", "/feed/", "/sitemap.xml"];
-  if (slug) paths.push(`/livepoint/podcast/${slug}/`);
+  if (slug) paths.push(`/livepoint/podcast/${slug}/`, `/share/podcast/${slug}/`);
   const result = await triggerRevalidate(paths);
   return result.reason === "ok";
 }

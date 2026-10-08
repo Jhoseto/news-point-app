@@ -1,5 +1,5 @@
 import "server-only";
-import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { getDb } from "./index";
 import { categories, podcasts } from "./schema";
 
@@ -41,11 +41,11 @@ function listed() {
 }
 
 export async function listPublishedPodcasts() {
-  return listed().where(eq(podcasts.status, "published")).orderBy(desc(podcasts.publishedAt));
+  return listed().where(and(eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`))).orderBy(desc(podcasts.publishedAt));
 }
 
 export async function publishedPodcastBySlug(slug: string) {
-  const [row] = await listed().where(eq(podcasts.slug, slug)).limit(1);
+  const [row] = await listed().where(and(eq(podcasts.slug, slug), eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`))).limit(1);
   return row?.status === "published" ? row : null;
 }
 

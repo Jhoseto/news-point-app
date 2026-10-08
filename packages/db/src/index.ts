@@ -10,6 +10,7 @@ export { hasArticleReadCounts } from "./article-reads";
 export { applyDueViewBoosts, hasArticleViewBoosts } from "./view-boosts";
 export { hasPageArrangements } from "./page-arrangements";
 export { hasScheduledPublish, publishDueScheduled } from "./scheduled-publish";
+export { hasStoryThemeSlugHistory } from "./story-theme-slugs";
 export { loadRootEnv } from "./env";
 
 function readEnv() {

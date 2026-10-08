@@ -75,11 +75,15 @@ export function parseLastEventId(value: string | null): number | null {
 }
 
 /** Paths whose cached HTML changes when an article or a published arrangement changes. */
-export function affectedPaths(event: { path: string; type?: LiveEvent["type"] }): string[] {
+export function affectedPaths(event: { path: string; type?: LiveEvent["type"]; topics?: string[] }): string[] {
   if (event.type === "layout.updated") return event.path ? [event.path] : [];
   if (event.type === "story.published" || event.type === "story.updated") {
     const slug = event.path.replace(/^\/?temi\//, "").replace(/\/$/, "");
-    if (slug) return [...new Set(["/temi", event.path, `/${event.path.replace(/^\//, "")}`])];
+    if (slug) return [...new Set(["/temi", event.path, "/sitemap.xml", "/llms.txt"])];
   }
-  return [...new Set(["/", event.path])];
+  // Rubric pages are keyed by slug in `topics` (old + new when the category moves).
+  const topicPaths = (event.topics ?? [])
+    .filter((topic) => /^[a-z0-9-]+$/.test(topic))
+    .map((topic) => `/${topic}/`);
+  return [...new Set(["/", event.path, ...topicPaths, "/feed/", "/sitemap.xml", "/llms.txt"])];
 }

@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { preload } from "react-dom";
 import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisodes } from "@/lib/podcasts";
 
-export const metadata: Metadata = {
-  title: "NewsPodcast · LivePoint",
-  description: "Подкасти на NewsPoint за слушане.",
-};
+export const metadata = publicPageMetadata("podcast");
 
 export const revalidate = 60;
 

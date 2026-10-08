@@ -13,7 +13,7 @@ const readCategoryView = unstable_cache(async (category: CategoryRef, cursor: Ca
     getMenuCategories(), getLatest24Hours(asOfMs),
   ]);
   return { asOfMs, front, archive, menu, latest24h };
-}, ["public-category-view"], { revalidate: 60 });
+}, ["public-category-view"], { revalidate: 60, tags: ["public-listings"] });
 function revive(article: ArticleSummary): ArticleSummary {
   return article.publishedAt instanceof Date ? article : { ...article, publishedAt: new Date(article.publishedAt) };
 }

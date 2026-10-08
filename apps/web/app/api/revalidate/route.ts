@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
+import { loadRootEnv } from "@newspoint/db";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ const body = z.strictObject({
 });
 
 function authorized(provided: string | null): boolean {
+  loadRootEnv();
   const expected = process.env.REVALIDATE_SECRET;
   if (!expected || !provided) return false;
   const a = Buffer.from(provided);
@@ -29,5 +31,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
   for (const path of parsed.data.paths) revalidatePath(path);
+  // Article/rubric mutations also write into Data Cache entries tagged below.
+  revalidateTag("public-listings", { expire: 0 });
+  if (parsed.data.paths.includes("/sitemap.xml")) {
+    revalidateTag("public-sitemaps", { expire: 0 });
+    revalidatePath("/sitemaps", "layout");
+  }
   return Response.json({ revalidated: parsed.data.paths.length });
 }

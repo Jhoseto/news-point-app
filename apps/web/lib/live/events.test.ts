@@ -60,6 +60,31 @@ describe("parseLastEventId", () => {
 
 describe("affectedPaths", () => {
   it("always includes the homepage and the article", () => {
-    expect(affectedPaths({ path: "/nova-statiya/" })).toEqual(["/", "/nova-statiya/"]);
+    expect(affectedPaths({ path: "/nova-statiya/" })).toEqual(["/", "/nova-statiya/", "/feed/", "/sitemap.xml", "/llms.txt"]);
+  });
+  it("includes rubric paths from topics so a category move clears both listings", () => {
+    expect(affectedPaths({ path: "/nova-statiya/", topics: ["plovdiv", "tehnologii"] })).toEqual([
+      "/",
+      "/nova-statiya/",
+      "/plovdiv/",
+      "/tehnologii/",
+      "/feed/",
+      "/sitemap.xml",
+      "/llms.txt",
+    ]);
+  });
+  it("ignores malformed topics", () => {
+    expect(affectedPaths({ path: "/nova-statiya/", topics: ["../evil", "OK", "tehnologii"] })).toEqual([
+      "/",
+      "/nova-statiya/",
+      "/tehnologii/",
+      "/feed/",
+      "/sitemap.xml",
+      "/llms.txt",
+    ]);
+  });
+  it("refreshes the sitemap after theme publication without treating it as an article", () => {
+    expect(affectedPaths({ path: "/temi/example/", type: "story.updated" })).toEqual(["/temi", "/temi/example/", "/sitemap.xml", "/llms.txt"]);
+    expect(affectedPaths({ path: "/plovdiv/", type: "layout.updated" })).toEqual(["/plovdiv/"]);
   });
 });

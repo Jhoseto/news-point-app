@@ -4,7 +4,8 @@ import { ArticlePage } from "@/components/article-page";
 import { CategoryPage } from "@/components/category-page";
 import { JsonLd } from "@/components/json-ld";
 import { breadcrumbList, newsArticle } from "@/lib/jsonld";
-import { shareOrigin } from "@/lib/share-card";
+import { absoluteMedia, shareOrigin } from "@/lib/share-card";
+import { publicMetadata } from "@/lib/public-metadata";
 import { getArticleByPath, getCategoryByPath, getStoryThemesForArticle } from "@/lib/queries";
 
 export const revalidate = 60;
@@ -29,25 +30,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const category = await getCategoryByPath(path);
   if (category) {
     const image = `${origin}/share/category/${category.id}/`;
-    return {
-      title: category.name,
-      description: `Новини от рубрика ${category.name} — NewsPoint.bg`,
-      alternates: { canonical: `${origin}${category.path}` },
-      openGraph: { title: category.name, description: `Новини от рубрика ${category.name}`, siteName: "NewsPoint.bg", locale: "bg_BG", type: "website", images: [{ url: image, width: 1200, height: 630 }] },
-      twitter: { card: "summary_large_image", title: category.name, images: [image] },
-    };
+    return publicMetadata({ path: category.path, title: category.name, description: `Новини от рубрика ${category.name} — NewsPoint.bg`, imagePath: image });
   }
   const article = await getArticleByPath(path);
-  if (!article) return {};
+  if (!article) notFound();
   const image = `${origin}/share/article/${article.id}/`;
   const description = article.excerpt || article.title;
-  return {
-    title: article.title,
-    description,
-    alternates: { canonical: `${origin}${article.path}` },
-    openGraph: { title: article.title, description, siteName: "NewsPoint.bg", locale: "bg_BG", type: "article", images: [{ url: image, width: 1200, height: 630 }] },
-    twitter: { card: "summary_large_image", title: article.title, description, images: [image] },
-  };
+  return publicMetadata({ path: article.path, title: article.title, description, imagePath: image, type: "article", publishedTime: article.publishedAt.toISOString(), modifiedTime: (article.updatedAt ?? article.publishedAt).toISOString() });
 }
 
 export default async function PathPage({ params }: Props) {
@@ -80,9 +69,9 @@ export default async function PathPage({ params }: Props) {
       path: article.path,
       title: article.title,
       excerpt: article.excerpt,
-      imageUrl: article.hero?.url ? `${origin}${article.hero.url.startsWith("/") ? "" : "/"}${article.hero.url}` : undefined,
-      datePublished: article.publishedAt?.toISOString() ?? new Date().toISOString(),
-      dateModified: article.publishedAt?.toISOString() ?? new Date().toISOString(),
+      imageUrl: article.hero?.url ? absoluteMedia(article.hero.url, origin) : undefined,
+      datePublished: article.publishedAt.toISOString(),
+      dateModified: (article.updatedAt ?? article.publishedAt).toISOString(),
       authorName: article.authorName,
       sectionName: article.category?.name,
     });

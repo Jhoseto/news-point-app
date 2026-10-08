@@ -1,4 +1,7 @@
 import sharp from "sharp";
+import { loadRootEnv } from "@newspoint/db";
+
+let originEnvLoaded = false;
 
 function xml(value: string): string {
   return value.replace(/[&<>"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[char] ?? char);
@@ -30,9 +33,12 @@ export async function shareCard(input: { title: string; kicker: string; imageUrl
       photo = null;
     }
   }
-  const base = photo
-    ? await sharp(photo).resize(1200, 630, { fit: "cover", position: "attention" }).png().toBuffer()
-    : await sharp({ create: { width: 1200, height: 630, channels: 3, background: input.color } }).png().toBuffer();
+  let base: Buffer | null = null;
+  if (photo) {
+    try { base = await sharp(photo).resize(1200, 630, { fit: "cover", position: "attention" }).png().toBuffer(); }
+    catch { /* An unavailable or invalid photo still gets an honest branded card. */ }
+  }
+  base ??= await sharp({ create: { width: 1200, height: 630, channels: 3, background: input.color } }).png().toBuffer();
   const title = lines(input.title).map((line, index) => `<tspan x="72" dy="${index === 0 ? 0 : 58}">${xml(line)}</tspan>`).join("");
   const overlay = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070b22" stop-opacity="0.15"/><stop offset="1" stop-color="#070b22" stop-opacity="0.88"/></linearGradient></defs>
@@ -46,7 +52,19 @@ export async function shareCard(input: { title: string; kicker: string; imageUrl
 }
 
 export function shareOrigin(): string {
-  return (process.env.WEB_URL ?? "https://newspoint.bg").replace(/\/+$/, "");
+  // Static metadata can run before the first DB query loads the monorepo env.
+  // Resolve it here too so homepage, robots and cached pages use the same host.
+  if (!originEnvLoaded && process.env.NODE_ENV !== "test") {
+    loadRootEnv();
+    originEnvLoaded = true;
+  }
+  const value = (process.env.WEB_URL ?? "https://newspoint.bg").trim();
+  let url: URL;
+  try { url = new URL(value); } catch { throw new Error("WEB_URL must be a public HTTP(S) origin."); }
+  if (!["http:", "https:"].includes(url.protocol) || url.username || url.password || url.search || url.hash || !/^\/*$/.test(url.pathname)) {
+    throw new Error("WEB_URL must be a public HTTP(S) origin without credentials, path or query.");
+  }
+  return url.origin;
 }
 
 export function absoluteMedia(url: string, origin: string): string {

@@ -26,6 +26,7 @@ vi.mock("server-only", () => ({ default: {}, __esModule: true }));
 // `triggerRevalidate` calls `revalidatePath`, which is Next-only.
 // `resolveMediaUrl` reads MEDIA_ORIGIN and process.cwd.
 vi.mock("@newspoint/content", () => ({
+  PUBLIC_MENU: [{ slug: "plovdiv" }],
   resolveMediaUrl: () => null,
   triggerRevalidate: () => undefined,
 }));
@@ -110,7 +111,8 @@ beforeAll(async () => {
       published_at timestamptz,
       excerpt text,
       primary_category_id uuid,
-      hero_media_id uuid
+      hero_media_id uuid,
+      updated_at timestamptz not null default now()
     );
     create table categories (
       id uuid primary key,
@@ -134,13 +136,15 @@ beforeAll(async () => {
   // and the outbox constraint update. The unique slug index is what enforces
   // "no two themes with the same slug" in production.
   await pg.exec(readFileSync("packages/db/migrations/28_story_themes.sql", "utf8"));
+  await pg.exec(readFileSync("packages/db/migrations/29_story_theme_slug_history.sql", "utf8"));
+  await pg.exec(readFileSync("packages/db/migrations/22_podcasts.sql", "utf8"));
   db = drizzle(pg, { schema });
   dbHolder.current = db;
 }, 30_000);
 
 beforeEach(async () => {
   await pg.exec(
-    "truncate story_theme_articles, story_themes, outbox_events, articles, categories, media_assets, staff_users cascade",
+    "truncate story_theme_articles, story_themes, podcasts, outbox_events, articles, categories, media_assets, staff_users cascade",
   );
   await pg.query("insert into staff_users(id, name) values ($1, $2)", [STAFF.id, STAFF.name]);
 
@@ -404,6 +408,44 @@ describe("createStoryTheme uniqueness", () => {
 });
 
 describe("saveStoryTheme", () => {
+  it("refuses unsafe URL changes before migration 29 and serves unknown old URLs as missing", async () => {
+    const { saveStoryTheme } = await import("../apps/studio/lib/story-themes");
+    const { storyThemeRedirect } = await import("../apps/web/lib/story-theme-redirect");
+    await pg.exec("alter table story_theme_slugs rename to story_theme_slugs_unavailable");
+    try {
+      await expect(saveStoryTheme(STAFF, themeId, { ...validInput, slug: "new-theme" })).rejects.toMatchObject({ code: "migration_required", status: 422 });
+      expect(await storyThemeRedirect("old-theme")).toBeNull();
+    } finally {
+      await pg.exec("alter table story_theme_slugs_unavailable rename to story_theme_slugs");
+    }
+  });
+  it("keeps old URLs, redirects directly after repeated renames, and hides unpublished targets", async () => {
+    const { saveStoryTheme, publishStoryTheme, unpublishStoryTheme } = await import("../apps/studio/lib/story-themes");
+    const { storyThemeRedirect } = await import("../apps/web/lib/story-theme-redirect");
+    await publishStoryTheme(STAFF, themeId);
+    await saveStoryTheme(STAFF, themeId, { ...validInput, slug: "new-theme" });
+    await saveStoryTheme(STAFF, themeId, { ...validInput, slug: "latest-theme" });
+    expect(await storyThemeRedirect(validInput.slug)).toBe("/temi/latest-theme/");
+    expect(await storyThemeRedirect("new-theme")).toBe("/temi/latest-theme/");
+    expect(await storyThemeRedirect("latest-theme")).toBeNull();
+    await unpublishStoryTheme(STAFF, themeId);
+    expect(await storyThemeRedirect(validInput.slug)).toBeNull();
+    await publishStoryTheme(STAFF, themeId);
+    await saveStoryTheme(STAFF, themeId, validInput);
+    expect(await storyThemeRedirect("latest-theme")).toBe(`/temi/${validInput.slug}/`);
+  });
+
+  it("reserves aliases against create, rename and direct SQL, rolling back collisions", async () => {
+    const { saveStoryTheme, createStoryTheme } = await import("../apps/studio/lib/story-themes");
+    await saveStoryTheme(STAFF, themeId, { ...validInput, slug: "new-theme" });
+    await expect(createStoryTheme(STAFF, validInput)).rejects.toMatchObject({ code: "slug_taken", status: 409 });
+    const other = await createStoryTheme(STAFF, { ...validInput, slug: "other-theme" });
+    await expect(saveStoryTheme(STAFF, other.id, validInput)).rejects.toMatchObject({ code: "slug_taken", status: 409 });
+    await expect(pg.query("update story_themes set slug = $1 where id = $2", [validInput.slug, other.id])).rejects.toMatchObject({ code: "23505" });
+    const [row] = await db.select({ slug: schema.storyThemes.slug }).from(schema.storyThemes).where(eq(schema.storyThemes.id, other.id));
+    expect(row?.slug).toBe("other-theme");
+  });
+
   it("updates title and summary without changing slug or members", async () => {
     const { saveStoryTheme } = await import("../apps/studio/lib/story-themes");
     await saveStoryTheme(STAFF, themeId, {
@@ -448,6 +490,30 @@ describe("deleteStoryTheme", () => {
       .select({ type: schema.outboxEvents.type })
       .from(schema.outboxEvents);
     expect(events.some((e) => e.type === "story.updated")).toBe(true);
+  });
+});
+
+describe("public sitemap queries (isolated Postgres fixtures)", () => {
+  it("excludes drafts and future publications, lists themes and podcasts, and owns only current theme URLs", async () => {
+    const { sitemapCounts, sitemapEntries, sitemapPages } = await import("../apps/web/lib/sitemap-data");
+    const { publishStoryTheme, saveStoryTheme, createStoryTheme } = await import("../apps/studio/lib/story-themes");
+    await publishStoryTheme(STAFF, themeId);
+    await saveStoryTheme(STAFF, themeId, { ...validInput, slug: "current-theme" });
+    const future = await createStoryTheme(STAFF, { ...validInput, slug: "future-theme" });
+    await pg.query("update story_themes set is_published = true, published_at = now() + interval '1 day' where id = $1", [future.id]);
+    await pg.query("update articles set published_at = now() + interval '1 day' where id = $1", [articleIds[0]]);
+    await pg.exec(`insert into podcasts(title, slug, summary, cover_key, audio_key, duration_sec, bytes, status, published_at)
+      values ('Fixture episode', 'fixture-episode', 'Test only', 'podcasts/2026/10/abcdef.webp', 'podcasts/2026/10/abcdef.mp3', 60, 100, 'published', now()),
+      ('Future episode', 'future-episode', 'Test only', 'podcasts/2026/10/abcdef.webp', 'podcasts/2026/10/abcdef.mp3', 60, 100, 'published', now() + interval '1 day'),
+      ('Draft episode', 'draft-episode', 'Test only', 'podcasts/2026/10/abcdef.webp', 'podcasts/2026/10/abcdef.mp3', 60, 100, 'draft', null)`);
+    expect(await sitemapCounts()).toEqual({ articles: 4, themes: 1, podcasts: 1 });
+    expect((await sitemapEntries("themes", 0)).map((entry) => entry.path)).toEqual(["/temi/current-theme/"]);
+    expect((await sitemapEntries("podcasts", 0)).map((entry) => entry.path)).toEqual(["/livepoint/podcast/fixture-episode/"]);
+    expect(await sitemapEntries("articles", 1)).toEqual([]);
+    const pages = (await sitemapPages()).map((entry) => entry.path);
+    expect(pages).toEqual(expect.arrayContaining(["/", "/temi/", "/team/", "/contacts/", "/advertising/", "/livepoint/podcast/"]));
+    expect(pages).not.toContain("/search/");
+    expect(pages).not.toContain("/settings/");
   });
 });
 

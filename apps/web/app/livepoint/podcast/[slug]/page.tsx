@@ -5,6 +5,7 @@ import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisode, publicEpisodes } from "@/lib/podcasts";
+import { publicMetadata } from "@/lib/public-metadata";
 
 export const revalidate = 60;
 
@@ -12,8 +13,8 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const episode = await publicEpisode((await params).slug);
-  if (!episode) return {};
-  return { title: `${episode.title} · NewsPodcast`, description: episode.summary };
+  if (!episode) notFound();
+  return publicMetadata({ path: episode.path, title: `${episode.title} · NewsPodcast`, description: episode.summary, imagePath: `/share/podcast/${episode.slug}/` });
 }
 
 export default async function PodcastEpisodePage({ params }: Props) {

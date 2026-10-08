@@ -107,7 +107,7 @@ async function queryPublicHome(): Promise<PublicHome> {
   };
 }
 
-const readPublicHome = unstable_cache(queryPublicHome, ["public-home"], { revalidate: 60 });
+const readPublicHome = unstable_cache(queryPublicHome, ["public-home"], { revalidate: 60, tags: ["public-listings"] });
 
 /** One cached homepage snapshot. The page render does not call Date.now() or uncached IO. */
 export const loadPublicHome = cache(async (): Promise<PublicHome> => reviveHome(await readPublicHome()));

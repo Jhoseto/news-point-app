@@ -46,6 +46,7 @@ export interface ArticleSummary {
 }
 
 export interface ArticleDetail extends ArticleSummary {
+  updatedAt?: Date;
   authorName: string;
   sourceUrl: string | null;
   body: ArticleBody;
@@ -268,7 +269,7 @@ const readCategoryArchive = unstable_cache(async (
 ): Promise<CategoryArchive> => queryCategoryArchive(category, cursor, {
   skipIds: skipKey ? skipKey.split(",") : [],
   limit,
-}), ["public-category-archive"], { revalidate: 60 });
+}), ["public-category-archive"], { revalidate: 60, tags: ["public-listings"] });
 
 async function queryCategoryArchive(
   category: CategoryRef,
@@ -337,6 +338,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       sourceUrl: articles.sourceUrl,
       body: articles.body,
       listenEnabled: articles.listenEnabled,
+      updatedAt: articles.updatedAt,
     })
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
@@ -386,6 +388,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
     readCount: realCount === null ? null : realCount + addedCount,
     listenEnabled: row.listenEnabled,
+    updatedAt: row.updatedAt,
   };
 });
 
@@ -559,7 +562,7 @@ async function getPublishedStoryThemesInternal({ limit }: { limit: number }): Pr
     })
     .from(storyThemes)
     .leftJoin(mediaAssets, eq(mediaAssets.id, storyThemes.coverMediaId))
-    .where(eq(storyThemes.isPublished, true))
+    .where(and(eq(storyThemes.isPublished, true), lte(storyThemes.publishedAt, sql`now()`)))
     .orderBy(desc(storyThemes.publishedAt))
     .limit(limit);
   if (rows.length === 0) return [];
@@ -598,7 +601,7 @@ async function getPublishedStoryThemesLegacy({ limit }: { limit: number }): Prom
       publishedAt: storyThemes.publishedAt,
     })
     .from(storyThemes)
-    .where(eq(storyThemes.isPublished, true))
+    .where(and(eq(storyThemes.isPublished, true), lte(storyThemes.publishedAt, sql`now()`)))
     .orderBy(desc(storyThemes.publishedAt))
     .limit(limit);
   if (rows.length === 0) return [];
@@ -648,7 +651,7 @@ async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDeta
     })
     .from(storyThemes)
     .leftJoin(mediaAssets, eq(mediaAssets.id, storyThemes.coverMediaId))
-    .where(and(eq(storyThemes.slug, slug), eq(storyThemes.isPublished, true)))
+    .where(and(eq(storyThemes.slug, slug), eq(storyThemes.isPublished, true), lte(storyThemes.publishedAt, sql`now()`)))
     .limit(1);
   if (!theme) return null;
 
@@ -671,7 +674,7 @@ async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDeta
     .innerJoin(articles, eq(articles.id, storyThemeArticles.articleId))
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
-    .where(and(eq(storyThemeArticles.themeId, theme.id), eq(articles.isPublic, true)))
+    .where(and(eq(storyThemeArticles.themeId, theme.id), isPublished()))
     .orderBy(asc(storyThemeArticles.position));
   return {
     id: theme.id,

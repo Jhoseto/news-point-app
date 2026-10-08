@@ -11,6 +11,8 @@ import {
   staffUsers,
   storyThemeArticles,
   storyThemes,
+  storyThemeSlugs,
+  hasStoryThemeSlugHistory,
 } from "@newspoint/db";
 import { resolveMediaUrl, triggerRevalidate } from "@newspoint/content";
 import { EditorError } from "./articles";
@@ -78,8 +80,12 @@ function assertInput(input: StoryThemeInput) {
  * would clash with an existing article or category path, or with the
  * reserved slug set.
  */
-async function assertNoPathCollision(slug: string): Promise<void> {
+async function assertNoPathCollision(slug: string, themeId?: string): Promise<void> {
   const db = getDb();
+  if (await hasStoryThemeSlugHistory(db)) {
+    const [alias] = await db.select({ themeId: storyThemeSlugs.themeId }).from(storyThemeSlugs).where(eq(storyThemeSlugs.slug, slug)).limit(1);
+    if (alias && alias.themeId !== themeId) throw new EditorError(409, "slug_taken", "Този URL адрес е запазен за друга тема.");
+  }
   const path = `/${slug}/`;
   const [article] = await db
     .select({ id: articles.id })
@@ -114,6 +120,15 @@ function reviveTheme(row: { id: string; slug: string; title: string; summary: st
 }
 
 type StoryThemeRow = typeof storyThemes.$inferSelect;
+
+function slugWriteError(error: unknown): never {
+  let cause = error;
+  while (cause && typeof cause === "object") {
+    if ("code" in cause && cause.code === "23505") throw new EditorError(409, "slug_taken", "Този URL адрес вече е запазен за друга тема.");
+    cause = "cause" in cause ? cause.cause : null;
+  }
+  throw error;
+}
 
 async function listThemesInternal(status: "draft" | "published" | "all" = "all"): Promise<StoryThemeListItem[]> {
   const db = getDb();
@@ -345,7 +360,7 @@ export async function createStoryTheme(
         })),
       );
     }
-  });
+  }).catch(slugWriteError);
   return { id, slug: input.slug };
 }
 
@@ -369,7 +384,8 @@ export async function saveStoryTheme(
   // Only check path collision if the slug actually changed — saves a query
   // on every regular save.
   if (input.slug !== theme.slug) {
-    await assertNoPathCollision(input.slug);
+    if (!await hasStoryThemeSlugHistory(db)) throw new EditorError(422, "migration_required", "За смяна на URL е необходима миграция 29, която пази старите адреси.");
+    await assertNoPathCollision(input.slug, id);
   }
   // Save only updates metadata. Articles are managed through the dedicated
   // addArticle / removeArticle / reorder actions which write through the
@@ -385,10 +401,11 @@ export async function saveStoryTheme(
       coverCaption: input.coverCaption,
       updatedAt: new Date(),
     })
-    .where(eq(storyThemes.id, id));
+    .where(eq(storyThemes.id, id)).catch(slugWriteError);
 
   await emitOutbox(id, theme.slug, "story.updated");
   await revalidateThemePaths(theme.slug);
+  if (input.slug !== theme.slug) await revalidateThemePaths(input.slug);
 }
 
 export async function publishStoryTheme(staff: Staff, id: string): Promise<void> {
@@ -647,7 +664,7 @@ async function emitOutbox(themeId: string, slug: string, type: "story.published"
 }
 
 async function revalidateThemePaths(slug: string): Promise<void> {
-  await triggerRevalidate(["/temi", `/temi/${slug}/`]);
+  await triggerRevalidate(["/temi/", `/temi/${slug}/`, `/share/theme/${slug}/`, "/sitemap.xml", "/llms.txt"]);
 }
 
 /**

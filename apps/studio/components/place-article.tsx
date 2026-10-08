@@ -26,7 +26,7 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
         body: JSON.stringify({ action: "place", pageKey, slot, articleId, hours }),
       });
       const data = await response.json() as { error?: { message?: string } };
-      setMessage(response.ok ? "Записано е в черновата. Публикувайте от Подреждане." : data.error?.message ?? "Неуспешен запис.");
+      setMessage(response.ok ? "Записано е в черновата. Публикувайте от Уеб управление." : data.error?.message ?? "Неуспешен запис.");
     } catch {
       setMessage("Няма връзка.");
     } finally {

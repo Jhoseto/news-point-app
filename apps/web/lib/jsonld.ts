@@ -5,8 +5,7 @@
  * `JsonLd` component (in `apps/web/components/json-ld.tsx`) writes the
  * output into a `<script type="application/ld+json">` tag.
  *
- * All string values pass through `escapeJsonString` so quotes, control
- * characters and stray markup cannot escape the JSON container.
+ * Values are JSON encoded; '<' is escaped so text cannot close the script tag.
  */
 
 export type JsonLdObject = Record<string, unknown>;
@@ -26,13 +25,13 @@ export function escapeJsonString(value: string): string {
 /** Serialise an LD value (string, number, boolean, null, object, array). */
 export function serializeValue(value: unknown): string {
   if (value === null || value === undefined) return "null";
-  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "string") return JSON.stringify(value).replace(/</g, "\\u003c");
   if (typeof value === "number" || typeof value === "boolean") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map((entry) => serializeValue(entry)).join(",")}]`;
   if (typeof value === "object") {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => `${JSON.stringify(k)}:${serializeValue(v)}`);
+      .map(([k, v]) => `${serializeValue(k)}:${serializeValue(v)}`);
     return `{${entries.join(",")}}`;
   }
   return "null";
@@ -48,6 +47,7 @@ export function serializeGraph(objects: JsonLdObject[]): string {
 export interface NewsMediaOrganizationOptions {
   origin: string;
   logoUrl?: string;
+  contact?: { phone: string; email: string; street: string; city: string; countryCode: string };
 }
 
 export function newsMediaOrganization(options: NewsMediaOrganizationOptions): JsonLdObject {
@@ -57,8 +57,13 @@ export function newsMediaOrganization(options: NewsMediaOrganizationOptions): Js
     "@id": `${origin}/#organization`,
     name: "NewsPoint.bg",
     url: origin,
-    logo: logoUrl ?? `${origin}/brand/logo.webp`,
+    logo: logoUrl ?? `${origin}/brand/newspoint-logo.webp`,
     slogan: "Гласът на истината",
+    ...(options.contact ? {
+      email: options.contact.email,
+      telephone: options.contact.phone,
+      address: { "@type": "PostalAddress", streetAddress: options.contact.street, addressLocality: options.contact.city, addressCountry: options.contact.countryCode },
+    } : {}),
   };
 }
 
@@ -84,6 +89,15 @@ export function webSite(origin: string, organizationId: string): JsonLdObject {
 export interface BreadcrumbItem {
   name: string;
   path?: string;
+}
+
+export function collectionPage(input: { origin: string; path: string; title: string; description: string; items: { path: string; title: string }[] }): JsonLdObject {
+  return {
+    "@type": "CollectionPage", "@id": `${input.origin}${input.path}`, url: `${input.origin}${input.path}`,
+    name: input.title, description: input.description, inLanguage: "bg-BG",
+    isPartOf: { "@id": `${input.origin}/#website` },
+    mainEntity: { "@type": "ItemList", itemListElement: input.items.map((item, index) => ({ "@type": "ListItem", position: index + 1, name: item.title, url: `${input.origin}${item.path}` })) },
+  };
 }
 
 export function breadcrumbList(origin: string, items: BreadcrumbItem[]): JsonLdObject {

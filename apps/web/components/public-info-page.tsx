@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ADVERTISING_MAIL_URL, CONTACT_MAP_URL, PUBLIC_CONTACT, PUBLIC_INFO_PAGES } from "@/lib/public-contact";
-import { shareOrigin } from "@/lib/share-card";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { Breadcrumbs } from "./breadcrumbs";
 import { ArrowRightIcon, ExternalIcon } from "./icons";
 import { PlovdivFooterSkyline } from "./mobile-footer";
@@ -10,8 +10,7 @@ import "./public-info-page.css";
 type InfoPage = keyof typeof PUBLIC_INFO_PAGES;
 
 export function publicInfoMetadata(kind: InfoPage): Metadata {
-  const page = PUBLIC_INFO_PAGES[kind];
-  return { title: page.title, description: page.description, alternates: { canonical: `${shareOrigin()}${page.path}` } };
+  return publicPageMetadata(kind);
 }
 
 /** Server-rendered public information; no forms, embedded map or third-party requests. */

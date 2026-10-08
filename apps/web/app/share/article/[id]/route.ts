@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, lte, sql } from "drizzle-orm";
 import { articles, categories, getDb, mediaAssets } from "@newspoint/db";
 import { resolveMediaUrl } from "@newspoint/content";
 import { absoluteMedia, shareCard, shareOrigin } from "@/lib/share-card";
@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
-    .where(eq(articles.id, id))
+    .where(and(eq(articles.id, id), eq(articles.isPublic, true), lte(articles.publishedAt, sql`now()`)))
     .limit(1);
   if (!row?.isPublic) return new Response(null, { status: 404 });
   const origin = shareOrigin();

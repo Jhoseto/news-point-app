@@ -472,6 +472,19 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       .limit(1);
     if (!category) throw new EditorError(422, "not_ready", "Рубриката не съществува.", ["Изберете рубрика."]);
 
+    // Include the previous rubric so live revalidation clears both listings after a move.
+    const previousSlug =
+      wasPublic && article.primaryCategoryId && article.primaryCategoryId !== category.id
+        ? (
+            await tx
+              .select({ slug: categories.slug })
+              .from(categories)
+              .where(eq(categories.id, article.primaryCategoryId))
+              .limit(1)
+          )[0]?.slug
+        : null;
+    const topics = [...new Set([previousSlug, category.slug].filter((slug): slug is string => !!slug))];
+
     const version = wasPublic ? article.version + 1 : article.version;
     const [updated] = await tx
       .update(articles)
@@ -503,7 +516,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     const type = wasPublic ? "article.updated" : "article.published";
     const [event] = await tx
       .insert(outboxEvents)
-      .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics: [category.slug] } })
+      .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics } })
       .returning({ id: outboxEvents.id });
 
     const outcome: PublishOutcome = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type };

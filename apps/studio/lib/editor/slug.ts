@@ -6,7 +6,13 @@ const CYRILLIC: Record<string, string> = {
   ф: "f", х: "h", ц: "ts", ч: "ch", ш: "sh", щ: "sht", ъ: "a", ь: "y", ю: "yu", я: "ya",
 };
 
+/** Cap for newly generated Studio addresses (slugify). */
 export const SLUG_MAX = 80;
+/**
+ * Cap for draft/API validation. WordPress imports keep their original slug, and
+ * many are longer than SLUG_MAX — rejecting them blocked every save/edit.
+ */
+export const SLUG_STORED_MAX = 200;
 export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export function slugify(title: string): string {

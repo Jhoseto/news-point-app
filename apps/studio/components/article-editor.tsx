@@ -266,7 +266,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         const result = await callApi<{ revision: number }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: snapshot });
         if (!result.ok) {
           if (result.status === 409 && result.error.code === "conflict") setConflict(result.error.details as Conflict);
-          else setNotice({ tone: "error", text: result.error.message });
+          else {
+            const detail = Array.isArray(result.error.details) ? result.error.details.find((item): item is string => typeof item === "string" && item.trim().length > 0) : null;
+            setNotice({ tone: "error", text: detail ? `${result.error.message} ${detail}` : result.error.message });
+          }
           return null;
         }
         setConflict(null);
@@ -612,6 +615,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </label>
             <textarea
               id="title"
+              aria-describedby="title-seo-hint"
               rows={1}
               maxLength={TITLE_MAX}
               value={draft.title}
@@ -620,6 +624,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               placeholder="Заглавие на материала"
               className="w-full resize-none bg-transparent text-[0.95rem] leading-snug font-bold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint"
             />
+            <p id="title-seo-hint" className="mt-1 text-[11px] text-muted">{draft.title.trim().length}/{TITLE_MAX} знака. Заглавието се използва и при търсене и споделяне; Google може да го съкрати или преформулира.</p>
             <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
               <span className="font-semibold">Адрес:</span>
               <span className="text-faint">newspoint.bg/</span>
@@ -642,6 +647,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             </label>
             <textarea
               id="excerpt"
+              aria-describedby="excerpt-seo-hint"
               rows={2}
               maxLength={EXCERPT_MAX}
               value={draft.excerpt}
@@ -650,6 +656,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               placeholder="Едно-две изречения, които се показват под заглавието и в картите."
               className="np-input resize-none [field-sizing:content]"
             />
+            <p id="excerpt-seo-hint" className="mt-1 text-[11px] text-muted">{draft.excerpt.trim().length}/{EXCERPT_MAX} знака. Резюмето е описанието при споделяне и предложението към търсачките; описвайте конкретната новина.</p>
 
             <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-4">
               <label htmlFor="body" className="np-label mb-0">

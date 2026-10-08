@@ -525,6 +525,12 @@ export const aiPodcastVoiceSettings = pgTable("ai_podcast_voice_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const storyThemeSlugs = pgTable("story_theme_slugs", {
+  slug: text("slug").primaryKey(),
+  themeId: uuid("theme_id").notNull().references(() => storyThemes.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => [index("story_theme_slugs_theme_idx").on(table.themeId)]);
+
 export const schemaTables = {
   polls, pollVotes, pollRevisions,
   podcasts,
@@ -546,5 +552,6 @@ export const schemaTables = {
   pageArrangements,
   storyThemes,
   storyThemeArticles,
+  storyThemeSlugs,
   pushSubscriptions,
 };

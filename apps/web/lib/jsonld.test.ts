@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   breadcrumbList,
+  collectionPage,
   escapeJsonString,
   newsArticle,
   newsMediaOrganization,
@@ -43,6 +44,13 @@ describe("serializeValue", () => {
 });
 
 describe("serializeGraph", () => {
+  it("cannot break out of a script element and preserves the original string when parsed", () => {
+    const name = '</script><script>alert("x")</script>';
+    const out = serializeGraph([{ "@type": "Thing", name, [name]: "value" }]);
+    expect(out).not.toContain("<");
+    expect(JSON.parse(out).name).toBe(name);
+    expect(JSON.parse(out)[name]).toBe("value");
+  });
   it("returns empty string when there are no objects", () => {
     expect(serializeGraph([])).toBe("");
   });
@@ -65,12 +73,17 @@ describe("serializeGraph", () => {
 });
 
 describe("newsMediaOrganization", () => {
+  it("includes only supplied public contact details", () => {
+    const contact = { phone: "fixture-phone", email: "fixture@example.test", street: "Fixture street", city: "Fixture city", countryCode: "BG" };
+    expect(newsMediaOrganization({ origin: ORIGIN, contact })).toMatchObject({ email: contact.email, telephone: contact.phone, address: { "@type": "PostalAddress", addressCountry: "BG" } });
+    expect(newsMediaOrganization({ origin: ORIGIN })).not.toHaveProperty("email");
+  });
   it("returns a stable @id and logo path", () => {
     const out = newsMediaOrganization({ origin: ORIGIN });
     expect(out["@type"]).toBe("NewsMediaOrganization");
     expect(out["@id"]).toBe(`${ORIGIN}/#organization`);
     expect(out["url"]).toBe(ORIGIN);
-    expect(out["logo"]).toBe(`${ORIGIN}/brand/logo.webp`);
+    expect(out["logo"]).toBe(`${ORIGIN}/brand/newspoint-logo.webp`);
   });
 });
 
@@ -86,6 +99,10 @@ describe("webSite", () => {
 });
 
 describe("breadcrumbList", () => {
+  it("describes the rendered theme order without fabricated members", () => {
+    const page = collectionPage({ origin: ORIGIN, path: "/temi/fixture/", title: "Fixture", description: "Test only", items: [{ path: "/second/", title: "Second fixture" }, { path: "/first/", title: "First fixture" }] });
+    expect(page).toMatchObject({ "@type": "CollectionPage", url: `${ORIGIN}/temi/fixture/`, mainEntity: { "@type": "ItemList", itemListElement: [{ position: 1, url: `${ORIGIN}/second/` }, { position: 2, url: `${ORIGIN}/first/` }] } });
+  });
   it("starts with the home page and uses absolute URLs", () => {
     const out = breadcrumbList(ORIGIN, [
       { name: "Начало", path: "/" },

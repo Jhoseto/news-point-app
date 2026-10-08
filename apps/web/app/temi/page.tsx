@@ -1,19 +1,20 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { getPublishedStoryThemes } from "@/lib/queries";
 import { StoryThemeCard } from "@/components/story-theme-card";
+import { JsonLd } from "@/components/json-ld";
+import { collectionPage } from "@/lib/jsonld";
+import { shareOrigin } from "@/lib/share-card";
 
 export const revalidate = 60;
 
-export const metadata: Metadata = {
-  title: "Теми с продължение",
-  description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg.",
-};
+export const metadata = publicPageMetadata("themes");
 
 export default async function StoryThemesIndexPage() {
   const themes = await getPublishedStoryThemes({ limit: 24 });
 
   return (
     <div className="np-container flex flex-col gap-8 pt-6 pb-12">
+      <JsonLd id="np-ld-themes" data={collectionPage({ origin: shareOrigin(), path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg.", items: themes.map((theme) => ({ path: `/temi/${theme.slug}/`, title: theme.title })) })} />
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
           Теми с продължение

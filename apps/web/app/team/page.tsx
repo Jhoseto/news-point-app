@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import Link from "next/link";
 import { Breadcrumbs } from "@/components/breadcrumbs";
 import { JsonLd } from "@/components/json-ld";
@@ -8,10 +8,7 @@ import { shareOrigin } from "@/lib/share-card";
 import "./team.css";
 
 export const revalidate = 60;
-export const metadata: Metadata = {
-  title: "За нас",
-  description: "NewsPoint.bg е независим новинарски портал за Пловдив, региона и страната.",
-};
+export const metadata = publicPageMetadata("team");
 
 type TeamPhoto = { small: string; large: string; alt: string };
 

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SLUG_MAX, SLUG_PATTERN } from "./slug";
+import { SLUG_PATTERN, SLUG_STORED_MAX } from "./slug";
 
 // Shared by the editor form and the API; the API always re-validates.
 
@@ -18,7 +18,11 @@ const authorName = z
 export const draftInput = z
   .strictObject({
     title: z.string().trim().max(TITLE_MAX),
-    slug: z.string().trim().max(SLUG_MAX).refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
+    slug: z
+      .string()
+      .trim()
+      .max(SLUG_STORED_MAX, `Адресът е до ${SLUG_STORED_MAX} знака`)
+      .refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
     excerpt: z.string().trim().max(EXCERPT_MAX),
     bodyText: z.string().max(BODY_TEXT_MAX),
     primaryCategoryId: z.uuid().nullable(),

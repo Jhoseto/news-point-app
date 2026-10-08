@@ -116,6 +116,14 @@ describe("draft input", () => {
     expect(draftInput.safeParse({ ...draft, extra: 1 }).success).toBe(false);
   });
 
+  it("accepts long WordPress-imported slugs that exceed the new-slug cap", () => {
+    const wordpressSlug =
+      "razchitate-na-waze-za-policzejski-patruli-eto-zastho-lyubimata-vi-opcziya-mozhe-da-vi-podvede";
+    expect(wordpressSlug.length).toBeGreaterThan(80);
+    expect(draftInput.safeParse({ ...draft, slug: wordpressSlug }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, slug: `${"a".repeat(201)}` }).success).toBe(false);
+  });
+
   it("validates the three author modes without accepting markup or mismatched profile data", () => {
     expect(draftInput.safeParse({ ...draft, authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" }).success).toBe(true);
     expect(draftInput.safeParse({ ...draft, authorKind: "manual", authorUserId: null, authorName: "Мария Петрова" }).success).toBe(true);
