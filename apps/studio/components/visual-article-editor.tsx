@@ -191,6 +191,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const textType = selected?.node.type.name;
   const indent = (direction: -1 | 1) => { if (editor.isActive("listItem")) { direction > 0 ? editor.chain().focus().sinkListItem("listItem").run() : editor.chain().focus().liftListItem("listItem").run(); return; } if (textType && ["paragraph", "heading", "blockquote"].includes(textType)) editor.chain().focus().updateAttributes(textType, { indent: Math.max(0, Math.min(3, (selected?.node.attrs.indent ?? 0) + direction)) }).run(); };
   return <div className="np-visual-editor">
+    <div className="np-editor-chrome">
     <div className="np-visual-toolbar" role="toolbar" aria-label="Форматиране на материала">
       <div className="np-editor-media-row">
         <button type="button" className="studio-editor-media np-editor-media-button" disabled={readOnly} onMouseDown={event => event.preventDefault()} onClick={onOpenMedia}><EditorToolIcon label="Добави медия" />Добави медия</button>
@@ -254,6 +255,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
       {inGallery ? button("Извади от галерията", () => { if (!selected) return; const resolved = editor.state.doc.resolve(selected.pos); const parent = resolved.parent; const start = resolved.before(resolved.depth); const end = start + parent.nodeSize; const json = structuredClone(selected.node.toJSON()); delete json.attrs.block.groupId; const tr = editor.state.tr; if (parent.childCount === 1) { tr.delete(start, end); tr.insert(start, editor.schema.nodeFromJSON(json)); tr.setSelection(NodeSelection.create(tr.doc, start)); } else { tr.delete(selected.pos, selected.pos + selected.node.nodeSize); const insertAt = tr.mapping.map(end); tr.insert(insertAt, editor.schema.nodeFromJSON(json)); tr.setSelection(NodeSelection.create(tr.doc, insertAt)); } editor.view.dispatch(tr); editor.commands.focus(); }) : null}
       {button("Премахни блока", () => { const item = selectedBlock(editor); if (!item) return; const resolved = editor.state.doc.resolve(item.pos); const wholeGallery = resolved.parent.type.name === "npGallery" && resolved.parent.childCount === 1; const from = wholeGallery ? resolved.before(resolved.depth) : item.pos; const to = wholeGallery ? from + resolved.parent.nodeSize : item.pos + item.node.nodeSize; editor.chain().focus().deleteRange({ from, to }).run(); })}
     </div> : null}
+    </div>
     </div>
     {error && !dialog ? <p role="alert" className="np-editor-error">{error}</p> : null}
     <EditorContent editor={editor} />

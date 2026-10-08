@@ -80,13 +80,16 @@ export function composeHome(input: {
   const support = band.slice(0, HOME_SUPPORT_COUNT);
   const carousel = band.slice(HOME_SUPPORT_COUNT, HOME_SUPPORT_COUNT + HOME_CAROUSEL_COUNT);
 
+  // Category sections use a separate picker so a story that already leads the page
+  // (hero / support / carousel) can still lead its own rubric block.
+  const sectionPicker = new UniquePicker();
   const planned = planHomeSections(sections.map((section) => section.category));
   const bySlug = new Map(sections.map((section) => [section.category.slug, section]));
   const fillSection = (plan: (typeof planned.main)[number]): ComposedSection | null => {
     const section = bySlug.get(plan.slug);
     if (!section) return null;
     const pins = Array.from({ length: plan.count }, (_, index) => slot(sectionSlotKey(plan.slug, index)));
-    return { ...section, layout: plan.layout, wide: plan.wide, articles: fillPinned(picker, section.pool, plan.count, pins, excluded) };
+    return { ...section, layout: plan.layout, wide: plan.wide, articles: fillPinned(sectionPicker, section.pool, plan.count, pins, excluded) };
   };
   const main = planned.main.flatMap((plan) => {
     const filled = fillSection(plan);

@@ -102,6 +102,27 @@ describe("composeHome", () => {
     expect(composed.support.map((item) => item.id)).not.toContain("old");
   });
 
+  it("still shows a homepage lead as the lead of its rubric section", () => {
+    const lead = article("tech-lead", "tehnologii");
+    const tech = category("tehnologii");
+    const composed = composeHome({
+      latest: [lead, article("h2")],
+      latest24h: [lead],
+      featured: [],
+      sections: [
+        { category: tech, pool: [lead, article("tech-2", "tehnologii"), article("tech-3", "tehnologii")] },
+        ...sections,
+      ],
+      menuIds: new Set([tech.id, ...menu.map((entry) => entry.id)]),
+      pinned: new Map(),
+      document: emptyArrangement(),
+      now: Date.parse("2026-09-29T12:00:00Z"),
+    });
+    expect(composed.hero?.id).toBe("tech-lead");
+    const techSection = composed.main.find((section) => section.category.slug === "tehnologii");
+    expect(techSection?.articles[0]?.id).toBe("tech-lead");
+  });
+
   it("fills the focus carousel from a label pool and respects carousel slot pins", () => {
     const pool = [article("a1"), article("a2"), article("a3")];
     const pinned = article("pinned");

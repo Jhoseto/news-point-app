@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaOption } from "@/lib/articles";
 import { browserMediaSrc } from "@/lib/media-src";
 import { withBase } from "@/lib/paths";
+import { imageFilesFromDataTransfer } from "./media-picker-paste";
 
 type LibraryImage = MediaOption & { name: string };
 type MediaYear = { year: string; months: string[] };
@@ -185,6 +186,13 @@ export function MediaPicker({
     pickOne(item);
   };
 
+  const queueUploadFiles = (files: File[]) => {
+    if (!files.length || uploading) return;
+    setMode("upload");
+    setUploadFiles((current) => (multiple ? [...current, ...files] : files.slice(0, 1)));
+    setError("");
+  };
+
   const insertMany = () => {
     if (!onSelectMany || !selectedMany.length || optimizeBusy.current) return;
     const chosen = selectedMany.map(id => chosenItems.current.get(id)).filter((item): item is LibraryImage => !!item);
@@ -201,6 +209,13 @@ export function MediaPicker({
       ref={dialog}
       onClose={onClose}
       onCancel={event => { if (uploading) event.preventDefault(); }}
+      onPaste={(event) => {
+        if (uploading) return;
+        const files = imageFilesFromDataTransfer(event.clipboardData);
+        if (!files.length) return;
+        event.preventDefault();
+        queueUploadFiles(files);
+      }}
       onClick={(event) => {
         if (event.target === event.currentTarget && !uploading) onClose();
       }}
@@ -228,10 +243,18 @@ export function MediaPicker({
       </div>
       {error || (mode === "library" && libraryError) ? <p role="alert" className="px-5 py-3 text-sm text-danger">{error || libraryError}</p> : null}
       {mode === "upload" ? (
-        <div className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
+        <div
+          className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center"
+          onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
+          onDrop={(event) => {
+            event.preventDefault();
+            if (uploading) return;
+            queueUploadFiles(imageFilesFromDataTransfer(event.dataTransfer));
+          }}
+        >
           <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFiles(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
-          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла</p> : <p className="mt-3 text-xs text-muted">Изберете една или повече снимки. Качването ще премине през оптимизация и проверка.</p>}
-          {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" disabled={uploading} onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
+          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
+          {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" disabled={uploading} onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
           <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека.</p>
           {uploadedItems.current.length && !uploading ? <button type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
           <button type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>

@@ -105,8 +105,9 @@ async function storePhoto(db, bytes, alt) {
   return asset.id;
 }
 
+/** Inner HTML only — preview/editor wrap paragraphs in <p> themselves. */
 function p(html) {
-  return { type: "paragraph", html: `<p>${html}</p>` };
+  return { type: "paragraph", html };
 }
 function h2(text) {
   return { type: "heading", level: 2, text };
