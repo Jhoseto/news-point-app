@@ -10,6 +10,8 @@
 
 08.10 — SEO S1 и техническата AI откриваемост са реализирани; доказателствата и остатъкът са само в `docs/SEO_PLAN.md`. Коце потвърди бъдещ `newspoint.bg`, но отложи преминаването: временният домейн и noindex остават. Следващата SEO стъпка е редакционният преглед на реалните случаи в отчета, после S2 при реалното пускане.
 
+08.10 — Повторният SEO преглед преди домейна/Cloudflare допълни news sitemap, canonical споделяне, публичните landing metadata и mapping за стари image URL-и. Конкретното приемане на Cloudflare и доказателствата са само в `docs/SEO_PLAN.md` §9; текущият noindex остава.
+
 ## 0. Строго правило за мобилната работа (от 04.10.2026)
 
 **Всички промени оттук нататък са САМО за мобилното приложение и мобилната визия.** Дизайнът и визията на десктоп версията (над 64rem) **НЕ трябва да се засягат по никакъв начин**.
@@ -98,6 +100,12 @@
 08.10 — Performance sprint (код готов локално; чака deploy от Коце): staging HTML беше ~3.0 MB заради двоен mobile+desktop SSR. Сега едно shell по Client Hints; feed children извън client boundary; carousel clone след hydration; compact/lite srcset + LCP `src` ≤960w; рубрики без `generateStaticParams` (поправка на DYNAMIC_SERVER_USAGE). Доказателства и Cloudflare правила: `docs/PERFORMANCE.md`. Без SEO промени. Следва: deploy → PSI върху staging → добиване към 90/95.
 
 08.10 — При избор на стара снимка от архива в Studio MediaPicker тя минава през същата responsive стълба (320–1920 WebP), както ново качване. Оригиналът не се презаписва; добавят се sibling `-w{N}.webp` от оригиналните пиксели (без втора загуба на качество). API: `POST /api/editor/media/optimize/`.
+
+08.10 — WP sync (`mirrorNewsImage`) за **нови** огледални снимки вече пише същата стълба 320–1920 (+ master ≤4096, q84) от оригиналните байтове, не само large+card. Старите master+card двойки не се презаписват на всеки sync tick; `-card.webp` остава на диска за съвместимост.
+
+08.10 — Bulk backfill на целия `news/` архив: `pnpm --filter @newspoint/wp-import media:backfill` (additive `-w*`, master не се пипа; resume през `logs/media-responsive-backfill.json`). След преглед: `pnpm --filter @newspoint/wp-import media:cleanup-cards` (dry-run) и с `--apply` трие само излишните `-card.webp`, когато стълбата е пълна.
+
+08.10 — Cleanup `--apply` на сървъра: изтрити **12 694** `-card.webp`; оставени 227 (без пълна стълба) + ~13 orphan на диска. Storage `news/` ~3.0 GB → ~2.4 GB. Masters и `-w*` запазени.
 
 ## 3. Правила, които остават
 

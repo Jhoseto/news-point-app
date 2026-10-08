@@ -2,6 +2,7 @@ import { publicPageMetadata } from "@/lib/public-metadata";
 import { preload } from "react-dom";
 import { PodcastPageShell } from "@/components/podcast/page-shell";
 import { PodcastShow } from "@/components/podcast/show";
+import { shareOrigin } from "@/lib/share-card";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisodes } from "@/lib/podcasts";
 
@@ -20,7 +21,7 @@ export default async function PodcastPage() {
   const episodes = await publicEpisodes();
   return (
     <PodcastPageShell>
-      <PodcastShow episodes={episodes} />
+      <PodcastShow episodes={episodes} publicOrigin={shareOrigin()} />
     </PodcastPageShell>
   );
 }

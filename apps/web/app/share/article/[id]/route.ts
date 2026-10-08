@@ -12,7 +12,7 @@ const ACCENTS: Record<string, string> = {
 
 export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response(null, { status: 404 });
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return new Response(null, { status: 404 });
   const [row] = await getDb()
     .select({
       title: articles.title,

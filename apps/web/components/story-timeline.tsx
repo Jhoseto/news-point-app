@@ -6,6 +6,7 @@ import { ArticleHeroZoom } from "./article-hero-zoom";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon } from "./icons";
 import { ShareButtons } from "./share";
+import { shareOrigin } from "@/lib/share-card";
 import { StoryRouteObserver } from "./story-route-observer";
 import { ArticleImage, CategoryPill } from "./ui";
 import "./article-premium.css";
@@ -100,7 +101,7 @@ export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
                   </span>
                 </span>
               </div>
-              <ShareButtons url={`/temi/${theme.slug}/`} title={theme.title} />
+              <ShareButtons url={`${shareOrigin()}/temi/${theme.slug}/`} title={theme.title} />
             </div>
           </header>
 

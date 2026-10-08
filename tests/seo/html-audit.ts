@@ -1,15 +1,21 @@
 /** Inspect actual server HTML, not client DOM or Next's serialized hydration payload. */
-function decode(value: string): string {
-  return value.replace(/&(?:amp|quot|lt|gt|apos|#39);/g, (entity) => ({ "&amp;": "&", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&apos;": "'", "&#39;": "'" })[entity]!);
+export function decode(value: string): string {
+  return value.replace(/&(?:amp|quot|lt|gt|apos|#\d+|#x[0-9a-f]+);/gi, (entity) => {
+    const named = ({ "&amp;": "&", "&quot;": '"', "&lt;": "<", "&gt;": ">", "&apos;": "'" } as Record<string, string>)[entity.toLowerCase()];
+    if (named !== undefined) return named;
+    const code = entity.toLowerCase().startsWith("&#x") ? parseInt(entity.slice(3, -1), 16) : Number(entity.slice(2, -1));
+    return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : entity;
+  });
 }
 function attributes(tag: string): Record<string, string> {
-  return Object.fromEntries([...tag.matchAll(/([\w:-]+)=["']([^"']*)["']/g)].map((match) => [match[1]!, decode(match[2]!)]));
+  return Object.fromEntries([...tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)].map((match) => [match[1]!, decode(match[2] ?? match[3]!)]));
 }
 export function inspectSeoHtml(html: string) {
   const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
   const document = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "");
   const metas = [...document.matchAll(/<meta\b[^>]*>/gi)].map((match) => attributes(match[0]));
   const links = [...document.matchAll(/<link\b[^>]*>/gi)].map((match) => attributes(match[0]));
+  const anchors = [...document.matchAll(/<a\b[^>]*>/gi)].map((match) => attributes(match[0]));
   const meta = (name: string) => metas.filter((entry) => entry.name === name || entry.property === name).map((entry) => entry.content ?? "");
   const errors: string[] = [];
   const jsonLd: Record<string, unknown>[] = [];
@@ -34,6 +40,13 @@ export function inspectSeoHtml(html: string) {
     canonicals: links.filter((link) => link.rel === "canonical").map((link) => link.href ?? ""),
     ogTitle: meta("og:title"), ogDescription: meta("og:description"), ogUrl: meta("og:url"), ogImages: meta("og:image"),
     twitterCard: meta("twitter:card"), robots: meta("robots"),
+    headlines: [...document.matchAll(/<h1\b[^>]*>([\s\S]*?)<\/h1>/gi)].map((match) => decode(match[1]!.replace(/<[^>]*>/g, ""))),
+    headCanonicals: [...(document.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? "").matchAll(/<link\b[^>]*>/gi)].map((match) => attributes(match[0])).filter((link) => link.rel === "canonical").map((link) => link.href),
+    shareUrls: anchors.flatMap((anchor) => {
+      try { const url = new URL(anchor.href ?? ""); return url.hostname === "www.facebook.com" && url.pathname === "/sharer/sharer.php" ? [url.searchParams.get("u") ?? ""] : []; }
+      catch { return []; }
+    }),
     jsonLdTypes: jsonLd.map((node) => String(node["@type"])), errors,
+    articleHeadlines: jsonLd.filter((node) => node["@type"] === "NewsArticle").map((node) => String(node.headline)),
   };
 }

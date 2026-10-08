@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CameraLiveEmbed } from "@/components/livepoint/camera-live-embed";
 import { canPlayInApp, getCamera, CAMERA_CATALOG } from "@/lib/livepoint/cameras/catalog";
+import { publicMetadata } from "@/lib/public-metadata";
 
 export function generateStaticParams() {
   return CAMERA_CATALOG.map((camera) => ({ slug: camera.slug }));
@@ -11,7 +12,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const camera = getCamera(slug);
-  return { title: camera ? `${camera.name} · Камери` : "Камера" };
+  if (!camera) notFound();
+  return publicMetadata({ path: `/livepoint/cameras/${camera.slug}/`, title: `${camera.name} · Камери`, description: `Публична камера: ${camera.name}. Източник и възможности за гледане в LivePoint.`, imagePath: `/share/camera/${camera.slug}/` });
 }
 
 export default async function LivePointCameraDetailPage({ params }: { params: Promise<{ slug: string }> }) {

@@ -154,7 +154,7 @@ describe("newsArticle", () => {
     });
   });
 
-  it("clamps the headline to 110 characters", () => {
+  it("preserves the actual headline even when it exceeds the obsolete 110-character cap", () => {
     const longTitle = "Заглавие ".repeat(40).trim();
     const out = newsArticle({
       origin: ORIGIN,
@@ -167,8 +167,13 @@ describe("newsArticle", () => {
       authorName: "Автор",
     });
     const headline = String(out["headline"]);
-    expect(headline.length).toBeLessThanOrEqual(110);
-    expect(headline.endsWith("…")).toBe(true);
+    expect(headline).toBe(longTitle);
+    expect(headline.length).toBeGreaterThan(110);
+  });
+
+  it("identifies a newsroom author as an organization using its existing identity", () => {
+    const out = newsArticle({ origin: ORIGIN, organizationId: `${ORIGIN}/#organization`, path: "/fixture/", title: "Fixture", excerpt: "", datePublished: "2024-01-01T10:00:00Z", dateModified: "2024-01-01T10:00:00Z", authorName: "NewsPoint.bg", authorType: "Organization", authorId: `${ORIGIN}/#organization`, authorUrl: `${ORIGIN}/` });
+    expect(out.author).toEqual({ "@type": "Organization", "@id": `${ORIGIN}/#organization`, name: "NewsPoint.bg", url: `${ORIGIN}/` });
   });
 
   it("drops the description when the excerpt is empty", () => {

@@ -1,11 +1,8 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { LivePointPage } from "@/components/livepoint/livepoint-page";
 import { CamerasPanel } from "@/components/livepoint/cameras-panel";
 
-export const metadata: Metadata = {
-  title: "Камери · LivePoint",
-  description: "Проверен каталог на публични камери около Пловдив.",
-};
+export const metadata = publicPageMetadata("cameras");
 
 export default function LivePointCamerasPage() {
   return (

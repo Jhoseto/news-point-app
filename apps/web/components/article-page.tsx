@@ -14,6 +14,7 @@ import {
   type StoryThemeArticle,
 } from "@/lib/queries";
 import { asDate, themeChronologyNeighbours } from "@/lib/story-route";
+import { shareOrigin } from "@/lib/share-card";
 import { ArticleBody } from "./article-body";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ArticleHeroZoom } from "./article-hero-zoom";
@@ -71,7 +72,7 @@ export async function ArticlePage({
   const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
   const subtitle = articleSubtitle(article.excerpt, article.body);
-  const shareUrl = article.sourceUrl ?? article.path;
+  const shareUrl = `${shareOrigin()}${article.path}`;
   const crumbs = article.category
     ? [{ name: article.category.name, path: article.category.path }, { name: article.title }]
     : [{ name: article.title }];

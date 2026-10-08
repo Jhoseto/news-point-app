@@ -129,6 +129,8 @@ export interface NewsArticlePayload {
   datePublished: string;
   dateModified: string;
   authorName: string;
+  authorType?: "Person" | "Organization";
+  authorId?: string;
   authorUrl?: string | undefined;
   sectionName?: string | undefined;
   wordCount?: number | undefined;
@@ -136,7 +138,7 @@ export interface NewsArticlePayload {
 }
 
 export function newsArticle(input: NewsArticlePayload): JsonLdObject {
-  const headline = clampHeadline(input.title);
+  const headline = input.title.trim();
   const description = input.excerpt?.trim() || null;
   const article: Record<string, unknown> = {
     "@type": "NewsArticle",
@@ -148,9 +150,12 @@ export function newsArticle(input: NewsArticlePayload): JsonLdObject {
     headline,
     datePublished: input.datePublished,
     dateModified: input.dateModified,
-    author: input.authorUrl
-      ? { "@type": "Person", name: input.authorName, url: input.authorUrl }
-      : { "@type": "Person", name: input.authorName },
+    author: {
+      "@type": input.authorType ?? "Person",
+      ...(input.authorId ? { "@id": input.authorId } : {}),
+      name: input.authorName,
+      ...(input.authorUrl ? { url: input.authorUrl } : {}),
+    },
     publisher: { "@id": input.organizationId },
     inLanguage: input.inLanguage ?? "bg-BG",
   };
@@ -159,14 +164,6 @@ export function newsArticle(input: NewsArticlePayload): JsonLdObject {
   if (input.sectionName) article.articleSection = input.sectionName;
   if (typeof input.wordCount === "number" && input.wordCount > 0) article.wordCount = input.wordCount;
   return article;
-}
-
-const HEADLINE_MAX = 110;
-
-function clampHeadline(title: string): string {
-  const trimmed = title.trim();
-  if (trimmed.length <= HEADLINE_MAX) return trimmed;
-  return `${trimmed.slice(0, HEADLINE_MAX - 1).trimEnd()}…`;
 }
 
 export interface PersonPayload {

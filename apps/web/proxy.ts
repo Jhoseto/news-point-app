@@ -13,5 +13,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|api/|media/|admin/|share/|feed|sitemap).*)"],
+  matcher: ["/((?!_next/|api/|media/|wp-content/|admin/|share/|feed|sitemap).*)"],
 };

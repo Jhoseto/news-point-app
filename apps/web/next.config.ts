@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
@@ -21,6 +22,10 @@ function mediaOrigin(): string {
 const nextConfig: NextConfig = {
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
+  // Preserve the pinned Next list (social previews included) and put metadata
+  // in <head> for AI readers that do not execute streamed client scripts.
+  // Recheck this Next internal export when upgrading the pinned version.
+  htmlLimitedBots: new RegExp(`${HTML_LIMITED_BOT_UA_RE.source}|Googlebot|OAI-SearchBot|ChatGPT-User|PerplexityBot|Perplexity-User|Claude-SearchBot|Claude-User`, "i"),
   // Cloudflare quick tunnel (trycloudflare.com): without this, dev blocks /_next and client UI breaks.
   ...(process.env.NODE_ENV === "development"
     ? {

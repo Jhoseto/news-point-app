@@ -47,6 +47,7 @@ export interface ArticleSummary {
 
 export interface ArticleDetail extends ArticleSummary {
   updatedAt?: Date;
+  authorKind?: "staff" | "newsroom" | "manual";
   authorName: string;
   sourceUrl: string | null;
   body: ArticleBody;
@@ -335,6 +336,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     .select({
       ...summaryColumns(ready),
       authorName: articles.authorName,
+      authorKind: articles.authorKind,
       sourceUrl: articles.sourceUrl,
       body: articles.body,
       listenEnabled: articles.listenEnabled,
@@ -382,6 +384,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
   return {
     ...toSummary(row),
     authorName: row.authorName,
+    authorKind: row.authorKind,
     sourceUrl: row.sourceUrl,
     body,
     media,

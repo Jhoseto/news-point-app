@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   appleWebApp: { title: "NewsPoint" },
   description: "Новини от Пловдив, България и света.",
-  robots: { index: false, follow: false },
+  robots: { index: false, follow: false, "max-image-preview": "large" },
   alternates: { types: { "application/rss+xml": "/feed/" } },
   manifest: "/manifest.webmanifest",
   icons: {

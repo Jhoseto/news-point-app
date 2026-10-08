@@ -1,11 +1,8 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { LivePointPage } from "@/components/livepoint/livepoint-page";
 import { MyNewsPanel } from "@/components/livepoint/my-news-panel";
 
-export const metadata: Metadata = {
-  title: "Моята новина · LivePoint",
-  description: "Изпратете авторски материал към редакцията.",
-};
+export const metadata = publicPageMetadata("myNews");
 
 export default function LivePointMyNewsPage() {
   return (

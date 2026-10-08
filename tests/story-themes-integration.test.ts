@@ -25,11 +25,15 @@ vi.mock("server-only", () => ({ default: {}, __esModule: true }));
 
 // `triggerRevalidate` calls `revalidatePath`, which is Next-only.
 // `resolveMediaUrl` reads MEDIA_ORIGIN and process.cwd.
-vi.mock("@newspoint/content", () => ({
-  PUBLIC_MENU: [{ slug: "plovdiv" }],
-  resolveMediaUrl: () => null,
-  triggerRevalidate: () => undefined,
-}));
+vi.mock("@newspoint/content", async () => {
+  const { mediaPublicPath } = await vi.importActual<typeof import("@newspoint/content")>("@newspoint/content");
+  return {
+    PUBLIC_MENU: [{ slug: "plovdiv" }],
+    resolveMediaUrl: () => null,
+    triggerRevalidate: () => undefined,
+    mediaPublicPath,
+  };
+});
 
 // `unstable_cache` adds Next-specific caching on top of our queries; in tests
 // we want a transparent passthrough so each call actually runs.
@@ -494,6 +498,33 @@ describe("deleteStoryTheme", () => {
 });
 
 describe("public sitemap queries (isolated Postgres fixtures)", () => {
+  it("resolves a legacy JPEG to its real WebP copy and refuses unknown or conflicting mappings", async () => {
+    const { legacyMediaDestination } = await import("../apps/web/lib/legacy-media");
+    const source = "https://newspoint.bg/wp-content/uploads/2026/10/seo-fixture.jpg";
+    await pg.query("insert into media_assets(source_url, storage_key, provider) values ($1, $2, 'wordpress_origin')", [source, "news/2026/10/seo-fixture.webp"]);
+    expect(await legacyMediaDestination(["2026", "10", "seo-fixture.jpg"])).toBe("/media/news/2026/10/seo-fixture.webp");
+    expect(await legacyMediaDestination(["2026", "10", "missing-seo-fixture.jpg"])).toBeNull();
+    expect(await legacyMediaDestination(["..", "seo-fixture.jpg"])).toBeNull();
+    await pg.query("insert into media_assets(source_url, storage_key, provider) values ($1, $2, 'wordpress_origin')", [source, "news/2026/10/other-seo-fixture.webp"]);
+    expect(await legacyMediaDestination(["2026", "10", "seo-fixture.jpg"])).toBeNull();
+  });
+  it("includes only public news from the last two days and ignores an old story modified today", async () => {
+    const { newsSitemapCount, newsSitemapEntries } = await import("../apps/web/lib/sitemap-data");
+    await pg.query("update articles set published_at = now() - interval '1 hour' where id = $1", [articleIds[0]]);
+    await pg.query("update articles set published_at = now() - interval '3 days', updated_at = now() where id = $1", [articleIds[1]]);
+    await pg.query("update articles set published_at = now() + interval '1 hour' where id = $1", [articleIds[2]]);
+    await pg.query("update articles set published_at = now() - interval '1 hour' where id = $1", [articleIds[5]]);
+    const entries = await newsSitemapEntries(0);
+    const paths = entries.map((entry) => entry.path);
+    const stored = await db.select({ path: schema.articles.path }).from(schema.articles).where(inArray(schema.articles.id, [articleIds[0]!, articleIds[1]!, articleIds[2]!, articleIds[5]!]));
+    expect(paths).toContain(stored.find((row) => row.path.includes(articleIds[0]!.slice(0, 8)))?.path);
+    expect(paths).not.toContain(stored.find((row) => row.path.includes(articleIds[1]!.slice(0, 8)))?.path);
+    expect(paths).not.toContain(stored.find((row) => row.path.includes(articleIds[2]!.slice(0, 8)))?.path);
+    expect(paths).not.toContain(stored.find((row) => row.path.includes(articleIds[5]!.slice(0, 8)))?.path);
+    expect(await newsSitemapCount()).toBe(entries.length);
+    expect(entries.every((entry) => entry.news?.title && entry.news.publishedAt)).toBe(true);
+    expect(await newsSitemapEntries(1)).toEqual([]);
+  });
   it("excludes drafts and future publications, lists themes and podcasts, and owns only current theme URLs", async () => {
     const { sitemapCounts, sitemapEntries, sitemapPages } = await import("../apps/web/lib/sitemap-data");
     const { publishStoryTheme, saveStoryTheme, createStoryTheme } = await import("../apps/studio/lib/story-themes");

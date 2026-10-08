@@ -131,20 +131,31 @@ async function upsertMedia(tx: Tx, media: MediaInput, presentationReady: boolean
   };
   if (existing) {
     await tx.update(mediaAssets).set(values).where(eq(mediaAssets.id, existing.id));
-    await saveCard(tx, existing.id, mirrored?.card ?? null, presentationReady);
+    await saveVariants(tx, existing.id, mirrored?.variants ?? [], presentationReady);
     return existing.id;
   }
   const [inserted] = await tx
     .insert(mediaAssets)
     .values({ provider: "wordpress_origin", ...values })
     .returning({ id: mediaAssets.id });
-  await saveCard(tx, inserted!.id, mirrored?.card ?? null, presentationReady);
+  await saveVariants(tx, inserted!.id, mirrored?.variants ?? [], presentationReady);
   return inserted!.id;
 }
 
-async function saveCard(tx: Tx, id: string, card: { key: string; width: number; height: number } | null, ready: boolean) {
-  if (!ready || !card) return;
-  const variants = imageVariantsSchema.parse([{ url: `/media/${card.key}`, width: card.width, height: card.height }]);
+async function saveVariants(
+  tx: Tx,
+  id: string,
+  mirrored: Array<{ key: string; width: number; height: number }>,
+  ready: boolean,
+) {
+  if (!ready || !mirrored.length) return;
+  const variants = imageVariantsSchema.parse(
+    mirrored.slice(0, 6).map((entry) => ({
+      url: `/media/${entry.key}`,
+      width: entry.width,
+      height: entry.height,
+    })),
+  );
   await tx.insert(mediaPresentations).values({ mediaAssetId: id, variants })
     .onConflictDoUpdate({ target: mediaPresentations.mediaAssetId, set: { variants } });
   // WordPress refresh never changes an editor's focal point.

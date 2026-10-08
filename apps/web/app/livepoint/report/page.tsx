@@ -1,11 +1,8 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { LivePointPage } from "@/components/livepoint/livepoint-page";
 import { ReportPanel } from "@/components/livepoint/report-panel";
 
-export const metadata: Metadata = {
-  title: "Подай сигнал · LivePoint",
-  description: "Сигнал към редакцията на NewsPoint.",
-};
+export const metadata = publicPageMetadata("report");
 
 export default function LivePointReportPage() {
   return (

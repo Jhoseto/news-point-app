@@ -71,6 +71,9 @@ export default async function PathPage({ params }: Props) {
       datePublished: article.publishedAt.toISOString(),
       dateModified: (article.updatedAt ?? article.publishedAt).toISOString(),
       authorName: article.authorName,
+      ...(article.authorKind === "newsroom" && article.authorName.trim().toLowerCase() === "newspoint.bg"
+        ? { authorType: "Organization" as const, authorId: `${origin}/#organization`, authorUrl: `${origin}/` }
+        : {}),
       sectionName: article.category?.name,
     });
     const storyThemes = await getStoryThemesForArticle(article.id);

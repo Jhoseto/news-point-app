@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { LivePointPage } from "@/components/livepoint/livepoint-page";
 import { TrafficPanel } from "@/components/livepoint/traffic-panel";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
 
-export const metadata: Metadata = {
-  title: "Трафик · LivePoint",
-  description: "Карта и инциденти за Пловдив.",
-};
+export const metadata = publicPageMetadata("traffic");
 
 export default function LivePointTrafficPage() {
   return (

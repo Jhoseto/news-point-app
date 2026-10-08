@@ -47,6 +47,7 @@ describe("public metadata", () => {
     }
     expect(titles.size).toBe(Object.keys(PUBLIC_SEO_PAGES).length);
     expect(descriptions.size).toBe(titles.size);
+    expect(publicPageMetadata("home").title).toEqual({ absolute: PUBLIC_SEO_PAGES.home.title });
   });
   it("keeps external images intact and avoids empty descriptions", () => {
     expect(absoluteMedia("https://images.example/photo.jpg", "https://preview.example")).toBe("https://images.example/photo.jpg");
@@ -64,6 +65,16 @@ describe("share image fallback", () => {
 });
 
 describe("sitemap pagination", () => {
+  it("splits recent news at 1000 entries and preserves full titles with real publication dates", () => {
+    expect(sitemapFiles({ articles: 0, themes: 0, podcasts: 0, news: 1001 })).toEqual(["pages.xml", "news-0.xml", "news-1.xml"]);
+    expect(parseSitemapFile("news-1.xml")).toEqual({ kind: "news", page: 1 });
+    const title = "A & B <news> ".repeat(15);
+    const xml = sitemapXml("https://example.test", [{ path: "/fixture/", news: { title, publishedAt: "2026-10-08T09:00:00+03:00" } }]);
+    expect(xml).toContain('xmlns:news="http://www.google.com/schemas/sitemap-news/0.9"');
+    expect(xml).toContain("<news:publication_date>2026-10-08T06:00:00.000Z</news:publication_date>");
+    expect(xml).toContain(`<news:title>${title.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")}</news:title>`);
+    expect(sitemapXml("https://example.test", [{ path: "/fixture/" }])).not.toContain("news:news");
+  });
   it("includes the entire archive above the former 45k ceiling and exact boundaries", () => {
     const files = sitemapFiles({ articles: 45001, themes: 10000, podcasts: 10001 });
     expect(files).toEqual(["pages.xml", "articles-0.xml", "articles-1.xml", "articles-2.xml", "articles-3.xml", "articles-4.xml", "themes-0.xml", "podcasts-0.xml", "podcasts-1.xml"]);

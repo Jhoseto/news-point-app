@@ -57,7 +57,10 @@
 - Контакти и реклама: заглавие, описание и canonical през общия public-info шаблон; в sitemap при запазено `noindex`.
 - Стар линк с `?cursor=` се пренасочва към `/{рубрика}/archive/{cursor}/` от `apps/web/proxy.ts` (Next 16; старото `middleware` е махнато).
 - Canonical и пълни OG/Twitter има и на `/`, `/temi/`, тема, подкаст каталог/епизод, `/team/`, контакти и реклама чрез `public-metadata.ts`.
+- Повторният обход допълни и публичните LivePoint landing страници (време, трафик, камери, сигнал, авторски материал) и всяка камера: canonical, описание, OG/Twitter и sitemap. За камера има брандирана карта с истинското име на `/share/camera/[slug]/`. Съдържанието, формите и личните API отговори не са променяни; публичните landing страници показват само входа към съответната функция.
 - Стар theme slug се пренасочва с 308 директно към текущия slug. Няма вериги при повторни преименувания; непубликувана/бъдеща тема не се разкрива. Миграция 29 пази историята и резервира slug-овете атомарно с DB trigger, включително при конкурентен запис. Преди наличието ѝ URL промяната се отказва безопасно.
+- Стар `/wp-content/uploads/...` URL се разрешава през `media_assets.source_url` към реалния `storage_key` и връща 308, включително JPG → WebP. Непознат, конфликтен или небезопасен mapping е 404. Стари resized WordPress варианти изискват достоверно съответствие; не се гадаят. Старият WordPress не се променя.
+- Бутоните за споделяне на статия, тема и подкаст използват текущия canonical origin. Статията вече не споделя `sourceUrl` на стария WordPress; подкастът получава публичния origin от сървъра, а темата споделя абсолютен URL.
 - Service worker не кешира `/api/*`, `/feed/`, `/sitemap.xml`.
 
 ### 3.3 Споделяне (Open Graph / Twitter / картинка)
@@ -75,10 +78,11 @@
 
 Фаза B2 — направено.
 
-- Sitemap: `/sitemap.xml` → `apps/web/app/sitemap.xml/route.ts` (`revalidate: 3600`), вече е sitemap index.
-  - `/sitemaps/pages.xml`: начало, теми, NewsPodcast, екип, контакти/реклама и меню рубрики
+- Sitemap: `/sitemap.xml` → `apps/web/app/sitemap.xml/route.ts` (`revalidate: 300`), sitemap index. Архивните Data Cache записи остават с 3600 s TTL.
+  - `/sitemaps/pages.xml`: начало, теми, NewsPodcast, публични LivePoint landing страници/камери, екип, контакти/реклама и меню рубрики
   - `/sitemaps/articles-N.xml`: целият публичен архив, по 10 000 адреса в част, без стария таван 45 000
   - `/sitemaps/themes-N.xml` и `/sitemaps/podcasts-N.xml`: само публикувани записи с дата до текущия момент и текущите canonical slug-ове
+  - `/sitemaps/news-N.xml`: истински публикации от последните 48 часа, до 1000 в част; оригинална дата, пълно заглавие, медия `NewsPoint.bg`, език `bg`. News Data Cache е 300 s; остарелите записи се филтрират и при отговора. News URL-ите умишлено присъстват и в общия архив. [Google news sitemap](https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap).
   - Чернови, бъдещи публикации, търсене, настройки, cursor архиви и redirect aliases не влизат
   - Общ cache tag `public-sitemaps`; оторизираният revalidate endpoint опреснява целия набор. Article/story outbox paths и podcast/theme mutations включват sitemap; llms се опреснява за article/story промени. Без доставено revalidate събитие остава часовият TTL.
 - RSS: `/feed/` → `apps/web/app/feed/route.ts`; обявен в root metadata като `application/rss+xml`.
@@ -98,6 +102,8 @@
 - Organization има реалния съществуващ logo URL и потвърдените публични адрес/телефон/имейл.
 - Sanitization: стойностите и ключовете минават през JSON encoding и `<` → `\u003c`; payload с `</script>` не може да прекъсне script елемента. Unit test проверява, че след JSON.parse съдържанието се запазва.
 - Article image пази коректно и абсолютни медийни URL-и; dateModified идва от `articles.updatedAt`, без измислена текуща дата при рендер.
+- Headline пази пълното видимо заглавие, без остарялото ограничение 110 знака. Потвърденият newsroom автор `NewsPoint.bg` е `Organization` със същия ID като медията; именуваните автори остават `Person`. [Google Article](https://developers.google.com/search/docs/appearance/structured-data/article).
+- `max-image-preview:large` е подготвен в root robots metadata при запазено `noindex, nofollow`. Това разрешава големи изображения след реалното индексиране, не включва индексирането сега. [Google robots meta](https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag).
 - Schema работи и при `noindex`. Когато се свали `noindex`, Google вижда данните без допълнителна реализация.
 
 ### 3.6 Metadata шаблон
@@ -152,7 +158,7 @@ S1 е реализирана. Тук остават външните стъпк�
 
 ### Фаза S2 — следващ външен етап; отложен от Коце
 
-1. Махане на `robots` noindex в layout и `X-Robots-Tag` в next.config (или ограничаване само до staging).
+1. След изрично разрешение: public `robots` index/follow в layout и махане на глобалния `X-Robots-Tag` noindex (или ограничаване до staging). Запазват се `max-image-preview:large` и page-level noindex за search/settings/offline/archive.
 2. Потвърден production canonical host.
 3. Submit на `/sitemap.xml` в Search Console.
 4. По желание: Google News monitoring / news sitemap; Publisher Center не е задължителна registration стъпка.
@@ -161,7 +167,7 @@ S1 е реализирана. Тук остават външните стъпк�
 ### Фаза S3 — след пускане (по-късно)
 
 - Rich results валидация за NewsArticle
-- Евентуален `NewsSitemap` / отделен news sitemap ако Google News го изисква
+- News sitemap е подготвен предварително на 08.10 в отделни `news-N.xml` части; видимостта и името на publication се проверяват в Google News след S2
 - Sitemap index при >45k URL — направено предварително, за да не се реже архивът
 - SEO подсказки за title/excerpt — направено: реалните знаци и съществуващите CMS лимити 200/400, обяснение за употребата при търсене/споделяне; няма нов publish gate или обещание за конкретен Google snippet размер
 
@@ -169,6 +175,7 @@ S1 е реализирана. Тук остават външните стъпк�
 
 - `/llms.txt`: кратко описание на медията, публични контакти/екип, sitemap/RSS, истински последни статии и публикувани теми; 60 s ISR. Root HTML има `rel="describedby"` към файла.
 - AI/search crawlers могат да прочетат реалния server HTML. Общият robots policy изключва частните пътища; не са добавяни отделни правила за използване на съдържание за обучение.
+- `htmlLimitedBots` разширява запазения списък на pinned Next 16.3.6 с Googlebot и AI search/user агенти. Тези читатели получават metadata в `<head>` преди streaming. При upgrade трябва проверка на използвания Next internal export `HTML_LIMITED_BOT_UA_RE`. Съдържанието е същото; променя се само моментът на изпращане на metadata.
 - JSON-LD дава свързани сайт/медия/автор/публикация/хронология с канонични адреси. Няма измислени статистики или авторски профили.
 - `llms.txt` е допълнителна отворена спецификация, не гаранция за цитиране или индексиране. Google AI features използват основните SEO изисквания; видимостта там изисква индексирана страница. При текущия noindex има само готовност. [llms.txt](https://llmstxt.org/), [Google AI features](https://developers.google.com/search/docs/appearance/ai-features).
 
@@ -185,6 +192,7 @@ S1 е реализирана. Тук остават външните стъпк�
 | Cursor redirect | `apps/web/proxy.ts` |
 | Archive noindex | `apps/web/app/[category]/archive/[cursor]/page.tsx` |
 | Theme slug history | `packages/db/migrations/29_story_theme_slug_history.sql`, `packages/db/src/story-theme-slugs.ts`, Studio story mutations, `apps/web/lib/story-theme-redirect.ts` |
+| WordPress media адреси | `apps/web/app/wp-content/uploads/[...path]/route.ts`, `apps/web/lib/legacy-media.ts` |
 | AI указател | `apps/web/app/llms.txt/route.ts`, `apps/web/lib/discovery.ts` |
 | Повторяем read-only SEO одит | `tests/seo/run-audit.ts`, `tests/seo/html-audit.ts`, `tests/reports/seo/latest.{md,json}` |
 
@@ -206,3 +214,27 @@ S1 е реализирана. Тук остават външните стъпк�
 - Не са правени live преименувания за тест, deploy, commit, push или подаване към Google. Паралелният `packages/db/src/scripts/apply-migration-29.ts` и предходните arrange/sidebar редакции не са променяни от този проход.
 - Одитът се повтаря с `pnpm test:seo:audit` или директно `node apps/studio/node_modules/tsx/dist/cli.mjs tests/seo/run-audit.ts`. `SEO_BASE_URL` избира HTTP target; `WEB_URL` остава canonical origin. `--refresh-cache` е само за локален target и оторизирано опреснява локалните sitemap/RSS/llms кешове; SQL винаги е в read-only транзакция.
 - **Следваща стъпка:** редакционен преглед на намерените реални duplicate/empty/hero случаи от отчета, без автоматично пренаписване на WordPress архива. S2/Google Rich Results/production coverage остават за реалното преминаване към `newspoint.bg` и ново изрично разрешение за индексиране. Това не е отметнато като пълно пускане към Google/AI Search.
+
+## 9. Повторен преглед преди домейна и Cloudflare — 08.10
+
+Коце възложи допълнителния преглед и доизпипване. Реализирани са корекциите в §3 и news sitemap. Новите проверки остават в съществуващите `tests/seo/` файлове и PGlite integration файла.
+
+- Одитът сравнява целия sitemap с реалните публични DB адреси, проверява namespace/origin/дублиране, забранени или невалидни extras, 1000 news записи на част и двудневния прозорец. Нови статии от sync след първата snapshot се валидират с втори read-only прочит.
+- HTTP проверките обхващат canonical/share/H1/NewsArticle, Google/Bing/AI/social `<head>`, истински 404 за липсващи/private адреси и malformed share UUID-и, оригинален JPG → реален WebP redirect, robots/llms/RSS и cursor redirect.
+- `--expect-indexable` е бъдеща read-only проверка след S2: public noindex става грешка, а search/settings/offline/archive остават noindex. Флагът не променя индексирането, конфигурацията или домейна. Текущите проверки продължават в preview mode.
+
+### Подготвени настройки и приемане на Cloudflare — още не са прилагани
+
+| Област | Настройка / доказателство при реалното пускане |
+|---|---|
+| Canonical host | `https://newspoint.bg`; HTTP и `www` → постоянен redirect към HTTPS apex, запазени path/query; по възможност един hop. Текущият временен домейн остава noindex или след смяната пренасочва публичните адреси към финалния. |
+| Build/runtime | Един и същ `WEB_URL` при build и runtime; нов build при домейн смяна, защото има статична metadata/robots/feed. `STUDIO_PUBLIC_URL` и auth origins следват потвърдения публичен адрес. |
+| TLS | Full (strict) с валиден origin certificate за final hostname и пълна chain. [Cloudflare Full strict](https://developers.cloudflare.com/ssl/origin-configuration/ssl-modes/full-strict/). |
+| HTML / RSC | Запазване на origin `private/no-store` и bypass за HTML/RSC при първото пускане. В текущото приложение viewport/UA определят server shell, Next добавя RSC Vary. HTML edge cache изисква отделно доказани cache keys/варианти и purge при publish; общ `Cache Everything` би смесил тези отговори. [Default caching](https://developers.cloudflare.com/cache/concepts/default-cache-behavior/), [Vary settings](https://developers.cloudflare.com/cache/concepts/vary/). |
+| Private маршрути | Bypass за `/admin/`, auth, draft, private `/api/`, SSE и заявки с Authorization/auth cookies. Конкретното публично speech изключение е в общия план и не се разширява към останалото API. |
+| Discovery | При първото пускане robots/sitemap/news/RSS/llms/share запазват origin freshness; без принудителен дълъг edge TTL. App revalidate не изчиства Cloudflare кеша. |
+| Статични файлове | Кеш за versioned `/_next/static/`, публични media и brand според origin policy. При промяна на не-hashed brand/лого URL се прави purge; текущите brand headers са дълги. |
+| Search / AI достъп | Проверка на ефективния robots.txt, Managed robots/AI policies и WAF logs след включването. Search/user crawlers трябва да могат да четат публични статии и снимки без challenge. Локален User-Agent тест не доказва достъп от реалните bot IP-и. Training policy остава отделна настройка. [Cloudflare managed robots](https://developers.cloudflare.com/bots/additional-configurations/managed-robots-txt/), [OpenAI crawlers](https://developers.openai.com/api/docs/bots). |
+| Финално приемане | Origin spike условието остава в общия план. След разрешена S2: публичен HTTP одит с `--expect-indexable`, проверка на HTTPS/www/trailing slash/стари article и media URL-и, Rich Results и Search Console; purge на кеширания staging noindex. |
+
+Остават редакционните duplicate/empty/hero случаи и проверка на историческите resized media адреси с достоверен mapping. Не е обещана максимална позиция или AI цитиране. DNS, Cloudflare account, deploy, старият WordPress и индексирането не са променяни.

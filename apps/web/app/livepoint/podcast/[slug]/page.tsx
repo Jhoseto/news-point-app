@@ -6,6 +6,7 @@ import { PodcastShow } from "@/components/podcast/show";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisode, publicEpisodes } from "@/lib/podcasts";
 import { publicMetadata } from "@/lib/public-metadata";
+import { shareOrigin } from "@/lib/share-card";
 
 export const revalidate = 60;
 
@@ -31,7 +32,7 @@ export default async function PodcastEpisodePage({ params }: Props) {
   const ordered = [episode, ...episodes.filter((item) => item.id !== episode.id)];
   return (
     <PodcastPageShell title={episode.title}>
-      <PodcastShow episodes={ordered} activeSlug={episode.slug} />
+      <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={shareOrigin()} />
     </PodcastPageShell>
   );
 }

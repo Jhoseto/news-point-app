@@ -1,12 +1,9 @@
-import type { Metadata } from "next";
+import { publicPageMetadata } from "@/lib/public-metadata";
 import { LivePointPage } from "@/components/livepoint/livepoint-page";
 import { WeatherPanel } from "@/components/livepoint/weather-panel";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 
-export const metadata: Metadata = {
-  title: "Време · LivePoint",
-  description: "Прогноза за Пловдив.",
-};
+export const metadata = publicPageMetadata("weather");
 
 export const dynamic = "force-dynamic";
 

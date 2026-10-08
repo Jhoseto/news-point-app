@@ -91,3 +91,21 @@ Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 3. LCP елемент = lead image с `srcset` и не lazy.
 4. Рубрика `/balgariya/` → 200 (не 500).
 5. Mobile rubric swipe pager още чете `data-mobile-rubric-model`.
+
+## Media backfill (archive ladder)
+
+Additive job on the server (does **not** overwrite masters):
+
+```bash
+pnpm --filter @newspoint/wp-import media:backfill -- --concurrency=2
+# resume is automatic via logs/media-responsive-backfill.json
+```
+
+After editorial review of the site, remove only redundant legacy cards when the ladder is complete:
+
+```bash
+pnpm --filter @newspoint/wp-import media:cleanup-cards          # dry-run
+pnpm --filter @newspoint/wp-import media:cleanup-cards -- --apply
+```
+
+Masters stay. `-card.webp` is what gets freed.

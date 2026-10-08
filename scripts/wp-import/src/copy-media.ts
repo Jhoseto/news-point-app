@@ -28,17 +28,20 @@ for (const row of rows) {
   }
   keep.add(mirrored.key);
   keep.add(mirrored.card.key);
+  for (const variant of mirrored.variants) keep.add(variant.key);
   await db.update(mediaAssets).set({
     storageKey: mirrored.key,
     width: mirrored.width,
     height: mirrored.height,
     mime: "image/webp",
   }).where(eq(mediaAssets.id, row.id));
-  const variants = imageVariantsSchema.parse([{
-    url: `/media/${mirrored.card.key}`,
-    width: mirrored.card.width,
-    height: mirrored.card.height,
-  }]);
+  const variants = imageVariantsSchema.parse(
+    mirrored.variants.slice(0, 6).map((entry) => ({
+      url: `/media/${entry.key}`,
+      width: entry.width,
+      height: entry.height,
+    })),
+  );
   await db.insert(mediaPresentations).values({ mediaAssetId: row.id, variants })
     .onConflictDoUpdate({ target: mediaPresentations.mediaAssetId, set: { variants } });
   copied += 1;

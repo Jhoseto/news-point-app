@@ -27,12 +27,12 @@ function EpisodeCard({ episode, episodes, selected, compact }: { episode: Public
   </li>;
 }
 
-export function PodcastShow({ episodes, compact = false, activeSlug = null }: { episodes: PublicEpisode[]; compact?: boolean; activeSlug?: string | null }) {
+export function PodcastShow({ episodes, compact = false, activeSlug = null, publicOrigin }: { episodes: PublicEpisode[]; compact?: boolean; activeSlug?: string | null; publicOrigin?: string }) {
   const player = usePodcastPlayer();
   const suggested = episodes.find((episode) => episode.slug === activeSlug) ?? episodes[0] ?? null;
   const selected = displayedEpisode(player.episode, suggested);
   if (!episodes.length && !player.episode) return <PodcastState title="Историите скоро ще имат глас" description="Още няма публикувани епизоди. Тук ще откриете подкастите на NewsPoint." />;
-  if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} />;
+  if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} publicOrigin={publicOrigin} />;
   // Only the LivePoint panel reaches this branch: the page always goes to the theatre.
   return <PodcastPanelLayout episodes={episodes} suggested={suggested} selected={selected} />;
 }
@@ -85,7 +85,7 @@ function PodcastPanelLayout({
   );
 }
 
-function PodcastTheater({ episodes, selected, activeSlug }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null }) {
+function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined }) {
   const carousel = useRef<HTMLUListElement>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [canNativeShare, setCanNativeShare] = useState(false);
@@ -93,7 +93,7 @@ function PodcastTheater({ episodes, selected, activeSlug }: { episodes: PublicEp
   const [aboutMounted, setAboutMounted] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(true);
   const published = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(selected.publishedAt));
-  const shareUrl = new URL(selected.path, "https://newspoint.bg").href;
+  const shareUrl = publicOrigin ? new URL(selected.path, publicOrigin).href : selected.path;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(selected.title);
   useEffect(() => setCanNativeShare(typeof navigator.share === "function"), []);
