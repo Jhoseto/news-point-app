@@ -15,6 +15,7 @@ import { formatWhen } from "@/lib/format";
 import { browserMediaSrc } from "@/lib/media-src";
 import { withBase } from "@/lib/paths";
 import { ArticlePreview, type PreviewTheme } from "./article-preview";
+import { EditorDialog } from "./editor-dialog";
 import { MediaPicker } from "./media-picker";
 
 export interface EditorProps {
@@ -46,6 +47,7 @@ export interface EditorProps {
 }
 
 type Notice = { tone: "error" | "success"; text: string; href?: string };
+type HistoryEntry = { number: number; savedAt: string; savedBy: string | null; draft: Draft; editableBody: boolean; listenEnabled: boolean };
 type Device = "desktop" | "phone";
 
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
@@ -98,6 +100,9 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const savingRef = useRef(false);
   const publishingRef = useRef(false);
   const visualRef = useRef<VisualEditorHandle | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [editorValid, setEditorValid] = useState(true);
   const [heroDialog, setHeroDialog] = useState(false);
   const [heroInput, setHeroInput] = useState("");
   const [heroError, setHeroError] = useState("");
@@ -187,7 +192,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
   const save = useCallback(
     async (expected = revision): Promise<number | null> => {
-      if (savingRef.current) return null;
+      if (savingRef.current || !editorValid) return null;
       savingRef.current = true;
       const snapshot = draft;
       const { bodyText: legacyText, ...structured } = snapshot;
@@ -251,11 +256,11 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         setPhase("idle");
       }
     },
-    [draft, revision, saved, storyThemeId, savedStoryThemeId],
+    [draft, revision, saved, storyThemeId, savedStoryThemeId, editorValid],
   );
 
   async function publish() {
-    if (publishingRef.current || savingRef.current) return;
+    if (publishingRef.current || savingRef.current || !editorValid) return;
     publishingRef.current = true;
     try {
     const blocking = publishProblems({ ...draft, bodyBlocks: body.length });
@@ -276,7 +281,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     const result = await callApi<PublishOutcome>("POST", `/api/editor/articles/${idRef.current}/publish/`, { revision: toPublish, idempotencyKey: publishKey.current.key, listenEnabled: draft.listenEnabled ?? article.listenEnabled });
     setPhase("idle");
     if (!result.ok) {
-      if (result.status !== 0) publishKey.current = null;
+      if (result.status > 0 && result.status < 500) publishKey.current = null;
       if (result.status === 422 && Array.isArray(result.error.details)) setProblems(result.error.details as string[]);
       else setNotice({ tone: "error", text: result.error.message });
       return;
@@ -292,6 +297,15 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     } finally { publishingRef.current = false; }
   }
 
+  async function openHistory() {
+    if (!idRef.current || historyLoading) return;
+    setHistoryLoading(true);
+    const result = await callApi<{ revisions: HistoryEntry[]; media: MediaOption[] }>("GET", `/api/editor/articles/${idRef.current}/revisions/`);
+    setHistoryLoading(false);
+    if (!result.ok) { setNotice({ tone: "error", text: result.error.message }); return; }
+    rememberMedia(result.data.media); setHistory(result.data.revisions);
+  }
+
   async function openPreviewTab() {
     const tab = window.open("about:blank", "_blank");
     if ((dirty || !idRef.current) && (await save()) === null) {
@@ -305,7 +319,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     const onKey = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        if (!readOnly && !busy && dirty) void save();
+        if (!readOnly && !busy && !publishingRef.current && !conflict && editorValid && dirty) void save();
       }
     };
     const onLeave = (event: BeforeUnloadEvent) => {
@@ -317,7 +331,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("beforeunload", onLeave);
     };
-  }, [busy, dirty, readOnly, save]);
+  }, [busy, dirty, readOnly, save, conflict, editorValid]);
 
   const saveStatus =
     phase === "saving"
@@ -336,7 +350,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
       <div className="sticky top-14 z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2 sm:px-5">
-          <Link href="/" className="text-sm font-bold text-muted hover:text-ink">
+          <Link href="/" onClick={event => { if (dirty && !window.confirm("Има незаписани промени. Да напусна ли редактора?")) event.preventDefault(); }} className="text-sm font-bold text-muted hover:text-ink">
             ← Материали
           </Link>
           <span className="hidden text-faint sm:inline" aria-hidden="true">
@@ -365,16 +379,17 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
           ) : null}
           {hasUnpublished ? <span className="hidden text-xs font-bold text-warning xl:inline">Има промени, които не са на сайта</span> : null}
 
+          {articleId ? <button type="button" disabled={busy || historyLoading} className="np-btn np-btn-secondary px-3 py-1.5 text-xs" onClick={() => void openHistory()}>{historyLoading ? "Зареждане…" : "Версии"}</button> : null}
           {!readOnly ? (
             <div className="ml-auto flex items-center gap-1.5">
               <label className="inline-flex items-center gap-2 pr-1 text-xs font-bold text-ink">
                 <input type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={(event) => update("listenEnabled", event.target.checked)} />
                 Позволи слушане
               </label>
-              <button type="button" disabled={busy || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
+              <button type="button" disabled={busy || !editorValid || Boolean(conflict) || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
                 {phase === "saving" ? "Записване…" : "Запиши"}
               </button>
-              <button type="button" disabled={busy || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
+              <button type="button" disabled={busy || !editorValid || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
                 {phase === "publishing" ? "Публикуване…" : published.isPublic ? "Обнови публикацията" : "Публикувай"}
               </button>
             </div>
@@ -594,7 +609,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             <p id="title-seo-hint" className="mt-1 text-[11px] text-muted">{draft.title.trim().length}/{TITLE_MAX} знака. Заглавието се използва и при търсене и споделяне; Google може да го съкрати или преформулира.</p>
             <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
               <span className="font-semibold">Адрес:</span>
-              <span className="text-faint">newspoint.bg/</span>
+              <span className="text-faint">{new URL(webUrl).host}/</span>
               <input
                 aria-label="Адрес на статията"
                 value={draft.slug}
@@ -632,7 +647,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onOpenMedia={() => openMediaPicker("body")} handleRef={visualRef} />
+            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} handleRef={visualRef} />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
             <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
               <legend className="px-1 text-xs font-bold text-ink">Автор и публикуване</legend>
@@ -781,11 +796,14 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         </section>
       </div>
 
-      {heroDialog ? <div className="np-editor-dialog-backdrop" onKeyDown={event => { if (event.key === "Escape") setHeroDialog(false); }}><section role="dialog" aria-modal="true" aria-label="Водещ embed" className="np-editor-dialog">
-        <button type="button" className="np-dialog-close" aria-label="Затвори диалога" onClick={() => setHeroDialog(false)}>×</button>
+      {history ? <EditorDialog label="История на версиите" onClose={() => setHistory(null)}>
+        <h3>Версии на материала</h3><p>Зареждането заменя текущите полета. Запишете ръчно, за да създадете нова версия. Публикуването е отделно действие.</p>
+        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
+      </EditorDialog> : null}
+      {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или iframe код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
         {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
-      </section></div> : null}
+      </EditorDialog> : null}
       {pickerOpen ? (
         <MediaPicker
           media={availableMedia}

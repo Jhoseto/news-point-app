@@ -8,6 +8,11 @@ const BottomNav = dynamic(() => import("./nav").then((m) => m.BottomNav), {
   loading: () => null,
 });
 
+const MobileSearch = dynamic(() => import("./nav").then((m) => m.MobileSearch), {
+  ssr: false,
+  loading: () => null,
+});
+
 const LatestPanel = dynamic(
   () => import("./latest-panel").then((m) => m.LatestPanel),
   { ssr: false, loading: () => null },
@@ -15,31 +20,56 @@ const LatestPanel = dynamic(
 const MobileRubricPager = dynamic(() => import("./mobile-rubric-pager").then(module => module.MobileRubricPager), { ssr: false, loading: () => null });
 const MobilePushPrompt = dynamic(() => import("./mobile-push-prompt").then(module => module.MobilePushPrompt), { ssr: false, loading: () => null });
 
+/**
+ * Phone chrome only. Mount after idle so LCP is not charged for bottom nav,
+ * search sheet, pager and push prompt JS.
+ */
 export function MobileChromeIsland() {
-  // Start as `false` so the server-rendered tree matches the desktop client
-  // tree. The mobile case is reconciled on mount via matchMedia. The brief
-  // period before the effect runs renders the desktop layout, which already
-  // matches the desktop server output.
-  const [isMobile, setIsMobile] = useState(false);
+  const [ready, setReady] = useState(false);
   const [latestOpen, setLatestOpen] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 63.999rem)");
-    const update = () => {
-      setIsMobile(media.matches);
-      if (!media.matches) setLatestOpen(false);
+    let cancelled = false;
+    let idleId = 0;
+    let timeoutId = 0;
+
+    const arm = () => {
+      if (cancelled || !media.matches) return;
+      setReady(true);
     };
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
+    const onChange = () => {
+      if (!media.matches) {
+        setReady(false);
+        setLatestOpen(false);
+        return;
+      }
+      arm();
+    };
+
+    if (media.matches) {
+      if (typeof window.requestIdleCallback === "function") {
+        idleId = window.requestIdleCallback(arm, { timeout: 2000 });
+      } else {
+        timeoutId = window.setTimeout(arm, 1);
+      }
+    }
+    media.addEventListener("change", onChange);
+    return () => {
+      cancelled = true;
+      if (idleId && typeof window.cancelIdleCallback === "function") window.cancelIdleCallback(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+      media.removeEventListener("change", onChange);
+    };
   }, []);
 
   const openLatest = useCallback(() => setLatestOpen(value => !value), []);
   const closeLatest = useCallback(() => setLatestOpen(false), []);
 
-  if (!isMobile) return null;
+  if (!ready) return null;
   return (
     <>
+      <MobileSearch showHeaderTrigger={false} />
       <BottomNav onOpenLatest={openLatest} latestOpen={latestOpen} onNavigate={closeLatest} />
       <LatestPanel open={latestOpen} onClose={closeLatest} />
       <MobileRubricPager />

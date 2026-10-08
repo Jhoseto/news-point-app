@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { LivePointStrip } from "@/components/livepoint/livepoint-strip";
 import { getMenuCategories } from "@/lib/queries";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { HeaderClock } from "./header-clock";
 import { BrandLogoImg } from "./brand-logo-img";
 import { Logo } from "./logo";
-import { BottomNav, MobileSearch, RubricsButton, RubricsNav } from "./nav";
+import { RubricsNav } from "./nav";
+import { RubricsButton } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
-import { ThemeToggle } from "./theme";
-import { SettingsModal } from "./settings-modal";
+import { HeaderUtilities } from "./header-utilities";
 import { MobileRubricTabs } from "./mobile-rubric-tabs";
 import { MobileFooter } from "./mobile-footer";
 import { DesktopFooter } from "./desktop-footer";
@@ -16,56 +17,60 @@ import { DesktopFooter } from "./desktop-footer";
  * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
  * The logo sits in an overlay aligned to the expanded rubrics column (--np-rail-w-logo), not in the grid.
  * The LivePoint utility line is the second row (DEC-119).
+ * Mobile vs desktop chrome is exclusive by Client Hints — do not ship both trees.
  */
 export async function SiteHeader() {
-  const menu = await getMenuCategories();
+  const [menu, desktop] = await Promise.all([getMenuCategories(), ssrDesktopViewport()]);
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="np-masthead relative flex h-[3.25rem] items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
-        <div className="flex min-w-0 items-center gap-0.5 lg:hidden">
-          <RubricsButton />
-          <Logo variant="header" className="max-lg:ml-1.5" />
-        </div>
-
-        <div className="hidden min-w-0 lg:block" aria-hidden="true" />
-
-        <div className="hidden min-w-0 lg:block">
-          <SiteSearch />
-        </div>
+        {!desktop ? (
+          <div className="flex min-w-0 items-center gap-0.5 lg:hidden">
+            <RubricsButton />
+            <Logo variant="header" className="max-lg:ml-1.5" />
+          </div>
+        ) : (
+          <>
+            <div className="hidden min-w-0 lg:block" aria-hidden="true" />
+            <div className="hidden min-w-0 lg:block">
+              <SiteSearch />
+            </div>
+          </>
+        )}
 
         <div className="ml-auto flex items-center justify-end gap-1 pr-0 sm:gap-2 sm:pr-4 lg:ml-0 lg:min-w-0 lg:pr-8 xl:gap-5 3xl:pr-12">
-          <div className="hidden lg:block">
-            <HeaderClock />
-          </div>
-          <MobileSearch showHeaderTrigger={false} />
-          <span className="hidden h-8 w-px bg-line lg:block" aria-hidden="true" />
-          <div className="flex shrink-0 items-center gap-1.5">
-            <ThemeToggle />
-            <SettingsModal />
-          </div>
+          {desktop ? (
+            <div className="hidden lg:block">
+              <HeaderClock />
+            </div>
+          ) : null}
+          {desktop ? <span className="hidden h-8 w-px bg-line lg:block" aria-hidden="true" /> : null}
+          <HeaderUtilities />
         </div>
 
-        <div className="np-masthead-rail-logo pointer-events-none absolute inset-y-0 left-0 z-10 hidden items-center justify-center lg:flex lg:w-[var(--np-rail-w-logo)]">
-          <div className="pointer-events-auto flex max-w-full justify-center px-1">
-            <Logo variant="header" />
+        {desktop ? (
+          <div className="np-masthead-rail-logo pointer-events-none absolute inset-y-0 left-0 z-10 hidden items-center justify-center lg:flex lg:w-[var(--np-rail-w-logo)]">
+            <div className="pointer-events-auto flex max-w-full justify-center px-1">
+              <Logo variant="header" />
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
       <LivePointStrip />
-      <MobileRubricTabs menu={menu.map(({ name, path }) => ({ name, path }))} />
+      {!desktop ? <MobileRubricTabs menu={menu.map(({ name, path }) => ({ name, path }))} /> : null}
     </header>
   );
 }
 
 /** Page frame below the header: rubrics rail on desktop, then content and footer. */
 export async function SiteBody({ children }: { children: React.ReactNode }) {
-  const menu = await getMenuCategories();
+  const [menu, desktop] = await Promise.all([getMenuCategories(), ssrDesktopViewport()]);
   return (
     <div className="lg:flex">
-      <RubricsNav items={menu.map(({ slug, name, path }) => ({ slug, name, path }))} />
+      {desktop ? <RubricsNav items={menu.map(({ slug, name, path }) => ({ slug, name, path }))} /> : null}
       <div className="min-w-0 flex-1">
         <main id="main">{children}</main>
-        <SiteFooter />
+        <SiteFooter desktop={desktop} />
       </div>
     </div>
   );
@@ -142,13 +147,12 @@ export function BrandBanner() {
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ desktop }: { desktop: boolean }) {
   return (
     <footer className="np-mobile-footer-host np-desktop-footer-host mt-16 border-t border-line bg-surface pb-20 lg:pb-0">
-      <MobileFooter />
-      <DesktopFooter />
+      {desktop ? <DesktopFooter /> : <MobileFooter />}
     </footer>
   );
 }
 
-export { BottomNav };
+export { BottomNav } from "./nav";

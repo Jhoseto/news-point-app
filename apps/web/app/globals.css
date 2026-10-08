@@ -629,6 +629,14 @@
     }
   }
 
+  /* Mobile: skip shine sweep (main-thread + non-composited); look unchanged at rest. */
+  @media (max-width: 63.999rem) {
+    .np-home-shine .np-shine-image::after {
+      animation: none !important;
+      content: none;
+    }
+  }
+
   .np-lp-traffic {
     max-height: none;
     background:

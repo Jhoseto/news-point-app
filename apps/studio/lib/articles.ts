@@ -353,6 +353,12 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       if (!existing || existing.createdBy !== staff.id || existing.sourceSystem !== "studio" || !first || Object.entries(values).some(([key, value]) => !isDeepStrictEqual(first[key as keyof typeof first], value ?? null))) {
         throw new EditorError(409, "creation_id_reused", "Тази чернова вече е създадена с друго съдържание. Отворете записания материал.");
       }
+      const requestedViews = { viewSeed: draft.viewSeed ?? null, viewEvery: draft.viewEvery ?? null, viewUnit: draft.viewUnit ?? "minutes", viewTarget: draft.viewTarget ?? null };
+      const storedViews = await viewDraft(tx, id);
+      // A key cannot silently accept different options after a lost response.
+      if (requestedViews.viewSeed !== storedViews.viewSeed || requestedViews.viewTarget !== storedViews.viewTarget || intervalToSeconds(requestedViews.viewEvery, requestedViews.viewUnit) !== intervalToSeconds(storedViews.viewEvery, storedViews.viewUnit) || (await revisionListen(tx, id, 1) ?? existing.listenEnabled) !== (draft.listenEnabled ?? true) || (!existing.publishedAt && existing.scheduledPublishAt?.getTime() !== scheduleInstant(draft.publishAtSofia)?.getTime())) {
+        throw new EditorError(409, "creation_id_reused", "Черновата е създадена с други настройки. Отворете записания материал.");
+      }
       return { id, revision: 1 };
     }
     await validateMedia(tx, draft, body);
@@ -368,7 +374,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
     await saveViewSettings(tx, id, draft);
     return { id, revision: 1 };
   }).then(async (created) => {
-    await publishDueScheduled(getDb());
+    await publishDueScheduled(getDb(), created.id);
     return created;
   });
 }
@@ -401,7 +407,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         revision: current,
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
-        draft: { ...toDraft(latest!.revision).draft, ...(await viewDraft(tx, id)) },
+        draft: { ...toDraft(latest!.revision).draft, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
@@ -416,7 +422,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     await tx
       .update(articles)
       .set(
-        article.isPublic
+        article.publishedAt
           ? { scheduledPublishAt: null, updatedAt: new Date() }
           : {
               title: draft.title,
@@ -435,7 +441,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     if (article.isPublic) await refreshViewSchedule(tx, id);
     return { revision: number };
   }).then(async (saved) => {
-    await publishDueScheduled(getDb());
+    await publishDueScheduled(getDb(), id);
     return saved;
   });
 }
@@ -479,6 +485,8 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       .where(and(eq(articleRevisions.articleId, id), eq(articleRevisions.number, revision)))
       .limit(1);
     if (!rev) throw new EditorError(404, "revision_not_found", "Версията не съществува.");
+    const [latest] = await tx.select({ number: articleRevisions.number }).from(articleRevisions).where(eq(articleRevisions.articleId, id)).orderBy(desc(articleRevisions.number)).limit(1);
+    if (latest?.number !== revision) throw new EditorError(409, "stale_publication", "Има по-нова записана версия. Заредете я преди публикуване.");
 
     const body = articleBody.parse(rev.body);
     const problems = publishProblems({ ...rev, bodyBlocks: body.length });
@@ -518,7 +526,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         : null;
     const topics = [...new Set([previousSlug, category.slug].filter((slug): slug is string => !!slug))];
 
-    const version = wasPublic ? article.version + 1 : article.version;
+    const version = article.publishedAt ? article.version + 1 : article.version;
     const [updated] = await tx
       .update(articles)
       .set({
@@ -538,6 +546,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         publishedAt: article.publishedAt ?? sql`now()`,
         version,
         publishedRevision: revision,
+        scheduledPublishAt: null,
         updatedAt: new Date(),
       })
       .where(eq(articles.id, id))
@@ -547,7 +556,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     await tx.insert(articleCategories).values({ articleId: id, categoryId: category.id });
     await applyArticlePublishViews(tx, id);
 
-    const type = wasPublic ? "article.updated" : "article.published";
+    const type = article.publishedAt ? "article.updated" : "article.published";
     const [event] = await tx
       .insert(outboxEvents)
       .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics } })
@@ -624,6 +633,22 @@ export async function getPreview(id: string, revision?: number) {
     revision: rev?.number ?? null,
     isPublic: article.isPublic,
   };
+}
+
+export async function listRevisionHistory(id: string) {
+  const db = getDb();
+  const [article] = await db.select().from(articles).where(eq(articles.id, id)).limit(1);
+  if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
+  const rows = await db.select({ revision: articleRevisions, savedBy: staffUsers.name }).from(articleRevisions)
+    .leftJoin(staffUsers, eq(staffUsers.id, articleRevisions.createdBy))
+    .where(eq(articleRevisions.articleId, id)).orderBy(desc(articleRevisions.number)).limit(50);
+  const revisions = await Promise.all(rows.map(async ({ revision, savedBy }) => ({
+    number: revision.number, savedAt: revision.createdAt, savedBy,
+    ...toDraft(revision),
+    listenEnabled: (await revisionListen(db, id, revision.number)) ?? article.listenEnabled,
+  })));
+  const ids = [...new Set(revisions.flatMap(item => [item.draft.heroMediaId, ...(item.draft.body ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])]).filter((value): value is string => !!value))];
+  return { revisions, media: ids.length ? await listMediaByIds(ids) : [] };
 }
 
 async function listMediaByIds(ids: string[]): Promise<MediaOption[]> {

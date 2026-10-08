@@ -16,6 +16,7 @@ async function sessionFrom(requestHeaders: Headers): Promise<Staff | null> {
   const session = await getAuth().api.getSession({ headers: requestHeaders });
   if (!session) return null;
   const { id, name, email, role } = session.user;
+  if (!["editor", "admin", "master_admin"].includes(String(role))) return null;
   return { id, name, email, role: role as StaffRole };
 }
 

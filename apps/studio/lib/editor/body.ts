@@ -70,6 +70,7 @@ export function textToBody(text: string): ArticleBody {
 export function bodyToText(body: ArticleBody): string | null {
   const parts: string[] = [];
   for (const block of body) {
+    if (("textAlign" in block && block.textAlign) || ("indent" in block && block.indent) || ("html" in block && /<(?:u|s|span|sub|sup|mark|small|table|pre)\b/i.test(block.html ?? "")) || (block.type === "heading" && block.html) || (block.type === "image" && (block.widthPercent !== undefined || block.wrap || block.alt !== undefined || block.caption !== undefined)) || (block.type === "embed" && (block.widthPercent !== undefined || block.wrap || block.align))) return null;
     if (block.type === "paragraph") parts.push(unescapeHtml(block.html));
     else if (block.type === "heading" && block.level !== 4) parts.push(`${"#".repeat(block.level)} ${block.text}`);
     else if (block.type === "quote" && !block.cite)

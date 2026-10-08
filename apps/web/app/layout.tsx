@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { unstable_cache } from "next/cache";
-import "./manrope-bg.css";
 import "./globals.css";
 import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
 import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { DeferredChrome } from "@/components/deferred-chrome";
-import { PodcastProvider } from "@/components/podcast/player";
+import { PodcastProvider } from "@/components/podcast/provider";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { ThemeScript } from "@/components/theme-script";
+import { MANROPE_FACE_CSS } from "@/lib/manrope-face";
 import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
 import { toLatestHeadline } from "@/lib/livepoint/serialize";
@@ -82,6 +82,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html lang="bg" suppressHydrationWarning>
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
+        {/* Inline @font-face — avoids an extra render-blocking CSS request for Manrope. */}
+        <style dangerouslySetInnerHTML={{ __html: MANROPE_FACE_CSS }} />
+        <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         <JsonLd data={[organization, website]} id="np-ld-org-website" />
       </head>
       <body className="min-h-[var(--np-desktop-height,100dvh)]">

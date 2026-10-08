@@ -22,17 +22,17 @@ export function hasScheduledPublish(db: Pick<ScriptDb, "execute">): Promise<bool
 }
 
 /** Publishes drafts whose Bulgarian instant has arrived. `now()` is absolute; the server TimeZone is not used. */
-export async function publishDueScheduled(db: ScriptDb): Promise<number> {
+export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string): Promise<number> {
   if (!await hasScheduledPublish(db)) return 0;
   const due = await db
     .select({ id: articles.id, at: articles.scheduledPublishAt })
     .from(articles)
-    .where(and(sql`${articles.scheduledPublishAt} is not null`, sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false)))
+    .where(and(sql`${articles.scheduledPublishAt} is not null`, sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false), onlyArticleId ? eq(articles.id, onlyArticleId) : undefined))
     .limit(20);
   let published = 0;
   for (const row of due) {
     const ok = await db.transaction(async (tx) => {
-      const [article] = await tx.select().from(articles).where(and(eq(articles.id, row.id), sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false))).for("update").limit(1);
+      const [article] = await tx.select().from(articles).where(and(eq(articles.id, row.id), sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false), onlyArticleId ? eq(articles.id, onlyArticleId) : undefined)).for("update").limit(1);
       if (!article?.scheduledPublishAt || article.isPublic) return false;
       const [revision] = await tx.select().from(articleRevisions).where(eq(articleRevisions.articleId, article.id)).orderBy(desc(articleRevisions.number)).limit(1);
       if (!revision) return false;
@@ -73,7 +73,7 @@ export async function publishDueScheduled(db: ScriptDb): Promise<number> {
       await tx.insert(articleCategories).values({ articleId: article.id, categoryId: revision.primaryCategoryId! });
       await applyArticlePublishViews(tx, article.id);
       await tx.insert(outboxEvents).values({
-        type: "article.published",
+        type: article.publishedAt ? "article.updated" : "article.published",
         entityId: article.id,
         version,
         payload: { path, title: revision.title, topics: [category.slug] },

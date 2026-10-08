@@ -27,6 +27,7 @@ export async function editorMutation<S extends z.ZodType>(
   }
   const staff = await staffFromRequest(request);
   if (!staff) return error(401, "unauthenticated", "Влезте отново.", requestId);
+  if (!["editor", "admin", "master_admin"].includes(staff.role)) return error(403, "forbidden", "Нямате редакционни права.", requestId);
 
   let payload: unknown;
   try {

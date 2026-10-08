@@ -35,6 +35,22 @@ PageSpeed API квотата беше изчерпана; CrUX за времен
 - Staging PSI noise: invalid `preconnect` to `/` + `email-decode.min.js` come from the host’s Cloudflare email obfuscation, not Next.
 - Mobile LCP: pager/`slimHero` now keeps up to four ≤960w variants (was two smallest → phones skipped 768w and hit the master). Header logo is `fetchPriority=low`.
 - Desktop image weight: non-LCP srcset capped at 960w; tighter card `sizes`; `content-visibility: auto` from the 4th homepage block.
+- Mobile exclusive CH shell: no RubricsNav / desktop footer in phone HTML; `MobileChromeIsland` (bottom nav/search/pager) + `HeaderUtilities` (theme/settings) mount after idle.
+- Manrope: `@font-face` inlined in `<head>` (`lib/manrope-face.ts`) + font preloads; `font-display: optional`; no separate `manrope-bg` CSS request.
+- Mobile LCP: `preload()` with the same attrs as `ArticleImage` (`100vw` → prefer 768w, srcset ≤960).
+- Podcast: `PodcastProvider` split from player UI so homepage does not ship timeline/cover icons.
+- `browserslist`: chrome/firefox ≥111, safari/ios ≥16.4 (fewer legacy polyfills).
+
+### Mobile smoke (local `next start` :3010, `Sec-CH-UA-Mobile: ?1`)
+
+| Check | Result |
+|---|---|
+| HTML | ~1.40 MB, 200 |
+| Rubrics rail | absent |
+| Mobile feed + tabs | present |
+| Manrope preload + inline face | present; no `manrope-bg` chunk |
+| LCP `<img>` | `src=…-w768.webp`, no `-w1440` in srcset |
+| LCP `<link rel=preload as=image>` | imagesrcset 320/768/824 |
 
 Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 
@@ -65,8 +81,8 @@ Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 ## Ограничения (остават)
 
 - Homepage още е тежък (~1.2–1.4 MB HTML): много секции + client carousels/polls.
-- LivePoint shell + podcast provider още са в initial graph; тежките панели са code-split.
-- Част от `media_presentations` още имат ≤3 variant-а до re-run на backfill skip path (файловете на диска са OK).
+- LivePoint strip + provider shell още са в initial graph; тежките панели и chrome islands са code-split / idle.
+- Локалният LCP остава media-bound през remote rewrite; staging/server disk + Cloudflare ще дадат реалния mobile score.
 - Без deploy тези оптимизации не са на staging; Cloudflare edge още не е вързан.
 - PSI API quota; няма CrUX за временния домейн.
 

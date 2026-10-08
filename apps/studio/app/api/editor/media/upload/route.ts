@@ -46,7 +46,9 @@ export async function POST(request: Request) {
     // Parallel writes: variants go up to 6 today.
     let assetId: string | undefined;
     try {
-      await Promise.all([writeMediaFile(fullKey, photo.full.buffer), ...variantKeys.map(variant => writeMediaFile(variant.key, variant.buffer))]);
+      const writes = await Promise.allSettled([writeMediaFile(fullKey, photo.full.buffer), ...variantKeys.map(variant => writeMediaFile(variant.key, variant.buffer))]);
+      const failed = writes.find(result => result.status === "rejected");
+      if (failed?.status === "rejected") throw failed.reason;
       const [asset] = await getDb()
         .insert(mediaAssets)
         .values({
@@ -77,7 +79,7 @@ export async function POST(request: Request) {
       );
     } catch (error) {
       // Roll back files AND the media row so we don't leave orphans
-      // pointing at deleted keys. Variants are fire-and-forget — the
+      // pointing at deleted keys. All writes have settled before cleanup; the
       // disk path may be on a separate volume that survives the rollback.
       await Promise.all([
         removeMediaFile(fullKey).catch(() => undefined),

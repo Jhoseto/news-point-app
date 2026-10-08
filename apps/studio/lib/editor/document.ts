@@ -12,6 +12,9 @@ const presentation = (block: Block) => ` data-indent="${"indent" in block ? bloc
 /** Media and archive blocks carry their complete original attributes through parsing. */
 export function bodyToEditorHtml(body: ArticleBody): string {
   const render = (block: Block): string => {
+    const html = block.type === "list" ? block.items.join(" ") : "html" in block ? block.html ?? "" : "";
+    // Protect markup that the editing schema cannot represent. Preserve its original block.
+    if (block.type !== "legacy_html" && (/<\/?(?:sub|sup|mark|small|table|thead|tbody|tfoot|tr|th|td|caption|pre|hr|h[234])\b/i.test(html) || (block.type === "paragraph" && /<\/?(?:p|ul|ol|li|blockquote)\b/i.test(html)) || /<a\b[^>]*\b(?:title|target)=/i.test(html))) return `<div data-np-legacy="${data(block)}"></div>`;
     switch (block.type) {
       case "paragraph": return `<p${presentation(block)}>${block.html}</p>`;
       case "heading": return `<h${block.level}${presentation(block)}>${block.html ?? escapeHtml(block.text)}</h${block.level}>`;
@@ -46,6 +49,7 @@ export function inlineHtml(node: EditorDocumentNode): string {
 const inline = (node: EditorDocumentNode) => (node.content ?? []).map(inlineHtml).join("");
 const plain = (node: EditorDocumentNode): string => node.text ?? (node.type === "hardBreak" ? " " : (node.content ?? []).map(plain).join(""));
 function textAttributes(node: EditorDocumentNode) {
+  if (["blockquote", "bulletList", "orderedList"].includes(node.type)) { let first = node.content?.[0]; if (first?.type === "listItem") first = first.content?.[0]; node = { ...node, attrs: { ...first?.attrs, ...Object.fromEntries(Object.entries(node.attrs ?? {}).filter(([, value]) => value !== null && value !== 0)) } }; }
   return { ...(node.attrs?.textAlign && node.attrs.textAlign !== "left" ? { textAlign: node.attrs.textAlign } : {}), ...(Number(node.attrs?.indent) > 0 ? { indent: node.attrs?.indent } : {}) };
 }
 

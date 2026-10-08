@@ -2,6 +2,12 @@
   "name": "@newspoint/web",
   "private": true,
   "type": "module",
+  "browserslist": [
+    "chrome >= 111",
+    "firefox >= 111",
+    "safari >= 16.4",
+    "ios >= 16.4"
+  ],
   "scripts": {
     "dev": "node scripts/sync-cesium-assets.mjs && next dev --port 3000",
     "build": "node scripts/sync-cesium-assets.mjs && next build",

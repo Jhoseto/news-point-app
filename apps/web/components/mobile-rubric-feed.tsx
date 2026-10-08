@@ -1,17 +1,33 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { Fragment } from "react";
+import { preload } from "react-dom";
 import { MobileFeedBoundary } from "./mobile-feed-boundary";
 import type { MobileRubricFeed as Feed, MobileFeedContent } from "@/lib/mobile-rubric-feed";
 import { reviveFeedArticle } from "@/lib/mobile-rubric-feed";
+import { articleImageAttrs } from "@/lib/article-image";
 import { MobileCompactRow, MobileHorizonCard, MobileLeadCard, MobileSmallPair, MobileSupportingCard } from "./mobile-home-cards";
-import { LeadingCarousel } from "./leading-carousel";
-import { HomePoll } from "./home-poll";
 import { CompactList } from "./lists";
 import { HomeCategorySection } from "./home-category-section";
 import { SectionTitle } from "./ui";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Logo } from "./logo";
 import { ArrowRightIcon } from "./icons";
+
+const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
+const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
+
+/** Start the mobile LCP image fetch in parallel with HTML/CSS (same attrs as ArticleImage). */
+function preloadLeadHero(hero: ReturnType<typeof reviveFeedArticle>["hero"], enabled: boolean) {
+  if (!enabled || !hero) return;
+  const attrs = articleImageAttrs(hero, { priority: true, sizes: "100vw" });
+  preload(attrs.src, {
+    as: "image",
+    fetchPriority: "high",
+    ...(attrs.srcSet ? { imageSrcSet: attrs.srcSet } : {}),
+    imageSizes: "100vw",
+  });
+}
 
 export type PreviewWindow = Record<string, { top: number; left: number; width: number; carousel?: { index: number; offset: number } }>;
 function Block({ id, window, children }: { id: string; window?: PreviewWindow; children: React.ReactNode }) {
@@ -22,6 +38,7 @@ function Block({ id, window, children }: { id: string; window?: PreviewWindow; c
 const anchor = (id: string, child: React.ReactNode, window?: PreviewWindow) => <Block key={id} id={id} {...(window ? { window } : {})}><div className="contents" data-mobile-feed-anchor={id}>{child}</div></Block>;
 export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home", window, now = new Date() }: { feed: Extract<MobileFeedContent, { kind: "home" }>; preview?: boolean; namespace?: string; window?: PreviewWindow; now?: Date }) {
   const hero = feed.hero ? reviveFeedArticle(feed.hero) : null;
+  preloadLeadHero(hero?.hero ?? null, !preview && !window);
   const support = feed.support.map(reviveFeedArticle);
   const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-right" }, id: string) => {
     const position = window?.[id]?.carousel;
@@ -56,6 +73,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
 }
 export function MobileCategoryFeed({ feed, preview = false, window, now = new Date() }: { feed: Extract<MobileFeedContent, { kind: "category" }>; preview?: boolean; window?: PreviewWindow; now?: Date }) {
   const articles = feed.articles.map(reviveFeedArticle);
+  preloadLeadHero(articles[0]?.hero ?? null, !preview && !window);
   return <div data-np-category-archive className={`np-container flex flex-col gap-4 pt-3 pb-10${window ? " relative" : ""}`}>
     <Block id="category-heading" {...(window ? { window } : {})}><div className="flex flex-col gap-1.5">
       <Breadcrumbs items={[]} dense />

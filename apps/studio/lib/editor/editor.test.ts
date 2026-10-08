@@ -8,6 +8,16 @@ import { bodyGroups, composition, embedFrameUrl } from "@newspoint/content";
 import { bodyToEditorHtml, documentToBody } from "./document";
 
 describe("structured visual document", () => {
+  it("protects archive tables and typography inside otherwise editable blocks", () => {
+    const body = articleBody.parse([{ type: "paragraph", html: "Формула: H<sub>2</sub>O" }, { type: "list", ordered: false, items: ["<table><tbody><tr><td>Архив</td></tr></tbody></table>"] }]);
+    expect(bodyToEditorHtml(body).match(/data-np-legacy=/g)).toHaveLength(2);
+    expect(documentToBody({ type: "doc", content: body.map(block => ({ type: "npLegacy", attrs: { block } })) })).toEqual(body);
+    expect(bodyToText(body)).toBeNull();
+  });
+  it("retains only the controlled color classes and strips executable attributes", () => {
+    const [block] = articleBody.parse([{ type: "paragraph", html: '<span class="np-text-blue malicious" style="color:red" onclick="alert(1)">Син</span><a href="javascript:alert(1)">линк</a><script>bad</script>' }]);
+    expect(block).toEqual({ type: "paragraph", html: '<span class="np-text-blue">Син</span><a>линк</a>' });
+  });
   it("keeps underline, strike, colors, heading marks, alignment and dividers", () => {
     const body = documentToBody({ type: "doc", content: [
       { type: "heading", attrs: { level: 4, textAlign: "center", indent: 1 }, content: [{ type: "text", text: "Заглавие", marks: [{ type: "underline" }] }] },

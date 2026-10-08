@@ -21,7 +21,6 @@ import {
   FlagIcon,
   GlobeIcon,
   GridIcon,
-  MenuIcon,
   HeartIcon,
   HomeIcon,
   MapIcon,
@@ -31,6 +30,7 @@ import {
   SearchIcon,
   TrophyIcon,
 } from "./icons";
+import { openRubrics, RUBRICS_EVENT } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
 
 type NavItem = Pick<CategoryRef, "slug" | "name" | "path">;
@@ -180,14 +180,10 @@ function HomeRubricBar({
   );
 }
 
-const RUBRICS_EVENT = "np:rubrics";
 const SEARCH_EVENT = "np:search";
 const DESKTOP = "(min-width: 64rem)";
 
-export function openRubrics() {
-  if (!requestMobileOverlay("rubrics")) return;
-  window.dispatchEvent(new CustomEvent(RUBRICS_EVENT));
-}
+export { openRubrics } from "./rubrics-trigger";
 
 export function openSearch() {
   if (!requestMobileOverlay("search")) return;
@@ -544,21 +540,6 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
         </nav>
       </Sheet>
     </>
-  );
-}
-
-/** Phone and tablet header button; desktop uses the rail. */
-export function RubricsButton() {
-  return (
-    <button
-      type="button"
-      onClick={openRubrics}
-      data-rubrics-trigger
-      aria-label="Рубрики"
-      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2 lg:hidden"
-    >
-      <MenuIcon width={24} height={24} strokeWidth={2.1} />
-    </button>
   );
 }
 

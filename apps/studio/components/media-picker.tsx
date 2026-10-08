@@ -39,6 +39,7 @@ export function MediaPicker({
   const [openYear, setOpenYear] = useState("");
   const [folder, setFolder] = useState("");
   const [library, setLibrary] = useState<LibraryImage[]>([]);
+  const [page, setPage] = useState(0);
   const [libraryTotal, setLibraryTotal] = useState(0);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -58,12 +59,10 @@ export function MediaPicker({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: item.id }),
       });
-      if (!response.ok) return item;
+      if (!response.ok) { const failure = await response.json().catch(() => null); throw new Error(failure?.error?.message ?? "Оптимизацията не успя. Повторете избора."); }
       const result = (await response.json()) as MediaOption & { variants?: unknown };
       return { ...item, ...result, id: result.id || item.id, url: result.url || item.url, alt: result.alt ?? item.alt };
-    } catch {
-      return item;
-    }
+    } catch (problem) { throw problem instanceof Error ? problem : new Error("Оптимизацията не успя. Повторете избора."); }
   };
 
   const upload = async () => {
@@ -97,7 +96,7 @@ export function MediaPicker({
   }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    const timer = window.setTimeout(() => (setPage(0), setDebouncedQuery(query.trim())), 250);
     return () => window.clearTimeout(timer);
   }, [query]);
 
@@ -133,18 +132,19 @@ export function MediaPicker({
     setLibraryLoading(true);
     const params = new URLSearchParams();
     if (folder) params.set("folder", folder);
+    params.set("offset", String(page * 80));
     if (searching) params.set("q", debouncedQuery);
     void fetch(withBase(`/api/editor/media/?${params}`), { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<{ items: LibraryImage[]; total: number }> : { items: [], total: 0 })
       .then((result) => {
         if (cancelled) return;
-        setLibrary(result.items ?? []);
+        setLibrary(current => page ? [...current, ...(result.items ?? [])] : result.items ?? []);
         setLibraryTotal(result.total ?? 0);
       })
       .catch(() => { if (!cancelled) { setLibrary([]); setLibraryTotal(0); } })
       .finally(() => { if (!cancelled) setLibraryLoading(false); });
     return () => { cancelled = true; };
-  }, [folder, debouncedQuery]);
+  }, [folder, debouncedQuery, page]);
 
   const searchingAll = !folder && debouncedQuery.length >= 2;
   const searchHint = folder ? "Търсене в папката" : "Търсене в целия архив";
@@ -156,9 +156,10 @@ export function MediaPicker({
       return;
     }
     if (optimizing) return;
-    setOptimizing(true);
+    setError(""); setOptimizing(true);
     void optimizeArchiveItem(item)
       .then((optimized) => onSelect(optimized))
+      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
       .finally(() => setOptimizing(false));
   };
 
@@ -168,6 +169,7 @@ export function MediaPicker({
     setOptimizing(true);
     void Promise.all(chosen.map((item) => optimizeArchiveItem(item)))
       .then((items) => onSelectMany(items))
+      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
       .finally(() => setOptimizing(false));
   };
 
@@ -206,8 +208,9 @@ export function MediaPicker({
         <div className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
           <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFiles(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
           {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла</p> : <p className="mt-3 text-xs text-muted">Изберете една или повече снимки. Качването ще премине през оптимизация и проверка.</p>}
-          {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
+          {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" disabled={uploading} onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
           <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека.</p>
+          {uploadedItems.current.length && !uploading ? <button type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
           <button type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
         </div>
       ) : null}
@@ -217,7 +220,7 @@ export function MediaPicker({
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
             <button
               type="button"
-              onClick={() => setFolder("")}
+              onClick={() => { setPage(0); setFolder(""); }}
               aria-current={!folder ? "true" : undefined}
               className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left font-semibold ${!folder ? "bg-accent/10 text-accent" : "text-ink hover:bg-surface"}`}
             >
@@ -236,7 +239,7 @@ export function MediaPicker({
                       const active = folder === path;
                       return (
                         <li key={path}>
-                          <button type="button" onClick={() => setFolder(path)} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
+                          <button type="button" onClick={() => { setPage(0); setFolder(path); }} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
                             {month}
                           </button>
                         </li>
@@ -267,6 +270,7 @@ export function MediaPicker({
                       setOptimizing(true);
                       void optimizeArchiveItem(item)
                         .then((optimized) => onSelect(optimized))
+      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
                         .finally(() => setOptimizing(false));
                     }}
                     title="Двоен клик добавя снимката (с оптимизация)"
@@ -280,6 +284,7 @@ export function MediaPicker({
                 </li>
               ))}
             </ul>
+            {!libraryLoading && library.length < libraryTotal ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setPage(current => current + 1)}>Покажи още снимки</button> : null}
             {optimizing ? <p className="py-4 text-center text-sm font-semibold text-accent">Оптимизация на снимката за сайта…</p> : null}
             {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searchingAll ? "Търсене в архива…" : "Зареждане на папката…"}</p> : null}
             {!libraryLoading && !folder && debouncedQuery.length < 2 ? (
@@ -296,7 +301,7 @@ export function MediaPicker({
           <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
           <button
             type="button"
-            disabled={!selectedMany.length || optimizing}
+            disabled={!selectedMany.length || optimizing || uploading || mode !== "library"}
             onClick={() => insertMany()}
             className="np-btn np-btn-primary px-3 py-1.5 text-xs"
           >

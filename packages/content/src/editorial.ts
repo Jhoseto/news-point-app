@@ -92,9 +92,13 @@ export function bodyGroups(blocks: ArticleBody): { index: number; blocks: Block[
   return groups;
 }
 
+export function mediaWidth(block: Extract<Block, { type: "image" | "embed" }>): number {
+  return block.widthPercent ?? (block.type === "image" ? { small: 35, medium: 60, large: 82, full: 100 }[block.size ?? "large"] : 100);
+}
+
 export function composition(block: Block): { className: string; style: Record<string, string | number> } {
   const media = block.type === "image" || block.type === "embed";
-  const width = media ? block.widthPercent ?? (block.type === "image" ? { small: 35, medium: 60, large: 82, full: 100 }[block.size ?? "large"] : 100) : undefined;
+  const width = media ? mediaWidth(block) : undefined;
   const wrap = media && block.wrap && block.wrap !== "none" && (width ?? 50) <= 50 ? block.wrap : "none";
   return {
     className: `np-composition${media ? " np-composition-media" : ""}${wrap !== "none" ? ` np-wrap-${wrap}` : ""}`,
