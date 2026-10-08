@@ -12,6 +12,7 @@ import { browserMediaSrc } from "@/lib/media-src";
 import { bodyToEditorHtml, documentToBody, escapeHtml } from "@/lib/editor/document";
 import { mediaInsertionPosition } from "@/lib/editor/selection";
 import { EditorDialog } from "./editor-dialog";
+import { EditorToolIcon } from "./editor-toolbar-icons";
 import "./visual-article-editor.css";
 
 export interface VisualEditorHandle { insertImages: (items: MediaOption[], gallery?: boolean) => void; }
@@ -175,7 +176,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     if (next.wrap && next.wrap !== "none") next.widthPercent = Math.min(50, next.widthPercent ?? 50);
     editor.commands.command(({ tr }) => { tr.setNodeMarkup(selected.pos, undefined, { block: next }); tr.setSelection(NodeSelection.create(tr.doc, selected.pos)); return true; });
   };
-  const button = (label: string, action: () => void, active = false) => <button type="button" disabled={readOnly} title={label} aria-label={label} aria-pressed={active} onMouseDown={event => event.preventDefault()} onClick={action}>{label}</button>;
+  const button = (label: string, action: () => void, active?: boolean, icon = label) => <button type="button" className="studio-editor-classic-tool np-editor-tool" disabled={readOnly && label !== "Помощ"} title={label} aria-label={label} aria-pressed={active} onMouseDown={event => event.preventDefault()} onClick={action}><EditorToolIcon label={icon} /></button>;
   const dialogOpen = (kind: typeof dialog) => { setUrl(kind === "link" ? editor.getAttributes("link").href ?? "" : ""); setError(""); setDialog(kind); };
   const submitUrl = () => {
     if (dialog === "embed") {
@@ -191,25 +192,46 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const indent = (direction: -1 | 1) => { if (editor.isActive("listItem")) { direction > 0 ? editor.chain().focus().sinkListItem("listItem").run() : editor.chain().focus().liftListItem("listItem").run(); return; } if (textType && ["paragraph", "heading", "blockquote"].includes(textType)) editor.chain().focus().updateAttributes(textType, { indent: Math.max(0, Math.min(3, (selected?.node.attrs.indent ?? 0) + direction)) }).run(); };
   return <div className="np-visual-editor">
     <div className="np-visual-toolbar" role="toolbar" aria-label="Форматиране на материала">
-      {button("Добави медия", onOpenMedia)} {button("Embed", () => dialogOpen("embed"))}
-      <select aria-label="Стил на блока" disabled={readOnly} value={editor.isActive("heading") ? `h${editor.getAttributes("heading").level}` : "p"} onChange={event => event.target.value === "p" ? editor.chain().focus().setParagraph().run() : editor.chain().focus().setHeading({ level: Number(event.target.value.slice(1)) as 2 | 3 | 4 }).run()}><option value="p">Абзац</option><option value="h2">Заглавие 2</option><option value="h3">Заглавие 3</option><option value="h4">Заглавие 4</option></select>
-      {button("Удебелен", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
-      {button("Курсив", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
-      {button("Подчертан", () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"))}
-      {button("Зачеркнат", () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
-      {button("Списък", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
-      {button("Номериран списък", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
-      {button("Цитат", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
-      {button("Разделител", () => editor.chain().focus().insertContentAt(insertionPosition(editor), { type: "horizontalRule" }).run())}
-      {button("Връзка", () => dialogOpen("link"), editor.isActive("link"))}
-      <select aria-label="Подравняване на текста" disabled={readOnly} value={editor.getAttributes("paragraph").textAlign ?? editor.getAttributes("heading").textAlign ?? "left"} onChange={event => editor.chain().focus().setTextAlign(event.target.value).run()}><option value="left">Вляво</option><option value="center">Център</option><option value="right">Вдясно</option><option value="justify">Двустранно</option></select>
-      <select aria-label="Цвят на текста" disabled={readOnly} value={editor.getAttributes("npColor").color ?? ""} onChange={event => event.target.value ? editor.chain().focus().setMark("npColor", { color: event.target.value }).run() : editor.chain().focus().unsetMark("npColor").run()}><option value="">Основен цвят</option>{COLORS.map((color, index) => <option key={color} value={color}>{["Червен", "Оранжев", "Зелен", "Син", "Лилав", "Приглушен", "Акцент"][index]}</option>)}</select>
-      {button("Отстъп навътре", () => indent(1))} {button("Отстъп навън", () => indent(-1))}
-      {button("Изчисти форматирането", () => editor.chain().focus().unsetAllMarks().clearNodes().run())}
-      {button("Поставяне като чист текст", () => { pastePlain.current = !pastePlain.current; setPlainPaste(pastePlain.current); }, plainPaste)}
-      {button("Специални символи", () => dialogOpen("symbol"))}
-      {button("Отмени", () => editor.chain().focus().undo().run())} {button("Повтори", () => editor.chain().focus().redo().run())}
-      <button type="button" onClick={() => dialogOpen("help")}>Помощ</button>
+      <div className="np-editor-media-row">
+        <button type="button" className="studio-editor-media np-editor-media-button" disabled={readOnly} onMouseDown={event => event.preventDefault()} onClick={onOpenMedia}><EditorToolIcon label="Добави медия" />Добави медия</button>
+        <button type="button" className="studio-editor-media np-editor-media-button" disabled={readOnly} title="Вгради външна публикация" onMouseDown={event => event.preventDefault()} onClick={() => dialogOpen("embed")}><EditorToolIcon label="Embed" />Embed</button>
+      </div>
+      <div className="np-editor-format-row">
+        <div className="np-editor-tool-group" role="group" aria-label="Стил и начертание">
+          <select className="studio-editor-classic-select np-editor-style-select" title="Стил на блока" aria-label="Стил на блока" disabled={readOnly} value={editor.isActive("heading") ? `h${editor.getAttributes("heading").level}` : "p"} onChange={event => event.target.value === "p" ? editor.chain().focus().setParagraph().run() : editor.chain().focus().setHeading({ level: Number(event.target.value.slice(1)) as 2 | 3 | 4 }).run()}><option value="p">Абзац</option><option value="h2">Заглавие 2</option><option value="h3">Заглавие 3</option><option value="h4">Заглавие 4</option></select>
+          {button("Удебелен", () => editor.chain().focus().toggleBold().run(), editor.isActive("bold"))}
+          {button("Курсив", () => editor.chain().focus().toggleItalic().run(), editor.isActive("italic"))}
+          {button("Подчертан", () => editor.chain().focus().toggleUnderline().run(), editor.isActive("underline"))}
+          {button("Зачеркнат", () => editor.chain().focus().toggleStrike().run(), editor.isActive("strike"))}
+        </div>
+        <div className="np-editor-tool-group" role="group" aria-label="Списъци и цитат">
+          {button("Списък", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
+          {button("Номериран списък", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
+          {button("Цитат", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
+        </div>
+        <div className="np-editor-tool-group" role="group" aria-label="Подравняване на текста">
+          {([ ["left", "вляво", "Вляво"], ["center", "в центъра", "Център"], ["right", "вдясно", "Вдясно"], ["justify", "двустранно", "Двустранно"] ] as const).map(([align, label, icon]) => <span key={align}>{button(`Подравняване ${label}`, () => editor.chain().focus().setTextAlign(align).run(), editor.isActive({ textAlign: align }), icon)}</span>)}
+        </div>
+        <div className="np-editor-tool-group" role="group" aria-label="Връзка и разделител">
+          {button("Връзка", () => dialogOpen("link"), editor.isActive("link"))}
+          {button("Разделител", () => editor.chain().focus().insertContentAt(insertionPosition(editor), { type: "horizontalRule" }).run())}
+        </div>
+      </div>
+      <div className="np-editor-format-row np-editor-format-row-secondary">
+        <div className="np-editor-tool-group" role="group" aria-label="Цвят и форматиране">
+          <label className="np-editor-color-control" title="Цвят на текста"><span className="np-editor-color-icon" aria-hidden="true">A</span><select className="studio-editor-classic-select np-editor-color-select" aria-label="Цвят на текста" disabled={readOnly} value={editor.getAttributes("npColor").color ?? ""} onChange={event => event.target.value ? editor.chain().focus().setMark("npColor", { color: event.target.value }).run() : editor.chain().focus().unsetMark("npColor").run()}><option value="">Основен цвят</option>{COLORS.map((color, index) => <option key={color} value={color}>{["Червен", "Оранжев", "Зелен", "Син", "Лилав", "Приглушен", "Акцент"][index]}</option>)}</select></label>
+          {button("Поставяне като чист текст", () => { pastePlain.current = !pastePlain.current; setPlainPaste(pastePlain.current); }, plainPaste)}
+          {button("Изчисти форматирането", () => editor.chain().focus().unsetAllMarks().clearNodes().run())}
+          {button("Специални символи", () => dialogOpen("symbol"))}
+        </div>
+        <div className="np-editor-tool-group" role="group" aria-label="Отстъп">
+          {button("Отстъп навън", () => indent(-1))} {button("Отстъп навътре", () => indent(1))}
+        </div>
+        <div className="np-editor-tool-group" role="group" aria-label="История и помощ">
+          {button("Отмени", () => editor.chain().focus().undo().run())} {button("Повтори", () => editor.chain().focus().redo().run())}
+          {button("Помощ", () => dialogOpen("help"))}
+        </div>
+      </div>
     </div>
     <div className="np-selection-tools">
     {block ? <fieldset className="np-media-inspector" disabled={readOnly}><legend>{block.type === "image" ? "Избрана снимка" : "Избран embed"}</legend>
