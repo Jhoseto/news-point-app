@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { libraryImageUrl, mediaFolder } from "./media-library";
+import { libraryImageUrl, mediaFolder, searchMediaLibrary } from "./media-library";
 
 it("allows only news year and month folders", () => {
   expect(mediaFolder("news/2026")).toBe("news/2026");
@@ -15,4 +15,11 @@ it("allows only news year and month folders", () => {
 
 it("points library photos at the public site, not at Studio", () => {
   expect(libraryImageUrl("news/2026/09/zholej.webp", null)).toBe("/media/news/2026/09/zholej.webp");
+});
+
+it("searchMediaLibrary rejects short queries and invalid folders without hitting the DB", async () => {
+  expect(await searchMediaLibrary("")).toEqual({ items: [], total: 0 });
+  expect(await searchMediaLibrary("a")).toEqual({ items: [], total: 0 });
+  expect(await searchMediaLibrary("ab", { folder: "users/profiles" })).toEqual({ items: [], total: 0 });
+  expect(await searchMediaLibrary("ab", { folder: "news/2026" })).toEqual({ items: [], total: 0 });
 });

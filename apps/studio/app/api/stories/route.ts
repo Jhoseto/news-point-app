@@ -2,6 +2,7 @@ import { z } from "zod";
 import { editorMutation } from "@/lib/api";
 import {
   addArticleToTheme,
+  assignArticleStoryTheme,
   createStoryTheme,
   deleteStoryTheme,
   publishStoryTheme,
@@ -41,6 +42,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("delete"), id: z.uuid() }).strict(),
   z.object({ action: z.literal("addArticle"), themeId: z.uuid(), articleId: z.uuid(), position: z.number().int().min(1) }).strict(),
   z.object({ action: z.literal("removeArticle"), themeId: z.uuid(), articleId: z.uuid() }).strict(),
+  z.object({ action: z.literal("assignArticle"), articleId: z.uuid(), themeId: z.uuid().nullable() }).strict(),
   z.object({ action: z.literal("reorder"), themeId: z.uuid(), articleIds: z.array(z.uuid()).min(1).max(200) }).strict(),
   z.object({ action: z.literal("replaceArticles"), themeId: z.uuid(), articleIds: z.array(z.uuid()).max(200) }).strict(),
 ]);
@@ -94,6 +96,9 @@ export async function POST(request: Request) {
       case "removeArticle":
         await removeArticleFromTheme(resolvedStaff, input.themeId, input.articleId);
         return { action: input.action, themeId: input.themeId, articleId: input.articleId };
+      case "assignArticle":
+        await assignArticleStoryTheme(resolvedStaff, input.articleId, input.themeId);
+        return { action: input.action, articleId: input.articleId, themeId: input.themeId };
       case "reorder":
         await reorderThemeArticles(resolvedStaff, input.themeId, input.articleIds);
         return { action: input.action, themeId: input.themeId };

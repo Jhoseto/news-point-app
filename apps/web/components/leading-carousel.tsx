@@ -12,6 +12,8 @@ import { useReducedMotion } from "./reader-preferences";
 
 const SPEED_PX_PER_SECOND = 18;
 const DRAG_THRESHOLD = 5;
+/** Quiet window after the last scroll/touch before autoplay may write scrollLeft again. */
+const AUTOPLAY_RESUME_MS = 900;
 
 export function LeadingCarousel({
   articles,
@@ -46,6 +48,7 @@ export function LeadingCarousel({
   const paused = useRef(false);
   const touchResumeTimer = useRef<number | null>(null);
   const touchPausedUntil = useRef(0);
+  const programmaticScroll = useRef(false);
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
   const suppressClick = useRef(false);
   const reduceMotion = useReducedMotion();
@@ -54,14 +57,14 @@ export function LeadingCarousel({
     if (element && preview) element.scrollLeft = previewOffset;
   }, [preview, previewOffset]);
 
-  const pauseAfterTouch = useCallback(() => {
+  const pauseAutoplay = useCallback((holdMs = AUTOPLAY_RESUME_MS) => {
     paused.current = true;
-    touchPausedUntil.current = performance.now() + 2200;
+    touchPausedUntil.current = performance.now() + holdMs;
     if (touchResumeTimer.current !== null) window.clearTimeout(touchResumeTimer.current);
     touchResumeTimer.current = window.setTimeout(() => {
       paused.current = false;
       touchResumeTimer.current = null;
-    }, 2200);
+    }, holdMs);
   }, []);
 
   useEffect(() => () => {
@@ -77,6 +80,22 @@ export function LeadingCarousel({
     let frame = 0;
     let previous = performance.now();
     let position = element.scrollLeft;
+    // iOS keeps emitting scroll events during momentum long after touchend. A fixed
+    // post-touch timer alone resumes autoplay while WebKit is still scrolling, and
+    // writing scrollLeft every frame fights that inertia (Android finishes sooner).
+    const onUserScroll = () => {
+      if (!isMobile || programmaticScroll.current) return;
+      pauseAutoplay();
+      position = element.scrollLeft;
+    };
+    const onScrollEnd = () => {
+      if (!isMobile || programmaticScroll.current) return;
+      pauseAutoplay(AUTOPLAY_RESUME_MS);
+      position = element.scrollLeft;
+    };
+    element.addEventListener("scroll", onUserScroll, { passive: true });
+    element.addEventListener("scrollend", onScrollEnd);
+
     const tick = (now: number) => {
       if (document.documentElement.hasAttribute("data-mobile-pager-visual")) {
         previous = now; frame = requestAnimationFrame(tick); return;
@@ -94,7 +113,12 @@ export function LeadingCarousel({
           position += step;
           if (position >= width) position -= width;
         }
+        programmaticScroll.current = true;
         element.scrollLeft = position;
+        // Clear on the next frame so sync/async scroll listeners from this write are ignored.
+        requestAnimationFrame(() => {
+          programmaticScroll.current = false;
+        });
       } else {
         // Keep the animation cursor in sync with touch, trackpad and arrow controls.
         position = element.scrollLeft;
@@ -103,8 +127,12 @@ export function LeadingCarousel({
       frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [articles.length, motion, reduceMotion, preview, mobileOnly]);
+    return () => {
+      cancelAnimationFrame(frame);
+      element.removeEventListener("scroll", onUserScroll);
+      element.removeEventListener("scrollend", onScrollEnd);
+    };
+  }, [articles.length, motion, reduceMotion, preview, mobileOnly, pauseAutoplay]);
 
   const move = useCallback((direction: -1 | 1) => {
     const element = viewport.current;
@@ -178,7 +206,7 @@ export function LeadingCarousel({
         onDragStart={(event) => event.preventDefault()}
         onPointerDown={(event) => {
           if (event.pointerType === "touch") {
-            pauseAfterTouch();
+            pauseAutoplay();
             return;
           }
           if (event.pointerType !== "mouse" || event.button !== 0) return;
@@ -207,7 +235,7 @@ export function LeadingCarousel({
         }}
         onPointerUp={(event) => {
           if (event.pointerType === "touch") {
-            pauseAfterTouch();
+            pauseAutoplay();
             return;
           }
           const element = viewport.current;
@@ -217,7 +245,7 @@ export function LeadingCarousel({
           if (element?.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
         }}
         onPointerCancel={(event) => {
-          if (event.pointerType === "touch") pauseAfterTouch();
+          if (event.pointerType === "touch") pauseAutoplay();
           drag.current.active = false;
           suppressClick.current = false;
         }}

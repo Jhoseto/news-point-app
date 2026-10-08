@@ -457,6 +457,74 @@ export async function deleteStoryTheme(staff: Staff, id: string): Promise<void> 
   await revalidateThemePaths(theme.slug);
 }
 
+/** Compact options for the article editor theme picker. */
+export async function listStoryThemeOptions(): Promise<{ id: string; title: string; isPublished: boolean }[]> {
+  const rows = await getDb()
+    .select({ id: storyThemes.id, title: storyThemes.title, isPublished: storyThemes.isPublished })
+    .from(storyThemes)
+    .orderBy(desc(storyThemes.updatedAt));
+  return rows;
+}
+
+/** Theme membership for an article (article editor treats membership as one theme). */
+export async function getArticleStoryThemeId(articleId: string): Promise<string | null> {
+  const [row] = await getDb()
+    .select({ themeId: storyThemeArticles.themeId })
+    .from(storyThemeArticles)
+    .where(eq(storyThemeArticles.articleId, articleId))
+    .orderBy(desc(storyThemeArticles.addedAt))
+    .limit(1);
+  return row?.themeId ?? null;
+}
+
+/**
+ * From the article editor: put the article in exactly one theme (or none).
+ * Drafts are allowed; the public roadmap only shows published members.
+ */
+export async function assignArticleStoryTheme(
+  staff: Staff,
+  articleId: string,
+  themeId: string | null,
+): Promise<void> {
+  const db = getDb();
+  const [article] = await db.select({ id: articles.id }).from(articles).where(eq(articles.id, articleId)).limit(1);
+  if (!article) throw new EditorError(404, "article_not_found", "Статията не съществува.");
+
+  const current = await db
+    .select({ themeId: storyThemeArticles.themeId })
+    .from(storyThemeArticles)
+    .where(eq(storyThemeArticles.articleId, articleId));
+  const currentIds = current.map((row) => row.themeId);
+
+  if (!themeId) {
+    if (!currentIds.length) return;
+    for (const id of currentIds) await removeArticleFromTheme(staff, id, articleId);
+    return;
+  }
+
+  const [theme] = await db.select().from(storyThemes).where(eq(storyThemes.id, themeId)).limit(1);
+  if (!theme) throw new EditorError(404, "not_found", "Темата не съществува.");
+
+  for (const id of currentIds) {
+    if (id !== themeId) await removeArticleFromTheme(staff, id, articleId);
+  }
+
+  if (currentIds.includes(themeId)) return;
+
+  const [max] = await db
+    .select({ value: sql<number>`coalesce(max(${storyThemeArticles.position}), 0)::int` })
+    .from(storyThemeArticles)
+    .where(eq(storyThemeArticles.themeId, themeId));
+  await db.insert(storyThemeArticles).values({
+    themeId,
+    articleId,
+    position: (max?.value ?? 0) + 1,
+    addedBy: staff.id,
+  });
+  await emitOutbox(themeId, theme.slug, "story.updated");
+  await revalidateThemePaths(theme.slug);
+}
+
 export async function addArticleToTheme(
   staff: Staff,
   themeId: string,

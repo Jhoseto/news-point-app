@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ArticleEditor } from "@/components/article-editor";
 import { getEditorArticle, listRecentMedia, listSections } from "@/lib/articles";
+import { bodyImageIds } from "@/lib/editor/body";
+import { getArticleStoryThemeId, listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Редакция" };
@@ -14,7 +16,13 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
   const staff = await requireStaff();
   const article = await getEditorArticle(id);
   if (!article) notFound();
-  const [sections, media] = await Promise.all([listSections(), listRecentMedia(48, article.draft.heroMediaId)]);
+  const includeMedia = [article.draft.heroMediaId, ...bodyImageIds(article.draft.bodyText)].filter(Boolean) as string[];
+  const [sections, media, storyThemes, storyThemeId] = await Promise.all([
+    listSections(),
+    listRecentMedia(48, includeMedia),
+    listStoryThemeOptions(),
+    getArticleStoryThemeId(id),
+  ]);
   const { draft, revisionSavedAt, publishedAt, ...rest } = article;
   return (
     <ArticleEditor
@@ -24,6 +32,8 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
       draft={draft}
       sections={sections}
       media={media}
+      storyThemes={storyThemes}
+      storyThemeId={storyThemeId}
       webUrl={process.env.WEB_URL ?? "http://localhost:3000"}
     />
   );

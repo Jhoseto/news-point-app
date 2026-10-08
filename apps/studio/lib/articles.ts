@@ -111,11 +111,13 @@ export interface MediaOption {
 }
 
 /** Only existing MediaAssets can be chosen (DEC-104); uploads come later. */
-export async function listRecentMedia(limit = 48, include: string | null = null): Promise<MediaOption[]> {
+export async function listRecentMedia(limit = 48, include: string | string[] | null = null): Promise<MediaOption[]> {
   const db = getDb();
   const rows = await db.select().from(mediaAssets).orderBy(desc(mediaAssets.createdAt)).limit(limit);
-  if (include && !rows.some((row) => row.id === include)) {
-    rows.unshift(...(await db.select().from(mediaAssets).where(eq(mediaAssets.id, include))));
+  const includeIds = [...new Set((Array.isArray(include) ? include : include ? [include] : []).filter(Boolean))];
+  for (const id of includeIds) {
+    if (rows.some((row) => row.id === id)) continue;
+    rows.unshift(...(await db.select().from(mediaAssets).where(eq(mediaAssets.id, id))));
   }
   return rows.map((row) => ({
     id: row.id,
@@ -123,6 +125,7 @@ export async function listRecentMedia(limit = 48, include: string | null = null)
     alt: row.alt,
   }));
 }
+
 
 function toDraft(row: {
   title: string;

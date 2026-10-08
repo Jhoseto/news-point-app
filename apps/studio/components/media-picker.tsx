@@ -31,6 +31,7 @@ export function MediaPicker({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedMany, setSelectedMany] = useState<string[]>(selected ? [selected] : []);
   const [mode, setMode] = useState<"library" | "upload">("library");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
@@ -43,6 +44,7 @@ export function MediaPicker({
   const [uploading, setUploading] = useState(false);
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
+
   const upload = async () => {
     if (!uploadFiles.length) return;
     setUploading(true);
@@ -52,10 +54,6 @@ export function MediaPicker({
         const response = await fetch(withBase("/api/editor/media/upload/"), { method: "POST", body: form });
         if (!response.ok) throw new Error("Качването не беше успешно.");
         const item = await response.json() as MediaOption;
-        // Pickers that own their own selection logic (article body, cover)
-        // get the upload directly via onUpload; pickers that don't (cover
-        // picker when only `onSelect` is wired) still upload the file and
-        // auto-select the last one so the click does what users expect.
         if (onUpload) onUpload(item);
         else onSelect(item);
       }
@@ -66,6 +64,11 @@ export function MediaPicker({
   useEffect(() => {
     dialog.current?.showModal();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,10 +91,19 @@ export function MediaPicker({
   }, []);
 
   useEffect(() => {
-    if (!folder) return;
+    const searching = debouncedQuery.length >= 2;
+    if (!searching && !folder) {
+      setLibrary([]);
+      setLibraryTotal(0);
+      setLibraryLoading(false);
+      return;
+    }
     let cancelled = false;
     setLibraryLoading(true);
-    void fetch(withBase(`/api/editor/media/?folder=${encodeURIComponent(folder)}`), { cache: "no-store" })
+    const params = new URLSearchParams();
+    if (folder) params.set("folder", folder);
+    if (searching) params.set("q", debouncedQuery);
+    void fetch(withBase(`/api/editor/media/?${params}`), { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<{ items: LibraryImage[]; total: number }> : { items: [], total: 0 })
       .then((result) => {
         if (cancelled) return;
@@ -101,10 +113,18 @@ export function MediaPicker({
       .catch(() => { if (!cancelled) { setLibrary([]); setLibraryTotal(0); } })
       .finally(() => { if (!cancelled) setLibraryLoading(false); });
     return () => { cancelled = true; };
-  }, [folder]);
+  }, [folder, debouncedQuery]);
 
-  const needle = query.trim().toLowerCase();
-  const shown = needle ? library.filter((item) => `${item.alt} ${item.name}`.toLowerCase().includes(needle)) : library;
+  const searchingAll = !folder && debouncedQuery.length >= 2;
+  const searchHint = folder ? "Търсене в папката" : "Търсене в целия архив";
+
+  const pick = (item: LibraryImage) => {
+    if (multiple) {
+      setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]);
+      return;
+    }
+    onSelect(item);
+  };
 
   return (
     <dialog
@@ -120,7 +140,13 @@ export function MediaPicker({
         <h2 id="media-heading" className="text-lg font-extrabold text-ink">
           Медии
         </h2>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсене в папката" aria-label="Търсене в папката" className="np-input ml-auto max-w-64 py-2" />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={folder ? "Търсене в папката (мин. 2 знака)" : "Търсене в целия архив (мин. 2 знака)"}
+          aria-label={searchHint}
+          className="np-input ml-auto max-w-72 py-2"
+        />
         <button type="button" onClick={onClose} aria-label="Затвори" className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-surface-2">
           ×
         </button>
@@ -142,6 +168,14 @@ export function MediaPicker({
         <div className="flex h-[min(62dvh,36rem)] min-h-0">
           <nav aria-label="Папки в хранилището" className="w-44 shrink-0 overflow-y-auto border-r border-line bg-surface-2/50 p-2 text-xs">
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
+            <button
+              type="button"
+              onClick={() => setFolder("")}
+              aria-current={!folder ? "true" : undefined}
+              className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left font-semibold ${!folder ? "bg-accent/10 text-accent" : "text-ink hover:bg-surface"}`}
+            >
+              Целият архив
+            </button>
             {years.map((year) => (
               <div key={year.year}>
                 <button type="button" onClick={() => setOpenYear((current) => current === year.year ? "" : year.year)} className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left font-semibold text-ink hover:bg-surface" aria-expanded={openYear === year.year}>
@@ -168,13 +202,23 @@ export function MediaPicker({
             {!years.length && !libraryLoading ? <p className="px-2 py-3 text-muted">Няма папки.</p> : null}
           </nav>
           <div className="min-w-0 flex-1 overflow-y-auto p-4">
-            <p className="mb-3 text-[11px] text-muted">{folder || "Новини"} · {libraryTotal} снимки</p>
+            <p className="mb-3 text-[11px] text-muted">
+              {folder || "Целият архив"}
+              {debouncedQuery.length >= 2 ? ` · търсене „${debouncedQuery}"` : ""}
+              {" · "}
+              {libraryTotal} снимки
+            </p>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {shown.map((item) => (
+              {library.map((item) => (
                 <li key={item.id}>
                   <button
                     type="button"
-                    onClick={() => multiple ? setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]) : onSelect(item)}
+                    onClick={() => pick(item)}
+                    onDoubleClick={(event) => {
+                      event.preventDefault();
+                      onSelect(item);
+                    }}
+                    title="Двоен клик добавя снимката"
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
                   >
@@ -184,12 +228,29 @@ export function MediaPicker({
                 </li>
               ))}
             </ul>
-            {libraryLoading ? <p className="py-10 text-center text-sm text-muted">Зареждане на папката…</p> : null}
-            {!libraryLoading && shown.length === 0 ? <p className="py-10 text-center text-sm text-muted">Няма снимки в тази папка.</p> : null}
+            {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searchingAll ? "Търсене в архива…" : "Зареждане на папката…"}</p> : null}
+            {!libraryLoading && !folder && debouncedQuery.length < 2 ? (
+              <p className="py-10 text-center text-sm text-muted">Изберете папка или въведете поне 2 знака за търсене в целия архив.</p>
+            ) : null}
+            {!libraryLoading && (folder || debouncedQuery.length >= 2) && library.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted">{debouncedQuery.length >= 2 ? "Няма съвпадения." : "Няма снимки в тази папка."}</p>
+            ) : null}
           </div>
         </div>
       ) : null}
-      {multiple ? <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3"><span className="mr-auto text-xs text-muted">{selectedMany.length} избрани</span><button type="button" disabled={!selectedMany.length} onClick={() => onSelectMany?.(library.filter((item) => selectedMany.includes(item.id)))} className="np-btn np-btn-primary px-3 py-1.5 text-xs">Вмъкни в статията</button></div> : null}
+      {multiple ? (
+        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+          <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
+          <button
+            type="button"
+            disabled={!selectedMany.length}
+            onClick={() => onSelectMany?.(library.filter((item) => selectedMany.includes(item.id)))}
+            className="np-btn np-btn-primary px-3 py-1.5 text-xs"
+          >
+            Вмъкни в статията
+          </button>
+        </div>
+      ) : null}
     </dialog>
   );
 }

@@ -91,6 +91,16 @@ export function wordCount(text: string): number {
   return text.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
 }
 
+/** Image asset ids referenced by editor body text (`[[image:uuid|…]]`). */
+export function bodyImageIds(bodyText: string): string[] {
+  const ids: string[] = [];
+  const pattern = /\[\[image:([0-9a-f-]{36})/gi;
+  for (const match of bodyText.matchAll(pattern)) {
+    if (match[1]) ids.push(match[1]);
+  }
+  return [...new Set(ids)];
+}
+
 export function bodyTextToHtml(text: string): string {
   return textToBody(text).map((block) => {
     if (block.type === "heading") return `<h${block.level}>${escapeHtml(block.text)}</h${block.level}>`;
@@ -105,6 +115,7 @@ export function bodyTextToHtml(text: string): string {
 function inlineFromNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? "";
   if (!(node instanceof HTMLElement)) return Array.from(node.childNodes).map(inlineFromNode).join("");
+  if (node.tagName === "BR") return "\n";
   const value = Array.from(node.childNodes).map(inlineFromNode).join("");
   if (node.tagName === "STRONG" || node.tagName === "B") return `**${value}**`;
   if (node.tagName === "EM" || node.tagName === "I") return `*${value}*`;
@@ -112,33 +123,79 @@ function inlineFromNode(node: Node): string {
   return value;
 }
 
+function serializeImageElement(item: Element): string {
+  const options = ["size", "align", "shape", "frame"].flatMap((key) => item.getAttribute(`data-${key}`) ? [`${key}=${item.getAttribute(`data-${key}`)}`] : []);
+  if (item.getAttribute("data-focal-x")) options.push(`fx=${item.getAttribute("data-focal-x")}`);
+  if (item.getAttribute("data-focal-y")) options.push(`fy=${item.getAttribute("data-focal-y")}`);
+  if (item.getAttribute("data-crop")) options.push(`crop=${item.getAttribute("data-crop")}`);
+  if (item.getAttribute("data-crop-zoom")) options.push(`zoom=${item.getAttribute("data-crop-zoom")}`);
+  const group = item.getAttribute("data-group-id");
+  if (group) options.push(`group=${group}`);
+  return `[[image:${item.getAttribute("data-media-id")}${options.length ? `|${options.join("|")}` : ""}]]`;
+}
+
+/**
+ * Contenteditable turns Enter into a new `<p>`. Blank lines separate article
+ * blocks; a single Enter is a soft line break inside one paragraph (`<br>`).
+ */
 export function htmlToBodyText(html: string): string {
   if (typeof DOMParser === "undefined") return "";
   const root = new DOMParser().parseFromString(html, "text/html").body;
   // Browsers may place the first typed character directly in contenteditable
   // before they create the first paragraph. Keep live preview responsive.
   if (!root.children.length && root.textContent?.trim()) return root.textContent.trim();
-  return Array.from(root.children).map((element) => {
+
+  const parts: string[] = [];
+  let paragraphLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (!paragraphLines.length) return;
+    parts.push(paragraphLines.join("\n"));
+    paragraphLines = [];
+  };
+
+  for (const element of Array.from(root.children)) {
     const images = Array.from(element.querySelectorAll("img[data-media-id]"));
     const iframe = element.querySelector("iframe[data-embed-provider][src]");
-    if (iframe) return `[[embed:${iframe.getAttribute("data-embed-provider")}|${iframe.getAttribute("src")}]]`;
-    const image = images[0];
-    if (image) {
-      return images.map((item) => {
-        const options = ["size", "align", "shape", "frame"].flatMap((key) => item.getAttribute(`data-${key}`) ? [`${key}=${item.getAttribute(`data-${key}`)}`] : []);
-        if (item.getAttribute("data-focal-x")) options.push(`fx=${item.getAttribute("data-focal-x")}`);
-        if (item.getAttribute("data-focal-y")) options.push(`fy=${item.getAttribute("data-focal-y")}`);
-        if (item.getAttribute("data-crop")) options.push(`crop=${item.getAttribute("data-crop")}`);
-        if (item.getAttribute("data-crop-zoom")) options.push(`zoom=${item.getAttribute("data-crop-zoom")}`);
-        const group = item.getAttribute("data-group-id");
-        if (group) options.push(`group=${group}`);
-        return `[[image:${item.getAttribute("data-media-id")}${options.length ? `|${options.join("|")}` : ""}]]`;
-      }).join("\n");
+    if (iframe) {
+      flushParagraph();
+      parts.push(`[[embed:${iframe.getAttribute("data-embed-provider")}|${iframe.getAttribute("src")}]]`);
+      continue;
     }
-    const inline = Array.from(element.childNodes).map(inlineFromNode).join("").trim();
-    if (/^H[234]$/.test(element.tagName)) return `${"#".repeat(Number(element.tagName.slice(1)))} ${inline}`;
-    if (element.tagName === "BLOCKQUOTE") return inline.split("\n").map((line) => `> ${line}`).join("\n");
-    if (element.tagName === "UL" || element.tagName === "OL") return Array.from(element.children).map((item, index) => `${element.tagName === "OL" ? `${index + 1}.` : "-"} ${Array.from(item.childNodes).map(inlineFromNode).join("").trim()}`).join("\n");
-    return inline;
-  }).filter(Boolean).join("\n\n");
+    if (images.length) {
+      flushParagraph();
+      for (const image of images) parts.push(serializeImageElement(image));
+      continue;
+    }
+
+    const inline = Array.from(element.childNodes).map(inlineFromNode).join("").replace(/\u200B/g, "").trim();
+    if (/^H[234]$/.test(element.tagName)) {
+      flushParagraph();
+      parts.push(`${"#".repeat(Number(element.tagName.slice(1)))} ${inline}`);
+      continue;
+    }
+    if (element.tagName === "BLOCKQUOTE") {
+      flushParagraph();
+      parts.push(inline.split("\n").map((line) => `> ${line}`).join("\n"));
+      continue;
+    }
+    if (element.tagName === "UL" || element.tagName === "OL") {
+      flushParagraph();
+      parts.push(
+        Array.from(element.children)
+          .map((item, index) => `${element.tagName === "OL" ? `${index + 1}.` : "-"} ${Array.from(item.childNodes).map(inlineFromNode).join("").trim()}`)
+          .join("\n"),
+      );
+      continue;
+    }
+
+    // Empty <p><br></p> from a double Enter closes the current paragraph block.
+    if (!inline) {
+      flushParagraph();
+      continue;
+    }
+    paragraphLines.push(...inline.split("\n").map((line) => line.trimEnd()).filter((line, index, all) => line.length > 0 || all.length === 1));
+  }
+  flushParagraph();
+  return parts.join("\n\n");
 }
