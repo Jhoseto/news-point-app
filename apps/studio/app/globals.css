@@ -145,6 +145,9 @@
     margin: 0;
   }
   .studio-editor-pane .studio-meta-field-span { grid-column: 1 / -1; }
+  @media (max-width: 39.999rem) {
+    .studio-editor-pane .studio-meta-fields { grid-template-columns: minmax(0, 1fr); }
+  }
   .studio-editor-pane .studio-meta-field > span {
     width: 3.4rem;
     flex: none;

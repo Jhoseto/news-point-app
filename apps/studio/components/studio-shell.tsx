@@ -1,11 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
+
+// A separate editor document lets beforeunload protect Back/Forward and tab closing.
+function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string }) {
+  return href.startsWith("/articles/") ? <a href={withBase(href)} {...props} /> : <Link href={href} {...props} />;
+}
 
 const NAV = [
   { href: "/arrange", label: "Уеб управление", icon: "M12 17v5M8 8a4 4 0 1 1 8 0c0 2-2 3-2 5H10c0-2-2-3-2-5" },
@@ -105,7 +110,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
         </button>
         <nav className={`flex-1 space-y-0.5 ${collapsed ? "p-1.5" : "p-3"}`} aria-label="Studio">
           {nav.map((item) => (
-            <Link
+            <StudioNavLink
               key={item.href}
               href={item.href}
               title={item.label}
@@ -116,7 +121,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
               {isActive(item.href) ? <span className="np-gradient-bg absolute inset-y-1.5 left-0 w-1 rounded-full" aria-hidden="true" /> : null}
               <Icon d={item.icon} />
               {collapsed ? <span className="sr-only">{item.label}</span> : item.label}
-            </Link>
+            </StudioNavLink>
           ))}
         </nav>
         <div className={`border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
@@ -180,25 +185,25 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
         <BrandLogoImg className="h-7 w-auto max-w-[6.5rem] shrink-0 object-contain" />
-        <nav className="ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
+        <nav className="relative ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
           {mobileNav.map((item) => (
-            <Link
+            <StudioNavLink
               key={item.href}
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               aria-label={item.label}
               title={item.label}
-              className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
             >
               <Icon d={item.icon} />
               <span className="sr-only sm:not-sr-only">{item.label}</span>
-            </Link>
+            </StudioNavLink>
           ))}
-          <a href={webUrl} target="_blank" rel="noreferrer" aria-label="Към сайта" title="Към сайта" className="flex size-9 items-center justify-center rounded-lg text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+          <a href={webUrl} target="_blank" rel="noreferrer" aria-label="Към сайта" title="Към сайта" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
             <Icon d={SITE_ICON} />
             <span className="sr-only sm:not-sr-only text-sm font-bold">Към сайта</span>
           </a>
-          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
             <Icon d={EXIT_ICON} />
             <span className="sr-only sm:not-sr-only">Изход</span>
           </button>

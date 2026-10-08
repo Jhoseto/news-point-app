@@ -38,8 +38,18 @@ function EpisodeCard({
       <span className="np-podcast-episode-status">{selected ? playing ? "Слушате" : loaded ? "На пауза" : "Избран" : ""}</span>
     </div>
     <div className="np-podcast-episode-actions">
-      {publicOrigin ? <PodcastShareMenu url={shareUrl} title={episode.title} summary={episode.summary} variant="card" /> : null}
       <button className="np-podcast-card-play" onClick={() => player.play(episode, episodes)} aria-label={`${playing ? "Пауза" : "Слушай"}: ${episode.title}`}><AudioIcon name={playing ? "pause" : "play"} /></button>
+      {publicOrigin ? (
+        <PodcastShareMenu
+          url={shareUrl}
+          title={episode.title}
+          summary={episode.summary}
+          coverUrl={episode.coverUrl}
+          durationLabel={clock(episode.durationSec)}
+          categoryName={episode.categoryName}
+          variant="card"
+        />
+      ) : null}
     </div>
   </li>;
 }
@@ -143,7 +153,14 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { epis
         <div className="np-podcast-feature-meta"><time dateTime={selected.publishedAt}>{published}</time><span aria-hidden="true">·</span><span>{clock(selected.durationSec)}</span></div>
         <div className="np-podcast-feature-actions">
           {publicOrigin ? (
-            <PodcastShareMenu url={shareUrl} title={selected.title} summary={selected.summary} />
+            <PodcastShareMenu
+              url={shareUrl}
+              title={selected.title}
+              summary={selected.summary}
+              coverUrl={selected.coverUrl}
+              durationLabel={clock(selected.durationSec)}
+              categoryName={selected.categoryName}
+            />
           ) : null}
         </div>
         <details className="np-podcast-feature-details" open={aboutMounted} data-expanded={aboutOpen || undefined}>

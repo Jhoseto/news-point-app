@@ -8,6 +8,10 @@ import { bodyGroups, composition, embedFrameUrl, embedAspectRatio } from "@newsp
 import { bodyToEditorHtml, documentToBody } from "./document";
 
 describe("structured visual document", () => {
+  it("preserves headings and separators inside quotes and refuses unrepresentable nested media", () => {
+    expect(documentToBody({ type: "doc", content: [{ type: "blockquote", content: [{ type: "heading", attrs: { level: 3 }, content: [{ type: "text", text: "Цитат" }] }, { type: "horizontalRule" }] }] })).toEqual([{ type: "quote", html: "<h3>Цитат</h3><hr />" }]);
+    expect(() => documentToBody({ type: "doc", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "npImage", attrs: { block: { type: "image" } } }] }] }] })).toThrow("Неподдържано вложено съдържание");
+  });
   it("protects archive tables and typography inside otherwise editable blocks", () => {
     const body = articleBody.parse([{ type: "paragraph", html: "Формула: H<sub>2</sub>O" }, { type: "list", ordered: false, items: ["<table><tbody><tr><td>Архив</td></tr></tbody></table>"] }]);
     expect(bodyToEditorHtml(body).match(/data-np-legacy=/g)).toHaveLength(2);

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ArticlePreview } from "@/components/article-preview";
 import { getPreview } from "@/lib/articles";
 import { requireStaff } from "@/lib/session";
+import { withBase } from "@/lib/paths";
 
 // DEC-108: preview lives only in Studio, behind the session, never cached.
 export const metadata: Metadata = { title: "Преглед" };
@@ -34,9 +35,9 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
               Тъмна
             </Link>
           </span>
-          <Link href={`/articles/${id}`} className="font-bold text-white/85 hover:text-white">
+          <a href={withBase(`/articles/${id}/`)} className="font-bold text-white/85 hover:text-white">
             ← Към редакцията
-          </Link>
+          </a>
         </div>
       </div>
       <ArticlePreview

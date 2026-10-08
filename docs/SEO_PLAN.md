@@ -266,5 +266,5 @@ S1 е реализирана. Тук остават външните стъпк�
 
 - `/share/podcast/[slug]/` вече генерира **отделна** 1200×630 карта (`podcastShareCard`): тъмен брандиран фон, закръглена обложка, play badge, NEWSPODCAST, заглавие, реална продължителност + рубрика, NewsPoint.bg. Липсваща обложка → брандиран fallback без измислена снимка.
 - Страницата на епизода вече сочи OG/Twitter към тази карта (`publicMetadata` + `imagePath`).
-- UI: `PodcastShareMenu` — native share, Facebook, X, WhatsApp, Viber, Telegram, LinkedIn, копиране на линка; същият контрол и върху епизодните карти в theatre карусела.
+- UI: `PodcastShareMenu` — центриран modal (`<dialog>`) с preview на епизода, иконна мрежа (Facebook / X / WhatsApp / Viber / Telegram / LinkedIn / native) и поле „Копирай линка“; touch-friendly и на mobile. Същият контрол от theatre и от картите в карусела.
 - Проверки: `lib/share-card.test.ts` (wrap + 1200×630 PNG); web typecheck EXIT=0. Без deploy.

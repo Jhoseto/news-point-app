@@ -41,10 +41,12 @@ export function inlineHtml(node: EditorDocumentNode): string {
     return value;
   }
   if (node.type === "hardBreak") return "<br>";
+  if (node.type === "horizontalRule") return "<hr>";
   const inner = (node.content ?? []).map(inlineHtml).join("");
   const tags: Record<string, string> = { paragraph: "p", bulletList: "ul", orderedList: "ol", listItem: "li", blockquote: "blockquote", codeBlock: "pre" };
-  const tag = tags[node.type];
-  return tag ? `<${tag}>${inner}</${tag}>` : inner;
+  const tag = node.type === "heading" && [2, 3, 4].includes(Number(node.attrs?.level)) ? `h${node.attrs?.level}` : tags[node.type];
+  if (!tag) throw new Error(`Неподдържано вложено съдържание: ${node.type}`);
+  return `<${tag}>${inner}</${tag}>`;
 }
 const inline = (node: EditorDocumentNode) => (node.content ?? []).map(inlineHtml).join("");
 const plain = (node: EditorDocumentNode): string => node.text ?? (node.type === "hardBreak" ? " " : (node.content ?? []).map(plain).join(""));

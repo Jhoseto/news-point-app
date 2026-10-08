@@ -139,6 +139,7 @@ export function MediaPicker({
     let cancelled = false;
     setLibraryLoading(true);
     setLibraryError("");
+    if (!page) { setLibrary([]); setLibraryTotal(0); }
     const params = new URLSearchParams();
     if (folder) params.set("folder", folder);
     params.set("offset", String(page * 80));
@@ -157,9 +158,16 @@ export function MediaPicker({
 
   const searchingAll = !folder && debouncedQuery.length >= 2;
   const searchHint = folder ? "Търсене в папката" : "Търсене в целия архив";
+  const queryPending = query.trim() !== debouncedQuery;
+  const selectFolder = (nextFolder: string) => {
+    libraryTouched.current = true;
+    if (nextFolder === folder && page === 0) return;
+    setLibrary([]); setLibraryTotal(0); setLibraryLoading(true);
+    setPage(0); setFolder(nextFolder);
+  };
 
   const pickOne = (item: LibraryImage) => {
-    if (optimizeBusy.current) return;
+    if (optimizeBusy.current || libraryLoading || queryPending) return;
     optimizeBusy.current = true;
     setError(""); setOptimizing(true);
     void optimizeArchiveItem(item)
@@ -235,7 +243,7 @@ export function MediaPicker({
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
             <button
               type="button"
-              onClick={() => { libraryTouched.current = true; setPage(0); setFolder(""); }}
+              onClick={() => selectFolder("")}
               aria-current={!folder ? "true" : undefined}
               className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left font-semibold ${!folder ? "bg-accent/10 text-accent" : "text-ink hover:bg-surface"}`}
             >
@@ -254,7 +262,7 @@ export function MediaPicker({
                       const active = folder === path;
                       return (
                         <li key={path}>
-                          <button type="button" onClick={() => { libraryTouched.current = true; setPage(0); setFolder(path); }} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
+                          <button type="button" onClick={() => selectFolder(path)} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
                             {month}
                           </button>
                         </li>
@@ -272,7 +280,7 @@ export function MediaPicker({
               {folder || "Целият архив"}
               {debouncedQuery.length >= 2 ? ` · търсене „${debouncedQuery}"` : ""}
               {" · "}
-              {libraryTotal} снимки
+              {libraryLoading && !library.length ? "Зареждане…" : `${libraryTotal} снимки`}
             </p>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {library.map((item) => (
@@ -285,7 +293,7 @@ export function MediaPicker({
                       pickOne(item);
                     }}
                     title="Двоен клик добавя снимката (с оптимизация)"
-                    disabled={optimizing}
+                    disabled={optimizing || libraryLoading || queryPending}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
                   >
@@ -313,7 +321,7 @@ export function MediaPicker({
           <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
           <button
             type="button"
-            disabled={!selectedMany.length || optimizing || uploading || mode !== "library"}
+            disabled={!selectedMany.length || optimizing || uploading || libraryLoading || queryPending || mode !== "library"}
             onClick={() => insertMany()}
             className="np-btn np-btn-primary px-3 py-1.5 text-xs"
           >

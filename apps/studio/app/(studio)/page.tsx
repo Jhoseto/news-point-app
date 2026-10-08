@@ -11,6 +11,7 @@ import { listSections, type ArticleListItem } from "@/lib/articles";
 import { menuCategories } from "@/lib/arrangements";
 import { listStaffProfiles } from "@/lib/users";
 import { formatStamp } from "@/lib/format";
+import { withBase } from "@/lib/paths";
 
 export const metadata: Metadata = { title: "Материали" };
 export const dynamic = "force-dynamic";
@@ -83,9 +84,9 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
             {number.format(desk.total)} в базата · {number.format(start)}–{number.format(end)} от {number.format(desk.shown)}
           </p>
         </div>
-        <Link href="/articles/new" className="np-btn np-btn-primary h-8 shrink-0 px-2.5 py-0 text-xs">
+        <a href={withBase("/articles/new/")} className="np-btn np-btn-primary h-8 shrink-0 px-2.5 py-0 text-xs">
           + Нов
-        </Link>
+        </a>
       </div>
 
       <ArticleFilterForm>
@@ -262,7 +263,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="np-articles-actions px-2 py-2 text-right">
                     <span className="inline-flex flex-wrap items-center justify-end gap-1">
                       <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
-                      <Link href={`/articles/${item.id}`} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</Link>
+                      <a href={withBase(`/articles/${item.id}/`)} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</a>
                     </span>
                   </td>
                 </tr>

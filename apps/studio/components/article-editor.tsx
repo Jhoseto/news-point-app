@@ -75,6 +75,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const idRef = useRef(article.id);
   const initial = { ...initialDraft, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
   const [draft, setDraft] = useState<Draft>(initial);
+  const manualAuthorName = useRef(initial.authorKind === "manual" ? initial.authorName : "");
   const [saved, setSaved] = useState<Draft>(initial);
   const [revision, setRevision] = useState(article.revision);
   const [savedAt, setSavedAt] = useState(article.revisionSavedAt);
@@ -183,10 +184,11 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   };
 
   const selectAuthor = (authorKind: Draft["authorKind"]) => {
+    if (draft.authorKind === "manual") manualAuthorName.current = draft.authorName;
     setDraft((current) => {
       if (authorKind === "staff") return { ...current, authorKind, authorUserId: staff.id, authorName: staff.name };
       if (authorKind === "newsroom") return { ...current, authorKind, authorUserId: null, authorName: "NewsPoint.bg" };
-      return { ...current, authorKind, authorUserId: null, authorName: current.authorKind === "manual" ? current.authorName : "" };
+      return { ...current, authorKind, authorUserId: null, authorName: current.authorKind === "manual" ? current.authorName : manualAuthorName.current };
     });
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);

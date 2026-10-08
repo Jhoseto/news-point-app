@@ -47,7 +47,7 @@ function MediaView({ node, selected, updateAttributes, editor, getPos }: NodeVie
   const ratio = block.type === "image" ? ({ square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"]) : embedAspectRatio(block.url);
   return <NodeViewWrapper className={`np-editor-media ${layout.className} ${selected ? "is-selected" : ""}`} style={{ ...layout.style, ...(dragWidth !== null ? { "--np-media-width": `${dragWidth}%` } : {}) }} data-node-kind={block.type}>
     <div className="np-media-heading" contentEditable={false}>
-      <button type="button" data-drag-handle aria-label="Премести медията" title="Влачете между текстовите блокове" onClick={select}>⠿</button>
+      <span role="button" tabIndex={0} data-drag-handle className="np-media-drag-handle" aria-label="Премести медията" title="Влачете между текстовите блокове" onClick={select} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } }}>⠿</span>
       <button type="button" onClick={select}>{block.type === "image" ? "Снимка · настройки" : "Embed · настройки"}</button>
     </div>
     <div className={`np-media-canvas np-editor-media-canvas ${block.type === "image" ? `shape-${block.shape ?? "rectangle"} frame-${block.frame ?? "none"}` : ""}`} style={{ aspectRatio: block.type === "embed" && !frame ? undefined : ratio }} contentEditable={false} onClick={select}>
@@ -69,11 +69,12 @@ function ArchiveView({ node }: NodeViewProps) {
   return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · запазва се без промяна</small><div dangerouslySetInnerHTML={{ __html: html }} /></NodeViewWrapper>;
 }
 function GalleryView({ selected, editor, getPos }: NodeViewProps) {
-  return <NodeViewWrapper className={`np-editor-gallery ${selected ? "is-selected" : ""}`}><button type="button" data-drag-handle contentEditable={false} className="np-gallery-heading" aria-label="Избери цялата галерия" onClick={() => { const pos = getPos(); if (typeof pos === "number") editor.commands.setNodeSelection(pos); }}>⠿ Галерия · влачете цялата група</button><NodeViewContent className="np-gallery-images" /></NodeViewWrapper>;
+  const select = () => { const pos = getPos(); if (typeof pos === "number") editor.commands.setNodeSelection(pos); };
+  return <NodeViewWrapper className={`np-editor-gallery ${selected ? "is-selected" : ""}`}><span role="button" tabIndex={0} data-drag-handle contentEditable={false} className="np-gallery-heading" aria-label="Избери цялата галерия" onClick={select} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); select(); } }}>⠿ Галерия · влачете цялата група</span><NodeViewContent className="np-gallery-images" /></NodeViewWrapper>;
 }
 function mediaNode(name: string, attribute: string) {
   return TiptapNode.create({
-    name, group: "block", atom: true, draggable: true,
+    name, group: "articleMedia", atom: true, draggable: true,
     addAttributes: () => ({ block: { default: null, parseHTML: element => decodeBlock(element, attribute) } }),
     parseHTML: () => [{ tag: `[${attribute}]` }],
     renderHTML: ({ node, HTMLAttributes }) => [name === "npImage" ? "figure" : "div", mergeAttributes(HTMLAttributes, { [attribute]: encodeBlock(node.attrs.block) })],
@@ -121,11 +122,12 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const extensions = useMemo(() => [
-    StarterKit.configure({ heading: { levels: [2, 3, 4] }, link: { openOnClick: false, defaultProtocol: "https" } }),
+    StarterKit.configure({ document: false, heading: { levels: [2, 3, 4] }, link: { openOnClick: false, defaultProtocol: "https" } }),
+    TiptapNode.create({ name: "doc", topNode: true, content: "(block | articleMedia)+" }),
     TextAlign.configure({ types: ["heading", "paragraph", "blockquote", "bulletList", "orderedList"] }), TextAttributes, ColorMark,
     mediaNode("npImage", "data-np-image").extend({ addStorage: () => ({ findMedia: (id: string) => mediaRef.current.find(item => item.id === id) }) }),
     mediaNode("npEmbed", "data-np-embed"), mediaNode("npLegacy", "data-np-legacy"),
-    TiptapNode.create({ name: "npGallery", group: "block", content: "npImage+", draggable: true, isolating: true, parseHTML: () => [{ tag: "div[data-np-gallery]" }], renderHTML: () => ["div", { "data-np-gallery": "true" }, 0], addNodeView: () => ReactNodeViewRenderer(GalleryView) }),
+    TiptapNode.create({ name: "npGallery", group: "articleMedia", content: "npImage+", draggable: true, isolating: true, parseHTML: () => [{ tag: "div[data-np-gallery]" }], renderHTML: () => ["div", { "data-np-gallery": "true" }, 0], addNodeView: () => ReactNodeViewRenderer(GalleryView) }),
   ], []);
   const editor = useEditor({
     extensions, immediatelyRender: false, editable: !readOnly, content: bodyToEditorHtml(value),
