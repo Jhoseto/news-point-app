@@ -1,6 +1,7 @@
 import type { ArticleBody, Block } from "./blocks";
 
 export type EmbedProvider = "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "other";
+export const EMBED_PROVIDER_LABEL: Record<EmbedProvider, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "външен източник" };
 export function embedProviderFromUrl(value: string): EmbedProvider {
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^(www|m)\./, "");
@@ -67,7 +68,7 @@ export function parseEmbedInput(raw: string): { url: string; provider: EmbedProv
 export const RESERVED_ARTICLE_SLUGS = new Set([
   "api", "_next", "brand", "draft", "login", "search", "tag", "author", "page", "feed", "share",
   "admin", "media", "team", "temi", "contacts", "advertising", "settings", "offline", "livepoint",
-  "podcast", "news-podcast", "llms.txt", "sitemap.xml", "robots.txt", "wp-admin", "wp-content", "wp-json",
+  "podcast", "podcast-audio", "news-podcast", "sitemaps", "llms.txt", "sitemap.xml", "robots.txt", "wp-admin", "wp-content", "wp-json",
 ]);
 export function publicationProblems(draft: {
   title: string; slug: string; bodyBlocks: number; primaryCategoryId: string | null; heroMediaId: string | null;
@@ -113,7 +114,7 @@ export function composition(block: Block): { className: string; style: Record<st
     className: `np-composition${media ? " np-composition-media" : ""}${wrap !== "none" ? ` np-wrap-${wrap}` : ""}`,
     style: {
       ...(width != null ? { "--np-media-width": `${width}%` } : {}),
-      ...(media ? { marginInlineStart: block.align === "left" ? 0 : "auto", marginInlineEnd: block.align === "right" ? 0 : "auto" } : {}),
+      ...(media && wrap === "none" ? { marginInlineStart: block.align === "left" ? 0 : "auto", marginInlineEnd: block.align === "right" ? 0 : "auto" } : {}),
       ...("textAlign" in block && block.textAlign ? { textAlign: block.textAlign } : {}),
       ...("indent" in block && block.indent ? { paddingInlineStart: `${block.indent * 1.5}em` } : {}),
     },

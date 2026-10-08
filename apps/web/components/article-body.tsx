@@ -1,19 +1,10 @@
-import { bodyGroups, composition, embedFrameUrl, type Block } from "@newspoint/content";
+import { bodyGroups, composition, embedFrameUrl, EMBED_PROVIDER_LABEL, type Block } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ExternalIcon } from "./icons";
 import { ArticleImage } from "./ui";
 import { articleSectionId } from "@/lib/article-reading";
 import "@newspoint/content/composition.css";
-
-const EMBED_LABEL: Record<string, string> = {
-  youtube: "YouTube",
-  facebook: "Facebook",
-  instagram: "Instagram",
-  x: "X",
-  tiktok: "TikTok",
-  other: "външен източник",
-};
 
 // Stored HTML is sanitized by the importer and re-checked by the block schema.
 function BlockView({ block, media, index }: { block: Block; media: Map<string, Media>; index: number }) {
@@ -64,11 +55,11 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
           id={articleSectionId(index)}
           src={block.url}
           provider={block.provider}
-          title={`Вградено съдържание от ${EMBED_LABEL[block.provider]}`}
+          title={`Вградено съдържание от ${EMBED_PROVIDER_LABEL[block.provider]}`}
         /></div>
       ) : (
-        <a id={articleSectionId(index)} href={block.url} style={layout.style} target="_blank" rel="noopener noreferrer" className={`${layout.className} np-article-embed !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink`}>
-          <span>Виж публикацията в {EMBED_LABEL[block.provider]}</span>
+        <a id={articleSectionId(index)} href={block.url} style={layout.style} target="_blank" rel="noopener noreferrer" className={`${layout.className} np-article-embed np-embed-link !no-underline flex items-center justify-between gap-4 px-5 py-4 font-semibold text-ink`}>
+          <span>Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</span>
           <ExternalIcon width={18} height={18} />
         </a>
       );

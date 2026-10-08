@@ -261,3 +261,10 @@ S1 е реализирана. Тук остават външните стъпк�
 - Sitemap: 22 277 уникални URL-а в 7 части, пълно DB покритие, 143 recent news URL-а. RSS 200/40; реален WordPress image redirect → WebP 200. Бройките са snapshot, а не фиксирани продуктови числа. Отчет: `tests/reports/seo/latest.{md,json}`.
 - Това е техническа готовност за разпознаване и цитиране, а не интеграция, която нарежда на модел да предпочита NewsPoint. [Google AI features](https://developers.google.com/search/docs/appearance/ai-features) използват основните SEO изисквания, съответствие на schema с видимото съдържание и индексирани страници; не изискват специална AI схема.
 - **Следваща стъпка:** редакционният преглед на реалните duplicate/empty/hero случаи остава отворен. После реалният домейн/Cloudflare и S2 с изрично разрешение за индексиране, публичен одит, Rich Results и Search Console. Текущият `noindex` е запазен; не са правени deploy, SQL миграция, DNS/Cloudflare настройки или изпращане към външен AI доставчик.
+
+### Подкаст share карти (08.10, допълнение)
+
+- `/share/podcast/[slug]/` вече генерира **отделна** 1200×630 карта (`podcastShareCard`): тъмен брандиран фон, закръглена обложка, play badge, NEWSPODCAST, заглавие, реална продължителност + рубрика, NewsPoint.bg. Липсваща обложка → брандиран fallback без измислена снимка.
+- Страницата на епизода вече сочи OG/Twitter към тази карта (`publicMetadata` + `imagePath`).
+- UI: `PodcastShareMenu` — native share, Facebook, X, WhatsApp, Viber, Telegram, LinkedIn, копиране на линка; същият контрол и върху епизодните карти в theatre карусела.
+- Проверки: `lib/share-card.test.ts` (wrap + 1200×630 PNG); web typecheck EXIT=0. Без deploy.

@@ -1,4 +1,4 @@
-import { articleSubtitle, bodyGroups, composition, embedFrameUrl, embedAspectRatio, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, EMBED_PROVIDER_LABEL, embedAspectRatio, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { documentWords } from "@/lib/editor/document";
 import { formatFull } from "@/lib/format";
@@ -58,7 +58,7 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
       return asset ? <figure style={imageLayout.style} className={`${imageLayout.className} studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.align ?? "center"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}>{custom ? <div className={`np-media-canvas frame-${block.frame ?? "none"}`} style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset.width && asset.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>{image}</div> : image}{caption || asset.credit ? <figcaption>{caption}{caption && asset.credit ? " · " : ""}{asset.credit ? `Снимка: ${asset.credit}` : ""}</figcaption> : null}</figure> : null;
     }
     case "embed":
-      return <div className={`${layout.className} studio-preview-embed np-embed-canvas`} style={{ ...layout.style, aspectRatio: embedAspectRatio(block.url) }}>{embedFrameUrl(block.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}</div>;
+      return <div className={`${layout.className} studio-preview-embed ${embedFrameUrl(block.url) ? "np-embed-canvas" : ""}`} style={{ ...layout.style, aspectRatio: embedFrameUrl(block.url) ? embedAspectRatio(block.url) : undefined }}>{embedFrameUrl(block.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}</div>;
     case "divider": return <hr />;
     case "legacy_html": return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }
@@ -68,11 +68,11 @@ function readingMinutes(blocks: Block[]): number {
   return Math.max(1, Math.round(documentWords(blocks) / 200));
 }
 
-export function ArticlePreview({ article, theme }: { article: PreviewArticle; theme: PreviewTheme }) {
+export function ArticlePreview({ article, theme, device = "desktop" }: { article: PreviewArticle; theme: PreviewTheme; device?: "desktop" | "phone" }) {
   const hasBody = article.blocks.length > 0;
   const subtitle = articleSubtitle(article.excerpt, article.blocks);
   return (
-    <div data-theme={theme} className="np-site @container min-h-full bg-page font-sans text-body">
+    <div data-theme={theme} className={`np-site @container min-h-full bg-page font-sans text-body${device === "phone" ? " np-preview-phone" : ""}`}>
       <header className="border-b border-line bg-surface/90">
         <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-4 @2xl:h-16 @2xl:px-6">
           <BrandLogoImg className="h-8 w-auto @2xl:h-9" />

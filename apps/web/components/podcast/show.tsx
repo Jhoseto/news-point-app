@@ -5,15 +5,29 @@ import { useEffect, useRef, useState, type MouseEvent, type TransitionEvent } fr
 import type { PublicEpisode } from "@/lib/podcast-types";
 import { displayedEpisode } from "@/lib/podcast-playback";
 import { PodcastPlayer, clock, usePodcastPlayer } from "./player";
+import { PodcastShareMenu } from "./share-menu";
 import { STUDIO_PHOTO } from "./studio-photo";
 import { ChevronRightIcon } from "../icons";
 import { AudioIcon, PodcastCover, PodcastOrbit } from "./visuals";
 
-function EpisodeCard({ episode, episodes, selected, compact }: { episode: PublicEpisode; episodes: PublicEpisode[]; selected: boolean; compact: boolean }) {
+function EpisodeCard({
+  episode,
+  episodes,
+  selected,
+  compact,
+  publicOrigin,
+}: {
+  episode: PublicEpisode;
+  episodes: PublicEpisode[];
+  selected: boolean;
+  compact: boolean;
+  publicOrigin?: string;
+}) {
   const player = usePodcastPlayer();
   const loaded = player.episode?.id === episode.id;
   const playing = loaded && player.playing;
   const published = new Intl.DateTimeFormat("bg-BG", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(episode.publishedAt));
+  const shareUrl = publicOrigin ? new URL(episode.path, publicOrigin).href : episode.path;
   return <li className={`np-podcast-episode ${compact ? "np-podcast-episode--row" : ""}`} data-active={selected}>
     <div className="np-podcast-episode-art"><PodcastCover src={episode.coverUrl} /></div>
     <div className="np-podcast-episode-info">
@@ -23,7 +37,10 @@ function EpisodeCard({ episode, episodes, selected, compact }: { episode: Public
       <div className="np-podcast-episode-meta"><time dateTime={episode.publishedAt}>{published}</time><span>·</span><span>{clock(episode.durationSec)}</span></div>
       <span className="np-podcast-episode-status">{selected ? playing ? "Слушате" : loaded ? "На пауза" : "Избран" : ""}</span>
     </div>
-    <button className="np-podcast-card-play" onClick={() => player.play(episode, episodes)} aria-label={`${playing ? "Пауза" : "Слушай"}: ${episode.title}`}><AudioIcon name={playing ? "pause" : "play"} /></button>
+    <div className="np-podcast-episode-actions">
+      {publicOrigin ? <PodcastShareMenu url={shareUrl} title={episode.title} summary={episode.summary} variant="card" /> : null}
+      <button className="np-podcast-card-play" onClick={() => player.play(episode, episodes)} aria-label={`${playing ? "Пауза" : "Слушай"}: ${episode.title}`}><AudioIcon name={playing ? "pause" : "play"} /></button>
+    </div>
   </li>;
 }
 
@@ -87,35 +104,14 @@ function PodcastPanelLayout({
 
 function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined }) {
   const carousel = useRef<HTMLUListElement>(null);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [canNativeShare, setCanNativeShare] = useState(false);
-  const [message, setMessage] = useState("");
   const [aboutMounted, setAboutMounted] = useState(true);
   const [aboutOpen, setAboutOpen] = useState(true);
   const published = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(selected.publishedAt));
   const shareUrl = publicOrigin ? new URL(selected.path, publicOrigin).href : selected.path;
-  const encodedUrl = encodeURIComponent(shareUrl);
-  const encodedTitle = encodeURIComponent(selected.title);
-  useEffect(() => setCanNativeShare(typeof navigator.share === "function"), []);
   useEffect(() => {
     setAboutMounted(true);
     setAboutOpen(true);
   }, [selected.id]);
-  useEffect(() => {
-    if (!shareOpen) return;
-    const close = (event: KeyboardEvent) => { if (event.key === "Escape") setShareOpen(false); };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [shareOpen]);
-  async function nativeShare() {
-    if (!navigator.share) { await copyShareLink(); return; }
-    try { await navigator.share({ title: selected.title, text: selected.summary, url: shareUrl }); setShareOpen(false); }
-    catch (error) { if ((error as DOMException).name !== "AbortError") setMessage("Споделянето не беше завършено."); }
-  }
-  async function copyShareLink() {
-    try { await navigator.clipboard.writeText(shareUrl); setMessage("Линкът е копиран."); setShareOpen(false); }
-    catch { setMessage("Линкът не беше копиран."); }
-  }
   function moveCarousel(direction: 1 | -1) {
     carousel.current?.scrollBy({ left: direction * Math.min(360, carousel.current.clientWidth * .82), behavior: "smooth" });
   }
@@ -146,18 +142,10 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { epis
         <h1 id="np-podcast-feature-title">{selected.title}</h1>
         <div className="np-podcast-feature-meta"><time dateTime={selected.publishedAt}>{published}</time><span aria-hidden="true">·</span><span>{clock(selected.durationSec)}</span></div>
         <div className="np-podcast-feature-actions">
-          <div className="np-podcast-share">
-            <button className="np-podcast-feature-share" aria-expanded={shareOpen} aria-controls="np-podcast-share-menu" onClick={() => setShareOpen((open) => !open)}><AudioIcon name="share" />Сподели</button>
-            <div id="np-podcast-share-menu" className="np-podcast-share-menu" hidden={!shareOpen}>
-              {canNativeShare && <button onClick={() => void nativeShare()}>Сподели от устройството</button>}
-              <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`} target="_blank" rel="noreferrer">Facebook</a>
-              <a href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedTitle}`} target="_blank" rel="noreferrer">X / Twitter</a>
-              <a href={`viber://forward?text=${encodedTitle}%20${encodedUrl}`}>Viber</a>
-              <button onClick={() => void copyShareLink()}>Копирай линка</button>
-            </div>
-          </div>
+          {publicOrigin ? (
+            <PodcastShareMenu url={shareUrl} title={selected.title} summary={selected.summary} />
+          ) : null}
         </div>
-        <p className="np-podcast-feature-message" role="status">{message}</p>
         <details className="np-podcast-feature-details" open={aboutMounted} data-expanded={aboutOpen || undefined}>
           <summary onClick={toggleAbout} aria-expanded={aboutOpen}>За епизода <span aria-hidden="true">＋</span></summary>
           <div className="np-podcast-feature-about-panel" onTransitionEnd={settleAbout}>
@@ -179,7 +167,16 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { epis
           <button onClick={() => moveCarousel(1)} disabled={episodes.length < 2} aria-label="Следващи епизоди">→</button>
         </div>
       </div>
-      <ul ref={carousel}>{episodes.slice(0, 10).map((episode) => <EpisodeCard key={episode.id} episode={episode} episodes={episodes} compact selected={selected.id === episode.id} />)}</ul>
+      <ul ref={carousel}>{episodes.slice(0, 10).map((episode) => (
+        <EpisodeCard
+          key={episode.id}
+          episode={episode}
+          episodes={episodes}
+          compact
+          selected={selected.id === episode.id}
+          {...(publicOrigin ? { publicOrigin } : {})}
+        />
+      ))}</ul>
     </section>
   </div>;
 }

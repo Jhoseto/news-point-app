@@ -18,4 +18,16 @@ describe("Bulgarian civil time", () => {
     expect(sofiaWallToUtc("2026-09-29T25:00")).toBeNull();
     expect(sofiaWallToUtc("not-a-time")).toBeNull();
   });
+  it("rejects normalized invalid calendar dates and the skipped spring hour", () => {
+    expect(sofiaWallToUtc("2026-02-31T12:00")).toBeNull();
+    expect(sofiaWallToUtc("2026-04-31T12:00")).toBeNull();
+    expect(sofiaWallToUtc("2026-03-29T03:30")).toBeNull();
+    expect(sofiaWallToUtc("2028-02-29T12:00")?.toISOString()).toBe("2028-02-29T10:00:00.000Z");
+  });
+  it("keeps the existing later occurrence for the repeated autumn hour", () => {
+    const instant = sofiaWallToUtc("2026-10-25T03:30");
+    expect(instant?.toISOString()).toBe("2026-10-25T01:30:00.000Z");
+    expect(utcToSofiaWall(instant!)).toBe("2026-10-25T03:30");
+    expect(sofiaWallToUtc("2026-01-01T00:01")?.toISOString()).toBe("2025-12-31T22:01:00.000Z");
+  });
 });

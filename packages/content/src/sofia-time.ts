@@ -37,6 +37,8 @@ export function sofiaWallToUtc(wall: string): Date | null {
     minute: Number(match[5]),
   };
   if (desired.month < 1 || desired.month > 12 || desired.day < 1 || desired.day > 31 || desired.hour > 23 || desired.minute > 59) return null;
+  const calendar = new Date(Date.UTC(desired.year, desired.month - 1, desired.day));
+  if (calendar.getUTCFullYear() !== desired.year || calendar.getUTCMonth() !== desired.month - 1 || calendar.getUTCDate() !== desired.day) return null;
   let utc = Date.UTC(desired.year, desired.month - 1, desired.day, desired.hour, desired.minute);
   for (let step = 0; step < 4; step += 1) {
     const shown = sofiaCivil(new Date(utc));

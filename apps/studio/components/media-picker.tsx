@@ -44,12 +44,17 @@ export function MediaPicker({
   const [page, setPage] = useState(0);
   const [libraryTotal, setLibraryTotal] = useState(0);
   const [libraryLoading, setLibraryLoading] = useState(true);
+  const [libraryError, setLibraryError] = useState("");
+  const [libraryRetry, setLibraryRetry] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [error, setError] = useState("");
   const chosenItems = useRef(new Map<string, LibraryImage>());
   const uploadedItems = useRef<MediaOption[]>([]);
   const uploadBusy = useRef(false);
+  const optimizeBusy = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
 
@@ -133,6 +138,7 @@ export function MediaPicker({
     }
     let cancelled = false;
     setLibraryLoading(true);
+    setLibraryError("");
     const params = new URLSearchParams();
     if (folder) params.set("folder", folder);
     params.set("offset", String(page * 80));
@@ -144,13 +150,23 @@ export function MediaPicker({
         setLibrary(current => page ? [...current, ...(result.items ?? [])] : result.items ?? []);
         setLibraryTotal(result.total ?? 0);
       })
-      .catch(problem => { if (!cancelled) { if (!page) { setLibrary([]); setLibraryTotal(0); } setError(problem instanceof Error ? problem.message : "Библиотеката не се зареди."); } })
+      .catch(problem => { if (!cancelled) { if (!page) { setLibrary([]); setLibraryTotal(0); } setLibraryError(problem instanceof Error ? problem.message : "Библиотеката не се зареди."); } })
       .finally(() => { if (!cancelled) setLibraryLoading(false); });
     return () => { cancelled = true; };
-  }, [folder, debouncedQuery, page]);
+  }, [folder, debouncedQuery, page, libraryRetry]);
 
   const searchingAll = !folder && debouncedQuery.length >= 2;
   const searchHint = folder ? "Търсене в папката" : "Търсене в целия архив";
+
+  const pickOne = (item: LibraryImage) => {
+    if (optimizeBusy.current) return;
+    optimizeBusy.current = true;
+    setError(""); setOptimizing(true);
+    void optimizeArchiveItem(item)
+      .then(optimized => { if (mounted.current) onSelect(optimized); })
+      .catch(problem => { if (mounted.current) setError(problem instanceof Error ? problem.message : "Изборът не успя."); })
+      .finally(() => { optimizeBusy.current = false; if (mounted.current) setOptimizing(false); });
+  };
 
   const pick = (item: LibraryImage) => {
     if (multiple) {
@@ -158,22 +174,18 @@ export function MediaPicker({
       setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]);
       return;
     }
-    if (optimizing) return;
-    setError(""); setOptimizing(true);
-    void optimizeArchiveItem(item)
-      .then((optimized) => onSelect(optimized))
-      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
-      .finally(() => setOptimizing(false));
+    pickOne(item);
   };
 
   const insertMany = () => {
-    if (!onSelectMany || !selectedMany.length || optimizing) return;
+    if (!onSelectMany || !selectedMany.length || optimizeBusy.current) return;
     const chosen = selectedMany.map(id => chosenItems.current.get(id)).filter((item): item is LibraryImage => !!item);
-    setOptimizing(true);
+    optimizeBusy.current = true;
+    setError(""); setOptimizing(true);
     void Promise.all(chosen.map((item) => optimizeArchiveItem(item)))
-      .then((items) => onSelectMany(items))
-      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
-      .finally(() => setOptimizing(false));
+      .then(items => { if (mounted.current) onSelectMany(items); })
+      .catch(problem => { if (mounted.current) setError(problem instanceof Error ? problem.message : "Изборът не успя."); })
+      .finally(() => { optimizeBusy.current = false; if (mounted.current) setOptimizing(false); });
   };
 
   return (
@@ -206,7 +218,7 @@ export function MediaPicker({
         <button type="button" disabled={uploading} onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
         <button type="button" disabled={uploading} onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
       </div>
-      {error ? <p role="alert" className="px-5 py-3 text-sm text-danger">{error}</p> : null}
+      {error || (mode === "library" && libraryError) ? <p role="alert" className="px-5 py-3 text-sm text-danger">{error || libraryError}</p> : null}
       {mode === "upload" ? (
         <div className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
           <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFiles(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
@@ -270,12 +282,7 @@ export function MediaPicker({
                     onClick={() => pick(item)}
                     onDoubleClick={(event) => {
                       event.preventDefault();
-                      if (optimizing) return;
-                      setOptimizing(true);
-                      void optimizeArchiveItem(item)
-                        .then((optimized) => onSelect(optimized))
-      .catch(problem => setError(problem instanceof Error ? problem.message : "Изборът не успя."))
-                        .finally(() => setOptimizing(false));
+                      pickOne(item);
                     }}
                     title="Двоен клик добавя снимката (с оптимизация)"
                     disabled={optimizing}
@@ -288,7 +295,8 @@ export function MediaPicker({
                 </li>
               ))}
             </ul>
-            {!libraryLoading && library.length < libraryTotal ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setPage(current => current + 1)}>Покажи още снимки</button> : null}
+            {!libraryLoading && libraryError ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setLibraryRetry(current => current + 1)}>Повтори зареждането</button> : null}
+            {!libraryLoading && !libraryError && library.length < libraryTotal ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setPage(current => current + 1)}>Покажи още снимки</button> : null}
             {optimizing ? <p className="py-4 text-center text-sm font-semibold text-accent">Оптимизация на снимката за сайта…</p> : null}
             {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searchingAll ? "Търсене в архива…" : "Зареждане на папката…"}</p> : null}
             {!libraryLoading && !folder && debouncedQuery.length < 2 ? (

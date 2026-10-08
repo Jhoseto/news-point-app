@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, mediaAssets, mediaPresentations } from "@newspoint/db";
-import { studioOrigins } from "@/lib/auth";
-import { staffFromRequest } from "@/lib/session";
-import { writeMediaFile, removeMediaFile } from "@/lib/media-disk";
-import { prepareUploadedPhotoWithVariants, UPLOADED_PHOTO_MAX_BYTES } from "@/lib/uploaded-photo";
+import { studioOrigins } from "../../../../../lib/auth";
+import { staffFromRequest } from "../../../../../lib/session";
+import { writeMediaFile, removeMediaFile } from "../../../../../lib/media-disk";
+import { prepareUploadedPhotoWithVariants, UPLOADED_PHOTO_MAX_BYTES } from "../../../../../lib/uploaded-photo";
 
 export const runtime = "nodejs";
 
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
       }
       chunks.push(part.value);
     }
-    const form = await new Response(new Blob(chunks as BlobPart[]), { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData();
+    const form = await new Response(new Blob(chunks as BlobPart[]), { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData().catch(() => { throw new Error("Невалидно качване. Изберете файла отново."); });
     const file = form.get("file");
     const alt = String(form.get("alt") ?? "").trim().slice(0, 240);
     if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Изберете валидна снимка.");
     if (file.size > UPLOADED_PHOTO_MAX_BYTES) throw new Error("Снимката трябва да е до 25 MB.");
-    const photo = await prepareUploadedPhotoWithVariants(Buffer.from(await file.arrayBuffer()));
+    const photo = await prepareUploadedPhotoWithVariants(Buffer.from(await file.arrayBuffer())).catch(() => { throw new Error("Файлът не е валидна или поддържана снимка."); });
     const now = new Date();
     const base = randomUUID();
     const folder = `news/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -91,6 +91,8 @@ export async function POST(request: Request) {
       throw error;
     }
   } catch (error) {
-    return Response.json({ error: { message: error instanceof Error ? error.message : "Качването не беше успешно." } }, { status: 400, headers: { "cache-control": "no-store" } });
+    const message = error instanceof Error ? error.message : "";
+    const known = ["Липсва снимка.", "Изберете валидна снимка.", "Снимката трябва да е до 25 MB.", "Файлът не е валидна или поддържана снимка.", "Невалидно качване. Изберете файла отново."].includes(message);
+    return Response.json({ error: { message: known ? message : "Качването не беше успешно. Опитайте отново." } }, { status: message === "Снимката трябва да е до 25 MB." ? 413 : known ? 400 : 500, headers: { "cache-control": "no-store" } });
   }
 }

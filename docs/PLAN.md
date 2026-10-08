@@ -121,6 +121,8 @@
 
 08.10 — Cleanup `--apply` на сървъра: изтрити **12 694** `-card.webp`; оставени 227 (без пълна стълба) + ~13 orphan на диска. Storage `news/` ~3.0 GB → ~2.4 GB. Masters и `-w*` запазени.
 
+08.10 — Споделяне на подкаст епизоди: нова OG карта `podcastShareCard` (1200×630, обложка + play badge + продължителност) на `/share/podcast/[slug]/`; меню Facebook / X / WhatsApp / Viber / Telegram / LinkedIn / native / копирай линк; бутон споделяне и върху картите в карусела. Детайли: `docs/SEO_PLAN.md` §10.
+
 ## 3. Правила, които остават
 
 - Собствен CMS. Не се слага готов CMS.

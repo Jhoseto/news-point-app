@@ -82,6 +82,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [phase, setPhase] = useState<"idle" | "saving" | "publishing">("idle");
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [leaveDestination, setLeaveDestination] = useState<string | null>(null);
+  const allowLeave = useRef(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
 
@@ -323,7 +325,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       }
     };
     const onLeave = (event: BeforeUnloadEvent) => {
-      if (dirty) event.preventDefault();
+      if (dirty && !allowLeave.current) { event.preventDefault(); event.returnValue = ""; }
     };
     const onNavigate = (event: MouseEvent) => {
       if (!dirty || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
@@ -331,7 +333,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
       const destination = new URL(anchor.href, window.location.href);
       if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
-      if (!window.confirm("Има незаписани промени. Да напусна ли редактора?")) { event.preventDefault(); event.stopPropagation(); }
+      event.preventDefault(); event.stopPropagation();
+      setLeaveDestination(destination.href);
     };
     document.addEventListener("click", onNavigate, true);
     window.addEventListener("keydown", onKey);
@@ -796,6 +799,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                 </div>
                 <div className="max-h-[760px] overflow-y-auto rounded-[2rem]">
                   <ArticlePreview
+                    device="phone"
                     theme={theme}
                     article={{ title: previewSource.title, excerpt: previewSource.excerpt, blocks: previewBlocks, category: previewCategory, hero, heroEmbedUrl: previewSource.heroEmbedUrl, media: availableMedia, authorName: previewSource.authorName, publishedAt: published.at }}
                   />
@@ -807,6 +811,14 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         </section>
       </div>
 
+      {leaveDestination ? <EditorDialog label="Незаписани промени" onClose={() => setLeaveDestination(null)}>
+        <h3>Има незаписани промени</h3><p>Запишете материала преди да напуснете или останете в редактора.</p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="np-btn np-btn-primary" disabled={busy || !editorValid || !!conflict} onClick={() => { const destination = leaveDestination; void save().then(result => { if (result !== null) { allowLeave.current = true; window.location.assign(destination); } }); }}>Запиши и напусни</button>
+          <button type="button" className="np-btn np-btn-secondary" onClick={() => setLeaveDestination(null)}>Остани в редактора</button>
+          <button type="button" className="np-btn np-btn-secondary" disabled={busy} onClick={() => { allowLeave.current = true; window.location.assign(leaveDestination); }}>Напусни без запис</button>
+        </div>
+      </EditorDialog> : null}
       {history ? <EditorDialog label="История на версиите" onClose={() => setHistory(null)}>
         <h3>Версии на материала</h3><p>Зареждането заменя текущите полета. Запишете ръчно, за да създадете нова версия. Публикуването е отделно действие.</p>
         <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>

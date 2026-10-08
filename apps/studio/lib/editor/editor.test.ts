@@ -4,7 +4,7 @@ import { bodyToText, textToBody, wordCount } from "./body";
 import { draftInput, publishProblems } from "./input";
 import { canChangeRole, canDeleteAccount, canManageAccounts } from "./roles";
 import { articlePath, slugify, SLUG_MAX, SLUG_PATTERN } from "./slug";
-import { bodyGroups, composition, embedFrameUrl } from "@newspoint/content";
+import { bodyGroups, composition, embedFrameUrl, embedAspectRatio } from "@newspoint/content";
 import { bodyToEditorHtml, documentToBody } from "./document";
 
 describe("structured visual document", () => {
@@ -39,6 +39,7 @@ describe("structured visual document", () => {
     const groups = bodyGroups([image, image, { type: "paragraph", html: "Раздел" }, image]);
     expect(groups.map(group => [group.index, group.blocks.length])).toEqual([[0, 2], [2, 1], [3, 1]]);
     expect(composition({ ...image, widthPercent: 80, wrap: "left" }).className).not.toContain("np-wrap-left");
+    expect(composition({ ...image, widthPercent: 40, wrap: "left" }).style).not.toHaveProperty("marginInlineEnd");
   });
   it("rejects arbitrary iframe hosts, normalizes share links and blocks credentials", () => {
     expect(embedFrameUrl("https://youtu.be/dQw4w9WgXcQ")).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
@@ -52,6 +53,12 @@ describe("structured visual document", () => {
     expect(draftInput.safeParse({ ...draft, body: [], bodyText: "" }).success).toBe(false);
     expect(draftInput.safeParse(draft).success).toBe(false);
     expect(publishProblems({ ...draft, bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: "https://youtu.be/dQw4w9WgXcQ" })).toEqual([]);
+  });
+  it("bounds Facebook dimensions and rejects credentialed embedded targets", () => {
+    const valid = "https://facebook.com/plugins/video.php?href=https%3A%2F%2Ffacebook.com%2Fwatch%2F%3Fv%3D123&width=99999&height=broken";
+    expect(embedAspectRatio(valid)).toBe("1200/315");
+    expect(embedFrameUrl("https://facebook.com/plugins/post.php?href=https%3A%2F%2Fuser%3Asecret%40facebook.com%2Fposts%2F123")).toBeNull();
+    expect(publishProblems({ title: "Материал", slug: "podcast-audio", bodyBlocks: 1, primaryCategoryId: "category", heroMediaId: "media", authorKind: "newsroom", authorName: "NewsPoint.bg" })).toContain("Този адрес е запазен. Изберете друг.");
   });
 });
 
