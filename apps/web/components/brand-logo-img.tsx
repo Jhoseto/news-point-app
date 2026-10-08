@@ -8,6 +8,8 @@ type Props = {
 
 /** Light wordmark by default; the dark artwork shows only under `[data-theme="dark"]`. */
 export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority }: Props) {
+  // Dark twin is CSS-hidden in light theme — never compete for LCP bandwidth.
+  const darkPriority = fetchPriority === "high" ? "low" : fetchPriority;
   return (
     <>
       <img
@@ -30,7 +32,7 @@ export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriorit
         width={BRAND_LOGO_DARK.width}
         height={BRAND_LOGO_DARK.height}
         decoding="async"
-        fetchPriority={fetchPriority}
+        fetchPriority={darkPriority}
         className={`${className ?? ""} np-brand-logo-mark--dark`}
       />
     </>

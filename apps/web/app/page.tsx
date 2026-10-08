@@ -18,6 +18,7 @@ import { shineDelayProp } from "@/lib/shine-style";
 import type { ComposedSection } from "@/lib/home-compose";
 import { loadPublicHome } from "@/lib/public-home";
 import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 
 export const revalidate = 60;
 const homeMetadata = publicPageMetadata("home");
@@ -59,8 +60,7 @@ function HomeAsideLists({
 
 
 export default async function HomePage() {
-  const home = await loadPublicHome();
-  const menu = await getMenuCategories();
+  const [home, menu, ssrDesktop] = await Promise.all([loadPublicHome(), getMenuCategories(), ssrDesktopViewport()]);
   const mobile = homeMobileFeed(home, menu);
   const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceCarousel, poll } = home;
 
@@ -82,10 +82,14 @@ export default async function HomePage() {
     asideSections.map((section) => section.articles.length),
   );
 
+  // Render exactly one shell in the RSC payload. Passing the other tree as
+  // children of a client gate still serializes it into the HTML (~3 MB before).
+  if (!ssrDesktop) {
+    return <MobileCanonicalFeed model={mobile} ssrDesktop={false} />;
+  }
+
   return (
-    <>
-    <MobileCanonicalFeed model={mobile} />
-    <DesktopFeed>
+    <DesktopFeed ssrDesktop>
     <HomeShineRoot cycleSec={shineCycleSec} mobileHidden>
       <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
@@ -170,6 +174,5 @@ export default async function HomePage() {
       </div>
     </HomeShineRoot>
     </DesktopFeed>
-    </>
   );
 }

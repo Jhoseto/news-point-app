@@ -23,10 +23,36 @@ export const mobileRubricFeedSchema = z.object({ schemaVersion: z.literal(1), ca
   freshUntil: z.number().int().nonnegative(), feed: z.discriminatedUnion("kind", [home, rubric]) }).strict();
 export type MobileRubricFeed = z.infer<typeof mobileRubricFeedSchema>;
 export type MobileFeedContent = MobileRubricFeed["feed"];
+function slimHero(hero: NonNullable<ArticleSummary["hero"]>): z.infer<typeof media> {
+  // Keep at most two smallest width variants so LCP/srcset still work without
+  // shipping the full variant list in the embedded pager JSON.
+  const variants = Array.isArray(hero.variants)
+    ? [...hero.variants].sort((a, b) => a.width - b.width).slice(0, 2)
+    : [];
+  return {
+    url: hero.url,
+    width: hero.width,
+    height: hero.height,
+    alt: hero.alt,
+    caption: "",
+    credit: "",
+    ...(variants.length ? { variants } : {}),
+    ...(hero.focalPoint != null ? { focalPoint: hero.focalPoint } : {}),
+  };
+}
+
 export function serializeFeedArticle(value: ArticleSummary): z.infer<typeof article> {
   // Explicit public projection: never serialize embeds, bodies, pools or editorial fields.
-  return { id: value.id, path: value.path, title: value.title, excerpt: value.excerpt, authorName: value.authorName,
-    publishedAt: value.publishedAt.toISOString(), category: value.category, hero: value.hero };
+  return {
+    id: value.id,
+    path: value.path,
+    title: value.title,
+    excerpt: value.excerpt,
+    authorName: value.authorName,
+    publishedAt: value.publishedAt.toISOString(),
+    category: value.category,
+    hero: value.hero ? slimHero(value.hero) : null,
+  };
 }
 export function reviveFeedArticle(value: z.infer<typeof article>): ArticleSummary {
   const { hero, ...rest } = value;

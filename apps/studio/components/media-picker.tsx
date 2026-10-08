@@ -42,8 +42,25 @@ export function MediaPicker({
   const [libraryTotal, setLibraryTotal] = useState(0);
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
+
+  /** Archive picks go through the same width-ladder pipeline as new uploads. */
+  const optimizeArchiveItem = async (item: LibraryImage): Promise<MediaOption> => {
+    try {
+      const response = await fetch(withBase("/api/editor/media/optimize/"), {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: item.id }),
+      });
+      if (!response.ok) return item;
+      const result = (await response.json()) as MediaOption & { variants?: unknown };
+      return { id: result.id || item.id, url: result.url || item.url, alt: result.alt || item.alt };
+    } catch {
+      return item;
+    }
+  };
 
   const upload = async () => {
     if (!uploadFiles.length) return;
@@ -123,7 +140,20 @@ export function MediaPicker({
       setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]);
       return;
     }
-    onSelect(item);
+    if (optimizing) return;
+    setOptimizing(true);
+    void optimizeArchiveItem(item)
+      .then((optimized) => onSelect(optimized))
+      .finally(() => setOptimizing(false));
+  };
+
+  const insertMany = () => {
+    if (!onSelectMany || !selectedMany.length || optimizing) return;
+    const chosen = library.filter((item) => selectedMany.includes(item.id));
+    setOptimizing(true);
+    void Promise.all(chosen.map((item) => optimizeArchiveItem(item)))
+      .then((items) => onSelectMany(items))
+      .finally(() => setOptimizing(false));
   };
 
   return (
@@ -216,9 +246,14 @@ export function MediaPicker({
                     onClick={() => pick(item)}
                     onDoubleClick={(event) => {
                       event.preventDefault();
-                      onSelect(item);
+                      if (optimizing) return;
+                      setOptimizing(true);
+                      void optimizeArchiveItem(item)
+                        .then((optimized) => onSelect(optimized))
+                        .finally(() => setOptimizing(false));
                     }}
-                    title="Двоен клик добавя снимката"
+                    title="Двоен клик добавя снимката (с оптимизация)"
+                    disabled={optimizing}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
                   >
@@ -228,6 +263,7 @@ export function MediaPicker({
                 </li>
               ))}
             </ul>
+            {optimizing ? <p className="py-4 text-center text-sm font-semibold text-accent">Оптимизация на снимката за сайта…</p> : null}
             {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searchingAll ? "Търсене в архива…" : "Зареждане на папката…"}</p> : null}
             {!libraryLoading && !folder && debouncedQuery.length < 2 ? (
               <p className="py-10 text-center text-sm text-muted">Изберете папка или въведете поне 2 знака за търсене в целия архив.</p>
@@ -243,11 +279,11 @@ export function MediaPicker({
           <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
           <button
             type="button"
-            disabled={!selectedMany.length}
-            onClick={() => onSelectMany?.(library.filter((item) => selectedMany.includes(item.id)))}
+            disabled={!selectedMany.length || optimizing}
+            onClick={() => insertMany()}
             className="np-btn np-btn-primary px-3 py-1.5 text-xs"
           >
-            Вмъкни в статията
+            {optimizing ? "Оптимизация…" : "Вмъкни в статията"}
           </button>
         </div>
       ) : null}

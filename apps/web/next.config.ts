@@ -47,7 +47,16 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     // Local preview must never be indexed (DEC-111).
-    const noindex = { source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] };
+    const noindex = {
+      source: "/:path*",
+      headers: [
+        { key: "X-Robots-Tag", value: "noindex, nofollow" },
+        // Viewport Client Hints so SSR can emit only the mobile or desktop shell (not both).
+        { key: "Accept-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
+        { key: "Critical-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
+        { key: "Vary", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
+      ],
+    };
     // Brand art is content-hashed by scripts/build-studio-photo.mjs, so a year-long immutable
     // cache is safe. Without this header Next serves /public with max-age=0 and every page view
     // revalidates the background image.

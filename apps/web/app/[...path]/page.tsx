@@ -10,11 +10,9 @@ import { getArticleByPath, getCategoryByPath, getStoryThemesForArticle } from "@
 
 export const revalidate = 60;
 
-// Empty on purpose: there is no finite list to bake at build time. The first
-// visit stores the page, and revalidatePath refreshes it on publish.
-export function generateStaticParams() {
-  return [];
-}
+// No generateStaticParams: CategoryPage reads viewport Client Hints via headers(),
+// which is incompatible with on-demand static generation (DYNAMIC_SERVER_USAGE).
+// Data still uses unstable_cache (60s) + revalidatePath on publish.
 
 type Props = { params: Promise<{ path: string[] }> };
 

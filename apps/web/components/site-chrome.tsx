@@ -95,7 +95,7 @@ export function PlovdivBanner() {
       <div className="pointer-events-none absolute -top-10 -right-6 size-36 rounded-full bg-[#7c3aed]/80" aria-hidden="true" />
       <div className="pointer-events-none absolute -right-8 -bottom-12 size-40 rounded-full bg-[#c026d3]/70" aria-hidden="true" />
       <div className="relative flex h-full items-center gap-6 px-7 xl:gap-8 xl:px-9">
-        <BrandLogoImg className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo" sizes="280px" />
+        <BrandLogoImg className="h-14 w-auto max-w-[min(100%,18rem)] shrink-0 object-contain np-brand-logo" sizes="280px" fetchPriority="low" />
         <div className="flex min-w-0 flex-1 items-center gap-5 xl:gap-6">
           <div className="h-14 w-px shrink-0 bg-white/45" aria-hidden="true" />
           <div className="flex min-w-0 flex-1 items-center text-white" style={{ textShadow: "0 1px 2px rgb(8 28 90 / 0.35)" }}>

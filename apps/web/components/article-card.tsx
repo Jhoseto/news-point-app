@@ -113,12 +113,15 @@ export function ArticleCard({
   showExcerpt = false,
   shineDelaySec,
   tabbable = true,
+  liteMedia = false,
 }: {
   article: ArticleSummary;
   showExcerpt?: boolean;
   shineDelaySec?: number;
   /** False on the carousel's visual copy so Tab skips the duplicate links. */
   tabbable?: boolean;
+  /** Carousel loop clone: one URL, no srcset, to keep HTML smaller. */
+  liteMedia?: boolean;
 }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
@@ -128,6 +131,7 @@ export function ArticleCard({
         <div className={`relative ${shine.className}`} style={shine.style}>
           <ArticleImage
             media={article.hero}
+            lite={liteMedia}
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="aspect-[16/10] w-full transition-[scale,filter] duration-[700ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.045] group-hover:brightness-[1.03]"
           />

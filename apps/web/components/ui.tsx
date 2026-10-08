@@ -80,6 +80,14 @@ export function TimeMeta({ date, className = "", relative = false, now }: { date
   );
 }
 
+/** Keep only the smallest and largest width descriptors to shrink HTML. */
+function compactSrcSet(srcSet: string | undefined): string | undefined {
+  if (!srcSet) return undefined;
+  const parts = srcSet.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length <= 2) return srcSet;
+  return `${parts[0]}, ${parts[parts.length - 1]}`;
+}
+
 export function ArticleImage({
   media,
   className = "",
@@ -87,6 +95,8 @@ export function ArticleImage({
   sizes,
   objectPosition,
   imageTransform,
+  /** Skip srcset (carousel clones / decorative copies) to shrink HTML. */
+  lite = false,
 }: {
   media: Media | null;
   className?: string;
@@ -94,17 +104,38 @@ export function ArticleImage({
   sizes?: string;
   objectPosition?: string;
   imageTransform?: { scale: number; origin: string };
+  lite?: boolean;
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   const presentation = imagePresentation(media);
+  // LCP/priority keeps the full srcset; everything else uses at most two widths.
+  const srcSet = lite ? undefined : priority ? presentation.srcSet : compactSrcSet(presentation.srcSet);
+  // Prefer a mid/small variant as the default `src` so the browser never starts
+  // with a 1400px original when a card-sized file exists (critical for LCP).
+  const srcFromSet = (set: string | undefined, preferMaxWidth: number) => {
+    if (!set) return media.url;
+    const entries = set.split(",").map((part) => {
+      const [url, descriptor] = part.trim().split(/\s+/);
+      const width = Number.parseInt(descriptor ?? "", 10);
+      return { url, width: Number.isFinite(width) ? width : Number.POSITIVE_INFINITY };
+    }).filter((entry) => entry.url);
+    if (!entries.length) return media.url;
+    const fit = [...entries].reverse().find((entry) => entry.width <= preferMaxWidth);
+    return (fit ?? entries[0])!.url;
+  };
+  const src = lite
+    ? srcFromSet(presentation.srcSet, 640)
+    : priority
+      ? srcFromSet(presentation.srcSet ?? srcSet, 960)
+      : srcFromSet(srcSet, 960);
   return (
     <img
-      src={media.url}
+      src={src}
       alt={media.alt}
       width={media.width ?? undefined}
       height={media.height ?? undefined}
-      sizes={sizes}
-      srcSet={presentation.srcSet}
+      sizes={lite ? undefined : sizes}
+      srcSet={srcSet}
       style={{ ...(presentation.objectPosition ? { objectPosition: presentation.objectPosition } : {}), ...(objectPosition ? { objectPosition } : {}), ...(imageTransform ? { transform: `scale(${imageTransform.scale})`, transformOrigin: imageTransform.origin } : {}) }}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "auto"}

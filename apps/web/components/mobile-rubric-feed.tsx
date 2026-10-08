@@ -31,9 +31,9 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   return <div className={`np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
     <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини</h1>
     <div className="flex flex-col gap-5">
-      {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview || !!window} now={now} />, window) : null}
-      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} priority={!!window} now={now} />, window) : null}
-      {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} priority={!!window} now={now} />, window) : null}
+      {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview && !window} now={now} />, window) : null}
+      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} now={now} />, window) : null}
+      {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
       {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
       {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
     </div>
@@ -63,7 +63,7 @@ export function MobileCategoryFeed({ feed, preview = false, window, now = new Da
     </div></Block>
     {feed.anchored ? <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted"><span>Разглеждате по-ранни публикации</span><Link href={feed.category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</Link></div> : null}
     <div className="flex flex-col gap-4">
-      {articles.map((article, index) => anchor(article.id, index === 0 ? <MobileLeadCard article={article} priority={!preview || !!window} now={now} /> : index < 3 ? <MobileSupportingCard article={article} priority={!!window} now={now} /> : <MobileHorizonCard article={article} priority={!!window} now={now} />, window))}
+      {articles.map((article, index) => anchor(article.id, index === 0 ? <MobileLeadCard article={article} priority={!preview && !window} now={now} /> : index < 3 ? <MobileSupportingCard article={article} now={now} /> : <MobileHorizonCard article={article} now={now} />, window))}
       {!articles.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">{feed.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p></Block> : null}
     </div>
     {feed.previous || feed.next ? <nav aria-label={`Страници на рубрика ${feed.category.name}`} data-mobile-pager-ignore className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
@@ -76,10 +76,21 @@ export function MobileFeed({ model, preview = false, namespace, window }: { mode
   return model.feed.kind === "home" ? <MobileHomeFeed feed={model.feed} preview={preview} now={new Date(model.asOfMs)} {...(namespace ? { namespace } : {})} {...(window ? { window } : {})} /> : <MobileCategoryFeed feed={model.feed} preview={preview} now={new Date(model.asOfMs)} {...(window ? { window } : {})} />;
 }
 /** Public props, not a DOM snapshot or an internal RSC payload. The mobile-only controller reads this mounted sentinel. */
-export function MobileCanonicalFeed({ model }: { model: Feed }) {
+export function MobileCanonicalFeed({ model, ssrDesktop = false }: { model: Feed; ssrDesktop?: boolean }) {
   const json = JSON.stringify(model).replace(/</g, "\\u003c");
-  return <MobileFeedBoundary><div className="lg:hidden" data-mobile-rubric-canonical={model.canonicalPath} data-content-version={model.contentVersion} data-menu-version={model.menuVersion} data-fresh-until={model.freshUntil}>
-    <MobileFeed model={model} />
-    <script type="application/json" data-mobile-rubric-model dangerouslySetInnerHTML={{ __html: json }} />
-  </div></MobileFeedBoundary>;
+  // Exclusive mobile SSR must not use lg:hidden — that would blank the page on wide viewports.
+  return (
+    <MobileFeedBoundary ssrDesktop={ssrDesktop}>
+      <div
+        className={ssrDesktop ? "lg:hidden" : undefined}
+        data-mobile-rubric-canonical={model.canonicalPath}
+        data-content-version={model.contentVersion}
+        data-menu-version={model.menuVersion}
+        data-fresh-until={model.freshUntil}
+      >
+        <MobileFeed model={model} />
+        <script type="application/json" data-mobile-rubric-model dangerouslySetInnerHTML={{ __html: json }} />
+      </div>
+    </MobileFeedBoundary>
+  );
 }

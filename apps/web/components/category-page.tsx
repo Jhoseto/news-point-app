@@ -5,6 +5,7 @@ import { loadPublicCategory } from "@/lib/public-category";
 import Link from "next/link";
 import { categoryCursorUrl, type CategoryCursor } from "@/lib/category-pagination";
 import type { CategoryRef } from "@/lib/queries";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
@@ -13,18 +14,21 @@ import { ArticleImage, SectionTitle } from "./ui";
 import { ArrowRightIcon } from "./icons";
 
 export async function CategoryPage({ category, cursor, canonicalPath }: { category: CategoryRef; cursor: CategoryCursor | null; canonicalPath?: string }) {
-  const view = await loadPublicCategory(category, cursor);
+  const [view, ssrDesktop] = await Promise.all([loadPublicCategory(category, cursor), ssrDesktopViewport()]);
   const asOfMs = view.asOfMs;
   const archive = view.archive;
   const latest24h = view.latest24h;
   const menu = view.menu;
   const articles = view.articles;
   const [lead, ...rest] = articles;
+  const mobileModel = categoryMobileFeed(category, view, canonicalPath ?? (cursor ? categoryCursorUrl(category.path, cursor) : category.path));
+
+  if (!ssrDesktop) {
+    return <MobileCanonicalFeed ssrDesktop={false} model={mobileModel} />;
+  }
 
   return (
-    <>
-    <MobileCanonicalFeed model={categoryMobileFeed(category, view, canonicalPath ?? (cursor ? categoryCursorUrl(category.path, cursor) : category.path))} />
-    <DesktopFeed>
+    <DesktopFeed ssrDesktop>
     <div data-np-category-archive className="np-mobile-legacy-feed np-container flex flex-col gap-4 pt-3 pb-10 lg:gap-8 lg:pt-5">
       <div className="hidden lg:contents">
         <Breadcrumbs items={[{ name: category.name, path: category.path }]} />
@@ -91,6 +95,5 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
       </div>
     </div>
     </DesktopFeed>
-    </>
   );
 }

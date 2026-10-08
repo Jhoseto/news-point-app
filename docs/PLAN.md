@@ -95,6 +95,10 @@
 
 08.10 — В редактора на материал: полето Автор е долу при „Публикуване по час“. Горе е „Тема с продължение“ — редакторът избира тема; при Запиши статията влиза в хронологията/roadmap (`assignArticle` към `story_theme_articles`, допуска и чернова).
 
+08.10 — Performance sprint (код готов локално; чака deploy от Коце): staging HTML беше ~3.0 MB заради двоен mobile+desktop SSR. Сега едно shell по Client Hints; feed children извън client boundary; carousel clone след hydration; compact/lite srcset + LCP `src` ≤960w; рубрики без `generateStaticParams` (поправка на DYNAMIC_SERVER_USAGE). Доказателства и Cloudflare правила: `docs/PERFORMANCE.md`. Без SEO промени. Следва: deploy → PSI върху staging → добиване към 90/95.
+
+08.10 — При избор на стара снимка от архива в Studio MediaPicker тя минава през същата responsive стълба (320–1920 WebP), както ново качване. Оригиналът не се презаписва; добавят се sibling `-w{N}.webp` от оригиналните пиксели (без втора загуба на качество). API: `POST /api/editor/media/optimize/`.
+
 ## 3. Правила, които остават
 
 - Собствен CMS. Не се слага готов CMS.
@@ -289,7 +293,7 @@ Cesium canvas се рисува във физически координати �
 - SEO отворени точки (теми в sitemap, canonical/share за `/temi/`, сваляне на noindex): `docs/SEO_PLAN.md`. noindex стои, докато Коце не каже да се пуска.
 - Отложеният час е най-долу в редактора и се чете като българско време. Празни дата и час не пускат нищо сами.
 - Формите на LivePoint нямат записан реален успешен тест със снимка от телефон и проверка на реда в базата.
-- DPR 2/3, CLS и LCP не са измерени.
+- Performance: локални Lighthouse/HTML мерки и Cloudflare prep са в `docs/PERFORMANCE.md`. Staging още служи стария ~3 MB HTML до deploy. Целите 90/95 чакат PSI след качване.
 
 ## 6. План за действие
 

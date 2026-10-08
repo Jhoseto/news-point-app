@@ -2,7 +2,7 @@
 import { desktopDistance } from "@/lib/desktop-viewport";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
@@ -52,6 +52,11 @@ export function LeadingCarousel({
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
   const suppressClick = useRef(false);
   const reduceMotion = useReducedMotion();
+  // Clone set is client-only so SSR HTML is half the carousel weight.
+  const [loopReady, setLoopReady] = useState(false);
+  useEffect(() => {
+    setLoopReady(!preview && articles.length >= 2);
+  }, [articles.length, preview]);
   const assignViewport = useCallback((element: HTMLDivElement | null) => {
     viewport.current = element;
     if (element && preview) element.scrollLeft = previewOffset;
@@ -158,6 +163,8 @@ export function LeadingCarousel({
         <ArticleCard
           article={article}
           tabbable={!duplicate}
+          // Carousels are below the LCP fold; skip srcset on every card (not only clones).
+          liteMedia
           {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])}
         />
       </div>
@@ -260,9 +267,11 @@ export function LeadingCarousel({
           <div ref={firstSet} className="flex gap-5 pr-5">
             {cards(false)}
           </div>
-          <div className="flex gap-5 pr-5" aria-hidden="true">
-            {cards(true)}
-          </div>
+          {loopReady ? (
+            <div className="flex gap-5 pr-5" aria-hidden="true">
+              {cards(true)}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

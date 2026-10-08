@@ -26,7 +26,7 @@ export function Logo({ className = "h-10", variant = "default" }: { className?: 
       onClick={onLogoClick}
     >
       <BrandLogoImg
-        fetchPriority="high"
+        fetchPriority={isHeader ? "high" : "low"}
         className={
           isHeader
             ? `np-header-logo np-brand-logo ${className}`
