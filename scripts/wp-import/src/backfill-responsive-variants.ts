@@ -8,6 +8,7 @@
  *
  *   pnpm --filter @newspoint/wp-import exec tsx src/backfill-responsive-variants.ts
  *   … --limit=100 --concurrency=2 --offset=0
+ *   … --refresh-presentations   # ignore progress; upgrade thin DB variants from disk
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -46,6 +47,7 @@ const offset = Math.max(0, Number(arg("offset", "0")) || 0);
 const concurrency = Math.min(4, Math.max(1, Number(arg("concurrency", "2")) || 2));
 const dryRun = flag("dry-run");
 const preferOrigin = !flag("from-master");
+const refreshPresentations = flag("refresh-presentations");
 const progressPath = resolve(
   process.env.MEDIA_BACKFILL_PROGRESS?.trim() ||
     resolve(process.cwd(), "../../logs/media-responsive-backfill.json"),
@@ -97,6 +99,20 @@ async function processAsset(asset: {
   }
   if (!(await ioExists(asset.storageKey))) return "skipped";
 
+  if (refreshPresentations) {
+    let width = asset.width && asset.width > 0 ? asset.width : 0;
+    let height = asset.height && asset.height > 0 ? asset.height : 0;
+    if (width <= 0 || height <= 0) {
+      const bytes = await ioRead(asset.storageKey);
+      if (!bytes?.length) return "skipped";
+      const probed = await probeImage(bytes);
+      width = probed.width;
+      height = probed.height;
+    }
+    await maybeUpgradePresentation(asset.id, asset.storageKey, width, height, dryRun);
+    return "skipped";
+  }
+
   const source = await sourceBytes(asset);
   if (!source) return "skipped";
   const probed = await probeImage(source.bytes);
@@ -106,7 +122,7 @@ async function processAsset(asset: {
     if (!(await ioExists(variantKeyForWidth(asset.storageKey, rung)))) missing.push(rung);
   }
   if (!missing.length) {
-    await maybeUpgradePresentation(asset.id, asset.storageKey, width, dryRun);
+    await maybeUpgradePresentation(asset.id, asset.storageKey, width, probed.height, dryRun);
     return "skipped";
   }
 
@@ -143,7 +159,13 @@ async function processAsset(asset: {
   return "optimized";
 }
 
-async function maybeUpgradePresentation(mediaAssetId: string, masterKey: string, sourceWidth: number, dry: boolean) {
+async function maybeUpgradePresentation(
+  mediaAssetId: string,
+  masterKey: string,
+  sourceWidth: number,
+  sourceHeight: number,
+  dry: boolean,
+) {
   const [presentation] = await db
     .select()
     .from(mediaPresentations)
@@ -151,17 +173,17 @@ async function maybeUpgradePresentation(mediaAssetId: string, masterKey: string,
     .limit(1);
   const current = Array.isArray(presentation?.variants) ? presentation.variants : [];
   const hasCardOnly = current.length > 0 && current.every((entry) => entry.url.includes("-card.webp"));
-  const thin = current.length < Math.min(3, neededWidths(sourceWidth).length);
+  // Full ladder is up to 6 widths; older runs stopped upgrading once 3 were present.
+  const thin = current.length < neededWidths(sourceWidth).length;
   if (!hasCardOnly && !thin) return;
 
   const onDisk: Array<{ key: string; width: number; height: number }> = [];
   for (const rung of neededWidths(sourceWidth)) {
     const key = variantKeyForWidth(masterKey, rung);
     if (!(await ioExists(key))) continue;
-    const bytes = await ioRead(key);
-    if (!bytes) continue;
-    const meta = await probeImage(bytes);
-    onDisk.push({ key, width: meta.width, height: meta.height });
+    // Avoid SSH-reading every rung; height scales from the known master.
+    const height = Math.max(1, Math.round((rung / sourceWidth) * sourceHeight));
+    onDisk.push({ key, width: rung, height });
   }
   if (onDisk.length < 2) return;
   await writePresentation(mediaAssetId, onDisk, dry);
@@ -214,11 +236,11 @@ const rows = await db
   .where(isNotNull(mediaAssets.storageKey));
 
 const queue = rows
-  .filter((row) => row.storageKey?.startsWith("news/") && !done.has(row.id))
+  .filter((row) => row.storageKey?.startsWith("news/") && (refreshPresentations || !done.has(row.id)))
   .slice(offset, limit > 0 ? offset + limit : undefined);
 
 console.log(
-  `backfill queue=${queue.length} concurrency=${concurrency} dryRun=${dryRun} preferOrigin=${preferOrigin} progress=${progressPath}`,
+  `backfill queue=${queue.length} concurrency=${concurrency} dryRun=${dryRun} preferOrigin=${preferOrigin} refreshPresentations=${refreshPresentations} progress=${progressPath}`,
 );
 
 await mapPool(queue, concurrency, async (asset) => {

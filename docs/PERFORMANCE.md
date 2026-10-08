@@ -20,9 +20,17 @@ PageSpeed API квотата беше изчерпана; CrUX за времен
 
 | Страница | UA | HTML download | imgs | TTFB |
 |---|---|---:|---:|---:|
-| `/` | desktop | ~1.23 MB | ~274 | ~0.31 s |
-| `/` | mobile | ~1.37 MB | ~183 | ~0.05 s |
-| `/balgariya/` | mobile | ~0.32 MB | ~39 | ~0.87 s (cold) |
+| `/` | desktop | ~1.26 MB | ~272 | ~0.9 s (cold) |
+| `/` | mobile | ~1.37 MB | ~183 | ~0.6 s |
+| `/balgariya/` | mobile | ~0.31 MB | ~39 | ~1.0 s (cold) |
+
+### Origin-only follow-up (без Cloudflare), 08.10
+
+- `ArticleImage`: compact srcset ~320/768/1440 + largest; default `src` from `sizes`.
+- LivePoint panels + `DeferredChrome` (LiveUpdates / Spotlight / PWA) след `requestIdleCallback`.
+- Manrope: само Cyrillic + Latin (`app/manrope-bg.css`).
+- Media `Cache-Control`: `-w*` / `-card` → 30d + SWR; WebP master → 7d + SWR.
+- Backfill presentation upgrade: refresh DB variants when thinner than full ladder (was stuck at 3). `pnpm --filter @newspoint/wp-import media:refresh-presentations` (SSH exists-check only, no re-encode).
 
 Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 
@@ -46,16 +54,16 @@ Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 2. **`DYNAMIC_SERVER_USAGE` на рубрики** — махнат празен `generateStaticParams` от `[...path]` (несъвместим с `headers()`).
 3. **Client boundary сериализираше целия feed** — `DesktopFeed` / `MobileFeedBoundary` вече не обвиват children в client component; само `ViewportShellGate`.
 4. **Carousel clone ×2 в SSR** — вторият сет се монтира след hydration.
-5. **Lite/srcset** — compact srcset (≤2 ширини); lite карти ползват малък variant като `src`; LCP `src` предпочита ≤960w variant.
+5. **Lite/srcset** — compact srcset (~3–4 ширини); lite карти ползват малък variant като `src`; LCP/`sizes` предпочитат mid rung, не master.
 6. **Pager JSON** — `serializeFeedArticle` пази ≤2 variant-а, без caption/credit.
 7. **Logo LCP шум** — dark twin и non-header логота са `fetchPriority=low`.
 
 ## Ограничения (остават)
 
 - Homepage още е тежък (~1.2–1.4 MB HTML): много секции + client carousels/polls.
-- Много `use client` в chrome (LivePoint, push, podcast) — TBT вече е нисък лабораторно; field INP ще се мери след Cloudflare + реален трафик.
-- Липсват WebP/AVIF производни за част от архива → Lighthouse „responsive images“ остава.
-- Без deploy тези оптимизации не са на staging.
+- LivePoint shell + podcast provider още са в initial graph; тежките панели са code-split.
+- Част от `media_presentations` още имат ≤3 variant-а до re-run на backfill skip path (файловете на диска са OK).
+- Без deploy тези оптимизации не са на staging; Cloudflare edge още не е вързан.
 - PSI API quota; няма CrUX за временния домейн.
 
 ## Cloudflare (за `newspoint.bg` при миграция)

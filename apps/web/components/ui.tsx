@@ -80,12 +80,45 @@ export function TimeMeta({ date, className = "", relative = false, now }: { date
   );
 }
 
-/** Keep only the smallest and largest width descriptors to shrink HTML. */
+type SrcEntry = { url: string; width: number };
+
+function parseSrcSet(srcSet: string | undefined): SrcEntry[] {
+  if (!srcSet) return [];
+  return srcSet
+    .split(",")
+    .map((part) => {
+      const [url, descriptor] = part.trim().split(/\s+/);
+      const width = Number.parseInt(descriptor ?? "", 10);
+      return { url, width: Number.isFinite(width) ? width : Number.POSITIVE_INFINITY };
+    })
+    .filter((entry): entry is SrcEntry => Boolean(entry.url));
+}
+
+/** Keep ~320/768/1440 + largest so mid cards do not jump to the full master. */
 function compactSrcSet(srcSet: string | undefined): string | undefined {
-  if (!srcSet) return undefined;
-  const parts = srcSet.split(",").map((part) => part.trim()).filter(Boolean);
-  if (parts.length <= 2) return srcSet;
-  return `${parts[0]}, ${parts[parts.length - 1]}`;
+  const entries = parseSrcSet(srcSet);
+  if (entries.length <= 4) return srcSet;
+  const targets = [320, 768, 1440, entries[entries.length - 1]!.width];
+  const picked: SrcEntry[] = [];
+  for (const target of targets) {
+    const best = entries.reduce((a, b) => (Math.abs(b.width - target) < Math.abs(a.width - target) ? b : a));
+    if (!picked.some((entry) => entry.url === best.url)) picked.push(best);
+  }
+  return picked
+    .sort((a, b) => a.width - b.width)
+    .map((entry) => `${entry.url} ${entry.width}w`)
+    .join(", ");
+}
+
+/** Rough DPR-aware ceiling from the CSS `sizes` string (default `src` before srcset picks). */
+function preferWidthFromSizes(sizes: string | undefined, fallback: number): number {
+  if (!sizes) return fallback;
+  const px = sizes.trim().match(/^(\d+)px$/);
+  if (px) return Math.min(1280, Math.max(320, Number(px[1]) * 2));
+  if (/\b(22|25|33)vw\b/.test(sizes)) return 640;
+  if (/\b(42|46|50)vw\b/.test(sizes)) return 960;
+  if (sizes.includes("100vw")) return 1080;
+  return fallback;
 }
 
 export function ArticleImage({
@@ -108,26 +141,19 @@ export function ArticleImage({
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   const presentation = imagePresentation(media);
-  // LCP/priority keeps the full srcset; everything else uses at most two widths.
   const srcSet = lite ? undefined : priority ? presentation.srcSet : compactSrcSet(presentation.srcSet);
   // Prefer a mid/small variant as the default `src` so the browser never starts
   // with a 1400px original when a card-sized file exists (critical for LCP).
   const srcFromSet = (set: string | undefined, preferMaxWidth: number) => {
-    if (!set) return media.url;
-    const entries = set.split(",").map((part) => {
-      const [url, descriptor] = part.trim().split(/\s+/);
-      const width = Number.parseInt(descriptor ?? "", 10);
-      return { url, width: Number.isFinite(width) ? width : Number.POSITIVE_INFINITY };
-    }).filter((entry) => entry.url);
+    const entries = parseSrcSet(set);
     if (!entries.length) return media.url;
     const fit = [...entries].reverse().find((entry) => entry.width <= preferMaxWidth);
     return (fit ?? entries[0])!.url;
   };
+  const prefer = preferWidthFromSizes(sizes, priority ? 960 : 768);
   const src = lite
-    ? srcFromSet(presentation.srcSet, 640)
-    : priority
-      ? srcFromSet(presentation.srcSet ?? srcSet, 960)
-      : srcFromSet(srcSet, 960);
+    ? srcFromSet(presentation.srcSet, Math.min(640, prefer))
+    : srcFromSet(priority ? presentation.srcSet ?? srcSet : srcSet, prefer);
   return (
     <img
       src={src}

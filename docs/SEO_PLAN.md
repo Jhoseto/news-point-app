@@ -222,6 +222,9 @@ S1 е реализирана. Тук остават външните стъпк�
 - Одитът сравнява целия sitemap с реалните публични DB адреси, проверява namespace/origin/дублиране, забранени или невалидни extras, 1000 news записи на част и двудневния прозорец. Нови статии от sync след първата snapshot се валидират с втори read-only прочит.
 - HTTP проверките обхващат canonical/share/H1/NewsArticle, Google/Bing/AI/social `<head>`, истински 404 за липсващи/private адреси и malformed share UUID-и, оригинален JPG → реален WebP redirect, robots/llms/RSS и cursor redirect.
 - `--expect-indexable` е бъдеща read-only проверка след S2: public noindex става грешка, а search/settings/offline/archive остават noindex. Флагът не променя индексирането, конфигурацията или домейна. Текущите проверки продължават в preview mode.
+- Финален проход: **100 test файла passed, 2 skipped; 829 теста passed, 8 skipped**. Web production build и TypeScript — успешни, със същите две filesystem tracing warnings. `git diff --check` — успешен.
+- Финален HTTP одит: **EXIT 0**, 20 HTML/share страници, 16 crawler head/HTML сценария и 9 missing/private 404 проверки; 22 273 уникални публични URL-а в 7 sitemap части, пълно DB покритие, 143 recent news URL-а; RSS 200/40; реален JPG → WebP → image 200. Всички 9 XML документа (index, 7 части, RSS) са парснати успешно с .NET XML parser. Бройките са snapshot от отчета, не фиксирани продуктови числа.
+- Локалният production test server е стартиран с Node `--use-system-ca`, защото HTTPS към staging медията изисква доверения Windows certificate store в тази среда. TLS проверката е запазена. Няма промяна на сървърните сертификати, DNS, Cloudflare, live SQL или съдържанието.
 
 ### Подготвени настройки и приемане на Cloudflare — още не са прилагани
 

@@ -69,6 +69,7 @@ const nextConfig: NextConfig = {
       source: "/brand/:path*",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
+    // `/_next/static/*` already gets immutable Cache-Control from Next in production.
     const workerCache = { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] };
     return [noindex, brandCache, workerCache];
   },

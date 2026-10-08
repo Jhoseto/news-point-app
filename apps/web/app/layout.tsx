@@ -1,19 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { unstable_cache } from "next/cache";
-import "@fontsource-variable/manrope";
+import "./manrope-bg.css";
 import "./globals.css";
 import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
 import { MobileChromeIsland } from "@/components/mobile-chrome-island";
-import { PwaInstall } from "@/components/pwa-install";
-import { PushPromptToast } from "@/components/push-prompt-toast";
-import { PwaRegister } from "@/components/pwa-register";
-import { PwaSplash } from "@/components/pwa-splash";
+import { DeferredChrome } from "@/components/deferred-chrome";
 import { PodcastProvider } from "@/components/podcast/player";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
-import { LiveUpdates } from "@/components/live-updates";
-import { SpotlightField } from "@/components/spotlight-field";
 import { ThemeScript } from "@/components/theme-script";
 import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
@@ -109,12 +104,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <MobileChromeIsland />
         </LivePointProvider>
         </PodcastProvider>
-        <LiveUpdates />
-        <SpotlightField />
-        <PwaInstall />
-        <PushPromptToast />
-        <PwaRegister />
-        <PwaSplash />
+        <DeferredChrome />
       </body>
     </html>
   );

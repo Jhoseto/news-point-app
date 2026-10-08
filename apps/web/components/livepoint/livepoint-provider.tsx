@@ -18,18 +18,19 @@ import { createPortal } from "react-dom";
 import { isLivePointModule, MODULE_LABELS, MODULE_PATHS, type LivePointModule } from "@/lib/livepoint/config";
 import type { DataEnvelope, LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import { CloseIcon } from "../icons";
-import { CamerasPanel } from "./cameras-panel";
-import { MyNewsPanel } from "./my-news-panel";
-import { ReportPanel } from "./report-panel";
-import { TrafficPanel } from "./traffic-panel";
-import { PodcastPanel } from "../podcast/show";
-import { PodcastOrbit } from "../podcast/visuals";
 import { podcastPanelPlace } from "@/lib/podcast-playback";
-import { WeatherPanel } from "./weather-panel";
 import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
 import { DESKTOP_VIEWPORT_CHANGE, desktopRect, getDesktopViewport, lockDesktopViewport } from "@/lib/desktop-viewport";
 
 const MobileLivePointPanel = dynamic(() => import("./mobile-livepoint-panel").then(module => module.MobileLivePointPanel), { ssr: false });
+// Panels are opened on demand — keep them out of the initial homepage JS.
+const WeatherPanel = dynamic(() => import("./weather-panel").then((module) => module.WeatherPanel), { ssr: false });
+const TrafficPanel = dynamic(() => import("./traffic-panel").then((module) => module.TrafficPanel), { ssr: false });
+const CamerasPanel = dynamic(() => import("./cameras-panel").then((module) => module.CamerasPanel), { ssr: false });
+const ReportPanel = dynamic(() => import("./report-panel").then((module) => module.ReportPanel), { ssr: false });
+const MyNewsPanel = dynamic(() => import("./my-news-panel").then((module) => module.MyNewsPanel), { ssr: false });
+const PodcastPanel = dynamic(() => import("../podcast/show").then((module) => module.PodcastPanel), { ssr: false });
+const PodcastOrbit = dynamic(() => import("../podcast/visuals").then((module) => module.PodcastOrbit), { ssr: false });
 
 export type LivePointData = {
   weather: DataEnvelope<WeatherForecast>;

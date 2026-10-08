@@ -7,8 +7,10 @@ import { homeMobileFeed } from "@/lib/mobile-rubric-feed-server";
 import { getMenuCategories } from "@/lib/queries";
 import { HomeShineRoot } from "@/components/home-shine-root";
 import { Fragment } from "react";
-import { HomePoll } from "@/components/home-poll";
+import dynamic from "next/dynamic";
 import { LeadingCarousel } from "@/components/leading-carousel";
+
+const HomePoll = dynamic(() => import("@/components/home-poll").then((module) => module.HomePoll));
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
 import { BrandBanner, PlovdivBanner } from "@/components/site-chrome";

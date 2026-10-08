@@ -1,7 +1,12 @@
-/** Content-hashed WebP variants never change at the same URL. Originals can be replaced. */
+/** Content-hashed WebP variants never change at the same URL. Ladder siblings are additive. */
 export function mediaCacheControl(storageKey: string): string {
   const name = storageKey.split("/").pop() ?? "";
-  return /^[0-9a-f]{64}\.webp$/i.test(name)
-    ? "public, max-age=31536000, immutable"
-    : "public, max-age=86400";
+  if (/^[0-9a-f]{64}\.webp$/i.test(name)) return "public, max-age=31536000, immutable";
+  // Responsive ladder / legacy card: written once beside the master, stable URL.
+  if (/-w\d+\.webp$/i.test(name) || /-card\.webp$/i.test(name)) {
+    return "public, max-age=2592000, stale-while-revalidate=86400";
+  }
+  // Masters may be replaced on rare re-import; keep a week with SWR.
+  if (/\.webp$/i.test(name)) return "public, max-age=604800, stale-while-revalidate=86400";
+  return "public, max-age=86400";
 }
