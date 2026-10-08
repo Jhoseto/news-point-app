@@ -12,6 +12,8 @@
 
 08.10 — Повторният SEO преглед преди домейна/Cloudflare допълни news sitemap, canonical споделяне, публичните landing metadata и mapping за стари image URL-и. Конкретното приемане на Cloudflare и доказателствата са само в `docs/SEO_PLAN.md` §9; текущият noindex остава.
 
+08.10 — Допълнителната самостоятелна SEO/AI подготовка свърза публичните авторски идентичности и подкаст schema, обогати llms с реални дати/резюмета и затвори достъпа до аудио преди датата на публикация. Проверки и следваща стъпка: само `docs/SEO_PLAN.md` §10. Домейнът и noindex остават както са.
+
 ## 0. Строго правило за мобилната работа (от 04.10.2026)
 
 **Всички промени оттук нататък са САМО за мобилното приложение и мобилната визия.** Дизайнът и визията на десктоп версията (над 64rem) **НЕ трябва да се засягат по никакъв начин**.
@@ -102,6 +104,8 @@
 08.10 — Origin perf без Cloudflare: compact srcset ~320/768/1440 + master; `src` по `sizes`; LivePoint панели + DeferredChrome (LiveUpdates/Spotlight/PWA) след idle; Manrope само Cyrillic+Latin; media Cache-Control 30d за `-w*` / 7d за WebP master. `media:refresh-presentations` пълни thin `media_presentations` до цялата стълба от диска (преди backfill спираше на 3). Cloudflare edge остава отделно след deploy.
 
 08.10 — Desktop PSI ~88 (TBT/CSS/font chain): Literata махнат от критичния CSS (само Cyrillic+Latin след idle); card srcset capped ≤1440w; carousel autoplay след idle + кеширан `offsetWidth` (по-малко forced reflow); WebP master Cache-Control 30d. Invalid `preconnect /` и `email-decode` са от staging Cloudflare — не от origin.
+
+08.10 — Desktop a11y (touch targets): «Начало» + «Свий рубрики» и collapsed toggle са ≥48×48px (`--np-home-bar-h`/`--np-lp-row-h` в px заради `font-size: 90%`). Цел Accessibility 100.
 
 08.10 — При избор на стара снимка от архива в Studio MediaPicker тя минава през същата responsive стълба (320–1920 WebP), както ново качване. Оригиналът не се презаписва; добавят се sibling `-w{N}.webp` от оригиналните пиксели (без втора загуба на качество). API: `POST /api/editor/media/optimize/`.
 

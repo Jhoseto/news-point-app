@@ -34,6 +34,22 @@ export function inspectSeoHtml(html: string) {
       catch { errors.push("NewsArticle invalid image URL"); }
     }
   }
+  const podcastEpisodes = jsonLd.filter((node) => node["@type"] === "PodcastEpisode");
+  for (const episode of podcastEpisodes) {
+    if (!episode.name || !episode.publisher || !episode.partOfSeries) errors.push("PodcastEpisode missing name, publisher or series");
+    if (typeof episode.datePublished !== "string" || Number.isNaN(Date.parse(episode.datePublished))) errors.push("PodcastEpisode invalid datePublished");
+    const audio = episode.audio as Record<string, unknown> | undefined;
+    try {
+      if (audio?.["@type"] !== "AudioObject" || !["http:", "https:"].includes(new URL(String(audio.contentUrl)).protocol)) errors.push("PodcastEpisode invalid AudioObject");
+    } catch { errors.push("PodcastEpisode invalid AudioObject"); }
+  }
+  const people = jsonLd.filter((node) => node["@type"] === "Person");
+  const elementIds = new Set([...document.matchAll(/<[a-z][^>]*>/gi)].flatMap((tag) => attributes(tag[0]).id ?? []));
+  const canonical = links.find((link) => link.rel === "canonical")?.href;
+  for (const person of people) {
+    if (typeof person.url !== "string" || !canonical || !person.url.startsWith(`${canonical}#`)) continue;
+    if (!elementIds.has(decodeURIComponent(new URL(person.url).hash.slice(1)))) errors.push("Person URL does not identify a visible profile");
+  }
   return {
     titles: [...document.matchAll(/<title>([\s\S]*?)<\/title>/gi)].map((match) => decode(match[1]!)),
     descriptions: meta("description"),
@@ -48,5 +64,9 @@ export function inspectSeoHtml(html: string) {
     }),
     jsonLdTypes: jsonLd.map((node) => String(node["@type"])), errors,
     articleHeadlines: jsonLd.filter((node) => node["@type"] === "NewsArticle").map((node) => String(node.headline)),
+    articleAuthors: jsonLd.filter((node) => node["@type"] === "NewsArticle").map((node) => node.author as { "@type": string; "@id"?: string; name: string; url?: string }),
+    personUrls: people.flatMap((node) => typeof node.url === "string" ? [node.url] : []),
+    podcastSeriesIds: jsonLd.filter((node) => node["@type"] === "PodcastSeries").map((node) => String(node["@id"])),
+    podcastEpisodes: podcastEpisodes.map((node) => ({ url: node.url, name: node.name, publishedAt: node.datePublished, seriesId: (node.partOfSeries as Record<string, unknown> | undefined)?.["@id"], audioUrl: (node.audio as Record<string, unknown> | undefined)?.contentUrl })),
   };
 }

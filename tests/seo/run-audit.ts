@@ -7,6 +7,7 @@ import { createScriptDb, findRepoRoot } from "../../packages/db/src/node";
 import { decode, inspectSeoHtml } from "./html-audit";
 import { PUBLIC_MENU } from "../../packages/content/src/menu";
 import { CAMERA_CATALOG } from "../../apps/web/lib/livepoint/cameras/catalog";
+import { featuredPeople } from "../../apps/web/lib/public-team";
 
 const root = findRepoRoot();
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
@@ -39,6 +40,14 @@ try {
       from articles where is_public and published_at <= now() and trim(excerpt) <> '' group by lower(trim(excerpt)) having count(*) > 1 order by count(*) desc limit 20`));
     const articles = rows<{ path: string }>(await tx.execute(sql`select path from articles where is_public and published_at <= now() order by published_at desc limit 3`));
     const withoutHero = rows<{ path: string }>(await tx.execute(sql`select path from articles where is_public and published_at <= now() and hero_media_id is null order by published_at desc limit 1`));
+    const authorSamples = rows<{ path: string }>(await tx.execute(sql`
+      select a.path from articles a
+      left join author_profiles p on p.staff_user_id = a.author_user_id and p.is_public
+      left join staff_users u on u.id = p.staff_user_id
+      where a.is_public and a.published_at <= now() and
+      (a.author_name in (${sql.join(featuredPeople.map((member) => sql`${member.name}`), sql`, `)})
+        or (a.author_kind = 'staff' and p.is_public and a.author_name = u.name))
+      order by a.published_at desc limit 2`));
     const themes = rows<{ path: string }>(await tx.execute(sql`select '/temi/' || slug || '/' as path from story_themes where is_published and published_at <= now() order by published_at desc limit 3`));
     const podcasts = rows<{ path: string }>(await tx.execute(sql`select '/livepoint/podcast/' || slug || '/' as path from podcasts where status = 'published' and published_at <= now() order by published_at desc limit 3`));
     const migration = rows<{ ready: boolean }>(await tx.execute(sql`select to_regclass('public.story_theme_slugs') is not null as ready`))[0]?.ready ?? false;
@@ -50,13 +59,14 @@ try {
     const menu = new Set(PUBLIC_MENU.map((entry) => entry.slug));
     expectedPaths.push(...sections.filter((section) => menu.has(section.slug)).map((section) => section.path), ...staticPaths, ...CAMERA_CATALOG.map((camera) => `/livepoint/cameras/${camera.slug}/`));
     const hiddenSamples = rows<{ id: string; path: string }>(await tx.execute(sql`select id, path from articles where not is_public or published_at > now() or published_at is null order by updated_at desc limit 3`));
+    const hiddenPodcasts = rows<{ id: string; slug: string }>(await tx.execute(sql`select id, slug from podcasts where status <> 'published' or published_at > now() or published_at is null order by created_at desc limit 3`));
     const mediaRow = rows<{ sourceUrl: string; storageKey: string }>(await tx.execute(sql`
       select m.source_url as "sourceUrl", m.storage_key as "storageKey"
       from media_assets m join articles a on a.hero_media_id = m.id
       where a.is_public and a.published_at <= now() and m.storage_key like 'news/%' and m.source_url like '%/wp-content/uploads/%'
       order by a.published_at desc limit 1`))[0];
     const legacyMedia = mediaRow ? { path: new URL(mediaRow.sourceUrl).pathname, destination: new URL(`/media/${mediaRow.storageKey}`, origin).pathname } : null;
-    return { summary, duplicateTitles, duplicateDescriptions, samples: [...articles, ...withoutHero, ...themes, ...podcasts], migration29: migration, expectedPaths, hiddenSamples, legacyMedia };
+    return { summary, duplicateTitles, duplicateDescriptions, samples: [...articles, ...withoutHero, ...authorSamples, ...themes, ...podcasts], authorSamplePaths: authorSamples.map((row) => row.path), migration29: migration, expectedPaths, hiddenSamples, hiddenPodcasts, legacyMedia };
   });
   let cacheRefreshed = false;
   if (process.argv.includes("--refresh-cache")) {
@@ -68,7 +78,7 @@ try {
   }
   const pages = [];
   let archivePath: string | null = null;
-  const paths = [...staticPaths, "/plovdiv/", ...(CAMERA_CATALOG[0] ? [`/livepoint/cameras/${CAMERA_CATALOG[0].slug}/`] : []), ...content.samples.map((row) => row.path)];
+  const paths = [...new Set([...staticPaths, "/plovdiv/", ...(CAMERA_CATALOG[0] ? [`/livepoint/cameras/${CAMERA_CATALOG[0].slug}/`] : []), ...content.samples.map((row) => row.path)])];
   for (const path of paths) {
     auditPhase = `HTML ${path}`;
     const response = await request(path);
@@ -87,6 +97,8 @@ try {
     const noindexHeader = response.headers.get("x-robots-tag")?.includes("noindex") ?? false;
     if (expectIndexable ? noindexMeta || noindexHeader : !noindexMeta || !noindexHeader) errors.push(expectIndexable ? "Public page still has noindex" : "Preview noindex missing");
     const podcastIndex = path === "/livepoint/podcast/";
+    if (path.startsWith("/livepoint/podcast/") && meta.podcastSeriesIds[0] !== `${origin}/livepoint/podcast/#series`) errors.push("Missing podcast series identity");
+    if (!podcastIndex && path.startsWith("/livepoint/podcast/") && (meta.podcastEpisodes.length !== 1 || meta.podcastEpisodes[0]?.url !== `${origin}${path}` || meta.podcastEpisodes[0]?.seriesId !== meta.podcastSeriesIds[0])) errors.push("Missing or mismatched canonical PodcastEpisode");
     if (meta.shareUrls.some((url) => podcastIndex ? !url.startsWith(`${origin}/livepoint/podcast/`) : url !== `${origin}${path}`)) errors.push("Share button does not use the canonical URL");
     if (meta.articleHeadlines.some((title) => !meta.headlines.includes(title))) errors.push("NewsArticle headline differs from the visible H1");
     let image = null;
@@ -101,6 +113,11 @@ try {
     }
     pages.push({ path, status: response.status, ...meta, image, errors });
     console.log(`${path}: ${errors.length ? errors.join("; ") : "OK"}`);
+  }
+  const publicPeople = new Set(pages.find((page) => page.path === "/team/")?.personUrls ?? []);
+  for (const page of pages) {
+    for (const author of page.articleAuthors) if (author.url?.startsWith(`${origin}/team/`) && (!publicPeople.has(author.url) || author["@id"] !== author.url)) page.errors.push("Article author does not match a visible public team identity");
+    if (content.authorSamplePaths.includes(page.path) && !page.articleAuthors.some((author) => author.url && publicPeople.has(author.url))) page.errors.push("Known public author has no linked identity");
   }
   auditPhase = "sitemap index";
   const sitemapResponse = await request("/sitemap.xml");
@@ -189,7 +206,7 @@ try {
   }
   const notFoundChecks = [];
   const malformedId = "-".repeat(36);
-  const missingPathsToTest = ["/seo-missing-path-01a11a5c/", "/temi/seo-missing-path-01a11a5c/", "/livepoint/podcast/seo-missing-path-01a11a5c/", "/sitemaps/articles-999999.xml", "/sitemaps/articles--1.xml", `/share/article/${malformedId}/`, `/share/category/${malformedId}/`, ...content.hiddenSamples.flatMap((row) => [row.path, `/share/article/${row.id}/`])];
+  const missingPathsToTest = ["/seo-missing-path-01a11a5c/", "/temi/seo-missing-path-01a11a5c/", "/livepoint/podcast/seo-missing-path-01a11a5c/", "/sitemaps/articles-999999.xml", "/sitemaps/articles--1.xml", `/share/article/${malformedId}/`, `/share/category/${malformedId}/`, ...content.hiddenSamples.flatMap((row) => [row.path, `/share/article/${row.id}/`]), ...content.hiddenPodcasts.flatMap((row) => [`/livepoint/podcast/${row.slug}/`, `/podcast-audio/${row.id}/`, `/share/podcast/${row.slug}/`])];
   for (const path of missingPathsToTest) {
     auditPhase = `404 ${path}`;
     const response = await request(path);

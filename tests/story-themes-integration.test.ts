@@ -26,12 +26,13 @@ vi.mock("server-only", () => ({ default: {}, __esModule: true }));
 // `triggerRevalidate` calls `revalidatePath`, which is Next-only.
 // `resolveMediaUrl` reads MEDIA_ORIGIN and process.cwd.
 vi.mock("@newspoint/content", async () => {
-  const { mediaPublicPath } = await vi.importActual<typeof import("@newspoint/content")>("@newspoint/content");
+  const { mediaPublicPath, articleBody } = await vi.importActual<typeof import("@newspoint/content")>("@newspoint/content");
   return {
     PUBLIC_MENU: [{ slug: "plovdiv" }],
     resolveMediaUrl: () => null,
     triggerRevalidate: () => undefined,
     mediaPublicPath,
+    articleBody,
   };
 });
 
@@ -101,11 +102,16 @@ beforeAll(async () => {
       id uuid primary key default gen_random_uuid(),
       storage_key text,
       source_url text,
-      provider text
+      provider text,
+      width integer, height integer, alt text, caption text, credit text
     );
     create table staff_users (
       id text primary key,
       name text
+    );
+    create table author_profiles (
+      staff_user_id text primary key references staff_users(id) on delete cascade,
+      slug text not null unique, bio text not null default '', is_public boolean not null default false
     );
     create table articles (
       id uuid primary key default gen_random_uuid(),
@@ -116,6 +122,9 @@ beforeAll(async () => {
       excerpt text,
       primary_category_id uuid,
       hero_media_id uuid,
+      hero_embed_url text, author_name text not null default 'NewsPoint.bg',
+      author_kind text not null default 'newsroom', author_user_id text references staff_users(id),
+      source_url text, body jsonb not null default '[]'::jsonb, listen_enabled boolean not null default false,
       updated_at timestamptz not null default now()
     );
     create table categories (
@@ -127,6 +136,7 @@ beforeAll(async () => {
       in_menu boolean not null default false,
       menu_order integer
     );
+    create table article_categories (article_id uuid references articles(id), category_id uuid references categories(id));
     create table outbox_events (
       id bigint generated always as identity primary key,
       type text not null,
@@ -498,6 +508,21 @@ describe("deleteStoryTheme", () => {
 });
 
 describe("public sitemap queries (isolated Postgres fixtures)", () => {
+  it("links staff authors only to explicitly public profiles and preserves unknown bylines", async () => {
+    const { getArticleByPath, getPublicTeam } = await import("../apps/web/lib/queries");
+    const [stored] = await db.select({ path: schema.articles.path }).from(schema.articles).where(eq(schema.articles.id, articleIds[0]!));
+    await pg.query("insert into author_profiles(staff_user_id, slug, bio) values ($1, 'fixture-author', 'Test only')", [STAFF.id]);
+    await pg.query("update articles set author_kind = 'staff', author_user_id = $1, author_name = $2 where id = $3", [STAFF.id, STAFF.name, articleIds[0]]);
+    expect((await getArticleByPath(stored!.path))?.publicAuthorAnchor).toBeUndefined();
+    expect(await getPublicTeam()).toEqual([]);
+    await pg.query("update author_profiles set is_public = true where staff_user_id = $1", [STAFF.id]);
+    expect((await getArticleByPath(stored!.path))?.publicAuthorAnchor).toBe(STAFF.id);
+    expect(await getPublicTeam()).toEqual([{ id: STAFF.id, name: STAFF.name, bio: "Test only" }]);
+    await pg.query("update staff_users set name = 'Different fixture author' where id = $1", [STAFF.id]);
+    expect((await getArticleByPath(stored!.path))?.publicAuthorAnchor).toBeUndefined();
+    await pg.query("update articles set author_kind = 'manual', author_name = 'Different fixture author' where id = $1", [articleIds[0]]);
+    expect((await getArticleByPath(stored!.path))?.publicAuthorAnchor).toBeUndefined();
+  });
   it("resolves a legacy JPEG to its real WebP copy and refuses unknown or conflicting mappings", async () => {
     const { legacyMediaDestination } = await import("../apps/web/lib/legacy-media");
     const source = "https://newspoint.bg/wp-content/uploads/2026/10/seo-fixture.jpg";
@@ -540,6 +565,9 @@ describe("public sitemap queries (isolated Postgres fixtures)", () => {
     expect(await sitemapCounts()).toEqual({ articles: 4, themes: 1, podcasts: 1 });
     expect((await sitemapEntries("themes", 0)).map((entry) => entry.path)).toEqual(["/temi/current-theme/"]);
     expect((await sitemapEntries("podcasts", 0)).map((entry) => entry.path)).toEqual(["/livepoint/podcast/fixture-episode/"]);
+    const { publishedPodcastAudio } = await import("../packages/db/src/podcasts");
+    const audioRows = await db.select({ id: schema.podcasts.id, slug: schema.podcasts.slug }).from(schema.podcasts);
+    for (const row of audioRows) expect(!!await publishedPodcastAudio(row.id)).toBe(row.slug === "fixture-episode");
     expect(await sitemapEntries("articles", 1)).toEqual([]);
     const pages = (await sitemapPages()).map((entry) => entry.path);
     expect(pages).toEqual(expect.arrayContaining(["/", "/temi/", "/team/", "/contacts/", "/advertising/", "/livepoint/podcast/"]));

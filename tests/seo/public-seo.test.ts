@@ -4,6 +4,7 @@ import { discoveryRobots, llmsText } from "../../apps/web/lib/discovery";
 import { PUBLIC_SEO_PAGES, publicMetadata, publicPageMetadata } from "../../apps/web/lib/public-metadata";
 import { absoluteMedia, shareCard, shareOrigin } from "../../apps/web/lib/share-card";
 import { parseSitemapFile, sitemapFiles, sitemapIndexXml, sitemapXml } from "../../apps/web/lib/sitemap-xml";
+import { publicAuthorAnchor } from "../../apps/web/lib/public-team";
 
 // Resolve the existing web dependency; the audit needs no separate sharp install.
 const sharp = createRequire(new URL("../../apps/web/package.json", import.meta.url))("sharp");
@@ -13,6 +14,22 @@ afterEach(() => {
 });
 
 describe("machine discovery", () => {
+  it("uses only approved names or a matching public author identity, without fuzzy guesses", () => {
+    expect(publicAuthorAnchor("  ПЕТЪР   ГЕОРГИЕВ ")).toBe("team-petar");
+    expect(publicAuthorAnchor("Петър Георгиев", { id: "different-id", name: "Петър Георгиев" })).toBe("team-petar");
+    expect(publicAuthorAnchor("Fixture author", { id: "public-fixture-id", name: "Fixture author" })).toBe("public-fixture-id");
+    expect(publicAuthorAnchor("Fixture author")).toBeUndefined();
+    expect(publicAuthorAnchor("Fixture author", { id: "different-id", name: "Different author" })).toBeUndefined();
+    expect(publicAuthorAnchor("П. Георгиев")).toBeUndefined();
+  });
+  it("includes original publication dates and editorial excerpts, with no invented or executable markdown", () => {
+    const result = llmsText("https://example.test", [{ path: "/fixture/", title: "Fixture", publishedAt: new Date("2026-10-01T10:00:00Z"), excerpt: "Actual fixture excerpt\n## [text](https://example.test) <script>" }, { path: "/unknown/", title: "Unknown", publishedAt: new Date(NaN), excerpt: "" }], []);
+    expect(result).toContain("Публикувано: 2026-10-01T10:00:00.000Z.");
+    expect(result).toContain("Actual fixture excerpt ## \\[text\\](https://example.test) \\<script\\>");
+    expect(result).not.toContain("\n## [text]");
+    expect(result).not.toContain("Invalid Date");
+    expect(result).toContain("- [Unknown](<https://example.test/unknown/>)\n");
+  });
   it("allows crawlers to see public noindex but excludes private endpoints", () => {
     expect(discoveryRobots("https://example.test")).toEqual({ rules: { userAgent: "*", allow: "/", disallow: ["/admin/", "/api/", "/draft/"] }, sitemap: "https://example.test/sitemap.xml" });
   });

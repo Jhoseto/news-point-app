@@ -6,6 +6,8 @@ import {
   newsArticle,
   newsMediaOrganization,
   person,
+  podcastEpisode,
+  podcastSeries,
   serializeGraph,
   serializeValue,
   webSite,
@@ -220,7 +222,7 @@ describe("person", () => {
     expect(out["@type"]).toBe("Person");
     expect(out["@id"]).toBe(`${ORIGIN}/team/#ivan`);
     expect(out["worksFor"]).toEqual({ "@id": `${ORIGIN}/#organization` });
-    expect(out["url"]).toBe(`${ORIGIN}/team/`);
+    expect(out["url"]).toBe(`${ORIGIN}/team/#ivan`);
   });
 
   it("hides the URL when the profile is private", () => {
@@ -232,5 +234,28 @@ describe("person", () => {
       publicProfile: false,
     });
     expect(out["url"]).toBeUndefined();
+  });
+});
+
+describe("podcast structured data", () => {
+  const episode = { id: "fixture-id", slug: "fixture-episode", path: "/livepoint/podcast/fixture-episode/", title: "Fixture episode", summary: "Test only", coverUrl: "/media/podcasts/fixture.webp", audioUrl: "/podcast-audio/fixture-id/", durationSec: 61.25, publishedAt: "2026-10-01T10:00:00.000Z", categoryName: null };
+  it("connects the published episode, real media URLs and series on the supplied origin", () => {
+    const out = podcastEpisode(ORIGIN, episode);
+    const series = podcastSeries(ORIGIN, "Test only", [episode]);
+    expect(out).toMatchObject({ "@type": "PodcastEpisode", url: `${ORIGIN}${episode.path}`, name: episode.title, datePublished: episode.publishedAt, duration: "PT61.25S", partOfSeries: { "@id": series["@id"] }, audio: { "@type": "AudioObject", contentUrl: `${ORIGIN}${episode.audioUrl}`, duration: "PT61.25S", encodesCreativeWork: { "@id": out["@id"] } } });
+    expect(series.hasPart).toEqual([{ "@type": "PodcastEpisode", "@id": out["@id"], url: out.url, name: episode.title }]);
+    expect(out.image).toBe(`${ORIGIN}${episode.coverUrl}`);
+    expect(out).not.toHaveProperty("episodeNumber");
+    expect(series).not.toHaveProperty("numberOfEpisodes");
+    expect(out.audio).not.toHaveProperty("transcript");
+  });
+  it("omits unknown durations and preserves absolute cover URLs", () => {
+    for (const durationSec of [0, -1, NaN, Infinity]) {
+      const out = podcastEpisode(ORIGIN, { ...episode, durationSec, coverUrl: "https://media.example.test/fixture.webp" });
+      expect(out).not.toHaveProperty("duration");
+      expect(out.audio).not.toHaveProperty("duration");
+      expect(out.image).toBe("https://media.example.test/fixture.webp");
+    }
+    expect(podcastSeries(ORIGIN, "Test only", []).hasPart).toEqual([]);
   });
 });

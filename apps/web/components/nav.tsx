@@ -15,6 +15,7 @@ import {
   ChipIcon,
   CloseIcon,
   ColumnsIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   CupIcon,
   FlagIcon,
@@ -25,8 +26,6 @@ import {
   HomeIcon,
   MapIcon,
   PaletteIcon,
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
   PenIcon,
   PinIcon,
   SearchIcon,
@@ -110,8 +109,8 @@ function RubricRow({
       aria-current={active ? "page" : undefined}
       title={item.name}
       aria-label={compact ? item.name : undefined}
-      className={`np-rubric-row group relative flex h-11 shrink-0 items-center rounded-xl ${
-        compact ? "justify-center" : "gap-2.5 px-2.5"
+      className={`np-rubric-row group relative flex shrink-0 items-center rounded-xl ${
+        compact ? "h-12 min-h-[48px] min-w-[48px] justify-center" : "h-11 gap-2.5 px-2.5"
       }`}
     >
       <span
@@ -148,8 +147,8 @@ function HomeRubricBar({
   const home: NavItem = { name: "Начало", path: "/", slug: "" };
   const active = isActive(current, home.path);
   return (
-    <div className="np-rubric-home-bar np-rubric-row flex h-11 w-full rounded-xl lg:h-[var(--np-home-bar-h)]" aria-current={active ? "page" : undefined}>
-      <Link href={home.path} title={home.name} className="np-rubric-home-link group relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5">
+    <div className="np-rubric-home-bar np-rubric-row flex h-12 min-h-[48px] w-full rounded-xl lg:h-[var(--np-home-bar-h)]" aria-current={active ? "page" : undefined}>
+      <Link href={home.path} title={home.name} className="np-rubric-home-link group relative flex min-h-[48px] min-w-0 flex-1 items-center gap-2.5 px-2.5">
         <span
           className={`np-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full transition-[scale,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             active ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
@@ -173,9 +172,9 @@ function HomeRubricBar({
         onClick={onCollapse}
         aria-label="Свий менюто с рубрики"
         title="Свий менюто"
-        className="np-rubric-home-collapse inline-flex w-11 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
+        className="np-rubric-home-collapse inline-flex min-h-[48px] min-w-[48px] w-12 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
       >
-        <PanelLeftCloseIcon width={17} height={17} aria-hidden="true" />
+        <ChevronLeftIcon width={22} height={22} strokeWidth={2.25} aria-hidden="true" />
       </button>
     </div>
   );
@@ -491,9 +490,9 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
                 }}
                 aria-label="Разгъни менюто"
                 title="Разгъни менюто"
-                className="np-rubrics-toggle inline-flex size-9 items-center justify-center rounded-[0.625rem] text-muted"
+                className="np-rubrics-toggle inline-flex size-12 min-h-[48px] min-w-[48px] items-center justify-center rounded-[0.625rem] text-muted"
               >
-                <PanelLeftOpenIcon width={18} height={18} />
+                <ChevronRightIcon width={22} height={22} strokeWidth={2.25} aria-hidden="true" />
               </button>
               <ul className="flex w-full flex-col gap-0.5">
                 <li>
