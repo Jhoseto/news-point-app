@@ -16,7 +16,7 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
   const staff = await requireStaff();
   const article = await getEditorArticle(id);
   if (!article) notFound();
-  const includeMedia = [article.draft.heroMediaId, ...bodyImageIds(article.draft.bodyText)].filter(Boolean) as string[];
+  const includeMedia = [article.draft.heroMediaId, ...(article.draft.body?.flatMap(block => block.type === "image" ? [block.mediaAssetId] : []) ?? bodyImageIds(article.draft.bodyText))].filter(Boolean) as string[];
   const [sections, media, storyThemes, storyThemeId] = await Promise.all([
     listSections(),
     listRecentMedia(48, includeMedia),

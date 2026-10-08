@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/articles";
 import { callApi } from "@/lib/client-api";
-import { bodyTextToHtml, htmlToBodyText, textToBody, wordCount } from "@/lib/editor/body";
+import { textToBody } from "@/lib/editor/body";
+import { documentWords } from "@/lib/editor/document";
+import { embedFrameUrl } from "@newspoint/content";
+import { VisualArticleEditor, type VisualEditorHandle } from "./visual-article-editor";
 import { parseEmbedInput } from "@/lib/editor/embed";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
 import { slugify } from "@/lib/editor/slug";
@@ -47,133 +50,6 @@ type Device = "desktop" | "phone";
 
 const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b);
 
-function RichEditorSurface({
-  value,
-  readOnly,
-  editorRef,
-  onChange,
-  onCaret,
-}: {
-  value: string;
-  readOnly: boolean;
-  editorRef: React.RefObject<HTMLDivElement | null>;
-  onChange: (value: string) => void;
-  onCaret?: () => void;
-}) {
-  const initialized = useRef(false);
-  useEffect(() => {
-    if (!editorRef.current || initialized.current) return;
-    editorRef.current.innerHTML = bodyTextToHtml(value);
-    initialized.current = true;
-  }, [editorRef, value]);
-  const markImages = () => editorRef.current?.querySelectorAll<HTMLImageElement>("img[data-media-id]").forEach((image) => {
-    image.draggable = !readOnly;
-    image.classList.toggle("studio-editor-draggable-image", !readOnly);
-  });
-  useEffect(markImages, [readOnly, value]);
-  return <div id="body" ref={editorRef} aria-disabled={readOnly} contentEditable={!readOnly} suppressContentEditableWarning
-    onInput={(event) => { markImages(); onChange(htmlToBodyText(event.currentTarget.innerHTML)); }}
-    onKeyUp={() => onCaret?.()}
-    onMouseUp={() => onCaret?.()}
-    onBlur={() => onCaret?.()}
-    onDragStart={(event) => {
-      const image = (event.target as HTMLElement).closest("img[data-media-id]");
-      if (!image || readOnly) return;
-      event.dataTransfer.effectAllowed = "move";
-      event.dataTransfer.setData("text/plain", "newspoint-image");
-      image.classList.add("studio-editor-dragging-image");
-    }}
-    onDragEnd={(event) => (event.target as HTMLElement).closest("img[data-media-id]")?.classList.remove("studio-editor-dragging-image")}
-    onDragOver={(event) => { if ((event.target as HTMLElement).closest("img[data-media-id]")) event.preventDefault(); }}
-    onDrop={(event) => {
-      const target = (event.target as HTMLElement).closest("img[data-media-id]");
-      const dragged = editorRef.current?.querySelector<HTMLImageElement>(".studio-editor-dragging-image");
-      if (!target || !dragged || target === dragged || readOnly) return;
-      event.preventDefault();
-      target.parentElement?.insertBefore(dragged, target);
-      markImages();
-      onChange(htmlToBodyText(event.currentTarget.innerHTML));
-    }}
-    className="studio-rich-editor mt-2 min-h-[17rem] w-full rounded-lg border border-line bg-surface px-3.5 py-3 text-base leading-[1.65] text-body outline-none empty:before:text-faint empty:before:content-[attr(data-placeholder)] focus:border-accent focus:ring-4 focus:ring-accent/10" data-placeholder="Пишете тук…" />;
-}
-
-function blockIsEmpty(element: Element): boolean {
-  return !element.textContent?.replace(/\u200B/g, "").trim() && !element.querySelector("img, iframe");
-}
-
-/** Insert block-level HTML at the saved caret, splitting the current paragraph when needed. */
-function insertBlocksAtRange(editor: HTMLElement, html: string, saved: Range | null): Range | null {
-  const selection = window.getSelection();
-  editor.focus();
-  if (saved) {
-    try {
-      selection?.removeAllRanges();
-      selection?.addRange(saved);
-    } catch {
-      /* stale range after DOM edits */
-    }
-  }
-
-  const holder = document.createElement("div");
-  holder.innerHTML = html;
-  const blocks = Array.from(holder.children);
-  if (!blocks.length) return saved;
-
-  const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-  let anchor: Element | null = null;
-  if (range && editor.contains(range.commonAncestorContainer)) {
-    let node: Node | null = range.startContainer;
-    while (node && node.parentNode !== editor) node = node.parentNode;
-    if (node instanceof Element && node.parentNode === editor) anchor = node;
-  }
-
-  let last: Element | null = null;
-  const placeAfter = (ref: Node) => {
-    let cursor: Node = ref;
-    for (const block of blocks) {
-      cursor.parentNode!.insertBefore(block, cursor.nextSibling);
-      cursor = block;
-      last = block;
-    }
-  };
-
-  if (anchor && range) {
-    const splittable = /^(P|H2|H3|BLOCKQUOTE)$/.test(anchor.tagName);
-    if (blockIsEmpty(anchor) && anchor.tagName === "P") {
-      for (const block of blocks) {
-        anchor.parentNode!.insertBefore(block, anchor);
-        last = block;
-      }
-      anchor.remove();
-    } else if (splittable && !blockIsEmpty(anchor)) {
-      const afterRange = document.createRange();
-      afterRange.setStart(range.startContainer, range.startOffset);
-      afterRange.setEnd(anchor, anchor.childNodes.length);
-      const trailing = afterRange.extractContents();
-      placeAfter(anchor);
-      const shell = document.createElement(anchor.tagName.toLowerCase());
-      shell.appendChild(trailing);
-      if (!blockIsEmpty(shell)) last!.parentNode!.insertBefore(shell, last!.nextSibling);
-      if (blockIsEmpty(anchor)) anchor.remove();
-    } else {
-      placeAfter(anchor);
-    }
-  } else {
-    for (const block of blocks) {
-      editor.appendChild(block);
-      last = block;
-    }
-  }
-
-  if (!last) return saved;
-  const caret = document.createRange();
-  caret.setStartAfter(last);
-  caret.collapse(true);
-  selection?.removeAllRanges();
-  selection?.addRange(caret);
-  return caret.cloneRange();
-}
-
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
   return (
     <div role="group" aria-label={label} className="inline-flex rounded-xl border border-line bg-surface p-0.5">
@@ -195,8 +71,9 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
 export function ArticleEditor({ article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
   const [articleId, setArticleId] = useState(article.id);
   const idRef = useRef(article.id);
-  const [draft, setDraft] = useState(initialDraft);
-  const [saved, setSaved] = useState(initialDraft);
+  const initial = { ...initialDraft, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
+  const [draft, setDraft] = useState<Draft>(initial);
+  const [saved, setSaved] = useState<Draft>(initial);
   const [revision, setRevision] = useState(article.revision);
   const [savedAt, setSavedAt] = useState(article.revisionSavedAt);
   const [slugTouched, setSlugTouched] = useState(Boolean(initialDraft.slug));
@@ -205,7 +82,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [notice, setNotice] = useState<Notice | null>(null);
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
-  const [listenEnabled, setListenEnabled] = useState(article.listenEnabled);
+
   const [seedLocked, setSeedLocked] = useState(article.viewSeedLocked);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
@@ -216,9 +93,14 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [availableMedia, setAvailableMedia] = useState(media);
   const [storyThemeId, setStoryThemeId] = useState<string | null>(initialStoryThemeId);
   const [savedStoryThemeId, setSavedStoryThemeId] = useState<string | null>(initialStoryThemeId);
-  const publishKey = useRef<string | null>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const savedBodyRange = useRef<Range | null>(null);
+  const publishKey = useRef<{ key: string; payload: string } | null>(null);
+  const creationId = useRef<string | null>(null);
+  const savingRef = useRef(false);
+  const publishingRef = useRef(false);
+  const visualRef = useRef<VisualEditorHandle | null>(null);
+  const [heroDialog, setHeroDialog] = useState(false);
+  const [heroInput, setHeroInput] = useState("");
+  const [heroError, setHeroError] = useState("");
 
   useEffect(() => {
     try {
@@ -246,50 +128,26 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const dirty = !sameDraft(draft, saved) || storyThemeDirty;
   const busy = phase !== "idle";
   const hero = availableMedia.find((item) => item.id === draft.heroMediaId) ?? null;
-  const words = wordCount(draft.bodyText);
+  const body = useMemo(() => draft.body ?? textToBody(draft.bodyText), [draft.body, draft.bodyText]);
+  const words = documentWords(body);
 
   const previewSource = useDeferredValue(draft);
-  const previewBlocks = useMemo(() => textToBody(previewSource.bodyText), [previewSource.bodyText]);
+  const previewBlocks = useMemo(() => previewSource.body ?? textToBody(previewSource.bodyText), [previewSource.body, previewSource.bodyText]);
   const previewCategory = sections.find((section) => section.id === previewSource.primaryCategoryId)?.name ?? null;
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => {
       const next = { ...current, [key]: value };
-      if (key === "title" && !slugTouched && !published.isPublic) next.slug = slugify(String(value));
+      if (key === "title" && !slugTouched && !published.at) next.slug = slugify(String(value));
       return next;
     });
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);
   };
 
-  const rememberBodyRange = () => {
-    const selection = window.getSelection();
-    if (!selection?.rangeCount || !bodyRef.current) return;
-    if (!bodyRef.current.contains(selection.anchorNode)) return;
-    try {
-      savedBodyRange.current = selection.getRangeAt(0).cloneRange();
-    } catch {
-      /* ignore */
-    }
-  };
-
-  /** Keep the caret when focusing a toolbar control (click would otherwise clear it). */
-  const keepBodyCaret = (event: React.MouseEvent) => {
-    if (bodyLocked) return;
-    rememberBodyRange();
-    event.preventDefault();
-  };
-
   const openMediaPicker = (target: "body" | "hero") => {
-    if (target === "body") rememberBodyRange();
     setMediaTarget(target);
     setPickerOpen(true);
-  };
-
-  const insertHtmlAtCaret = (html: string) => {
-    if (!bodyRef.current || bodyLocked) return;
-    savedBodyRange.current = insertBlocksAtRange(bodyRef.current, html, savedBodyRange.current);
-    update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
   };
 
   const rememberMedia = (items: MediaOption[]) => {
@@ -301,91 +159,20 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     });
   };
 
-  const bodyImageHtml = (item: MediaOption, extras = 'data-size="large" data-align="center" data-shape="rectangle" data-frame="none"') =>
-    `<p><img data-media-id="${item.id}" src="${browserMediaSrc(item.url).replace(/"/g, "&quot;")}" alt="" ${extras} /></p>`;
-
-  const insertBodyBlock = (kind: "paragraph" | "heading" | "subheading" | "quote" | "list" | "orderedList") => {
-    if (!bodyRef.current || readOnly) return;
-    restoreSelectionThen(() => {
-      const command = kind === "heading" ? "formatBlock" : kind === "subheading" ? "formatBlock" : kind === "quote" ? "formatBlock" : kind === "list" ? "insertUnorderedList" : kind === "orderedList" ? "insertOrderedList" : "formatBlock";
-      const value = kind === "heading" ? "<h2>" : kind === "subheading" ? "<h3>" : kind === "quote" ? "<blockquote>" : "<p>";
-      document.execCommand(command, false, value);
-      update("bodyText", htmlToBodyText(bodyRef.current!.innerHTML));
-    });
-  };
-
-  const restoreSelectionThen = (action: () => void) => {
-    if (!bodyRef.current) return;
-    bodyRef.current.focus();
-    if (savedBodyRange.current) {
-      const selection = window.getSelection();
-      try {
-        selection?.removeAllRanges();
-        selection?.addRange(savedBodyRange.current);
-      } catch {
-        /* ignore */
-      }
-    }
-    action();
-  };
-
-  const insertInlineFormat = (kind: "bold" | "italic") => {
-    if (!bodyRef.current || readOnly) return;
-    restoreSelectionThen(() => {
-      document.execCommand(kind === "bold" ? "bold" : "italic");
-      update("bodyText", htmlToBodyText(bodyRef.current!.innerHTML));
-    });
-  };
-
-  const editorCommand = (command: string, value?: string) => {
-    if (!bodyRef.current || readOnly) return;
-    if (command === "createLink") {
-      rememberBodyRange();
-      const url = window.prompt("HTTPS адрес на връзката:", "https://");
-      if (!url?.startsWith("https://")) return;
-      restoreSelectionThen(() => {
-        document.execCommand(command, false, url);
-        update("bodyText", htmlToBodyText(bodyRef.current!.innerHTML));
-      });
-      return;
-    }
-    restoreSelectionThen(() => {
-      document.execCommand(command, false, value);
-      update("bodyText", htmlToBodyText(bodyRef.current!.innerHTML));
-    });
-  };
-
-  const insertEmbed = () => {
-    if (!bodyRef.current || bodyLocked) return;
-    rememberBodyRange();
-    const raw = window.prompt("Поставете HTTPS линк или целия Facebook/YouTube iframe код:", "");
-    if (raw == null) return;
-    const parsed = parseEmbedInput(raw);
-    if (!parsed) {
-      window.alert("Невалиден embed. Поставете https линк или iframe със src=\"https://…\".");
-      return;
-    }
-    insertHtmlAtCaret(`<p><iframe data-embed-provider="${parsed.provider}" src="${parsed.url.replace(/&/g, "&amp;")}"></iframe></p><p><br></p>`);
-  };
-
   const setHeroEmbed = () => {
-    const raw = window.prompt("Поставете HTTPS линк или iframe код за hero embed:", draft.heroEmbedUrl ?? "");
-    if (raw == null) return;
-    const parsed = parseEmbedInput(raw);
-    if (!parsed) {
-      window.alert("Невалиден embed. Поставете https линк или iframe със src=\"https://…\".");
-      return;
-    }
-    update("heroEmbedUrl", parsed.url);
-    update("heroMediaId", null);
+    setHeroInput(draft.heroEmbedUrl ?? "");
+    setHeroError("");
+    setHeroDialog(true);
   };
 
-  const setImagePresentation = (key: "data-size" | "data-shape" | "data-frame" | "data-align" | "data-focal-x" | "data-focal-y" | "data-crop" | "data-crop-zoom", value: string) => {
-    const node = window.getSelection()?.anchorNode;
-    const image = node instanceof HTMLImageElement ? node : node?.parentElement?.closest("img[data-media-id]");
-    if (!image) return;
-    image.setAttribute(key, value);
-    if (bodyRef.current) update("bodyText", htmlToBodyText(bodyRef.current.innerHTML));
+  const applyHeroEmbed = () => {
+    const parsed = parseEmbedInput(heroInput);
+    if (!parsed || !embedFrameUrl(parsed.url)) {
+      setHeroError("Водещият embed трябва да е поддържана YouTube или Facebook публикация.");
+      return;
+    }
+    setDraft(current => ({ ...current, heroEmbedUrl: parsed.url, heroMediaId: null }));
+    setHeroDialog(false);
   };
 
   const selectAuthor = (authorKind: Draft["authorKind"]) => {
@@ -400,7 +187,11 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
   const save = useCallback(
     async (expected = revision): Promise<number | null> => {
+      if (savingRef.current) return null;
+      savingRef.current = true;
       const snapshot = draft;
+      const { bodyText: legacyText, ...structured } = snapshot;
+      const payload = snapshot.body !== undefined ? structured : snapshot;
       const themeId = storyThemeId;
       const themeChanged = themeId !== savedStoryThemeId;
       setPhase("saving");
@@ -410,7 +201,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         if (!themeChanged) return true;
         const assigned = await callApi("POST", "/api/stories/", { action: "assignArticle", articleId: id, themeId });
         if (!assigned.ok) {
-          setNotice({ tone: "error", text: assigned.error.message });
+          setNotice({ tone: "error", text: `Материалът е записан, но темата не е свързана: ${assigned.error.message} Повторете записа.` });
           return false;
         }
         setSavedStoryThemeId(themeId);
@@ -419,7 +210,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
       try {
         if (!idRef.current) {
-          const result = await callApi<{ id: string; revision: number }>("POST", "/api/editor/articles/", snapshot);
+          creationId.current ??= crypto.randomUUID();
+          const result = await callApi<{ id: string; revision: number }>("POST", "/api/editor/articles/", { ...payload, creationId: creationId.current });
           if (!result.ok) {
             setNotice({ tone: "error", text: result.error.message });
             return null;
@@ -435,7 +227,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         }
 
         if (!sameDraft(snapshot, saved)) {
-          const result = await callApi<{ revision: number }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: snapshot });
+          const result = await callApi<{ revision: number }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: payload });
           if (!result.ok) {
             if (result.status === 409 && result.error.code === "conflict") setConflict(result.error.details as Conflict);
             else {
@@ -455,6 +247,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         if (!(await assignTheme(idRef.current))) return null;
         return revision;
       } finally {
+        savingRef.current = false;
         setPhase("idle");
       }
     },
@@ -462,7 +255,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   );
 
   async function publish() {
-    const blocking = publishProblems({ ...draft, bodyBlocks: textToBody(draft.bodyText).length });
+    if (publishingRef.current || savingRef.current) return;
+    publishingRef.current = true;
+    try {
+    const blocking = publishProblems({ ...draft, bodyBlocks: body.length });
     if (blocking.length) {
       setProblems(blocking);
       return;
@@ -474,9 +270,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       toPublish = next;
     }
     // Kept until the server answers, so a retry after a lost response publishes once.
-    publishKey.current ??= crypto.randomUUID();
+    const publishPayload = JSON.stringify({ revision: toPublish, listenEnabled: draft.listenEnabled });
+    if (publishKey.current?.payload !== publishPayload) publishKey.current = { key: crypto.randomUUID(), payload: publishPayload };
     setPhase("publishing");
-    const result = await callApi<PublishOutcome>("POST", `/api/editor/articles/${idRef.current}/publish/`, { revision: toPublish, idempotencyKey: publishKey.current, listenEnabled });
+    const result = await callApi<PublishOutcome>("POST", `/api/editor/articles/${idRef.current}/publish/`, { revision: toPublish, idempotencyKey: publishKey.current.key, listenEnabled: draft.listenEnabled ?? article.listenEnabled });
     setPhase("idle");
     if (!result.ok) {
       if (result.status !== 0) publishKey.current = null;
@@ -492,6 +289,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       text: result.data.type === "article.published" ? "Статията е публикувана. Читателите я виждат веднага." : "Публикацията е обновена.",
       href: `${webUrl}${result.data.path}`,
     });
+    } finally { publishingRef.current = false; }
   }
 
   async function openPreviewTab() {
@@ -532,7 +330,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
             ? `Записано ${formatWhen(savedAt)} · версия ${revision}`
             : "Нова чернова";
   const hasUnpublished = published.isPublic && !dirty && published.revision !== revision;
-  const previewUrl = `newspoint.bg/${draft.slug || "adres-na-statiyata"}/`;
+  const previewUrl = `${webUrl.replace(/\/$/, "")}/${draft.slug || "adres-na-statiyata"}/`;
 
   return (
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
@@ -570,7 +368,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
           {!readOnly ? (
             <div className="ml-auto flex items-center gap-1.5">
               <label className="inline-flex items-center gap-2 pr-1 text-xs font-bold text-ink">
-                <input type="checkbox" checked={listenEnabled} onChange={(event) => setListenEnabled(event.target.checked)} />
+                <input type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={(event) => update("listenEnabled", event.target.checked)} />
                 Позволи слушане
               </label>
               <button type="button" disabled={busy || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
@@ -800,7 +598,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <input
                 aria-label="Адрес на статията"
                 value={draft.slug}
-                disabled={readOnly || published.isPublic}
+                disabled={readOnly || Boolean(published.at)}
                 onChange={(event) => {
                   setSlugTouched(true);
                   update("slug", event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
@@ -834,50 +632,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <div className="studio-editor-classic" role="toolbar" aria-label="WordPress стил редактор">
-              <div className="studio-editor-classic-top">
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => openMediaPicker("body")} className="studio-editor-media">▣&nbsp; Add Media</button>
-              </div>
-              <div className="studio-editor-classic-row">
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => insertInlineFormat("bold")} className="studio-editor-classic-tool" title="Bold"><strong>B</strong></button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => insertInlineFormat("italic")} className="studio-editor-classic-tool" title="Italic"><em>I</em></button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("strikeThrough")} className="studio-editor-classic-tool" title="Strikethrough"><s>ABC</s></button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => insertBodyBlock("list")} className="studio-editor-classic-tool" title="Bulleted list">☷</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => insertBodyBlock("orderedList")} className="studio-editor-classic-tool" title="Numbered list">☷</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => insertBodyBlock("quote")} className="studio-editor-classic-tool" title="Blockquote">❝</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("insertHorizontalRule")} className="studio-editor-classic-tool" title="Horizontal line">—</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("justifyLeft")} className="studio-editor-classic-tool" title="Align left">≡</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("justifyCenter")} className="studio-editor-classic-tool" title="Align center">≡</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("justifyRight")} className="studio-editor-classic-tool" title="Align right">≡</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("createLink")} className="studio-editor-classic-tool" title="Insert link">🔗</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={insertEmbed} className="studio-editor-classic-tool" title="Вгради външна публикация">Embed</button>
-              </div>
-              <div className="studio-editor-classic-row">
-              <select aria-label="Стил на блока" defaultValue="paragraph" disabled={bodyLocked} onChange={(event) => insertBodyBlock(event.target.value as "paragraph" | "heading" | "subheading")} className="studio-editor-classic-select">
-                  <option value="paragraph">Paragraph</option><option value="heading">Heading 2</option><option value="subheading">Heading 3</option>
-                </select>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("underline")} className="studio-editor-classic-tool" title="Underline"><u>U</u></button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("justifyFull")} className="studio-editor-classic-tool" title="Justify">≡</button>
-                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Text color">A</button>
-                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Paste as text">▣</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("removeFormat")} className="studio-editor-classic-tool" title="Clear formatting">⌫</button>
-                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Special character">Ω</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("indent")} className="studio-editor-classic-tool" title="Indent">⇥</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => editorCommand("outdent")} className="studio-editor-classic-tool" title="Outdent">⇤</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => document.execCommand("undo")} className="studio-editor-classic-tool" title="Undo">↶</button>
-                <button type="button" disabled={bodyLocked} onMouseDown={keepBodyCaret} onClick={() => document.execCommand("redo")} className="studio-editor-classic-tool" title="Redo">↷</button>
-                <button type="button" disabled={bodyLocked} className="studio-editor-classic-tool" title="Help">?</button>
-                <select aria-label="Размер на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-size", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Снимка</option><option value="small">Малка</option><option value="medium">Средна</option><option value="large">Голяма</option><option value="full">Цяла ширина</option></select>
-                <select aria-label="Форма на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-shape", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Форма</option><option value="rectangle">Правоъгълна</option><option value="rounded">Заоблена</option><option value="circle">Кръгла</option></select>
-                <select aria-label="Рамка на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-frame", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Рамка</option><option value="none">Без рамка</option><option value="soft">Сянка</option><option value="line">Контур</option></select>
-                <select aria-label="Кадриране на снимката" defaultValue="" onChange={(event) => event.target.value && setImagePresentation("data-crop", event.target.value)} className="studio-editor-classic-select studio-editor-image-select"><option value="">Кадър</option><option value="original">Оригинал</option><option value="landscape">Пейзаж</option><option value="square">Квадрат</option><option value="portrait">Портрет</option></select>
-                <label className="studio-editor-focal-control" title="Фокус по хоризонтала">X <input aria-label="Фокус по хоризонтала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-x", event.target.value)} /></label>
-                <label className="studio-editor-focal-control" title="Фокус по вертикала">Y <input aria-label="Фокус по вертикала" type="range" min="0" max="100" defaultValue="50" onChange={(event) => setImagePresentation("data-focal-y", event.target.value)} /></label>
-                <label className="studio-editor-focal-control" title="Приближение на кадъра">Zoom <input aria-label="Приближение на кадъра" type="range" min="100" max="300" defaultValue="100" onChange={(event) => setImagePresentation("data-crop-zoom", event.target.value)} /></label>
-              </div>
-            </div>
-            <RichEditorSurface value={draft.bodyText} readOnly={bodyLocked} editorRef={bodyRef} onChange={(value) => update("bodyText", value)} onCaret={rememberBodyRange} />
-            <p className="mt-1.5 text-[0.6875rem] text-faint">Поставете курсора между редовете, после Add Media или Embed. Ctrl+S записва.</p>
+            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onOpenMedia={() => openMediaPicker("body")} handleRef={visualRef} />
+            <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
             <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
               <legend className="px-1 text-xs font-bold text-ink">Автор и публикуване</legend>
               <div className="flex flex-wrap items-end gap-3">
@@ -910,17 +666,17 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                   </label>
                 ) : null}
               </div>
-              <div className={published.isPublic ? "opacity-60" : undefined}>
+              <div className={published.at ? "opacity-60" : undefined}>
                 <p className="text-[0.6875rem] text-muted">Публикуване по час (българско време). Празни полета не пускат новината сами.</p>
                 <div className="mt-2 flex flex-wrap items-end gap-2">
                   <label className="text-[11px] font-semibold text-muted">Дата
-                    <input type="date" disabled={published.isPublic} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                    <input type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
                       const time = draft.publishAtSofia?.slice(11, 16) || "08:00";
                       update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
                     }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
                   </label>
                   <label className="text-[11px] font-semibold text-muted">Час
-                    <input type="time" disabled={published.isPublic} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                    <input type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
                       const date = draft.publishAtSofia?.slice(0, 10);
                       update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
                     }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
@@ -1025,31 +781,32 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         </section>
       </div>
 
+      {heroDialog ? <div className="np-editor-dialog-backdrop" onKeyDown={event => { if (event.key === "Escape") setHeroDialog(false); }}><section role="dialog" aria-modal="true" aria-label="Водещ embed" className="np-editor-dialog">
+        <button type="button" className="np-dialog-close" aria-label="Затвори диалога" onClick={() => setHeroDialog(false)}>×</button>
+        <h3>Водещ embed</h3><label>HTTPS адрес или iframe код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
+        {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
+      </section></div> : null}
       {pickerOpen ? (
         <MediaPicker
           media={availableMedia}
-          selected={draft.heroMediaId}
+          selected={mediaTarget === "hero" ? draft.heroMediaId : null}
           multiple={mediaTarget === "body"}
           onClose={() => setPickerOpen(false)}
           onUpload={(item) => {
             rememberMedia([item]);
-            if (mediaTarget === "hero") update("heroMediaId", item.id);
-            else insertHtmlAtCaret(`${bodyImageHtml(item)}<p><br></p>`);
+            if (mediaTarget === "hero") setDraft(current => ({ ...current, heroMediaId: item.id, heroEmbedUrl: null }));
+            else visualRef.current?.insertImages([item]);
             setPickerOpen(false);
           }}
           onSelect={(item) => {
             rememberMedia([item]);
-            if (mediaTarget === "body") insertHtmlAtCaret(`${bodyImageHtml(item)}<p><br></p>`);
-            else update("heroMediaId", item.id);
+            if (mediaTarget === "body") visualRef.current?.insertImages([item]);
+            else setDraft(current => ({ ...current, heroMediaId: item.id, heroEmbedUrl: null }));
             setPickerOpen(false);
           }}
           onSelectMany={(items) => {
             rememberMedia(items);
-            if (items.length) {
-              const group = crypto.randomUUID();
-              const extras = `data-group-id="${group}" data-size="medium" data-align="center" data-shape="rounded" data-frame="none"`;
-              insertHtmlAtCaret(`${items.map((item) => bodyImageHtml(item, extras)).join("")}<p><br></p>`);
-            }
+            if (items.length) visualRef.current?.insertImages(items, true);
             setPickerOpen(false);
           }}
         />

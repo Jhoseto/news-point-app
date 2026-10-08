@@ -259,9 +259,20 @@ export const articleRevisions = pgTable(
     authorName: text("author_name").notNull().default("NewsPoint.bg"),
     createdBy: text("created_by").references(() => staffUsers.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    /** NULL = older revision; keep the article's existing listening policy. */
+    listenEnabled: boolean("listen_enabled"),
   },
   (table) => [unique("article_revisions_article_id_number_key").on(table.articleId, table.number)],
 );
+
+/** Explicit QA article IDs — excludes reader push without suppressing publications. */
+export const editorQaArticles = pgTable("editor_qa_articles", {
+  articleId: uuid("article_id")
+    .primaryKey()
+    .references(() => articles.id),
+  runId: text("run_id").notNull(),
+  registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const publishRequests = pgTable("publish_requests", {
   idempotencyKey: uuid("idempotency_key").primaryKey(),
@@ -547,6 +558,7 @@ export const schemaTables = {
   articleCategories,
   outboxEvents,
   articleRevisions,
+  editorQaArticles,
   publishRequests,
   livepointSubmissions,
   pageArrangements,

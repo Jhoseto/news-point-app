@@ -95,11 +95,11 @@ function parseSrcSet(srcSet: string | undefined): SrcEntry[] {
 }
 
 /** Card/list srcset: mid rungs only (never pull a 2–4k master for a 22vw tile). */
-function compactSrcSet(srcSet: string | undefined, maxWidth = 1440): string | undefined {
+function compactSrcSet(srcSet: string | undefined, maxWidth: number): string | undefined {
   let entries = parseSrcSet(srcSet);
   if (!entries.length) return undefined;
   const capped = entries.filter((entry) => entry.width <= maxWidth);
-  if (capped.length >= 2) entries = capped;
+  if (capped.length >= 1) entries = capped;
   if (entries.length <= 3) {
     return entries.map((entry) => `${entry.url} ${entry.width}w`).join(", ");
   }
@@ -123,7 +123,8 @@ function preferWidthFromSizes(sizes: string | undefined, fallback: number): numb
   if (px) return Math.min(1280, Math.max(320, Number(px[1]) * 2));
   if (/\b(22|25|33)vw\b/.test(sizes)) return 640;
   if (/\b(42|46|50)vw\b/.test(sizes)) return 960;
-  if (sizes.includes("100vw")) return 1080;
+  // Mobile lead is height-capped (~16rem); prefer ≤800 so 768w wins over a ~824 master.
+  if (sizes.includes("100vw")) return 800;
   return fallback;
 }
 
@@ -147,7 +148,8 @@ export function ArticleImage({
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   const presentation = imagePresentation(media);
-  const srcSet = lite ? undefined : priority ? presentation.srcSet : compactSrcSet(presentation.srcSet);
+  // Always cap: priority lead ≤1280, cards ≤960 — masters stay out of srcset.
+  const srcSet = lite ? undefined : compactSrcSet(presentation.srcSet, priority ? 1280 : 960);
   // Prefer a mid/small variant as the default `src` so the browser never starts
   // with a 1400px original when a card-sized file exists (critical for LCP).
   const srcFromSet = (set: string | undefined, preferMaxWidth: number) => {
@@ -156,10 +158,10 @@ export function ArticleImage({
     const fit = [...entries].reverse().find((entry) => entry.width <= preferMaxWidth);
     return (fit ?? entries[0])!.url;
   };
-  const prefer = preferWidthFromSizes(sizes, priority ? 960 : 768);
+  const prefer = preferWidthFromSizes(sizes, priority ? 960 : 640);
   const src = lite
     ? srcFromSet(presentation.srcSet, Math.min(640, prefer))
-    : srcFromSet(priority ? presentation.srcSet ?? srcSet : srcSet, prefer);
+    : srcFromSet(srcSet ?? presentation.srcSet, prefer);
   return (
     <img
       src={src}

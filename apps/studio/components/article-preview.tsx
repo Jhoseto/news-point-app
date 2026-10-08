@@ -1,10 +1,11 @@
-import { articleSubtitle, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { wordCount } from "@/lib/editor/body";
 import { formatFull } from "@/lib/format";
 import { browserMediaSrc } from "@/lib/media-src";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
+import "@newspoint/content/composition.css";
 
 // Mirrors the article page of apps/web (components/article-page.tsx, article-body.tsx)
 // so editors see the text the way readers will. Keep the two in step.
@@ -25,14 +26,15 @@ export interface PreviewArticle {
 }
 
 function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) {
+  const layout = composition(block);
   switch (block.type) {
     case "paragraph":
-      return <p dangerouslySetInnerHTML={{ __html: block.html }} />;
+      return <p className={layout.className} style={layout.style} dangerouslySetInnerHTML={{ __html: block.html }} />;
     case "heading":
-      return block.level === 2 ? <h2>{block.text}</h2> : block.level === 3 ? <h3>{block.text}</h3> : <h4>{block.text}</h4>;
+      { const Heading = `h${block.level}` as "h2" | "h3" | "h4"; return <Heading className={layout.className} style={layout.style} dangerouslySetInnerHTML={{ __html: block.html ?? block.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") }} />; }
     case "quote":
       return (
-        <blockquote className="relative rounded-2xl border border-line bg-surface-2 px-6 py-5 text-lg leading-relaxed font-semibold text-ink">
+        <blockquote style={layout.style} className={`${layout.className} relative rounded-2xl border border-line bg-surface-2 px-6 py-5 text-lg leading-relaxed font-semibold text-ink`}>
           <span className="np-gradient-bg absolute inset-y-4 left-0 w-1 rounded-full" aria-hidden="true" />
           <div dangerouslySetInnerHTML={{ __html: block.html }} />
           {block.cite ? <footer className="mt-2 text-sm font-medium text-muted">— {block.cite}</footer> : null}
@@ -41,7 +43,7 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
     case "list": {
       const List = block.ordered ? "ol" : "ul";
       return (
-        <List>
+        <List className={layout.className} style={layout.style}>
           {block.items.map((item, index) => (
             <li key={index} dangerouslySetInnerHTML={{ __html: item }} />
           ))}
@@ -50,12 +52,13 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
     }
     case "image": {
       const asset = media.find((item) => item.id === block.mediaAssetId);
-      return asset ? <figure className={`studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><img src={browserMediaSrc(asset.url)} alt={asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /><figcaption>{asset.alt}</figcaption></figure> : null;
+      const caption = block.caption ?? asset?.caption;
+      return asset ? <figure style={layout.style} className={`${layout.className} studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.align ?? "center"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><div className="np-media-canvas" style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset.width && asset.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}><img src={browserMediaSrc(asset.url)} alt={block.alt ?? asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /></div>{caption || asset.credit ? <figcaption>{caption}{caption && asset.credit ? " · " : ""}{asset.credit ? `Снимка: ${asset.credit}` : ""}</figcaption> : null}</figure> : null;
     }
     case "embed":
-      return <div className="studio-preview-embed"><iframe src={block.url} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /></div>;
-    default:
-      return <p className="rounded-xl bg-surface-2 px-4 py-3 text-sm text-muted">Елемент „{block.type}“ се вижда само на сайта.</p>;
+      return <div className={`${layout.className} studio-preview-embed`} style={layout.style}>{embedFrameUrl(block.url) ? <iframe src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}</div>;
+    case "divider": return <hr />;
+    case "legacy_html": return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }
 }
 
@@ -86,7 +89,7 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
         ) : null}
         <div className="relative overflow-hidden rounded-3xl shadow-card">
           {article.heroEmbedUrl ? (
-            <iframe src={article.heroEmbedUrl} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen />
+            embedFrameUrl(article.heroEmbedUrl) ? <iframe src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
           ) : article.hero ? (
             <img src={browserMediaSrc(article.hero.url)} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
           ) : (
@@ -128,15 +131,7 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
 
           {hasBody ? (
             <div className="np-prose np-site-prose">
-              {article.blocks.map((block, index) => {
-                if (block.type === "image" && block.groupId) {
-                  const first = article.blocks.findIndex((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
-                  if (first !== index) return null;
-                  const group = article.blocks.filter((candidate) => candidate.type === "image" && candidate.groupId === block.groupId);
-                  return <div key={`preview-gallery-${block.groupId}`} className="studio-preview-gallery">{group.map((item, groupIndex) => <PreviewBlock key={groupIndex} block={item} media={article.media} />)}</div>;
-                }
-                return <PreviewBlock key={index} block={block} media={article.media} />;
-              })}
+              {bodyGroups(article.blocks).map(group => group.blocks.length > 1 ? <div key={group.index} className="np-article-gallery studio-preview-gallery">{group.blocks.map((block, offset) => <PreviewBlock key={offset} block={block} media={article.media} />)}</div> : <PreviewBlock key={group.index} block={group.blocks[0]!} media={article.media} />)}
             </div>
           ) : (
             <p className="rounded-2xl border-2 border-dashed border-line px-5 py-10 text-center text-sm text-faint">Текстът ще се появи тук, докато пишете.</p>

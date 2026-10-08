@@ -44,12 +44,9 @@ export async function POST(request: Request) {
     const fullKey = `${folder}/${base}.webp`;
     const variantKeys = photo.variants.map((variant) => ({ ...variant, key: `${folder}/${base}-w${variant.width}.webp` }));
     // Parallel writes: variants go up to 6 today.
-    await Promise.all([
-      writeMediaFile(fullKey, photo.full.buffer),
-      ...variantKeys.map((variant) => writeMediaFile(variant.key, variant.buffer)),
-    ]);
     let assetId: string | undefined;
     try {
+      await Promise.all([writeMediaFile(fullKey, photo.full.buffer), ...variantKeys.map(variant => writeMediaFile(variant.key, variant.buffer))]);
       const [asset] = await getDb()
         .insert(mediaAssets)
         .values({
@@ -75,7 +72,7 @@ export async function POST(request: Request) {
         })
         .onConflictDoNothing();
       return Response.json(
-        { id: assetId, url: `/media/${fullKey}`, variants, alt },
+        { id: assetId, url: `/media/${fullKey}`, variants, alt, width: photo.full.width, height: photo.full.height, caption: "", credit: "" },
         { headers: { "cache-control": "no-store" } },
       );
     } catch (error) {

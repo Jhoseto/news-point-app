@@ -63,7 +63,7 @@
 
 ### Миграции
 
-Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–29.
+Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–30.
 
 Не се пускат на този Postgres: 11 и 15. Те пишат в Supabase Storage и тук нямат смисъл. Профилните снимки и LivePoint снимките вече са на диска на сървъра.
 
@@ -80,6 +80,8 @@
 28 е `story_themes`: теми с продължение (`story_themes`, `story_theme_articles`) и разширен `outbox_events` type check за `story.published` / `story.updated`. Приложена е на 05.10 по изрична заявка на Коце.
 
 29 е `story_theme_slug_history`: таблица `story_theme_slugs` + trigger `story_theme_slug_reservation` за запазване на всички URL-и на теми. Приложена е на 08.10 по изрична заявка на Коце.
+
+30 е `editor_revisions`: `article_revisions.listen_enabled` + таблица `editor_qa_articles` + `enqueue_reader_push` пропуска QA статии. Приложена е на 08.10 по изрична заявка на Коце.
 
 08.10 — Поправка: смяна на рубрика при „Обнови публикацията“ вече подава старата и новата рубрика в outbox `topics`, а live revalidation чисти и `/рубрика/` плюс Data Cache tag `public-listings`. Преди това оставаше стар ISR/кеш на рубричната страница (пример: „Интересни новости в навигацията Waze“ → Технологии).
 
@@ -106,6 +108,8 @@
 08.10 — Desktop PSI ~88 (TBT/CSS/font chain): Literata махнат от критичния CSS (само Cyrillic+Latin след idle); card srcset capped ≤1440w; carousel autoplay след idle + кеширан `offsetWidth` (по-малко forced reflow); WebP master Cache-Control 30d. Invalid `preconnect /` и `email-decode` са от staging Cloudflare — не от origin.
 
 08.10 — Desktop a11y (touch targets): «Начало» + «Свий рубрики» и collapsed toggle са ≥48×48px (`--np-home-bar-h`/`--np-lp-row-h` в px заради `font-size: 90%`). Цел Accessibility 100.
+
+08.10 — Perf към 95 (без design change): mobile feed `slimHero` държи ≤960w variants (не само 2 най-малки → LCP може 768w); logo `fetchPriority=low` (не краде LCP); card srcset ≤960 / priority ≤1280; по-точни `sizes` на tile/mini; `content-visibility` за desktop секции под сгъвката.
 
 08.10 — При избор на стара снимка от архива в Studio MediaPicker тя минава през същата responsive стълба (320–1920 WebP), както ново качване. Оригиналът не се презаписва; добавят се sibling `-w{N}.webp` от оригиналните пиксели (без втора загуба на качество). API: `POST /api/editor/media/optimize/`.
 

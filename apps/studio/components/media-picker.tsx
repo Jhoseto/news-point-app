@@ -43,6 +43,10 @@ export function MediaPicker({
   const [libraryLoading, setLibraryLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
+  const [error, setError] = useState("");
+  const chosenItems = useRef(new Map<string, LibraryImage>());
+  const uploadedItems = useRef<MediaOption[]>([]);
+  const uploadBusy = useRef(false);
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
 
@@ -56,26 +60,36 @@ export function MediaPicker({
       });
       if (!response.ok) return item;
       const result = (await response.json()) as MediaOption & { variants?: unknown };
-      return { id: result.id || item.id, url: result.url || item.url, alt: result.alt || item.alt };
+      return { ...item, ...result, id: result.id || item.id, url: result.url || item.url, alt: result.alt ?? item.alt };
     } catch {
       return item;
     }
   };
 
   const upload = async () => {
-    if (!uploadFiles.length) return;
+    if (!uploadFiles.length || uploadBusy.current) return;
+    uploadBusy.current = true;
     setUploading(true);
+    setError("");
+    let completed = 0;
     try {
       for (const file of uploadFiles) {
         const form = new FormData(); form.append("file", file); form.append("alt", file.name.replace(/\.[^.]+$/, ""));
         const response = await fetch(withBase("/api/editor/media/upload/"), { method: "POST", body: form });
-        if (!response.ok) throw new Error("Качването не беше успешно.");
+        if (!response.ok) { const result = await response.json().catch(() => null); throw new Error(result?.error?.message ?? "Качването не беше успешно."); }
         const item = await response.json() as MediaOption;
-        if (onUpload) onUpload(item);
-        else onSelect(item);
+        uploadedItems.current.push(item);
+        completed++;
       }
-      setUploadFiles([]); setMode("library");
-    } finally { setUploading(false); }
+      const items = uploadedItems.current;
+      uploadedItems.current = [];
+      setUploadFiles([]);
+      if (multiple && onSelectMany) onSelectMany(items);
+      else if (items[0]) (onUpload ?? onSelect)(items[0]);
+    } catch (problem) {
+      setUploadFiles(files => files.slice(completed));
+      setError(`${problem instanceof Error ? problem.message : "Качването не беше успешно."}${uploadedItems.current.length ? ` ${uploadedItems.current.length} снимки вече са качени; повторете само останалите.` : ""}`);
+    } finally { uploadBusy.current = false; setUploading(false); }
   };
 
   useEffect(() => {
@@ -137,6 +151,7 @@ export function MediaPicker({
 
   const pick = (item: LibraryImage) => {
     if (multiple) {
+      chosenItems.current.set(item.id, item);
       setSelectedMany((current) => current.includes(item.id) ? current.filter((id) => id !== item.id) : [...current, item.id]);
       return;
     }
@@ -149,7 +164,7 @@ export function MediaPicker({
 
   const insertMany = () => {
     if (!onSelectMany || !selectedMany.length || optimizing) return;
-    const chosen = library.filter((item) => selectedMany.includes(item.id));
+    const chosen = selectedMany.map(id => chosenItems.current.get(id)).filter((item): item is LibraryImage => !!item);
     setOptimizing(true);
     void Promise.all(chosen.map((item) => optimizeArchiveItem(item)))
       .then((items) => onSelectMany(items))
@@ -160,8 +175,9 @@ export function MediaPicker({
     <dialog
       ref={dialog}
       onClose={onClose}
+      onCancel={event => { if (uploading) event.preventDefault(); }}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !uploading) onClose();
       }}
       aria-labelledby="media-heading"
       className="m-auto max-h-[85dvh] w-[min(56rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
@@ -177,17 +193,18 @@ export function MediaPicker({
           aria-label={searchHint}
           className="np-input ml-auto max-w-72 py-2"
         />
-        <button type="button" onClick={onClose} aria-label="Затвори" className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-surface-2">
+        <button type="button" disabled={uploading} onClick={onClose} aria-label="Затвори" className="rounded-lg px-2 py-1 text-xl leading-none text-muted hover:bg-surface-2">
           ×
         </button>
       </div>
       <div className="flex gap-1 border-b border-line px-5 pt-3">
-        <button type="button" onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
-        <button type="button" onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
+        <button type="button" disabled={uploading} onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
+        <button type="button" disabled={uploading} onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
       </div>
+      {error ? <p role="alert" className="px-5 py-3 text-sm text-danger">{error}</p> : null}
       {mode === "upload" ? (
         <div className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
-          <input id="media-upload-files" type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => setUploadFiles(Array.from(event.target.files ?? []))} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
+          <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFiles(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
           {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла</p> : <p className="mt-3 text-xs text-muted">Изберете една или повече снимки. Качването ще премине през оптимизация и проверка.</p>}
           {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
           <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека.</p>

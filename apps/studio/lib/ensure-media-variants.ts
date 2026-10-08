@@ -15,6 +15,7 @@ export type EnsuredMedia = {
   id: string;
   url: string;
   alt: string;
+  caption: string; credit: string; width: number; height: number;
   variants: PhotoVariantSpec[];
   optimized: boolean;
 };
@@ -60,6 +61,7 @@ export async function ensureMediaVariants(mediaAssetId: string): Promise<Ensured
       id: asset.id,
       url,
       alt: asset.alt,
+      caption: asset.caption, credit: asset.credit, width: sourceWidth, height: sourceHeight,
       variants: existing,
       optimized: false,
     };
@@ -95,6 +97,7 @@ export async function ensureMediaVariants(mediaAssetId: string): Promise<Ensured
     id: asset.id,
     url,
     alt: asset.alt,
+      caption: asset.caption, credit: asset.credit, width: sourceWidth, height: sourceHeight,
     variants,
     optimized: true,
   };

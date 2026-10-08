@@ -1,9 +1,9 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ScriptDb } from "./node";
-import { articleRevisions, articles, categories, outboxEvents } from "./schema";
-
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const RESERVED = new Set(["api", "_next", "brand", "draft", "login", "search", "tag", "author", "page", "feed", "share", "sitemap.xml", "wp-admin", "wp-content", "wp-json", "admin", "media"]);
+import { articleCategories, articleRevisions, articles, categories, mediaAssets, outboxEvents } from "./schema";
+import { articleBody, publicationProblems } from "@newspoint/content";
+import { revisionListen, qaPublicationAllowed } from "./editor-revisions";
+import { applyArticlePublishViews } from "./view-boosts";
 
 const readiness = new WeakMap<object, { until: number; pending: Promise<boolean> }>();
 
@@ -32,17 +32,21 @@ export async function publishDueScheduled(db: ScriptDb): Promise<number> {
   let published = 0;
   for (const row of due) {
     const ok = await db.transaction(async (tx) => {
-      const [article] = await tx.select().from(articles).where(eq(articles.id, row.id)).for("update").limit(1);
+      const [article] = await tx.select().from(articles).where(and(eq(articles.id, row.id), sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false))).for("update").limit(1);
       if (!article?.scheduledPublishAt || article.isPublic) return false;
       const [revision] = await tx.select().from(articleRevisions).where(eq(articleRevisions.articleId, article.id)).orderBy(desc(articleRevisions.number)).limit(1);
       if (!revision) return false;
-      const body = Array.isArray(revision.body) ? revision.body : [];
-      if (revision.title.trim().length < 5 || !SLUG.test(revision.slug) || RESERVED.has(revision.slug) || !revision.primaryCategoryId || !revision.heroMediaId || body.length === 0) return false;
+      const parsed = articleBody.safeParse(revision.body);
+      if (!parsed.success || publicationProblems({ ...revision, bodyBlocks: parsed.data.length }).length) return false;
+      if (!await qaPublicationAllowed(tx, article.id, revision.title, revision.slug)) return false;
+      if (article.publishedAt && revision.slug !== article.slug) return false;
+      const mediaIds = [...new Set([revision.heroMediaId, ...parsed.data.flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((id): id is string => !!id))];
+      for (const mediaId of mediaIds) { const [asset] = await tx.select({ id: mediaAssets.id }).from(mediaAssets).where(eq(mediaAssets.id, mediaId)).limit(1); if (!asset) return false; }
       const path = `/${revision.slug}/`;
       const [taken] = await tx.select({ id: articles.id }).from(articles).where(and(eq(articles.path, path), sql`${articles.id} <> ${article.id}`)).limit(1);
       const [takenCategory] = await tx.select({ id: categories.id }).from(categories).where(eq(categories.path, path)).limit(1);
       if (taken || takenCategory) return false;
-      const [category] = await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, revision.primaryCategoryId)).limit(1);
+      const [category] = await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, revision.primaryCategoryId!)).limit(1);
       if (!category) return false;
       const version = article.version + 1;
       await tx.update(articles).set({
@@ -50,7 +54,7 @@ export async function publishDueScheduled(db: ScriptDb): Promise<number> {
         slug: revision.slug,
         path,
         excerpt: revision.excerpt,
-        body: revision.body,
+        body: parsed.data,
         heroMediaId: revision.heroMediaId,
         heroEmbedUrl: revision.heroEmbedUrl,
         authorKind: revision.authorKind,
@@ -58,12 +62,16 @@ export async function publishDueScheduled(db: ScriptDb): Promise<number> {
         authorName: revision.authorName,
         primaryCategoryId: revision.primaryCategoryId,
         isPublic: true,
-        publishedAt: article.scheduledPublishAt,
+        publishedAt: article.publishedAt ?? article.scheduledPublishAt,
+        listenEnabled: (await revisionListen(tx, article.id, revision.number)) ?? article.listenEnabled,
         scheduledPublishAt: null,
         version,
         publishedRevision: revision.number,
         updatedAt: sql`now()`,
       }).where(eq(articles.id, article.id));
+      await tx.delete(articleCategories).where(eq(articleCategories.articleId, article.id));
+      await tx.insert(articleCategories).values({ articleId: article.id, categoryId: revision.primaryCategoryId! });
+      await applyArticlePublishViews(tx, article.id);
       await tx.insert(outboxEvents).values({
         type: "article.published",
         entityId: article.id,

@@ -19,6 +19,7 @@
     "db:verify": "tsx src/scripts/db-verify.ts"
   },
   "dependencies": {
+    "@newspoint/content": "workspace:*",
     "dotenv": "18.0.3",
     "drizzle-orm": "0.45.3",
     "postgres": "3.4.9",

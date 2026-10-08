@@ -7,10 +7,11 @@ import * as schema from "./schema";
 export * from "./schema";
 export { hasMediaPresentations } from "./media-presentation";
 export { hasArticleReadCounts } from "./article-reads";
-export { applyDueViewBoosts, hasArticleViewBoosts } from "./view-boosts";
+export { applyDueViewBoosts, hasArticleViewBoosts, applyArticlePublishViews } from "./view-boosts";
 export { hasPageArrangements } from "./page-arrangements";
 export { hasScheduledPublish, publishDueScheduled } from "./scheduled-publish";
 export { hasStoryThemeSlugHistory } from "./story-theme-slugs";
+export { hasRevisionListen, revisionListen, writeRevisionListen, qaPublicationAllowed } from "./editor-revisions";
 export { loadRootEnv } from "./env";
 
 function readEnv() {

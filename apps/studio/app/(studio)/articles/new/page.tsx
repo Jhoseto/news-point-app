@@ -36,6 +36,8 @@ export default async function NewArticlePage() {
         slug: "",
         excerpt: "",
         bodyText: "",
+        body: [],
+        listenEnabled: true,
         primaryCategoryId: null,
         heroMediaId: null,
         heroEmbedUrl: null,

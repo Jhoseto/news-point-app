@@ -586,6 +586,14 @@
     box-shadow: var(--np-home-card-shadow);
   }
 
+  /* Below-fold homepage blocks: skip layout/paint until near viewport (no visual change). */
+  @media (min-width: 64rem) {
+    .np-home-shine > .np-container > :nth-child(n + 4) {
+      content-visibility: auto;
+      contain-intrinsic-size: auto 640px;
+    }
+  }
+
   .np-shine-image {
     position: relative;
     overflow: hidden;

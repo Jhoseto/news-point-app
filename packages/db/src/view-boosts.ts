@@ -14,6 +14,26 @@ export function hasArticleViewBoosts(db: Pick<ScriptDb, "execute">): Promise<boo
   return pending;
 }
 
+/** The same initial editorial views policy for manual and scheduled publication. */
+export async function applyArticlePublishViews(db: Pick<ScriptDb, "execute">, articleId: string): Promise<void> {
+  if (!await hasArticleViewBoosts(db)) return;
+  await db.execute(sql`
+    with counts as (
+      select b.article_id, coalesce(r.read_count,0) as real_count,
+        case when b.seeded_at is null then greatest(b.artificial_count,b.seed_count-coalesce(r.read_count,0),0) else b.artificial_count end as added
+      from article_view_boosts b left join article_read_counts r on r.article_id=b.article_id
+      where b.article_id=${articleId}::uuid
+    )
+    update article_view_boosts b set artificial_count=c.added,
+      seeded_at=coalesce(b.seeded_at,now()),
+      next_increment_at=case when b.interval_seconds is not null and b.target_count is not null and c.real_count+c.added<b.target_count
+        then coalesce(b.next_increment_at,now()+make_interval(secs=>b.interval_seconds)) else null end,
+      updated_at=now()
+    from counts c where b.article_id=c.article_id
+      and (b.seeded_at is not null or b.seed_count>0 or (b.interval_seconds is not null and b.target_count is not null))
+  `);
+}
+
 /** One statement for every article whose interval is due. Missed steps are applied together, never past the target. */
 export async function applyDueViewBoosts(db: Pick<ScriptDb, "execute">): Promise<number> {
   if (!await hasArticleViewBoosts(db)) return 0;

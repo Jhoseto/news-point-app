@@ -5,7 +5,8 @@ describe("parseEmbedInput", () => {
   it("accepts a bare Facebook plugins URL", () => {
     const url =
       "https://www.facebook.com/plugins/video.php?height=476&href=https%3A%2F%2Fwww.facebook.com%2Freel%2F1373144281208938%2F&show_text=false&width=267&t=0";
-    expect(parseEmbedInput(url)).toEqual({ url, provider: "facebook" });
+    expect(parseEmbedInput(url)?.provider).toBe("facebook");
+    expect(Object.fromEntries(new URL(parseEmbedInput(url)!.url).searchParams)).toEqual(Object.fromEntries(new URL(url).searchParams));
   });
 
   it("extracts src from a Facebook iframe paste", () => {
@@ -19,7 +20,7 @@ describe("parseEmbedInput", () => {
   it("decodes &amp; in iframe src", () => {
     const html = `<iframe src="https://www.facebook.com/plugins/video.php?height=476&amp;href=https%3A%2F%2Fwww.facebook.com%2Freel%2F1%2F&amp;show_text=false"></iframe>`;
     const parsed = parseEmbedInput(html);
-    expect(parsed?.url).toContain("&href=");
+    expect(new URL(parsed!.url).searchParams.get("href")).toBe("https://www.facebook.com/reel/1/");
     expect(parsed?.url).not.toContain("&amp;");
   });
 

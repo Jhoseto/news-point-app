@@ -26,7 +26,8 @@ export function Logo({ className = "h-10", variant = "default" }: { className?: 
       onClick={onLogoClick}
     >
       <BrandLogoImg
-        fetchPriority={isHeader ? "high" : "low"}
+        // Never compete with the LCP article image for bandwidth (PSI mobile).
+        fetchPriority="low"
         className={
           isHeader
             ? `np-header-logo np-brand-logo ${className}`

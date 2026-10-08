@@ -57,7 +57,13 @@ export function HeroCard({
           <ArticleImage
             media={article.hero}
             priority={priority}
-            sizes={lead ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw" : mini ? "(min-width: 1024px) 22vw, 50vw" : "(min-width: 1024px) 22vw, 100vw"}
+            sizes={
+              lead
+                ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw"
+                : mini
+                  ? "(min-width: 1024px) 280px, 50vw"
+                  : "(min-width: 1024px) 360px, 100vw"
+            }
             className={`transition-[scale,filter] duration-[800ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.04] group-hover:brightness-[1.04] ${imageFitClass}`}
           />
         </div>

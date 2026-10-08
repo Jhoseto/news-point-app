@@ -24,11 +24,13 @@ export const mobileRubricFeedSchema = z.object({ schemaVersion: z.literal(1), ca
 export type MobileRubricFeed = z.infer<typeof mobileRubricFeedSchema>;
 export type MobileFeedContent = MobileRubricFeed["feed"];
 function slimHero(hero: NonNullable<ArticleSummary["hero"]>): z.infer<typeof media> {
-  // Keep at most two smallest width variants so LCP/srcset still work without
-  // shipping the full variant list in the embedded pager JSON.
-  const variants = Array.isArray(hero.variants)
-    ? [...hero.variants].sort((a, b) => a.width - b.width).slice(0, 2)
+  // Keep mid rungs ≤960w (not only the two smallest) so mobile LCP can pick 768
+  // on 2–3× DPR without downloading the master.
+  const sorted = Array.isArray(hero.variants)
+    ? [...hero.variants].sort((a, b) => a.width - b.width)
     : [];
+  const under960 = sorted.filter((entry) => entry.width <= 960);
+  const variants = (under960.length ? under960 : sorted).slice(0, 4);
   return {
     url: hero.url,
     width: hero.width,

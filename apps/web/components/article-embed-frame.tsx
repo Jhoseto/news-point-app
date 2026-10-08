@@ -1,4 +1,4 @@
-import { articleEmbedPlayUrl } from "@/lib/article-embed-url";
+import { embedFrameUrl } from "@newspoint/content";
 
 export function ArticleEmbedFrame({
   src,
@@ -13,7 +13,8 @@ export function ArticleEmbedFrame({
   id?: string;
   className?: string;
 }) {
-  const playSrc = articleEmbedPlayUrl(src, provider);
+  const playSrc = embedFrameUrl(src);
+  if (!playSrc) return <a id={id} className={className} href={src} target="_blank" rel="noopener noreferrer">Виж публикацията в {provider}</a>;
   return (
     <div id={id} className={className}>
       <iframe

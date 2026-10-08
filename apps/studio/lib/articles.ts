@@ -1,6 +1,7 @@
 import "server-only";
+import { isDeepStrictEqual } from "node:util";
 import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
-import { articleBody, resolveMediaUrl, sofiaWallToUtc, utcToSofiaWall, type ArticleBody } from "@newspoint/content";
+import { articleBody, resolveMediaUrl, sofiaWallToUtc, utcToSofiaWall, RESERVED_ARTICLE_SLUGS, type ArticleBody } from "@newspoint/content";
 import {
   articleCategories,
   articleReadCounts,
@@ -11,6 +12,11 @@ import {
   getDb,
   hasArticleReadCounts,
   hasArticleViewBoosts,
+  applyArticlePublishViews,
+  hasRevisionListen,
+  revisionListen,
+  writeRevisionListen,
+  qaPublicationAllowed,
   mediaAssets,
   outboxEvents,
   publishDueScheduled,
@@ -24,7 +30,7 @@ import { publishProblems } from "./editor/input";
 import { articlePath } from "./editor/slug";
 import { libraryImageUrl } from "./media-library";
 import type { Staff } from "./session";
-import { artificialForSeed, intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
+import { intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
 
 export class EditorError extends Error {
   constructor(
@@ -38,7 +44,7 @@ export class EditorError extends Error {
 }
 
 // Paths the public site uses for its own routes.
-const RESERVED_SLUGS = new Set(["api", "_next", "brand", "draft", "login", "search", "tag", "author", "page", "feed", "wp-admin", "wp-content", "wp-json"]);
+const RESERVED_SLUGS = RESERVED_ARTICLE_SLUGS;
 
 const draftPath = (id: string) => `/draft/${id}/`;
 
@@ -47,6 +53,8 @@ export interface Draft {
   slug: string;
   excerpt: string;
   bodyText: string;
+  body?: ArticleBody;
+  listenEnabled?: boolean;
   primaryCategoryId: string | null;
   heroMediaId: string | null;
   heroEmbedUrl: string | null;
@@ -108,6 +116,10 @@ export interface MediaOption {
   id: string;
   url: string;
   alt: string;
+  caption?: string;
+  credit?: string;
+  width?: number | null;
+  height?: number | null;
 }
 
 /** Only existing MediaAssets can be chosen (DEC-104); uploads come later. */
@@ -123,6 +135,7 @@ export async function listRecentMedia(limit = 48, include: string | string[] | n
     id: row.id,
     url: row.storageKey ? libraryImageUrl(row.storageKey, row.sourceUrl) : resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
     alt: row.alt,
+    caption: row.caption, credit: row.credit, width: row.width, height: row.height,
   }));
 }
 
@@ -148,6 +161,7 @@ function toDraft(row: {
       slug: row.slug,
       excerpt: row.excerpt,
       bodyText: text ?? "",
+      ...(parsed.success ? { body: parsed.data } : {}),
       primaryCategoryId: row.primaryCategoryId,
       heroMediaId: row.heroMediaId,
       heroEmbedUrl: row.heroEmbedUrl ?? null,
@@ -160,7 +174,7 @@ function toDraft(row: {
       viewTarget: null,
       publishAtSofia: null,
     },
-    editableBody: text !== null,
+    editableBody: parsed.success,
   };
 }
 
@@ -178,6 +192,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
 
   const source = latest?.revision ?? { ...article, slug: article.isPublic ? article.slug : "" };
   const { draft, editableBody } = toDraft(source);
+  draft.listenEnabled = latest ? (await revisionListen(db, id, latest.revision.number)) ?? article.listenEnabled : article.listenEnabled;
   const boostsReady = await hasArticleViewBoosts(db);
   const [boost] = boostsReady
     ? await db.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, id)).limit(1)
@@ -249,6 +264,18 @@ function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Author
   };
 }
 
+async function saveListening(tx: Pick<ReturnType<typeof getDb>, "execute">, id: string, number: number, enabled: boolean | undefined, current: boolean) {
+  if (await hasRevisionListen(tx)) await writeRevisionListen(tx, id, number, enabled ?? current);
+  else if (enabled !== undefined && enabled !== current) throw new EditorError(422, "migration_required", "Настройката за слушане изисква миграция 30. Другите промени не са записани.");
+}
+
+async function validateMedia(tx: Pick<ReturnType<typeof getDb>, "select">, draft: { heroMediaId: string | null }, body: ArticleBody) {
+  const ids = [...new Set([draft.heroMediaId, ...body.flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((id): id is string => !!id))];
+  if (!ids.length) return;
+  const found = await tx.select({ id: mediaAssets.id }).from(mediaAssets).where(inArray(mediaAssets.id, ids));
+  if (found.length !== ids.length) throw new EditorError(422, "invalid_media", "Избрана снимка вече не съществува. Изберете я отново.");
+}
+
 async function viewDraft(tx: Pick<ReturnType<typeof getDb>, "select" | "execute">, articleId: string) {
   if (!await hasArticleViewBoosts(tx)) return {};
   const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
@@ -298,35 +325,12 @@ async function refreshViewSchedule(tx: Pick<ReturnType<typeof getDb>, "select" |
   }).where(eq(articleViewBoosts.articleId, articleId));
 }
 
-async function applyPublishViews(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {
-  if (!await hasArticleViewBoosts(tx)) return;
-  const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
-  if (!boost || boost.seededAt) {
-    await refreshViewSchedule(tx, articleId);
-    return;
-  }
-  const hasSeed = boost.seedCount > 0;
-  const hasAuto = boost.intervalSeconds != null && boost.targetCount != null;
-  if (!hasSeed && !hasAuto) return;
-  const [read] = await tx.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, articleId)).limit(1);
-  const real = read?.readCount ?? 0;
-  const artificial = Math.max(boost.artificialCount, artificialForSeed(boost.seedCount, real));
-  const displayed = real + artificial;
-  const auto = hasAuto && boost.targetCount != null && displayed < boost.targetCount;
-  await tx.update(articleViewBoosts).set({
-    artificialCount: artificial,
-    seededAt: new Date(),
-    nextIncrementAt: auto ? sql`now() + make_interval(secs => ${boost.intervalSeconds})` : null,
-    updatedAt: new Date(),
-  }).where(eq(articleViewBoosts.articleId, articleId));
-}
-
 export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ id: string; revision: number }> {
-  const body = textToBody(draft.bodyText);
+  const body = draft.body ?? textToBody(draft.bodyText ?? "");
   const authorship = resolveAuthorship(staff, draft);
   return getDb().transaction(async (tx) => {
-    const id = crypto.randomUUID();
-    await tx.insert(articles).values({
+    const id = draft.creationId ?? crypto.randomUUID();
+    const inserted = await tx.insert(articles).values({
       id,
       sourceSystem: "studio",
       slug: id,
@@ -341,8 +345,26 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       isPublic: false,
       scheduledPublishAt: scheduleInstant(draft.publishAtSofia),
       createdBy: staff.id,
-    });
+    }).onConflictDoNothing({ target: articles.id }).returning({ id: articles.id });
+    if (!inserted.length) {
+      const [existing] = await tx.select().from(articles).where(eq(articles.id, id)).limit(1);
+      const [first] = await tx.select().from(articleRevisions).where(and(eq(articleRevisions.articleId, id), eq(articleRevisions.number, 1))).limit(1);
+      const values = revisionValues(draft, body, authorship);
+      if (!existing || existing.createdBy !== staff.id || existing.sourceSystem !== "studio" || !first || Object.entries(values).some(([key, value]) => !isDeepStrictEqual(first[key as keyof typeof first], value ?? null))) {
+        throw new EditorError(409, "creation_id_reused", "Тази чернова вече е създадена с друго съдържание. Отворете записания материал.");
+      }
+      return { id, revision: 1 };
+    }
+    await validateMedia(tx, draft, body);
     await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
+    await saveListening(tx, id, 1, draft.listenEnabled, true);
+    const qaRun = process.env.EDITOR_QA_RUN_ID;
+    if (qaRun) {
+      if (!/^[a-zA-Z0-9_-]{1,64}$/.test(qaRun) || !draft.title.startsWith("[QA editor]") || !draft.slug.startsWith(`qa-editor-${qaRun}-`)) throw new EditorError(422, "qa_label_required", "QA режимът допуска само обозначени QA материали.");
+      const ready = await tx.execute<{ ready: boolean }>(sql`select to_regclass('public.editor_qa_articles') is not null as ready`);
+      if (!ready[0]?.ready) throw new EditorError(422, "migration_required", "Първо приложете миграция 30 за QA push защитата.");
+      await tx.execute(sql`insert into editor_qa_articles(article_id,run_id) values(${id}::uuid,${qaRun})`);
+    }
     await saveViewSettings(tx, id, draft);
     return { id, revision: 1 };
   }).then(async (created) => {
@@ -363,7 +385,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
   return getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
-    if (article.isPublic && draft.slug !== article.slug) {
+    if (article.publishedAt && draft.slug !== article.slug) {
       throw new EditorError(422, "slug_locked", "Адресът на публикувана статия не се сменя.");
     }
     const [latest] = await tx
@@ -385,9 +407,11 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     }
     const number = current + 1;
     const stored = articleBody.parse(latest?.revision.body ?? article.body);
-    const body = bodyToText(stored) === null ? stored : textToBody(draft.bodyText);
+    const body = draft.body ?? (bodyToText(stored) === null ? stored : textToBody(draft.bodyText ?? ""));
+    await validateMedia(tx, draft, body);
     const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
+    await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
     await tx
       .update(articles)
@@ -400,6 +424,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
               body,
               primaryCategoryId: draft.primaryCategoryId,
               heroMediaId: draft.heroMediaId,
+              heroEmbedUrl: draft.heroEmbedUrl ?? null,
               scheduledPublishAt: scheduleInstant(draft.publishAtSofia),
               ...authorship,
               updatedAt: new Date(),
@@ -439,7 +464,8 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       .returning({ key: publishRequests.idempotencyKey });
     if (!claimed) {
       const [previous] = await tx.select().from(publishRequests).where(eq(publishRequests.idempotencyKey, idempotencyKey)).limit(1);
-      if (!previous || previous.articleId !== id || previous.revision !== revision) {
+      const previousSettings = previous?.outcome as (PublishOutcome & { listenEnabled?: boolean }) | null;
+      if (!previous || previous.articleId !== id || previous.revision !== revision || (previousSettings?.listenEnabled !== undefined && previousSettings.listenEnabled !== listenEnabled)) {
         throw new EditorError(409, "idempotency_key_reused", "Ключът вече е използван за друга публикация.");
       }
       return { ...(previous.outcome as PublishOutcome), duplicate: true };
@@ -457,9 +483,13 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     const body = articleBody.parse(rev.body);
     const problems = publishProblems({ ...rev, bodyBlocks: body.length });
     if (problems.length) throw new EditorError(422, "not_ready", "Статията не е готова за публикуване.", problems);
+    if (!await qaPublicationAllowed(tx, id, rev.title, rev.slug)) throw new EditorError(422, "qa_push_guard_required", "QA материалът трябва първо да е регистриран за изключване от push (миграция 30).");
 
     const wasPublic = article.isPublic;
-    if (wasPublic && rev.slug !== article.slug) throw new EditorError(422, "slug_locked", "Адресът на публикувана статия не се сменя.");
+    if (article.publishedAt && rev.slug !== article.slug) throw new EditorError(422, "slug_locked", "Адресът на публикувана статия не се сменя.");
+    await validateMedia(tx, rev, body);
+    const versionListening = await revisionListen(tx, id, revision);
+    if (versionListening !== null && versionListening !== listenEnabled) throw new EditorError(409, "revision_settings_changed", "Настройката за слушане се различава от записаната версия.");
     const path = articlePath(rev.slug);
     if (!wasPublic) {
       if (RESERVED_SLUGS.has(rev.slug)) throw new EditorError(409, "slug_taken", "Този адрес е запазен. Изберете друг.");
@@ -498,12 +528,13 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         excerpt: rev.excerpt,
         body,
         heroMediaId: rev.heroMediaId,
+        heroEmbedUrl: rev.heroEmbedUrl,
         authorKind: rev.authorKind,
         authorUserId: rev.authorUserId,
         authorName: rev.authorName,
         primaryCategoryId: category.id,
         isPublic: true,
-        listenEnabled,
+        listenEnabled: versionListening ?? listenEnabled,
         publishedAt: article.publishedAt ?? sql`now()`,
         version,
         publishedRevision: revision,
@@ -514,7 +545,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
 
     await tx.delete(articleCategories).where(eq(articleCategories.articleId, id));
     await tx.insert(articleCategories).values({ articleId: id, categoryId: category.id });
-    await applyPublishViews(tx, id);
+    await applyArticlePublishViews(tx, id);
 
     const type = wasPublic ? "article.updated" : "article.published";
     const [event] = await tx
@@ -522,7 +553,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics } })
       .returning({ id: outboxEvents.id });
 
-    const outcome: PublishOutcome = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type };
+    const outcome: PublishOutcome & { listenEnabled: boolean } = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type, listenEnabled: versionListening ?? listenEnabled };
     await tx.update(publishRequests).set({ outcome }).where(eq(publishRequests.idempotencyKey, idempotencyKey));
     return outcome;
   });
@@ -601,5 +632,6 @@ async function listMediaByIds(ids: string[]): Promise<MediaOption[]> {
     id: row.id,
     url: row.storageKey ? libraryImageUrl(row.storageKey, row.sourceUrl) : resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
     alt: row.alt,
+    caption: row.caption, credit: row.credit, width: row.width, height: row.height,
   }));
 }

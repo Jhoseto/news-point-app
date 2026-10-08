@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { articleBody, embedFrameUrl, publicationProblems } from "@newspoint/content";
 import { SLUG_PATTERN, SLUG_STORED_MAX } from "./slug";
 
 // Shared by the editor form and the API; the API always re-validates.
@@ -24,10 +25,13 @@ export const draftInput = z
       .max(SLUG_STORED_MAX, `Адресът е до ${SLUG_STORED_MAX} знака`)
       .refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
     excerpt: z.string().trim().max(EXCERPT_MAX),
-    bodyText: z.string().max(BODY_TEXT_MAX),
+    bodyText: z.string().max(BODY_TEXT_MAX).optional(),
+    body: articleBody.refine(value => JSON.stringify(value).length <= BODY_TEXT_MAX, "Материалът е твърде голям").optional(),
+    creationId: z.uuid().optional(),
+    listenEnabled: z.boolean().optional(),
     primaryCategoryId: z.uuid().nullable(),
     heroMediaId: z.uuid().nullable(),
-    heroEmbedUrl: z.string().url().nullable().optional(),
+    heroEmbedUrl: z.string().refine(value => !!embedFrameUrl(value), "Неподдържан водещ embed").nullable().optional(),
     authorKind: z.enum(["staff", "newsroom", "manual"]),
     authorUserId: z.string().min(1).nullable(),
     authorName,
@@ -38,6 +42,9 @@ export const draftInput = z
     publishAtSofia: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/).nullable().optional(),
   })
   .superRefine((draft, context) => {
+    if ((draft.body === undefined) === (draft.bodyText === undefined)) {
+      context.addIssue({ code: "custom", path: ["body"], message: "Подайте body или bodyText, но не и двете" });
+    }
     if (draft.authorKind === "staff" && !draft.authorUserId) {
       context.addIssue({ code: "custom", path: ["authorUserId"], message: "Липсва авторски профил" });
     }
@@ -65,21 +72,4 @@ export const publishRequest = z.strictObject({
 });
 
 /** What still blocks publication, in the editor's language. Empty means ready. */
-export function publishProblems(draft: {
-  title: string;
-  slug: string;
-  bodyBlocks: number;
-  primaryCategoryId: string | null;
-  heroMediaId: string | null;
-  authorKind: "staff" | "newsroom" | "manual";
-  authorName: string;
-}): string[] {
-  const problems: string[] = [];
-  if (draft.title.trim().length < 5) problems.push("Заглавието е твърде кратко.");
-  if (!SLUG_PATTERN.test(draft.slug)) problems.push("Липсва адрес на статията.");
-  if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
-  if (!draft.primaryCategoryId) problems.push("Изберете рубрика.");
-  if (!draft.heroMediaId) problems.push("Изберете основна снимка.");
-  if (draft.authorKind === "manual" && !authorName.safeParse(draft.authorName).success) problems.push("Въведете валидно име на автора.");
-  return problems;
-}
+export const publishProblems = publicationProblems;

@@ -33,6 +33,8 @@ PageSpeed API квотата беше изчерпана; CrUX за времен
 - Media `Cache-Control`: `-w*` / `-card` / WebP master → 30d + SWR.
 - Backfill presentation upgrade: `pnpm --filter @newspoint/wp-import media:refresh-presentations`.
 - Staging PSI noise: invalid `preconnect` to `/` + `email-decode.min.js` come from the host’s Cloudflare email obfuscation, not Next.
+- Mobile LCP: pager/`slimHero` now keeps up to four ≤960w variants (was two smallest → phones skipped 768w and hit the master). Header logo is `fetchPriority=low`.
+- Desktop image weight: non-LCP srcset capped at 960w; tighter card `sizes`; `content-visibility: auto` from the 4th homepage block.
 
 Lighthouse локално (`lighthouse@12.8.1`, headless Chrome), начало:
 

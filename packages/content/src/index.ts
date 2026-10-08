@@ -6,6 +6,7 @@ export * from "./revalidate";
 export * from "./sofia-time";
 export * from "./article-deck";
 export * from "./blocks";
+export * from "./editorial";
 export * from "./menu";
 export * from "./media";
 export * from "./image-presentation";

@@ -4,6 +4,46 @@ import { bodyToText, textToBody, wordCount } from "./body";
 import { draftInput, publishProblems } from "./input";
 import { canChangeRole, canDeleteAccount, canManageAccounts } from "./roles";
 import { articlePath, slugify, SLUG_MAX, SLUG_PATTERN } from "./slug";
+import { bodyGroups, composition, embedFrameUrl } from "@newspoint/content";
+import { bodyToEditorHtml, documentToBody } from "./document";
+
+describe("structured visual document", () => {
+  it("keeps underline, strike, colors, heading marks, alignment and dividers", () => {
+    const body = documentToBody({ type: "doc", content: [
+      { type: "heading", attrs: { level: 4, textAlign: "center", indent: 1 }, content: [{ type: "text", text: "Заглавие", marks: [{ type: "underline" }] }] },
+      { type: "paragraph", attrs: { textAlign: "justify" }, content: [{ type: "text", text: "Текст", marks: [{ type: "strike" }, { type: "npColor", attrs: { color: "blue" } }] }] },
+      { type: "horizontalRule" },
+    ] });
+    expect(body[0]).toMatchObject({ level: 4, textAlign: "center", indent: 1, html: "<u>Заглавие</u>" });
+    expect(body[1]).toMatchObject({ textAlign: "justify", html: '<span class="np-text-blue"><s>Текст</s></span>' });
+    expect(body[2]).toEqual({ type: "divider" });
+    expect(bodyToEditorHtml(body)).toContain("<hr>");
+  });
+  it("preserves protected archive blocks and independent image settings", () => {
+    const image = { type: "image" as const, mediaAssetId: "00000000-0000-4000-8000-000000000001", caption: "Надпис", alt: "Точно описание", widthPercent: 40, wrap: "left" as const, cropZoom: 150 };
+    const legacy = { type: "legacy_html" as const, html: "<table><tbody><tr><td>Архив</td></tr></tbody></table>" };
+    expect(documentToBody({ type: "doc", content: [{ type: "npImage", attrs: { block: image } }, { type: "npLegacy", attrs: { block: legacy } }] })).toEqual([image, legacy]);
+  });
+  it("does not pull gallery images across intervening text", () => {
+    const image = { type: "image" as const, mediaAssetId: "00000000-0000-4000-8000-000000000001", groupId: "gallery" };
+    const groups = bodyGroups([image, image, { type: "paragraph", html: "Раздел" }, image]);
+    expect(groups.map(group => [group.index, group.blocks.length])).toEqual([[0, 2], [2, 1], [3, 1]]);
+    expect(composition({ ...image, widthPercent: 80, wrap: "left" }).className).not.toContain("np-wrap-left");
+  });
+  it("rejects arbitrary iframe hosts, normalizes share links and blocks credentials", () => {
+    expect(embedFrameUrl("https://youtu.be/dQw4w9WgXcQ")).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
+    expect(embedFrameUrl("https://facebook.com.evil.test/plugins/video.php")).toBeNull();
+    expect(embedFrameUrl("https://user:secret@youtube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
+    expect(embedFrameUrl("https://instagram.com/p/example/")).toBeNull();
+  });
+  it("accepts either body transport and rejects ambiguous or oversized input", () => {
+    const draft = { title: "Материал", slug: "material", excerpt: "", primaryCategoryId: null, heroMediaId: null, authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" };
+    expect(draftInput.safeParse({ ...draft, body: [] }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, body: [], bodyText: "" }).success).toBe(false);
+    expect(draftInput.safeParse(draft).success).toBe(false);
+    expect(publishProblems({ ...draft, bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: "https://youtu.be/dQw4w9WgXcQ" })).toEqual([]);
+  });
+});
 
 describe("roles", () => {
   const editor = { id: "e1", role: "editor" as const };

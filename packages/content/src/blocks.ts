@@ -25,9 +25,11 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   ],
   allowedAttributes: {
     a: ["href", "title", "target", "rel"],
+    span: ["class"],
     th: ["colspan", "rowspan"],
     td: ["colspan", "rowspan"],
   },
+  allowedClasses: { span: ["np-text-red", "np-text-orange", "np-text-green", "np-text-blue", "np-text-purple", "np-text-muted", "np-text-accent"] },
   allowedSchemes: ["http", "https", "mailto"],
   allowedSchemesByTag: { a: ["http", "https", "mailto"] },
   transformTags: {
@@ -47,12 +49,23 @@ const plainText = z.string().refine((value) => !/[<>]/.test(value), "must be pla
 
 export const BODY_VERSION = 1;
 
-export const paragraphBlock = z.strictObject({ type: z.literal("paragraph"), html: safeHtml });
+const textPresentation = {
+  textAlign: z.enum(["left", "center", "right", "justify"]).optional(),
+  indent: z.number().int().min(0).max(3).optional(),
+};
+const mediaPresentation = {
+  widthPercent: z.number().min(25).max(100).optional(),
+  wrap: z.enum(["none", "left", "right"]).optional(),
+};
+
+export const paragraphBlock = z.strictObject({ type: z.literal("paragraph"), html: safeHtml, ...textPresentation });
 
 export const headingBlock = z.strictObject({
   type: z.literal("heading"),
   level: z.union([z.literal(2), z.literal(3), z.literal(4)]),
   text: plainText,
+  html: safeHtml.optional(),
+  ...textPresentation,
 });
 
 // Images point to a MediaAsset only; a raw URL is not accepted (DEC-104).
@@ -60,6 +73,8 @@ export const imageBlock = z.strictObject({
   type: z.literal("image"),
   mediaAssetId: z.uuid(),
   caption: plainText.optional(),
+  alt: plainText.optional(),
+  ...mediaPresentation,
   size: z.enum(["small", "medium", "large", "full"]).optional(),
   align: z.enum(["left", "center", "right"]).optional(),
   shape: z.enum(["rectangle", "rounded", "circle"]).optional(),
@@ -75,19 +90,25 @@ export const quoteBlock = z.strictObject({
   type: z.literal("quote"),
   html: safeHtml,
   cite: plainText.optional(),
+  ...textPresentation,
 });
 
 export const listBlock = z.strictObject({
   type: z.literal("list"),
   ordered: z.boolean(),
   items: z.array(safeHtml).min(1),
+  ...textPresentation,
 });
 
 export const embedBlock = z.strictObject({
   type: z.literal("embed"),
   provider: z.enum(["youtube", "facebook", "instagram", "x", "tiktok", "other"]),
   url: z.url({ protocol: /^https$/ }),
+  ...mediaPresentation,
+  align: z.enum(["left", "center", "right"]).optional(),
 });
+
+export const dividerBlock = z.strictObject({ type: z.literal("divider") });
 
 // Anything the converter does not understand, sanitized, so nothing is lost.
 export const legacyHtmlBlock = z.strictObject({ type: z.literal("legacy_html"), html: safeHtml });
@@ -99,6 +120,7 @@ export const block = z.discriminatedUnion("type", [
   quoteBlock,
   listBlock,
   embedBlock,
+  dividerBlock,
   legacyHtmlBlock,
 ]);
 
