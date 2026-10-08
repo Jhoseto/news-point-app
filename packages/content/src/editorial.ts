@@ -31,18 +31,27 @@ export function embedFrameUrl(value: string): string | null {
     if (provider === "facebook") {
       const plugin = /^\/plugins\/(video|post)\.php$/.exec(url.pathname);
       const target = plugin ? url.searchParams.get("href") : value;
-      if (!target || embedProviderFromUrl(target) !== "facebook" || new URL(target).protocol !== "https:") return null;
+      if (!target || embedProviderFromUrl(target) !== "facebook") return null;
+      const targetUrl = new URL(target);
+      if (targetUrl.protocol !== "https:" || targetUrl.username || targetUrl.password) return null;
       const frame = new URL(`https://www.facebook.com/plugins/${plugin?.[1] ?? (/\/videos\/|\/watch\/?/.test(url.pathname) ? "video" : "post")}.php`);
       frame.searchParams.set("href", target);
       frame.searchParams.set("show_text", url.searchParams.get("show_text") ?? "false");
-      frame.searchParams.set("width", url.searchParams.get("width") ?? "560");
-      frame.searchParams.set("height", url.searchParams.get("height") ?? "315");
+      const dimension = (key: string, fallback: number) => { const value = Number(url.searchParams.get(key)); return String(Number.isFinite(value) && value >= 200 ? Math.min(1200, Math.round(value)) : fallback); };
+      frame.searchParams.set("width", dimension("width", 560));
+      frame.searchParams.set("height", dimension("height", frame.pathname.includes("post.php") ? 560 : 315));
       const t = url.searchParams.get("t");
       if (t && /^\d+$/.test(t)) frame.searchParams.set("t", t);
       return frame.href;
     }
   } catch { /* invalid */ }
   return null;
+}
+
+export function embedAspectRatio(value: string): string {
+  const frame = embedFrameUrl(value);
+  if (frame && embedProviderFromUrl(frame) === "facebook") { const url = new URL(frame); return `${url.searchParams.get("width")}/${url.searchParams.get("height")}`; }
+  return "16/9";
 }
 
 export function parseEmbedInput(raw: string): { url: string; provider: EmbedProvider } | null {

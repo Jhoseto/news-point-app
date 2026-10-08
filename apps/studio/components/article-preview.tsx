@@ -1,10 +1,9 @@
-import { articleSubtitle, bodyGroups, composition, embedFrameUrl, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, embedAspectRatio, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
-import { wordCount } from "@/lib/editor/body";
+import { documentWords } from "@/lib/editor/document";
 import { formatFull } from "@/lib/format";
 import { browserMediaSrc } from "@/lib/media-src";
 import { BrandLogoImg } from "@/components/brand-logo-img";
-import { withBase } from "@/lib/paths";
 import "@newspoint/content/composition.css";
 
 // Mirrors the article page of apps/web (components/article-page.tsx, article-body.tsx)
@@ -53,20 +52,20 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
     case "image": {
       const asset = media.find((item) => item.id === block.mediaAssetId);
       const caption = block.caption ?? asset?.caption;
-      return asset ? <figure style={layout.style} className={`${layout.className} studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.align ?? "center"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}><div className="np-media-canvas" style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset.width && asset.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}><img src={browserMediaSrc(asset.url)} alt={block.alt ?? asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /></div>{caption || asset.credit ? <figcaption>{caption}{caption && asset.credit ? " · " : ""}{asset.credit ? `Снимка: ${asset.credit}` : ""}</figcaption> : null}</figure> : null;
+      const custom = block.widthPercent !== undefined || block.wrap !== undefined;
+      const imageLayout = custom ? layout : { className: "", style: {} };
+      const image = asset ? <img src={browserMediaSrc(asset.url)} alt={block.alt ?? asset.alt} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /> : null;
+      return asset ? <figure style={imageLayout.style} className={`${imageLayout.className} studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.align ?? "center"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}>{custom ? <div className={`np-media-canvas frame-${block.frame ?? "none"}`} style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset.width && asset.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>{image}</div> : image}{caption || asset.credit ? <figcaption>{caption}{caption && asset.credit ? " · " : ""}{asset.credit ? `Снимка: ${asset.credit}` : ""}</figcaption> : null}</figure> : null;
     }
     case "embed":
-      return <div className={`${layout.className} studio-preview-embed`} style={layout.style}>{embedFrameUrl(block.url) ? <iframe src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}</div>;
+      return <div className={`${layout.className} studio-preview-embed np-embed-canvas`} style={{ ...layout.style, aspectRatio: embedAspectRatio(block.url) }}>{embedFrameUrl(block.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}</div>;
     case "divider": return <hr />;
     case "legacy_html": return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }
 }
 
 function readingMinutes(blocks: Block[]): number {
-  const text = blocks
-    .map((block) => (block.type === "heading" ? block.text : "html" in block ? block.html.replace(/<[^>]+>/g, " ") : ""))
-    .join(" ");
-  return Math.max(1, Math.round(wordCount(text) / 200));
+  return Math.max(1, Math.round(documentWords(blocks) / 200));
 }
 
 export function ArticlePreview({ article, theme }: { article: PreviewArticle; theme: PreviewTheme }) {
@@ -89,7 +88,7 @@ export function ArticlePreview({ article, theme }: { article: PreviewArticle; th
         ) : null}
         <div className="relative overflow-hidden rounded-3xl shadow-card">
           {article.heroEmbedUrl ? (
-            embedFrameUrl(article.heroEmbedUrl) ? <iframe src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
+            embedFrameUrl(article.heroEmbedUrl) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
           ) : article.hero ? (
             <img src={browserMediaSrc(article.hero.url)} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
           ) : (

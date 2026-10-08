@@ -35,6 +35,8 @@ export function MediaPicker({
   const [selectedMany, setSelectedMany] = useState<string[]>(selected ? [selected] : []);
   const [mode, setMode] = useState<"library" | "upload">("library");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const libraryTouched = useRef(false);
+  const [yearsLoading, setYearsLoading] = useState(true);
   const [years, setYears] = useState<MediaYear[]>([]);
   const [openYear, setOpenYear] = useState("");
   const [folder, setFolder] = useState("");
@@ -114,9 +116,10 @@ export function MediaPicker({
           return;
         }
         setOpenYear(year.year);
-        setFolder(`news/${year.year}/${year.months[0]}`);
+        if (!libraryTouched.current) setFolder(`news/${year.year}/${year.months[0]}`);
       })
-      .catch(() => { if (!cancelled) setLibraryLoading(false); });
+      .catch(() => { if (!cancelled) { setLibraryLoading(false); setError("Папките не се заредиха. Затворете и отворете библиотеката отново."); } })
+      .finally(() => { if (!cancelled) setYearsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
@@ -135,13 +138,13 @@ export function MediaPicker({
     params.set("offset", String(page * 80));
     if (searching) params.set("q", debouncedQuery);
     void fetch(withBase(`/api/editor/media/?${params}`), { cache: "no-store" })
-      .then((response) => response.ok ? response.json() as Promise<{ items: LibraryImage[]; total: number }> : { items: [], total: 0 })
+      .then(async response => { if (!response.ok) throw new Error(response.status === 401 ? "Сесията изтече. Влезте отново." : "Библиотеката не се зареди. Опитайте отново."); return response.json() as Promise<{ items: LibraryImage[]; total: number }>; })
       .then((result) => {
         if (cancelled) return;
         setLibrary(current => page ? [...current, ...(result.items ?? [])] : result.items ?? []);
         setLibraryTotal(result.total ?? 0);
       })
-      .catch(() => { if (!cancelled) { setLibrary([]); setLibraryTotal(0); } })
+      .catch(problem => { if (!cancelled) { if (!page) { setLibrary([]); setLibraryTotal(0); } setError(problem instanceof Error ? problem.message : "Библиотеката не се зареди."); } })
       .finally(() => { if (!cancelled) setLibraryLoading(false); });
     return () => { cancelled = true; };
   }, [folder, debouncedQuery, page]);
@@ -190,7 +193,7 @@ export function MediaPicker({
         </h2>
         <input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => { libraryTouched.current = true; setQuery(event.target.value); }}
           placeholder={folder ? "Търсене в папката (мин. 2 знака)" : "Търсене в целия архив (мин. 2 знака)"}
           aria-label={searchHint}
           className="np-input ml-auto max-w-72 py-2"
@@ -220,7 +223,7 @@ export function MediaPicker({
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
             <button
               type="button"
-              onClick={() => { setPage(0); setFolder(""); }}
+              onClick={() => { libraryTouched.current = true; setPage(0); setFolder(""); }}
               aria-current={!folder ? "true" : undefined}
               className={`mb-1 flex w-full items-center rounded-md px-2 py-1.5 text-left font-semibold ${!folder ? "bg-accent/10 text-accent" : "text-ink hover:bg-surface"}`}
             >
@@ -239,7 +242,7 @@ export function MediaPicker({
                       const active = folder === path;
                       return (
                         <li key={path}>
-                          <button type="button" onClick={() => { setPage(0); setFolder(path); }} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
+                          <button type="button" onClick={() => { libraryTouched.current = true; setPage(0); setFolder(path); }} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
                             {month}
                           </button>
                         </li>
@@ -249,7 +252,8 @@ export function MediaPicker({
                 ) : null}
               </div>
             ))}
-            {!years.length && !libraryLoading ? <p className="px-2 py-3 text-muted">Няма папки.</p> : null}
+            {yearsLoading ? <p className="px-2 py-3 text-muted">Зареждане на папките…</p> : null}
+            {!years.length && !yearsLoading ? <p className="px-2 py-3 text-muted">Няма папки.</p> : null}
           </nav>
           <div className="min-w-0 flex-1 overflow-y-auto p-4">
             <p className="mb-3 text-[11px] text-muted">

@@ -29,10 +29,13 @@ function BlockView({ block, media, index }: { block: Block; media: Map<string, M
       const asset = media.get(block.mediaAssetId) ?? null;
       const caption = block.caption ?? asset?.caption;
       const credit = asset?.credit;
+      const custom = block.widthPercent !== undefined || block.wrap !== undefined;
+      const imageLayout = custom ? layout : { className: "", style: {} };
+      const image = <ArticleImage media={asset ? { ...asset, alt: block.alt ?? asset.alt } : null} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} imageTransform={{ scale: (block.cropZoom ?? 100) / 100, origin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} />;
       return (
-        <figure id={articleSectionId(index)} style={layout.style} className={`${layout.className} np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"} np-image-crop-${block.crop ?? "original"}`}>
-          <div className="np-media-canvas" style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>
-          <ArticleImage media={asset ? { ...asset, alt: block.alt ?? asset.alt } : null} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} imageTransform={{ scale: (block.cropZoom ?? 100) / 100, origin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /></div>
+        <figure id={articleSectionId(index)} style={imageLayout.style} className={`${imageLayout.className} np-article-figure np-image-${block.size ?? "large"} np-image-align-${block.align ?? "center"} np-image-shape-${block.shape ?? "rectangle"} np-image-frame-${block.frame ?? "none"} np-image-crop-${block.crop ?? "original"}`}>
+          {custom ? <div className={`np-media-canvas frame-${block.frame ?? "none"}`} style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>
+          {image}</div> : image}
           {caption || credit ? <figcaption className="mt-2 text-sm text-muted">{caption}{caption && credit ? " · " : ""}{credit ? `Снимка: ${credit}` : ""}</figcaption> : null}
         </figure>
       );

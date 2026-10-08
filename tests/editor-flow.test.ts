@@ -63,6 +63,16 @@ describe("editor API permissions and validation", () => {
 });
 
 describe("article editor transactions", () => {
+  it("preserves unrecognized archive bodies while saving metadata and refuses a replacement", async () => {
+    const input = draft(); const created = await createArticle(staff, input);
+    const archive = [{ type: "future_archive_block", html: "Original archive" }];
+    await db.update(schema.articleRevisions).set({ body: archive }).where(eq(schema.articleRevisions.articleId, created.id));
+    const { body, ...legacy } = input;
+    await saveRevision(staff, created.id, 1, { ...legacy, bodyText: "ignored", title: "Ново заглавие" });
+    const history = await listRevisionHistory(created.id); expect(history.revisions[0]?.editableBody).toBe(false);
+    const rows = await pg.query("select body from article_revisions where article_id=$1 and number=2", [created.id]); expect(rows.rows[0]?.body).toEqual(archive);
+    await expect(saveRevision(staff, created.id, 2, input)).rejects.toMatchObject({ code: "body_locked" });
+  });
   it("keeps a scheduled draft private, cancels scheduling and isolates the save-triggered scheduler", async () => {
     const future = await createArticle(staff, draft({ publishAtSofia: "2099-01-01T12:00" }));
     expect((await getEditorArticle(future.id))?.isPublic).toBe(false);

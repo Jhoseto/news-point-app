@@ -6,7 +6,7 @@ import { EditorContent, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer,
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { NodeSelection } from "@tiptap/pm/state";
-import { composition, mediaWidth, embedFrameUrl, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
+import { composition, mediaWidth, embedFrameUrl, embedAspectRatio, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { browserMediaSrc } from "@/lib/media-src";
 import { bodyToEditorHtml, documentToBody, escapeHtml } from "@/lib/editor/document";
@@ -43,15 +43,15 @@ function MediaView({ node, selected, updateAttributes, editor, getPos }: NodeVie
   const position = getPos();
   const inGallery = typeof position === "number" && editor.state.doc.resolve(position).parent.type.name === "npGallery";
   const select = () => { const pos = getPos(); if (typeof pos === "number") editor.commands.setNodeSelection(pos); };
-  const ratio = block.type === "image" ? ({ square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"]) : "16/9";
+  const ratio = block.type === "image" ? ({ square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"]) : embedAspectRatio(block.url);
   return <NodeViewWrapper className={`np-editor-media ${layout.className} ${selected ? "is-selected" : ""}`} style={{ ...layout.style, ...(dragWidth !== null ? { "--np-media-width": `${dragWidth}%` } : {}) }} data-node-kind={block.type}>
     <div className="np-media-heading" contentEditable={false}>
       <button type="button" data-drag-handle aria-label="Премести медията" title="Влачете между текстовите блокове" onClick={select}>⠿</button>
       <button type="button" onClick={select}>{block.type === "image" ? "Снимка · настройки" : "Embed · настройки"}</button>
     </div>
-    <div className={`np-editor-media-canvas ${block.type === "image" ? `shape-${block.shape ?? "rectangle"} frame-${block.frame ?? "none"}` : ""}`} style={{ aspectRatio: ratio }} contentEditable={false} onClick={select}>
+    <div className={`np-media-canvas np-editor-media-canvas ${block.type === "image" ? `shape-${block.shape ?? "rectangle"} frame-${block.frame ?? "none"}` : ""}`} style={{ aspectRatio: ratio }} contentEditable={false} onClick={select}>
       {block.type === "image" ? asset ? <img src={browserMediaSrc(asset.url)} alt={block.alt ?? asset.alt} draggable={false} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /> : <p>Снимката не е достъпна</p>
-        : frame ? <iframe src={frame} title={`Преглед: ${block.provider}`} loading="lazy" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}
+        : frame ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={frame} title={`Преглед: ${block.provider}`} loading="lazy" allowFullScreen /> : <a href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {block.provider}</a>}
     </div>
     {block.type === "image" && ((block.caption ?? asset?.caption) || asset?.credit) ? <p contentEditable={false} className="np-media-caption">{block.caption ?? asset?.caption}{asset?.credit ? ` · Снимка: ${asset.credit}` : ""}</p> : null}
     {selected && editor.isEditable && !inGallery ? <button type="button" className="np-resize-handle" contentEditable={false} aria-label="Промени ширината с влачене или стрелки" title="Влачене за размер; стрелките променят с 5%"
@@ -86,6 +86,13 @@ function selectedBlock(editor: Editor) {
   if (selection.$from.depth > 0) return { node: selection.$from.node(1), pos: selection.$from.before(1) };
   return null;
 }
+function insertionPosition(editor: Editor) {
+  const selection = editor.state.selection;
+  for (let depth = selection.$to.depth; depth > 0; depth--) {
+    if (selection.$to.node(depth).type.name === "npGallery") return selection.$to.after(depth);
+  }
+  return selection.to;
+}
 function moveSelected(editor: Editor, direction: -1 | 1) {
   const selected = selectedBlock(editor); if (!selected) return;
   const { node, pos } = selected;
@@ -117,7 +124,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const extensions = useMemo(() => [
-    StarterKit.configure({ heading: { levels: [2, 3, 4] }, link: { openOnClick: false, protocols: ["http", "https", "mailto"] } }),
+    StarterKit.configure({ heading: { levels: [2, 3, 4] }, link: { openOnClick: false, defaultProtocol: "https" } }),
     TextAlign.configure({ types: ["heading", "paragraph", "blockquote", "bulletList", "orderedList"] }), TextAttributes, ColorMark,
     mediaNode("npImage", "data-np-image").extend({ addStorage: () => ({ findMedia: (id: string) => mediaRef.current.find(item => item.id === id) }) }),
     mediaNode("npEmbed", "data-np-embed"), mediaNode("npLegacy", "data-np-legacy"),
@@ -146,8 +153,8 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     if (!editor) return;
     handleRef.current = { insertImages: (items, gallery = false) => {
       const groupId = gallery ? crypto.randomUUID() : undefined;
-      const images = items.map(item => ({ type: "npImage", attrs: { block: { type: "image", mediaAssetId: item.id, size: "large", ...(groupId ? { groupId } : {}) } } }));
-      editor.chain().focus().insertContent(gallery && images.length > 1 ? { type: "npGallery", content: images } : images).run();
+      const images = items.map(item => ({ type: "npImage", attrs: { block: { type: "image", mediaAssetId: item.id, size: "large", widthPercent: 82, ...(groupId ? { groupId } : {}) } } }));
+      editor.chain().focus().insertContentAt(insertionPosition(editor), gallery && images.length > 1 ? { type: "npGallery", content: images } : images).run();
     } };
     return () => { handleRef.current = null; };
   }, [editor, handleRef]);
@@ -157,17 +164,17 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const inGallery = !!selected && editor.state.doc.resolve(selected.pos).parent.type.name === "npGallery";
   const patch = (change: Record<string, unknown>) => {
     if (!selected || !block) return;
-    const next = { ...block, ...change };
-    if (editor.state.doc.resolve(selected.pos).parent.type.name === "npGallery") { delete next.wrap; delete next.widthPercent; }
+    const next = { ...block, widthPercent: mediaWidth(block), ...change };
+    if (editor.state.doc.resolve(selected.pos).parent.type.name === "npGallery") { delete next.wrap; next.widthPercent = 100; }
     if (next.wrap && next.wrap !== "none") next.widthPercent = Math.min(50, next.widthPercent ?? 50);
-    editor.chain().focus().command(({ tr }) => { tr.setNodeMarkup(selected.pos, undefined, { block: next }); return true; }).run();
+    editor.commands.command(({ tr }) => { tr.setNodeMarkup(selected.pos, undefined, { block: next }); tr.setSelection(NodeSelection.create(tr.doc, selected.pos)); return true; });
   };
   const button = (label: string, action: () => void, active = false) => <button type="button" disabled={readOnly} title={label} aria-label={label} aria-pressed={active} onMouseDown={event => event.preventDefault()} onClick={action}>{label}</button>;
   const dialogOpen = (kind: typeof dialog) => { setUrl(kind === "link" ? editor.getAttributes("link").href ?? "" : ""); setError(""); setDialog(kind); };
   const submitUrl = () => {
     if (dialog === "embed") {
       const parsed = parseEmbedInput(url); if (!parsed) { setError("Поставете валиден HTTPS адрес или iframe код."); return; }
-      editor.chain().focus().insertContent({ type: "npEmbed", attrs: { block: { type: "embed", ...parsed } } }).run();
+      editor.chain().focus().insertContentAt(insertionPosition(editor), { type: "npEmbed", attrs: { block: { type: "embed", ...parsed } } }).run();
     } else {
       if (!url.trim()) editor.chain().focus().extendMarkRange("link").unsetLink().run();
       else { try { if (!["https:", "http:", "mailto:"].includes(new URL(url).protocol)) throw new Error(); editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run(); } catch { setError("Невалиден адрес на връзката."); return; } }
@@ -187,7 +194,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
       {button("Списък", () => editor.chain().focus().toggleBulletList().run(), editor.isActive("bulletList"))}
       {button("Номериран списък", () => editor.chain().focus().toggleOrderedList().run(), editor.isActive("orderedList"))}
       {button("Цитат", () => editor.chain().focus().toggleBlockquote().run(), editor.isActive("blockquote"))}
-      {button("Разделител", () => editor.chain().focus().setHorizontalRule().run())}
+      {button("Разделител", () => editor.chain().focus().insertContentAt(insertionPosition(editor), { type: "horizontalRule" }).run())}
       {button("Връзка", () => dialogOpen("link"), editor.isActive("link"))}
       <select aria-label="Подравняване на текста" disabled={readOnly} value={editor.getAttributes("paragraph").textAlign ?? editor.getAttributes("heading").textAlign ?? "left"} onChange={event => editor.chain().focus().setTextAlign(event.target.value).run()}><option value="left">Вляво</option><option value="center">Център</option><option value="right">Вдясно</option><option value="justify">Двустранно</option></select>
       <select aria-label="Цвят на текста" disabled={readOnly} value={editor.getAttributes("npColor").color ?? ""} onChange={event => event.target.value ? editor.chain().focus().setMark("npColor", { color: event.target.value }).run() : editor.chain().focus().unsetMark("npColor").run()}><option value="">Основен цвят</option>{COLORS.map((color, index) => <option key={color} value={color}>{["Червен", "Оранжев", "Зелен", "Син", "Лилав", "Приглушен", "Акцент"][index]}</option>)}</select>
@@ -200,7 +207,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     </div>
     {block ? <fieldset className="np-media-inspector" disabled={readOnly}><legend>{block.type === "image" ? "Избрана снимка" : "Избран embed"}</legend>
       <label>Ширина <input disabled={inGallery} aria-label="Ширина на медията" type="range" min="25" max={block.wrap && block.wrap !== "none" ? 50 : 100} value={mediaWidth(block)} onChange={event => patch({ widthPercent: Number(event.target.value) })} /> <output>{mediaWidth(block)}%</output></label>
-      {block.type === "image" ? <label>Размер <select disabled={inGallery} aria-label="Размер на снимката" value={block.widthPercent ? "custom" : block.size ?? "large"} onChange={event => { if (event.target.value === "custom") return; patch({ size: event.target.value, widthPercent: undefined, wrap: "none" }); }}><option value="custom">По избор</option><option value="small">Малък · 35%</option><option value="medium">Среден · 60%</option><option value="large">Голям · 82%</option><option value="full">Цялата колона · 100%</option></select></label> : null}
+      {block.type === "image" ? <label>Размер <select disabled={inGallery} aria-label="Размер на снимката" value={block.widthPercent ? "custom" : block.size ?? "large"} onChange={event => { if (event.target.value === "custom") return; patch({ size: event.target.value, widthPercent: { small: 35, medium: 60, large: 82, full: 100 }[event.target.value], wrap: "none" }); }}><option value="custom">По избор</option><option value="small">Малък · 35%</option><option value="medium">Среден · 60%</option><option value="large">Голям · 82%</option><option value="full">Цялата колона · 100%</option></select></label> : null}
       <label>Позиция <select disabled={inGallery} aria-label="Позиция на медията" value={block.align ?? "center"} onChange={event => patch({ align: event.target.value })}><option value="left">Вляво</option><option value="center">Център</option><option value="right">Вдясно</option></select></label>
       <label>Текст около медията <select disabled={inGallery} aria-label="Обтичане на медията" value={block.wrap ?? "none"} onChange={event => patch({ wrap: event.target.value })}><option value="none">Отделен блок</option><option value="left">Медия вляво</option><option value="right">Медия вдясно</option></select></label>
       {block.type === "image" ? <>
@@ -214,14 +221,15 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     </fieldset> : null}
     {selected && !readOnly ? <div className="np-block-actions" role="group" aria-label="Действия за избрания блок">
       {button("Премести нагоре", () => moveSelected(editor, -1))} {button("Премести надолу", () => moveSelected(editor, 1))}
-      {button("Дублирай блока", () => { const item = selectedBlock(editor); if (!item) return; const json = item.node.toJSON(); if (json.type === "npImage" && editor.state.doc.resolve(item.pos).parent.type.name !== "npGallery") delete json.attrs.block.groupId; if (json.type === "npGallery") { const id = crypto.randomUUID(); json.content?.forEach((child: { attrs?: { block?: { groupId?: string } } }) => { if (child.attrs?.block) child.attrs.block.groupId = id; }); } editor.chain().focus().insertContentAt(item.pos + item.node.nodeSize, json).run(); })}
-      {button("Премахни блока", () => { const item = selectedBlock(editor); if (item) editor.chain().focus().deleteRange({ from: item.pos, to: item.pos + item.node.nodeSize }).run(); })}
+      {button("Дублирай блока", () => { const item = selectedBlock(editor); if (!item) return; const json = structuredClone(item.node.toJSON()); if (json.type === "npImage" && editor.state.doc.resolve(item.pos).parent.type.name !== "npGallery") delete json.attrs.block.groupId; if (json.type === "npGallery") { const id = crypto.randomUUID(); json.content?.forEach((child: { attrs?: { block?: { groupId?: string } } }) => { if (child.attrs?.block) child.attrs.block.groupId = id; }); } editor.chain().focus().insertContentAt(item.pos + item.node.nodeSize, json).run(); })}
+      {inGallery ? button("Извади от галерията", () => { if (!selected) return; const resolved = editor.state.doc.resolve(selected.pos); const parent = resolved.parent; const start = resolved.before(resolved.depth); const end = start + parent.nodeSize; const json = structuredClone(selected.node.toJSON()); delete json.attrs.block.groupId; const tr = editor.state.tr; if (parent.childCount === 1) { tr.delete(start, end); tr.insert(start, editor.schema.nodeFromJSON(json)); tr.setSelection(NodeSelection.create(tr.doc, start)); } else { tr.delete(selected.pos, selected.pos + selected.node.nodeSize); const insertAt = tr.mapping.map(end); tr.insert(insertAt, editor.schema.nodeFromJSON(json)); tr.setSelection(NodeSelection.create(tr.doc, insertAt)); } editor.view.dispatch(tr); editor.commands.focus(); }) : null}
+      {button("Премахни блока", () => { const item = selectedBlock(editor); if (!item) return; const resolved = editor.state.doc.resolve(item.pos); const wholeGallery = resolved.parent.type.name === "npGallery" && resolved.parent.childCount === 1; const from = wholeGallery ? resolved.before(resolved.depth) : item.pos; const to = wholeGallery ? from + resolved.parent.nodeSize : item.pos + item.node.nodeSize; editor.chain().focus().deleteRange({ from, to }).run(); })}
     </div> : null}
     {error && !dialog ? <p role="alert" className="np-editor-error">{error}</p> : null}
     <EditorContent editor={editor} />
     {value.some(item => item.type === "heading") ? <details className="np-document-outline"><summary>Заглавия в материала</summary>{value.filter(item => item.type === "heading").map((item, index) => item.type === "heading" ? <button type="button" key={index} onClick={() => { let found = 0; editor.state.doc.descendants((node, pos) => { if (node.type.name === "heading" && found++ === index) { editor.commands.setTextSelection(pos + 1); editor.commands.focus(); editor.view.dom.querySelectorAll("h2,h3,h4")[index]?.scrollIntoView({ block: "center", behavior: "smooth" }); } }); }}>{item.text}</button> : null)}</details> : null}
     {dialog ? <EditorDialog onClose={() => setDialog(null)} label={dialog === "embed" ? "Добавяне на embed" : dialog === "link" ? "Редактиране на връзка" : dialog === "symbol" ? "Специални символи" : "Помощ за редактора"}>
-      {dialog === "embed" || dialog === "link" ? <><h3>{dialog === "embed" ? "Външна публикация" : "Връзка"}</h3><label>Адрес{dialog === "embed" ? " или iframe код" : ""}<textarea autoFocus value={url} onChange={event => { setUrl(event.target.value); setError(""); }} /></label>{dialog === "embed" && parseEmbedInput(url) ? <div className="np-dialog-embed-preview">{embedFrameUrl(parseEmbedInput(url)!.url) ? <iframe src={embedFrameUrl(parseEmbedInput(url)!.url)!} title="Преглед на embed" allowFullScreen /> : <a href={parseEmbedInput(url)!.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {parseEmbedInput(url)!.provider}</a>}</div> : null}{error ? <p role="alert">{error}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={submitUrl}>Приложи</button></>
+      {dialog === "embed" || dialog === "link" ? <><h3>{dialog === "embed" ? "Външна публикация" : "Връзка"}</h3><label>Адрес{dialog === "embed" ? " или iframe код" : ""}<textarea autoFocus value={url} onChange={event => { setUrl(event.target.value); setError(""); }} /></label>{dialog === "embed" && parseEmbedInput(url) ? <div className="np-dialog-embed-preview">{embedFrameUrl(parseEmbedInput(url)!.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(url)!.url)!} title="Преглед на embed" allowFullScreen /> : <a href={parseEmbedInput(url)!.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {parseEmbedInput(url)!.provider}</a>}</div> : null}{error ? <p role="alert">{error}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={submitUrl}>Приложи</button></>
         : dialog === "symbol" ? <><h3>Специални символи</h3><div className="np-symbols">{["©", "®", "™", "§", "€", "£", "°", "±", "×", "÷", "…", "—", "„", "“", "«", "»", "→", "✓"].map(symbol => <button key={symbol} type="button" onClick={() => { editor.chain().focus().insertContent(escapeHtml(symbol)).run(); setDialog(null); }}>{symbol}</button>)}</div></>
         : <><h3>Работа с редактора</h3><p>Кликнете върху снимка или embed за настройки. Влачете дръжката ⠿ между абзаците; стрелките в действията местят избрания блок. Дръжката ↔ променя ширината. На телефон обтичането се подрежда над текста.</p><p>Ctrl+S записва ръчно. Ctrl+Z отменя, Ctrl+Shift+Z повтаря. „Поставяне като чист текст“ важи за следващото поставяне. Архивните блокове се запазват без промяна.</p></>}
     </EditorDialog> : null}

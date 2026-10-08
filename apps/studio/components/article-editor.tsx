@@ -325,9 +325,19 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     const onLeave = (event: BeforeUnloadEvent) => {
       if (dirty) event.preventDefault();
     };
+    const onNavigate = (event: MouseEvent) => {
+      if (!dirty || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as Element | null)?.closest<HTMLAnchorElement>("a[href]");
+      if (!anchor || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      const destination = new URL(anchor.href, window.location.href);
+      if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
+      if (!window.confirm("Има незаписани промени. Да напусна ли редактора?")) { event.preventDefault(); event.stopPropagation(); }
+    };
+    document.addEventListener("click", onNavigate, true);
     window.addEventListener("keydown", onKey);
     window.addEventListener("beforeunload", onLeave);
     return () => {
+      document.removeEventListener("click", onNavigate, true);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("beforeunload", onLeave);
     };
@@ -350,7 +360,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
     <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
       <div className="sticky top-14 z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2 sm:px-5">
-          <Link href="/" onClick={event => { if (dirty && !window.confirm("Има незаписани промени. Да напусна ли редактора?")) event.preventDefault(); }} className="text-sm font-bold text-muted hover:text-ink">
+          <Link href="/" className="text-sm font-bold text-muted hover:text-ink">
             ← Материали
           </Link>
           <span className="hidden text-faint sm:inline" aria-hidden="true">
@@ -440,6 +450,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                   type="button"
                   disabled={busy}
                   onClick={() => {
+                    rememberMedia(conflict.media ?? []);
                     setDraft(conflict.draft);
                     setSaved(conflict.draft);
                     setRevision(conflict.revision);
@@ -698,7 +709,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                   </label>
                   {draft.publishAtSofia && !published.isPublic ? <button type="button" className="np-btn np-btn-secondary h-8 px-2 text-xs" onClick={() => update("publishAtSofia", null)}>Изчисти</button> : null}
                 </div>
-                {published.isPublic ? <p className="mt-2 text-[0.6875rem] text-muted">Новината вече е на сайта. Часът важи само преди първото публикуване.</p> : null}
+                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Новината вече е публикувана. Часът важи само преди първото публикуване.</p> : null}
               </div>
               {storyThemeId ? (
                 <p className="text-[0.6875rem] text-muted">
@@ -802,6 +813,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или iframe код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
+        {parseEmbedInput(heroInput) && embedFrameUrl(parseEmbedInput(heroInput)!.url) ? <div className="np-dialog-embed-preview"><iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen /></div> : null}
         {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
       </EditorDialog> : null}
       {pickerOpen ? (

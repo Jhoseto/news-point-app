@@ -251,7 +251,7 @@ function scheduleInstant(wall: string | null | undefined): Date | null {
   return instant;
 }
 
-function revisionValues(draft: DraftInput, body: ArticleBody, authorship: Authorship) {
+function revisionValues(draft: DraftInput, body: unknown, authorship: Authorship) {
   return {
     title: draft.title,
     slug: draft.slug,
@@ -384,6 +384,7 @@ export interface Conflict {
   savedAt: Date;
   savedBy: string | null;
   draft: Draft;
+  media: MediaOption[];
 }
 
 /** Optimistic concurrency: the save applies only on top of the revision the editor loaded. */
@@ -407,14 +408,17 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         revision: current,
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
+        media: await listMediaByIds([...new Set([latest!.revision.heroMediaId, ...(articleBody.safeParse(latest!.revision.body).data ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((mediaId): mediaId is string => !!mediaId))], tx),
         draft: { ...toDraft(latest!.revision).draft, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
     const number = current + 1;
-    const stored = articleBody.parse(latest?.revision.body ?? article.body);
-    const body = draft.body ?? (bodyToText(stored) === null ? stored : textToBody(draft.bodyText ?? ""));
-    await validateMedia(tx, draft, body);
+    const original = latest?.revision.body ?? article.body;
+    const stored = articleBody.safeParse(original);
+    if (!stored.success && draft.body !== undefined) throw new EditorError(422, "body_locked", "Архивният формат се запазва без промяна. Можете да редактирате останалите полета.");
+    const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
+    await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
     const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
@@ -651,8 +655,8 @@ export async function listRevisionHistory(id: string) {
   return { revisions, media: ids.length ? await listMediaByIds(ids) : [] };
 }
 
-async function listMediaByIds(ids: string[]): Promise<MediaOption[]> {
-  const rows = await getDb().select().from(mediaAssets).where(inArray(mediaAssets.id, ids));
+async function listMediaByIds(ids: string[], db: Pick<ReturnType<typeof getDb>, "select"> = getDb()): Promise<MediaOption[]> {
+  const rows = await db.select().from(mediaAssets).where(inArray(mediaAssets.id, ids));
   return rows.map((row) => ({
     id: row.id,
     url: row.storageKey ? libraryImageUrl(row.storageKey, row.sourceUrl) : resolveMediaUrl({ provider: row.provider, sourceUrl: row.sourceUrl, storageKey: row.storageKey }),
