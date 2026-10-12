@@ -1,13 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { shareArticleRead } from "@/lib/article-read";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import {
+  articleReadRequestBody,
+  isArticleReadRevisit,
+  markArticleReadCounted,
+  markArticleReadsEligibleAfterNavigation,
+  shareArticleRead,
+  shouldSendArticleRead,
+} from "@/lib/article-read";
 import { EyeIcon } from "./icons";
 
 const formatter = new Intl.NumberFormat("bg-BG");
 
-async function sendArticleRead(articleId: string): Promise<number | null> {
-  const response = await fetch(`/api/articles/${articleId}/read/`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+async function sendArticleRead(articleId: string, revisit: boolean): Promise<number | null> {
+  const response = await fetch(`/api/articles/${articleId}/read/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: articleReadRequestBody(revisit),
+  });
   if (!response.ok) return null;
   const result = await response.json() as { count?: unknown };
   const count = typeof result.count === "number" ? result.count : Number(result.count);
@@ -16,13 +28,28 @@ async function sendArticleRead(articleId: string): Promise<number | null> {
 
 export function ArticleReadCount({ articleId, initialCount }: { articleId: string; initialCount: number | null }) {
   const [count, setCount] = useState(initialCount);
+  const pathname = usePathname();
+  const previousPath = useRef(pathname);
+
+  useEffect(() => {
+    if (previousPath.current === pathname) return;
+    markArticleReadsEligibleAfterNavigation(sessionStorage);
+    previousPath.current = pathname;
+  }, [pathname]);
 
   useEffect(() => {
     if (initialCount === null) return;
+    const storage = sessionStorage;
+    const revisit = isArticleReadRevisit(articleId, storage);
+    if (!shouldSendArticleRead(articleId, storage)) return;
+
     let ignore = false;
-    void shareArticleRead(articleId, () => sendArticleRead(articleId).catch(() => null)).then((next) => {
-      if (!ignore && next !== null) setCount(next);
+    void shareArticleRead(articleId, () => sendArticleRead(articleId, revisit).catch(() => null)).then((next) => {
+      if (ignore || next === null) return;
+      markArticleReadCounted(articleId, storage);
+      setCount(next);
     });
+
     return () => { ignore = true; };
   }, [articleId, initialCount]);
 

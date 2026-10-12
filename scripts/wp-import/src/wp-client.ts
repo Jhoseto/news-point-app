@@ -35,7 +35,7 @@ export interface WpPost {
 }
 
 const USER_AGENT = "NewsPoint2-import/0.1 (+local demo)";
-const PAUSE_MS = 400;
+const PAUSE_MS = Math.max(0, Number(process.env.WP_IMPORT_PAUSE_MS ?? 400) || 0);
 
 function sourceAddress(): string {
   return process.env.WP_SOURCE_ADDRESS?.trim() ?? "";

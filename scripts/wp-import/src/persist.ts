@@ -1,5 +1,5 @@
 import { and, eq, or, sql } from "drizzle-orm";
-import { articleBody, BODY_VERSION, imageVariantsSchema, type ImageVariant, type ArticleBody } from "@newspoint/content";
+import { articleBody, BODY_VERSION, imageVariantsSchema, type ArticleBody } from "@newspoint/content";
 import {
   articleCategories,
   articles,
@@ -22,7 +22,6 @@ export interface MediaInput {
   mime: string | null;
   alt: string;
   caption: string;
-  variants?: ImageVariant[];
 }
 
 export interface CategoryInput {

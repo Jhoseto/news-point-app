@@ -6,7 +6,7 @@ delete process.env.DATABASE_URL;
 delete process.env.DATABASE_URL_SESSION;
 
 const SOURCE = "https://newspoint.bg/wp-json/post-views-counter/get-post-views";
-const CONCURRENCY = 12;
+const CONCURRENCY = Math.min(32, Math.max(1, Number(process.env.WP_IMPORT_VIEW_CONCURRENCY ?? 24) || 24));
 
 type Row = { id: string; legacyId: number };
 

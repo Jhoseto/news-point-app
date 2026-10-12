@@ -1,8 +1,41 @@
-export const ARTICLE_READ_MINIMUM_MS = 8_000;
-export const ARTICLE_READ_MINIMUM_PROGRESS = 0.35;
+const READ_SESSION_PREFIX = "np-read:v1";
 
-export function isEngagedArticleRead(elapsedMs: number, progress: number) {
-  return elapsedMs >= ARTICLE_READ_MINIMUM_MS && progress >= ARTICLE_READ_MINIMUM_PROGRESS;
+function countedKey(articleId: string) {
+  return `${READ_SESSION_PREFIX}:counted:${articleId}`;
+}
+
+function leftKey(articleId: string) {
+  return `${READ_SESSION_PREFIX}:left:${articleId}`;
+}
+
+/** One counted view per tab session until the reader opens another route and returns. */
+export function shouldSendArticleRead(articleId: string, storage: Pick<Storage, "getItem">) {
+  if (isArticleReadRevisit(articleId, storage)) return true;
+  return storage.getItem(countedKey(articleId)) !== "1";
+}
+
+export function isArticleReadRevisit(articleId: string, storage: Pick<Storage, "getItem">) {
+  return storage.getItem(leftKey(articleId)) === "1";
+}
+
+export function markArticleReadCounted(articleId: string, storage: Pick<Storage, "setItem" | "removeItem">) {
+  storage.setItem(countedKey(articleId), "1");
+  storage.removeItem(leftKey(articleId));
+}
+
+/** Call when the SPA route changes so a later return can count again (not on F5). */
+export function markArticleReadsEligibleAfterNavigation(storage: Storage) {
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (!key?.startsWith(`${READ_SESSION_PREFIX}:counted:`)) continue;
+    if (storage.getItem(key) !== "1") continue;
+    const articleId = key.slice(`${READ_SESSION_PREFIX}:counted:`.length);
+    storage.setItem(leftKey(articleId), "1");
+  }
+}
+
+export function articleReadRequestBody(revisit: boolean) {
+  return revisit ? JSON.stringify({ revisit: true }) : "{}";
 }
 
 const readsInFlight = new Map<string, Promise<number | null>>();

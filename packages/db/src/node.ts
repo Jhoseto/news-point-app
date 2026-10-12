@@ -5,10 +5,10 @@ import { createSessionClient } from "./connection";
 import { loadRootEnv, readDatabaseEnv, type DatabaseTarget } from "./env";
 import * as schema from "./schema";
 
-export function createScriptDb(target: DatabaseTarget = "dev") {
+export function createScriptDb(target: DatabaseTarget = "dev", maxConnections = 3) {
   loadRootEnv();
   const env = readDatabaseEnv(target);
-  const client = createSessionClient(env.DATABASE_URL_SESSION, 3);
+  const client = createSessionClient(env.DATABASE_URL_SESSION, maxConnections);
   return { db: drizzle(client, { schema }), close: () => client.end({ timeout: 5 }) };
 }
 

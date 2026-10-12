@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { isArticleReadSameOrigin, isEngagedArticleRead, shareArticleRead } from "./article-read";
-
-describe("isEngagedArticleRead", () => {
-  it("requires both time and meaningful article progress", () => {
-    expect(isEngagedArticleRead(7_999, 0.8)).toBe(false);
-    expect(isEngagedArticleRead(12_000, 0.34)).toBe(false);
-    expect(isEngagedArticleRead(8_000, 0.35)).toBe(true);
-  });
-});
+import {
+  isArticleReadSameOrigin,
+  markArticleReadCounted,
+  markArticleReadsEligibleAfterNavigation,
+  shareArticleRead,
+  shouldSendArticleRead,
+} from "./article-read";
 
 describe("isArticleReadSameOrigin", () => {
   it("accepts the host the browser used, including a public name behind the proxy", () => {
@@ -49,6 +47,28 @@ describe("isArticleReadSameOrigin", () => {
       forwardedProto: "https",
       fetchSite: "same-origin",
     })).toBe(false);
+  });
+});
+
+describe("article read session", () => {
+  it("counts once per tab session until another route opens and the reader returns", () => {
+    const storage = new Map<string, string>();
+    const session = {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => { storage.set(key, value); },
+      removeItem: (key: string) => { storage.delete(key); },
+      key: (index: number) => [...storage.keys()][index] ?? null,
+      get length() { return storage.size; },
+      clear: () => storage.clear(),
+    } satisfies Storage;
+
+    expect(shouldSendArticleRead("a", session)).toBe(true);
+    markArticleReadCounted("a", session);
+    expect(shouldSendArticleRead("a", session)).toBe(false);
+    markArticleReadsEligibleAfterNavigation(session);
+    expect(shouldSendArticleRead("a", session)).toBe(true);
+    markArticleReadCounted("a", session);
+    expect(shouldSendArticleRead("a", session)).toBe(false);
   });
 });
 
