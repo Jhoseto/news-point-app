@@ -1,3 +1,5 @@
+import * as dns from "node:dns";
+import https from "node:https";
 import { sql } from "drizzle-orm";
 import { createScriptDb } from "@newspoint/db/node";
 import { parseViewCount } from "./view-count";
@@ -5,7 +7,8 @@ import { parseViewCount } from "./view-count";
 delete process.env.DATABASE_URL;
 delete process.env.DATABASE_URL_SESSION;
 
-const SOURCE = "https://newspoint.bg/wp-json/post-views-counter/get-post-views";
+const SOURCE_BASE = process.env.WP_SOURCE_URL ?? "https://newspoint.bg";
+const SOURCE_ADDRESS = process.env.WP_SOURCE_ADDRESS?.trim() ?? "";
 const CONCURRENCY = Math.min(32, Math.max(1, Number(process.env.WP_IMPORT_VIEW_CONCURRENCY ?? 24) || 24));
 /** When unset, only backfill suspiciously low counts (live hits before import). Set to 1 to refresh every WP article. */
 const IMPORT_ALL = process.env.WP_IMPORT_VIEWS_ALL === "1";
@@ -20,20 +23,61 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
+function pinnedLookup(hostname: string, options: dns.LookupOptions | ((error: NodeJS.ErrnoException | null, address: string, family: number) => void), callback?: (error: NodeJS.ErrnoException | null, address: string, family: number) => void) {
+  const done = typeof options === "function" ? options : callback;
+  const lookupOptions = typeof options === "function" ? {} : options;
+  if (!done) return;
+  if (SOURCE_ADDRESS && (hostname === "newspoint.bg" || hostname === "www.newspoint.bg")) {
+    if (lookupOptions.all) {
+      (done as unknown as (error: null, addresses: Array<{ address: string; family: number }>) => void)(null, [{ address: SOURCE_ADDRESS, family: 4 }]);
+      return;
+    }
+    done(null, SOURCE_ADDRESS, 4);
+    return;
+  }
+  dns.lookup(hostname, lookupOptions, done as unknown as (error: NodeJS.ErrnoException | null, address: string | dns.LookupAddress[], family: number) => void);
+}
+
+async function fetchViewBody(legacyId: number): Promise<{ status: number; body: string }> {
+  const path = `/wp-json/post-views-counter/get-post-views/${legacyId}`;
+  if (!SOURCE_ADDRESS) {
+    const response = await withTimeout(fetch(new URL(path, SOURCE_BASE), {
+      headers: { accept: "text/plain, application/json", "user-agent": "NewsPoint/2.0 view-import" },
+    }), 12_000);
+    return { status: response.status, body: await response.text() };
+  }
+  const url = new URL(path, SOURCE_BASE);
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      url,
+      {
+        headers: { accept: "text/plain, application/json", "user-agent": "NewsPoint/2.0 view-import" },
+        lookup: pinnedLookup,
+        rejectUnauthorized: false,
+      },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => resolve({ status: response.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 async function fetchViews(legacyId: number): Promise<number> {
   let last = "failed";
   for (let attempt = 1; attempt <= 4; attempt += 1) {
     try {
-      const response = await withTimeout(fetch(`${SOURCE}/${legacyId}`, {
-        headers: { accept: "text/plain, application/json", "user-agent": "NewsPoint/2.0 view-import" },
-      }), 12_000);
+      const response = await fetchViewBody(legacyId);
       if (response.status === 429 || response.status >= 500) {
         last = String(response.status);
         await new Promise((resolve) => setTimeout(resolve, 400 * attempt));
         continue;
       }
-      if (!response.ok) throw new Error(String(response.status));
-      const count = parseViewCount(await response.text());
+      if (response.status < 200 || response.status >= 300) throw new Error(String(response.status));
+      const count = parseViewCount(response.body);
       if (count === null) throw new Error("unreadable count");
       return count;
     } catch (error) {
@@ -119,11 +163,15 @@ try {
 
   const samples = articles.filter((_, index) => index % Math.ceil(articles.length / 5) === 0).slice(0, 5);
   for (const sample of samples) {
-    const fresh = await fetchViews(sample.legacyId);
-    const [stored] = await db.execute<{ read_count: string | number }>(sql`
-      select read_count from article_read_counts where article_id = ${sample.id}::uuid
-    `);
-    console.log(`sample wp ${sample.legacyId}: stored ${stored?.read_count ?? "missing"} live ${fresh}`);
+    try {
+      const fresh = await fetchViews(sample.legacyId);
+      const [stored] = await db.execute<{ read_count: string | number }>(sql`
+        select read_count from article_read_counts where article_id = ${sample.id}::uuid
+      `);
+      console.log(`sample wp ${sample.legacyId}: stored ${stored?.read_count ?? "missing"} live ${fresh}`);
+    } catch (error) {
+      console.log(`sample wp ${sample.legacyId}: verify skipped (${error instanceof Error ? error.message : "failed"})`);
+    }
   }
   console.log(`VIEW_IMPORT_DONE saved ${saved} failed ${failed.length}`);
   for (const failure of failed.slice(0, 20)) console.log(`  failed ${failure.legacyId}: ${failure.error}`);

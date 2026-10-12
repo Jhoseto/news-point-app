@@ -68,7 +68,7 @@ export async function SiteBody({ children }: { children: React.ReactNode }) {
   return (
     <div className="lg:flex">
       {desktop ? <RubricsNav items={menu.map(({ slug, name, path }) => ({ slug, name, path }))} /> : null}
-      <div className="min-w-0 flex-1">
+      <div data-rubrics-motion className="np-page-content min-w-0 flex-1">
         <main id="main">{children}</main>
         <SiteFooter desktop={desktop} />
       </div>

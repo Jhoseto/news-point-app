@@ -61,6 +61,7 @@ GEMINI.md
 .github/copilot-instructions.md
 
 # Internal planning documents
+docs/PLAN.md
 NEWSPOINT_2_MASTER_PLAN.md
 docs/DECISIONS.md
 docs/adr/

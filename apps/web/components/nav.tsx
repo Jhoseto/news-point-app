@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type FocusEvent,
@@ -27,7 +28,6 @@ import {
   ChipIcon,
   CloseIcon,
   ColumnsIcon,
-  ChevronLeftIcon,
   ChevronRightIcon,
   CupIcon,
   EyeIcon,
@@ -47,6 +47,7 @@ import {
 import { handleRubricMenuClick } from "./category-archive-pagination";
 import { openRubrics, RUBRICS_EVENT } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
+import { createRubricsMotion } from "@/lib/rubrics-motion";
 
 type NavItem = Pick<CategoryRef, "slug" | "name" | "path">;
 
@@ -104,24 +105,24 @@ function groupRubrics(items: NavItem[]) {
   const rest = items.filter((item) => !LOCAL_SLUGS.has(item.slug));
   return [
     { label: "Близо до вас", items: local },
-    { label: "Още рубрики", items: rest },
+    { label: "Рубрики", items: rest },
   ].filter((group) => group.items.length > 0);
 }
 
 /**
  * One rubric row, shared by the desktop rail and the phone/tablet sheet so the
- * list is never duplicated. `compact` centres the icon for the collapsed rail.
+ * list is never duplicated. Desktop rail labels remain mounted for smooth disclosure.
  */
 function RubricRow({
   item,
   current,
   onNavigate,
-  compact,
+  rail,
 }: {
   item: NavItem;
   current: string;
   onNavigate?: () => void;
-  compact?: boolean;
+  rail?: boolean;
 }) {
   const pathname = usePathname();
   const reducedMotion = useReducedMotion();
@@ -135,9 +136,9 @@ function RubricRow({
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}
-      {...(compact ? { "aria-label": item.name, "data-rubric-tip": item.name } : { title: item.name })}
+      {...(rail ? { "aria-label": item.name, "data-rubric-tip": item.name } : { title: item.name })}
       className={`np-rubric-row group relative flex shrink-0 items-center rounded-xl ${
-        compact ? "np-rubric-row--compact justify-center" : "h-11 gap-2.5 px-2.5"
+        rail ? "np-rubric-row--rail" : "h-11 gap-2.5 px-2.5"
       }`}
     >
       <span
@@ -147,70 +148,15 @@ function RubricRow({
         aria-hidden="true"
       />
       <RubricMark slug={item.slug} />
-      {compact ? null : (
-        <span
-          className={`np-rubric-label min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
-            active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
-          }`}
-        >
-          {item.name}
-        </span>
-      )}
-      {compact ? null : <ChevronRightIcon className="np-rubric-chevron shrink-0" width={13} height={13} aria-hidden="true" />}
+      <span
+        className={`np-rubric-label min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
+          active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
+        }`}
+      >
+        {item.name}
+      </span>
+      <ChevronRightIcon className="np-rubric-chevron shrink-0" width={13} height={13} aria-hidden="true" />
     </Link>
-  );
-}
-
-/** Desktop expanded rail: «Начало» + «Свий» as one row (split control). */
-function HomeRubricBar({
-  current,
-  collapseBtn,
-  onCollapse,
-}: {
-  current: string;
-  collapseBtn: RefObject<HTMLButtonElement | null>;
-  onCollapse: () => void;
-}) {
-  const home: NavItem = { name: "Начало", path: "/", slug: "" };
-  const pathname = usePathname();
-  const reducedMotion = useReducedMotion();
-  const active = isActive(current, home.path);
-  return (
-    <div className="np-rubric-home-bar flex h-12 min-h-[48px] w-full rounded-xl lg:h-[var(--np-home-bar-h)] lg:min-h-0" aria-current={active ? "page" : undefined}>
-      <Link
-        href={home.path}
-        title={home.name}
-        onClick={(event) => scrollHomeIfCurrent(event, home.path, pathname, reducedMotion)}
-        className="np-rubric-home-link group relative flex h-full min-w-0 flex-1 items-center gap-2.5 px-2.5"
-      >
-        <span
-          className={`np-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full transition-[scale,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-            active ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
-          }`}
-          aria-hidden="true"
-        />
-        <RubricMark slug={home.slug} />
-        <span
-          className={`np-rubric-label min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
-            active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
-          }`}
-        >
-          {home.name}
-        </span>
-      </Link>
-      <button
-        ref={collapseBtn}
-        type="button"
-        data-rubrics-trigger
-        aria-expanded={true}
-        onClick={onCollapse}
-        aria-label="Свий менюто с рубрики"
-        title="Свий менюто"
-        className="np-rubric-home-collapse inline-flex h-full min-w-[48px] w-12 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
-      >
-        <ChevronLeftIcon width={22} height={22} strokeWidth={2.25} aria-hidden="true" />
-      </button>
-    </div>
   );
 }
 
@@ -482,16 +428,40 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   const [compactTip, setCompactTip] = useState<{ label: string; x: number; y: number } | null>(null);
   const [tipOpen, setTipOpen] = useState(false);
   const [tipPortalReady, setTipPortalReady] = useState(false);
-  const collapseBtn = useRef<HTMLButtonElement>(null);
-  const expandBtn = useRef<HTMLButtonElement>(null);
+  const reducedMotion = useReducedMotion();
+  const toggleBtn = useRef<HTMLButtonElement>(null);
+  const expandedRef = useRef(true);
+  const motion = useRef<ReturnType<typeof createRubricsMotion> | null>(null);
   const navRef = useRef<HTMLElement>(null);
   const tipOpenRef = useRef(false);
   const compactTipRef = useRef(compactTip);
   const tipOpenFrame = useRef(0);
   const tipHideTimer = useRef(0);
-  const focusCollapse = useRef(false);
 
   const TIP_HIDE_MS = 400;
+
+  useLayoutEffect(() => {
+    const controller = createRubricsMotion(document);
+    motion.current = controller;
+    window.addEventListener("resize", controller.cancel);
+    return () => {
+      controller.cancel();
+      window.removeEventListener("resize", controller.cancel);
+      document.documentElement.removeAttribute("data-rubrics-closed");
+      motion.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) motion.current?.cancel();
+  }, [reducedMotion]);
+
+  const setRailExpanded = useCallback((next: boolean) => {
+    if (expandedRef.current === next) return;
+    expandedRef.current = next;
+    motion.current?.move(next, reducedMotion);
+    setExpanded(next);
+  }, [reducedMotion]);
 
   useEffect(() => {
     tipOpenRef.current = tipOpen;
@@ -503,10 +473,13 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
 
   useEffect(() => {
     setTipPortalReady(true);
+    return () => {
+      if (tipOpenFrame.current) cancelAnimationFrame(tipOpenFrame.current);
+      if (tipHideTimer.current) window.clearTimeout(tipHideTimer.current);
+    };
   }, []);
 
   useEffect(() => {
-    document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
     if (expanded) {
       if (tipOpenFrame.current) cancelAnimationFrame(tipOpenFrame.current);
       tipOpenFrame.current = 0;
@@ -517,28 +490,15 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
       setCompactTip(null);
       compactTipRef.current = null;
     }
-    return () => document.documentElement.removeAttribute("data-rubrics-closed");
-  }, [expanded]);
-
-  // Focus follows the toggle so keyboard users never land on an unmounted button.
-  useEffect(() => {
-    if (expanded) {
-      if (focusCollapse.current) {
-        focusCollapse.current = false;
-        collapseBtn.current?.focus({ preventScroll: true });
-      }
-    } else {
-      expandBtn.current?.focus({ preventScroll: true });
-    }
   }, [expanded]);
 
   useEffect(() => {
     const onOpen = () => {
-      if (matchMedia(DESKTOP).matches) setExpanded(true);
+      if (matchMedia(DESKTOP).matches) setRailExpanded(true);
     };
     window.addEventListener(RUBRICS_EVENT, onOpen);
     return () => window.removeEventListener(RUBRICS_EVENT, onOpen);
-  }, []);
+  }, [setRailExpanded]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -546,11 +506,12 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
       if (event.key !== "Escape") return;
       // Escape belongs to an open dialog; closing LivePoint/settings must not also collapse the rail.
       if (document.querySelector('[aria-modal="true"], dialog[open]')) return;
-      setExpanded(false);
+      setRailExpanded(false);
+      toggleBtn.current?.focus({ preventScroll: true });
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [expanded]);
+  }, [expanded, setRailExpanded]);
 
   const groups = groupRubrics(items);
 
@@ -664,54 +625,41 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
               }
             : {})}
         >
-          {expanded ? (
-            <div className="np-rubric-home-slot">
-              <HomeRubricBar current={current} collapseBtn={collapseBtn} onCollapse={() => setExpanded(false)} />
-            </div>
-          ) : (
-            <div className="np-rubrics-collapsed-head mb-1 flex flex-col items-center gap-1 lg:min-h-[var(--np-lp-row-h)] lg:justify-center lg:pb-1">
+          <div className="np-rubrics-head">
+            <div className="np-rubrics-home-bar" data-active={current === "/" || undefined} role="group" aria-label="Начало и меню с рубрики">
+              <RubricRow item={{ name: "Начало", path: "/", slug: "" }} current={current} rail />
               <button
-                ref={expandBtn}
+                ref={toggleBtn}
                 type="button"
                 data-rubrics-trigger
+                data-rubrics-motion
                 aria-expanded={expanded}
-                onClick={() => {
-                  focusCollapse.current = true;
-                  setExpanded(true);
-                }}
-                data-rubric-tip="Разгъни менюто"
-                aria-label="Разгъни менюто"
-                className="np-rubrics-toggle np-rubrics-toggle--compact inline-flex items-center justify-center rounded-[0.5rem] text-muted"
+                aria-controls="np-desktop-rubrics"
+                onClick={() => setRailExpanded(!expandedRef.current)}
+                data-rubric-tip={expanded ? undefined : "Разгъни менюто"}
+                aria-label={expanded ? "Свий менюто с рубрики" : "Разгъни менюто с рубрики"}
+                className="np-rubrics-toggle flex items-center justify-center text-muted"
               >
-                <ChevronRightIcon width={18} height={18} strokeWidth={2.25} aria-hidden="true" />
+                <ChevronRightIcon className="np-rubrics-toggle-arrow" width={14} height={14} strokeWidth={2} aria-hidden="true" />
               </button>
-              <ul className="flex w-full flex-col gap-px">
-                <li>
-                  <RubricRow item={{ name: "Начало", path: "/", slug: "" }} current={current} compact />
-                </li>
-              </ul>
             </div>
-          )}
-          <div className="np-rubrics-nav-body min-h-0 flex-1">
-          {groups.map((group, groupIndex) => (
-            <section key={group.label} className={groupIndex > 0 ? (expanded ? "mt-4" : "mt-2") : undefined}>
-              {expanded ? (
-                <h3 className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</h3>
-              ) : groupIndex > 0 ? (
-                <div className="np-rubrics-collapsed-divider mx-auto h-px w-4 bg-line" aria-hidden="true" />
-              ) : null}
-              <ul className={`flex flex-col ${expanded ? "gap-0.5" : "gap-px"}`}>
-                {group.items.map((item) => (
-                  <li key={item.path}>
-                    <RubricRow item={item} current={current} compact={!expanded} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-            <ul className={`mt-0.5 flex flex-col ${expanded ? "gap-0.5" : "gap-px"}`}>
+          </div>
+          <div id="np-desktop-rubrics" data-rubrics-motion className="np-rubrics-nav-body min-h-0 flex-1">
+            {groups.map((group) => (
+              <section key={group.label} className="np-rubrics-section">
+                <h3 className="np-rubrics-group flex items-center gap-2 text-[0.625rem] font-semibold tracking-[0.12em] text-muted uppercase">{group.label}</h3>
+                <ul className="flex flex-col gap-1">
+                  {group.items.map((item) => (
+                    <li key={item.path}>
+                      <RubricRow item={item} current={current} rail />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+            <ul className="mt-1 flex flex-col gap-1">
               <li>
-                <RubricRow item={STORIES_NAV} current={current} compact={!expanded} />
+                <RubricRow item={STORIES_NAV} current={current} rail />
               </li>
             </ul>
           </div>

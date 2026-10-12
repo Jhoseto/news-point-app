@@ -103,7 +103,7 @@ export function LivePointStrip() {
 
   return (
     <div className="np-lp-row flex items-center lg:pl-[var(--np-rail-w)]">
-      <div className="np-lp-strip flex h-11 w-full min-w-0 items-center px-2 lg:h-full lg:gap-0 lg:px-0 lg:pl-2 lg:pr-3 xl:gap-1 xl:pl-3 xl:pr-8 3xl:pl-4 3xl:pr-12">
+      <div data-rubrics-motion className="np-lp-strip flex h-11 w-full min-w-0 items-center px-2 lg:h-full lg:gap-0 lg:px-0 lg:pl-2 lg:pr-3 xl:gap-1 xl:pl-3 xl:pr-8 3xl:pl-4 3xl:pr-12">
         <StripScroller>
           <div className="np-lp-brand flex shrink-0 items-center lg:h-full">
             <span className="hidden h-4 w-px shrink-0 bg-line lg:block" aria-hidden="true" />

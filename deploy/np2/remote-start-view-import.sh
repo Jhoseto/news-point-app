@@ -7,6 +7,10 @@ if pgrep -f import-views.ts >/dev/null; then
   pgrep -af import-views.ts
   exit 0
 fi
+set -a
+# shellcheck disable=SC1091
+source ./.env.local
+set +a
 export WP_IMPORT_VIEW_CONCURRENCY="${WP_IMPORT_VIEW_CONCURRENCY:-24}"
 nohup pnpm --filter @newspoint/wp-import run wp:import:views \
   > logs/wp-view-import.out 2>&1 &
