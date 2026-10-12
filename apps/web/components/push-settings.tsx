@@ -25,7 +25,7 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
   const btn = compact ? "min-h-9 text-xs" : "min-h-11 text-sm";
 
   return (
-    <fieldset className={card} aria-describedby={`${id}-push-hint`}>
+    <fieldset className={card} aria-describedby={`${id}-push-hint`} aria-busy={busy || push.loading}>
       <legend className={legend}>Нотификации</legend>
       <p id={`${id}-push-hint`} className={hint}>
         Известия за нови публикации — и когато браузърът е затворен (Web Push).
@@ -46,11 +46,11 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
       ) : (
         <button
           type="button"
-          disabled={busy}
+          disabled={busy || push.loading || !push.confirmed || !push.configured || push.support?.permission === "denied"}
           onClick={() => void push.enable()}
           className={`np-gradient-bg inline-flex w-full items-center justify-center rounded-lg px-3 py-2 font-bold text-on-accent disabled:opacity-50 ${btn}`}
         >
-          {busy ? "…" : "Включи нотификации"}
+          {push.loading ? "Проверяваме известията…" : busy ? "…" : "Включи нотификации"}
         </button>
       )}
       {active ? (
@@ -88,7 +88,9 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
           ) : null}
         </div>
       ) : null}
-      {error ? <p className="mt-1.5 text-[10px] text-muted">{error}</p> : null}
+      {!push.configured && !push.loading ? <p role="status" className="mt-2 text-xs text-muted">Известията са временно недостъпни. Можете да проверите отново след малко.</p> : null}
+      {error ? <p role="alert" className="mt-1.5 text-xs text-muted">{error}</p> : null}
+      {!push.loading && (!push.configured || error || push.support?.permission === "denied") ? <button type="button" disabled={busy} onClick={() => void push.refresh()} className="mt-2 min-h-9 rounded-lg border border-line px-3 text-xs font-bold text-ink disabled:opacity-50">Провери отново</button> : null}
     </fieldset>
   );
 }

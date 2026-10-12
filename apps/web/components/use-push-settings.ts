@@ -28,6 +28,8 @@ export function usePushSettings() {
   const refresh = useCallback(async () => {
     if (busyRef.current) return;
     const request = ++revision.current;
+    setLoading(true);
+    setConfigured(false);
     const current = readPushSupport();
     setSupport(current);
     if (current.needInstall || !current.supported) { setLoading(false); return; }
@@ -66,6 +68,12 @@ export function usePushSettings() {
 
   const run = async (kind: "enable" | "disable" | "test" | "preferences", next?: string[] | null) => {
     if (busyRef.current) return;
+    // Refuse before subscribeForPush can ask the browser for permission.
+    // Disabling an existing subscription stays available during a config outage.
+    if (kind === "enable" && (loading || !confirmed || !configured)) {
+      setError(pushErrorText(new PushClientError("config")));
+      return;
+    }
     busyRef.current = true; revision.current++;
     setBusy(true); setPending(kind); setError(null); setNotice(null);
     try {

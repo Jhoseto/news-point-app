@@ -43,7 +43,7 @@ export function MobilePushSettings({ push }: { push: PushController }) {
       </> : null}
       {error ? <p className="np-mobile-push-feedback" role="alert">{error}</p> : null}
       {notice ? <p className="np-mobile-push-feedback" role="status">{notice}</p> : null}
-      {blocked || error ? <button className="np-mobile-push-secondary" disabled={busy} type="button" onClick={() => void push.refresh()}>Провери отново</button> : null}
+      {blocked || error || (!configured && !loading && !install && !unsupported) ? <button className="np-mobile-push-secondary" disabled={busy || loading} type="button" onClick={() => void push.refresh()}>Провери отново</button> : null}
       <p className="np-mobile-push-footnote">Настройките важат за това устройство. Можете да изключите известията по всяко време.</p>
     </section>
   );

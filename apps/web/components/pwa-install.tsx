@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { readPushSupport } from "@/lib/push-client";
+import { INSTALL_DISMISSED_UNTIL, INSTALL_DISMISS_MS, INSTALL_INTEREST_MS, installDismissed, installInterest } from "@/lib/pwa-install-policy";
 
 const DISMISSED_KEY = "np-pwa-install-dismissed";
 
@@ -12,14 +13,14 @@ const DISMISSED_KEY = "np-pwa-install-dismissed";
  *   през системния лист за споделяне. Без отделен бутон, който обещава инсталиране без този лист.
  * - Вече инсталирано като PWA (`display-mode: standalone`): не показваме нищо.
  *
- * Dismissed state is persisted for the rest of the browser session so the
- * banner doesn't pop back after every page navigation. Once the user
- * installs the PWA the `appinstalled` handler hides it permanently.
+ * Offer after 30 seconds of visible browsing and a meaningful scroll.
+ * Remember dismissal for 30 days; settings still offer installation help.
  */
 export function PwaInstall() {
   const [androidPrompt, setAndroidPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [interested, setInterested] = useState(false);
   // Navigator-only state stays null until mount so the server-rendered tree
   // matches the desktop client tree. The brief moment before the effect
   // runs renders nothing, which is identical on both sides.
@@ -29,7 +30,7 @@ export function PwaInstall() {
     if (typeof window === "undefined") return;
     setIsIosSafari(readPushSupport().ios);
     try {
-      if (sessionStorage.getItem(DISMISSED_KEY) === "1") setDismissed(true);
+      if (installDismissed(localStorage.getItem(INSTALL_DISMISSED_UNTIL), Date.now()) || sessionStorage.getItem(DISMISSED_KEY) === "1") setDismissed(true);
     } catch {
       // sessionStorage may be unavailable in private browsing; fall through.
     }
@@ -52,9 +53,33 @@ export function PwaInstall() {
       setInstalled(true);
     };
     window.addEventListener("appinstalled", onInstalled);
+    let visibleMs = 0;
+    let visibleSince = document.visibilityState === "visible" ? Date.now() : null;
+    let maxScroll = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const checkInterest = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      if (document.visibilityState !== "visible") return;
+      maxScroll = Math.max(maxScroll, window.scrollY);
+      const elapsed = visibleMs + (visibleSince === null ? 0 : Date.now() - visibleSince);
+      if (installInterest(elapsed, maxScroll, window.innerHeight)) setInterested(true);
+      else if (elapsed < INSTALL_INTEREST_MS) timer = setTimeout(checkInterest, INSTALL_INTEREST_MS - elapsed);
+    };
+    const onVisibility = () => {
+      const now = Date.now();
+      if (visibleSince !== null) visibleMs += now - visibleSince;
+      visibleSince = document.visibilityState === "visible" ? now : null;
+      checkInterest();
+    };
+    window.addEventListener("scroll", checkInterest, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
+    checkInterest();
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      window.removeEventListener("scroll", checkInterest);
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (timer !== undefined) clearTimeout(timer);
     };
   }, []);
 
@@ -65,11 +90,12 @@ export function PwaInstall() {
       } catch {
         // ignore
       }
+      try { localStorage.setItem(INSTALL_DISMISSED_UNTIL, String(Date.now() + INSTALL_DISMISS_MS)); } catch { /* private browsing */ }
     }
     setDismissed(true);
   };
 
-  if (installed || dismissed) return null;
+  if (installed || dismissed || !interested) return null;
 
   if (isIosSafari) {
     return (
@@ -83,7 +109,7 @@ export function PwaInstall() {
           type="button"
           onClick={() => dismiss(true)}
           aria-label="Затвори"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
         >
           ✕
         </button>
@@ -111,7 +137,7 @@ export function PwaInstall() {
         <button
           type="button"
           onClick={install}
-          className="np-gradient-bg inline-flex min-h-9 items-center rounded-full px-4 py-1.5 text-sm font-bold text-on-accent"
+          className="np-gradient-bg inline-flex min-h-11 items-center rounded-full px-4 py-1.5 text-sm font-bold text-on-accent"
         >
           Инсталирай
         </button>
@@ -119,7 +145,7 @@ export function PwaInstall() {
           type="button"
           onClick={() => dismiss(true)}
           aria-label="Затвори"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-2 hover:text-ink"
         >
           ✕
         </button>

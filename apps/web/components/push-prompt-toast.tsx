@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getBrowserPushSubscription,
+  getPushPublicKey,
   openReaderSettings,
   readPushSupport,
   subscribeForPush,
@@ -47,16 +48,19 @@ export function PushPromptToast() {
   useEffect(() => {
     const support = readPushSupport();
     if (!support.supported || support.needInstall) return;
+    if (support.permission === "denied") return;
     if (typeof window !== "undefined" && window.matchMedia("(max-width: 63.999rem)").matches) return;
     if (isDismissed()) return;
 
+    let mounted = true;
     const schedule = () => {
       clearTimeout(timer.current);
       timer.current = setTimeout(async () => {
         const live = readPushSupport();
         const sub = await getBrowserPushSubscription().catch(() => null);
         if (sub && live.permission === "granted" && readPushMasterEnabled()) return;
-        setVisible(true);
+        try { await getPushPublicKey(); } catch { return; }
+        if (mounted && document.visibilityState === "visible" && window.matchMedia("(min-width: 64rem)").matches) setVisible(true);
       }, SHOW_DELAY_MS);
     };
 
@@ -72,6 +76,7 @@ export function PushPromptToast() {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
+      mounted = false;
       clearTimeout(timer.current);
       window.removeEventListener("np-push-subscribed", onSub);
       window.removeEventListener("focus", onFocus);

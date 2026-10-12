@@ -35,7 +35,7 @@ PageSpeed API квотата беше изчерпана; CrUX за времен
 - Staging PSI noise: invalid `preconnect` to `/` + `email-decode.min.js` come from the host’s Cloudflare email obfuscation, not Next.
 - Mobile LCP: pager/`slimHero` now keeps up to four ≤960w variants (was two smallest → phones skipped 768w and hit the master). Header logo is `fetchPriority=low`.
 - Desktop image weight: non-LCP srcset capped at 960w; tighter card `sizes`; `content-visibility: auto` from the 4th homepage block.
-- Mobile exclusive CH shell: no RubricsNav / desktop footer in phone HTML; `MobileChromeIsland` (bottom nav/search/pager) + `HeaderUtilities` (theme/settings) mount after idle.
+- Mobile exclusive CH shell: no RubricsNav / desktop footer in phone HTML; `MobileChromeIsland` (bottom nav/search/pager/`MobileRubricsSheet`) + `HeaderUtilities` (theme/settings) mount after idle. Rubrics sheet must live in the island — exclusive SSR no longer mounts `RubricsNav` on phone (11.10 fix).
 - Manrope: `@font-face` inlined in `<head>` (`lib/manrope-face.ts`) + font preloads; `font-display: optional`; no separate `manrope-bg` CSS request.
 - Mobile LCP: `preload()` with the same attrs as `ArticleImage` (`100vw` → prefer 768w, srcset ≤960).
 - Podcast: `PodcastProvider` split from player UI so homepage does not ship timeline/cover icons.

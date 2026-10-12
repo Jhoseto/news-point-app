@@ -1,36 +1,35 @@
 "use client";
 
-import { useLayoutEffect, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { DESKTOP_QUERY, VIEWPORT_COOKIE, viewportCookie } from "@/lib/viewport-shell";
 
-const desktopSnapshot = () => matchMedia("(min-width: 64rem)").matches;
+const desktopSnapshot = () => matchMedia(DESKTOP_QUERY).matches;
 
 function subscribe(callback: () => void) {
-  const query = matchMedia("(min-width: 64rem)");
+  const query = matchMedia(DESKTOP_QUERY);
   query.addEventListener("change", callback);
   return () => query.removeEventListener("change", callback);
 }
 
 /**
- * Removes a mismatched exclusive SSR shell after hydration when Client Hints
- * disagreed with the live viewport. Must not wrap feed children — that would
- * re-serialize the whole tree into the RSC/HTML payload.
+ * Refresh the whole server layout on a breakpoint mismatch. Never remove
+ * React's DOM or serialize both feed trees through a client boundary.
  */
-export function ViewportShellGate({
-  shell,
-  ssrDesktop,
-}: {
-  shell: "mobile" | "desktop";
-  ssrDesktop: boolean;
-}) {
+export function ViewportShellGate({ ssrDesktop }: { ssrDesktop: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const desktop = useSyncExternalStore(subscribe, desktopSnapshot, () => ssrDesktop);
 
-  useLayoutEffect(() => {
-    const selector = shell === "mobile" ? "[data-np-mobile-shell]" : "[data-np-desktop-shell]";
-    const root = document.querySelector<HTMLElement>(selector);
-    if (!root) return;
-    const keep = shell === "mobile" ? !desktop : desktop;
-    if (!keep) root.remove();
-  }, [desktop, shell]);
+  useEffect(() => {
+    document.cookie = viewportCookie(desktop, location.protocol === "https:");
+    const recorded = document.cookie.split(";").some(part => part.trim() === `${VIEWPORT_COOKIE}=${desktop ? "desktop" : "mobile"}`);
+    if (desktop === ssrDesktop || !recorded) return;
+    // Debounce rapid resizing. Refresh preserves unaffected client state
+    // including scroll, podcast playback and form inputs.
+    const timer = window.setTimeout(() => router.refresh(), 150);
+    return () => window.clearTimeout(timer);
+  }, [desktop, ssrDesktop, pathname, router]);
 
   return null;
 }

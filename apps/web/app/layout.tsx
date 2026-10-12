@@ -6,6 +6,8 @@ import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
 import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { DeferredChrome } from "@/components/deferred-chrome";
+import { ViewportShellGate } from "@/components/viewport-shell-gate";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { PodcastProvider } from "@/components/podcast/provider";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { ThemeScript } from "@/components/theme-script";
@@ -14,7 +16,7 @@ import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
 import { toLatestHeadline } from "@/lib/livepoint/serialize";
 import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
-import { getLatest } from "@/lib/queries";
+import { getLatest, getMenuCategories } from "@/lib/queries";
 import { newsMediaOrganization, webSite } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
@@ -74,10 +76,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const { weather, latest } = await loadPublicShell();
+  const [{ weather, latest }, menu, desktop] = await Promise.all([loadPublicShell(), getMenuCategories(), ssrDesktopViewport()]);
   const origin = shareOrigin();
   const organization = newsMediaOrganization({ origin, contact: { phone: PUBLIC_CONTACT.phone, email: PUBLIC_CONTACT.email, street: PUBLIC_CONTACT.street, city: "Пловдив", countryCode: "BG" } });
   const website = webSite(origin, organization["@id"] as string);
+  const mobileRubrics = menu.map(({ slug, name, path }) => ({ slug, name, path }));
   return (
     <html lang="bg" suppressHydrationWarning>
       <head>
@@ -90,6 +93,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="min-h-[var(--np-desktop-height,100dvh)]">
         <ThemeScript />
+        <ViewportShellGate ssrDesktop={desktop} />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:font-semibold focus:text-ink"
@@ -105,7 +109,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           <SiteHeader />
           <SiteBody>{children}</SiteBody>
-          <MobileChromeIsland />
+          <MobileChromeIsland rubrics={mobileRubrics} />
         </LivePointProvider>
         </PodcastProvider>
         <DeferredChrome />

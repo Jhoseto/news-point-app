@@ -59,7 +59,7 @@ const nextConfig: NextConfig = {
         // Viewport Client Hints so SSR can emit only the mobile or desktop shell (not both).
         { key: "Accept-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
         { key: "Critical-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
-        { key: "Vary", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
+        { key: "Vary", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width, Cookie" },
       ],
     };
     // Brand art is content-hashed by scripts/build-studio-photo.mjs, so a year-long immutable

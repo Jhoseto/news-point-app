@@ -13,6 +13,11 @@ const MobileSearch = dynamic(() => import("./nav").then((m) => m.MobileSearch), 
   loading: () => null,
 });
 
+const MobileRubricsSheet = dynamic(() => import("./nav").then((m) => m.MobileRubricsSheet), {
+  ssr: false,
+  loading: () => null,
+});
+
 const LatestPanel = dynamic(
   () => import("./latest-panel").then((m) => m.LatestPanel),
   { ssr: false, loading: () => null },
@@ -20,11 +25,13 @@ const LatestPanel = dynamic(
 const MobileRubricPager = dynamic(() => import("./mobile-rubric-pager").then(module => module.MobileRubricPager), { ssr: false, loading: () => null });
 const MobilePushPrompt = dynamic(() => import("./mobile-push-prompt").then(module => module.MobilePushPrompt), { ssr: false, loading: () => null });
 
+export type MobileRubricItem = { slug: string; name: string; path: string };
+
 /**
  * Phone chrome only. Mount after idle so LCP is not charged for bottom nav,
  * search sheet, pager and push prompt JS.
  */
-export function MobileChromeIsland() {
+export function MobileChromeIsland({ rubrics }: { rubrics: MobileRubricItem[] }) {
   const [ready, setReady] = useState(false);
   const [latestOpen, setLatestOpen] = useState(false);
 
@@ -70,6 +77,7 @@ export function MobileChromeIsland() {
   return (
     <>
       <MobileSearch showHeaderTrigger={false} />
+      <MobileRubricsSheet items={rubrics} />
       <BottomNav onOpenLatest={openLatest} latestOpen={latestOpen} onNavigate={closeLatest} />
       <LatestPanel open={latestOpen} onClose={closeLatest} />
       <MobileRubricPager />

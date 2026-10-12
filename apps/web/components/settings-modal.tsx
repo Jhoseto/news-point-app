@@ -47,7 +47,7 @@ export function SettingsModal() {
 
   return (
     <>
-      <button ref={trigger} type="button" aria-label="Отвори настройките" title="Настройки" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(true)} className="inline-flex size-8 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-accent/40 hover:text-accent dark:hover:text-link">
+      <button ref={trigger} type="button" aria-label="Отвори настройките" title="Настройки" aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setOpen(true)} className="inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:border-accent/40 hover:text-accent dark:hover:text-link lg:size-8">
         <SettingsIcon width={14} height={14} />
       </button>
       {open && createPortal(
@@ -69,7 +69,7 @@ export function SettingsModal() {
           <div className="flex max-h-[calc(var(--np-desktop-height,100dvh)-1rem)] flex-col">
             <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
               <h2 ref={title} id={`${id}-title`} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-base font-extrabold tracking-tight text-ink outline-none"><span className="np-ring !size-4 shrink-0" aria-hidden="true" />Настройки</h2>
-              <button type="button" aria-label="Затвори настройките" onClick={() => setOpen(false)} className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink"><CloseIcon width={16} height={16} /></button>
+              <button type="button" aria-label="Затвори настройките" onClick={() => setOpen(false)} className="flex size-11 shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-muted transition-colors hover:text-ink lg:size-9"><CloseIcon width={16} height={16} /></button>
             </div>
             <div className="np-scroll-soft min-h-0 overflow-y-auto overscroll-contain bg-page p-2.5 sm:p-3"><SettingsPanel compact /></div>
           </div>

@@ -123,7 +123,9 @@ export async function ArticlePage({
           </header>
           {article.listenEnabled ? (
             <ArticleTts
+              key={`${article.id}:${article.version}`}
               articleId={article.id}
+              version={article.version}
               title={article.title}
               excerpt={subtitle}
               body={article.body}
@@ -133,7 +135,7 @@ export async function ArticlePage({
 
           {storyThemes.length > 0 ? (
             <div className="lg:hidden">
-              <StoryThemeLink themes={storyThemes} />
+              <StoryThemeLink themes={storyThemes} articles={compact?.articles ?? []} currentArticleId={article.id} />
             </div>
           ) : null}
 

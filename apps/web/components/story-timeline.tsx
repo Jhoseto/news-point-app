@@ -7,6 +7,8 @@ import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon } from "./icons";
 import { ShareButtons } from "./share";
 import { shareOrigin } from "@/lib/share-card";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
+import { StoryMobileNavigation } from "./story-mobile-navigation";
 import { StoryRouteObserver } from "./story-route-observer";
 import { ArticleImage, CategoryPill } from "./ui";
 import "./article-premium.css";
@@ -36,7 +38,8 @@ function datedArticles(articles: StoryThemeArticle[]) {
   return articles.map((article) => asDate(article.publishedAt)).filter((value): value is Date => Boolean(value));
 }
 
-export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
+export async function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
+  const mobile = !await ssrDesktopViewport();
   const dates = datedArticles(theme.articles);
   const themePublished = asDate(theme.publishedAt);
   const first = dates[0] ?? themePublished;
@@ -55,25 +58,39 @@ export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
   return (
     <div className="np-container np-article-page np-story-theme-page">
       <div className="np-article-breadcrumb">
+        {mobile ? <Link href="/temi/" className="np-story-mobile-back"><span aria-hidden="true">←</span> Теми с продължение</Link> : (
         <Breadcrumbs
           items={[
             { name: "Теми с продължение", path: "/temi/" },
             { name: theme.title },
           ]}
         />
+        )}
       </div>
 
       <article>
-      <StoryRouteObserver className="np-article-story" count={theme.articles.length}>
+      <StoryRouteObserver className="np-article-story" count={theme.articles.length} mobile={mobile}>
         <div className="np-article-main">
           {cover ? <ArticleHeroZoom hero={cover} category={THEME_RUBRIC} lightboxImages={[{ src: cover.url, alt: cover.alt, caption: cover.caption, credit: cover.credit }]} /> : null}
 
           <header className="np-article-header">
+            {mobile ? <p className="np-story-mobile-kicker"><span className="np-ring" aria-hidden="true" />Тема с продължение</p> : null}
             {!cover ? <CategoryPill category={THEME_RUBRIC} glass={false} className="np-article-no-hero-category" /> : null}
             <div className="np-article-heading-accent" aria-hidden="true" />
             <h1>{theme.title}</h1>
             {theme.summary ? <p className="np-article-deck">{theme.summary}</p> : null}
-            <div className="np-article-meta">
+            {mobile ? (
+              <>
+                <div className="np-story-mobile-facts">
+                  <span><BookIcon width={15} height={15} />{articleCountLabel(theme.articles.length)}</span>
+                  {first ? <span><ClockIcon width={15} height={15} /><time dateTime={isoDate(first)}>{STOP_DATE.format(first)}{last && dates.length > 1 && STOP_DATE.format(last) !== STOP_DATE.format(first) ? ` — ${STOP_DATE.format(last)}` : ""}</time></span> : null}
+                </div>
+                <div className="np-story-mobile-actions">
+                  {theme.articles[0] ? <a className="np-story-mobile-start" href={`#np-stop-${theme.articles[0].articleId}`}>Проследи историята <span aria-hidden="true">↓</span></a> : null}
+                  <ShareButtons url={`${shareOrigin()}/temi/${theme.slug}/`} title={theme.title} />
+                </div>
+              </>
+            ) : <div className="np-article-meta">
               <div className="np-article-byline">
                 <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
                 <span><small>Тема</small><strong>с продължение</strong></span>
@@ -102,14 +119,20 @@ export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
                 </span>
               </div>
               <ShareButtons url={`${shareOrigin()}/temi/${theme.slug}/`} title={theme.title} />
-            </div>
+            </div>}
           </header>
 
-          {theme.intro ? <p className="np-story-intro">{theme.intro}</p> : null}
+          {theme.intro ? mobile ? (
+            <details className="np-story-mobile-intro">
+              <summary><span><small>Преди събитията</small><strong>Контекстът на историята</strong></span><span aria-hidden="true">＋</span></summary>
+              <p className="np-story-intro">{theme.intro}</p>
+            </details>
+          ) : <p className="np-story-intro">{theme.intro}</p> : null}
 
           {theme.articles.length ? (
               <div className="np-story-journey">
-                <p className="np-story-journey-kicker">Редакционен маршрут</p>
+                <p className="np-story-journey-kicker">{mobile ? "Историята, събитие по събитие" : "Редакционен маршрут"}</p>
+                {mobile ? <StoryMobileNavigation stops={theme.articles.map(article => ({ id: article.articleId, title: article.title, date: stopDate(asDate(article.publishedAt)) }))} /> : (
                 <nav className="np-story-map-jump" aria-label="Спирки в темата">
                   {theme.articles.map((article, index) => (
                     <a key={article.articleId} href={`#np-stop-${article.articleId}`} data-story-nav={index}>
@@ -117,6 +140,7 @@ export function StoryTimeline({ theme }: { theme: StoryThemeDetailPublic }) {
                     </a>
                   ))}
                 </nav>
+                )}
                 <div className="np-story-route">
                   <span className="np-story-spine" aria-hidden="true">
                     <span className="np-story-spine-fill" />

@@ -57,6 +57,7 @@ export interface ArticleDetail extends ArticleSummary {
   categories: CategoryRef[];
   readCount: number | null;
   listenEnabled: boolean;
+  version: number;
 }
 
 export const getPublicTeam = cache(async (): Promise<{ id: string; name: string; bio: string }[]> => {
@@ -344,6 +345,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       sourceUrl: articles.sourceUrl,
       body: articles.body,
       listenEnabled: articles.listenEnabled,
+      version: articles.version,
       updatedAt: articles.updatedAt,
     })
     .from(articles)
@@ -398,6 +400,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     categories: linked.map((category) => ({ ...category, name: menuName(category.slug, category.name) })),
     readCount: realCount === null ? null : realCount + addedCount,
     listenEnabled: row.listenEnabled,
+    version: row.version,
     updatedAt: row.updatedAt,
   };
 });

@@ -346,18 +346,13 @@ function RubricLinks({ items, current, onNavigate, autoFocusActive }: { items: N
 }
 
 /**
- * Rubrics navigation.
- * Desktop: an in-flow rail with an icon-only collapsed state.
- * Phone and tablet: a sheet from the left.
+ * Phone/tablet rubrics sheet. Lives in MobileChromeIsland because exclusive
+ * Client Hints SSR no longer mounts RubricsNav on mobile.
  */
-export function RubricsNav({ items }: { items: NavItem[] }) {
+export function MobileRubricsSheet({ items }: { items: NavItem[] }) {
   const current = usePathname() ?? "/";
-  const [expanded, setExpanded] = useState(true);
   const [sheetOpen, setSheetOpen] = useState(false);
   const ownedEntry = useRef(false);
-  const collapseBtn = useRef<HTMLButtonElement>(null);
-  const expandBtn = useRef<HTMLButtonElement>(null);
-  const focusCollapse = useRef(false);
 
   const closeSheet = useCallback((mode: SheetCloseMode = "pop") => {
     if (!sheetOpen) return;
@@ -385,6 +380,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   }, [sheetOpen]);
 
   const openSheet = useCallback(() => {
+    if (matchMedia(DESKTOP).matches) return;
     setSheetOpen(true);
     const other = currentHeaderSheet();
     setHeaderSheet("rubrics");
@@ -408,6 +404,52 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   }, [current, sheetOpen, closeSheet]);
 
   useEffect(() => {
+    window.addEventListener(RUBRICS_EVENT, openSheet);
+    return () => window.removeEventListener(RUBRICS_EVENT, openSheet);
+  }, [openSheet]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (!ownedEntry.current) return;
+      ownedEntry.current = false;
+      setSheetOpen(false);
+      setHeaderSheet(null);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  return (
+    <Sheet open={sheetOpen} onClose={() => closeSheet("pop")} label="Рубрики" side="left">
+      <div className="flex shrink-0 items-center justify-end border-b border-line px-3 py-2">
+        <button
+          type="button"
+          onClick={() => closeSheet("pop")}
+          aria-label="Затвори менюто"
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
+          data-autofocus
+        >
+          <CloseIcon width={22} height={22} />
+        </button>
+      </div>
+      <nav aria-label="Рубрики" className="flex-1 overflow-y-auto p-3 pt-4 pb-5">
+        <RubricLinks items={items} current={current} onNavigate={() => closeSheet("navigate")} />
+      </nav>
+    </Sheet>
+  );
+}
+
+/**
+ * Desktop rubrics rail (icon-only when collapsed). Mobile sheet is MobileRubricsSheet.
+ */
+export function RubricsNav({ items }: { items: NavItem[] }) {
+  const current = usePathname() ?? "/";
+  const [expanded, setExpanded] = useState(true);
+  const collapseBtn = useRef<HTMLButtonElement>(null);
+  const expandBtn = useRef<HTMLButtonElement>(null);
+  const focusCollapse = useRef(false);
+
+  useEffect(() => {
     document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
     return () => document.documentElement.removeAttribute("data-rubrics-closed");
   }, [expanded]);
@@ -427,21 +469,9 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   useEffect(() => {
     const onOpen = () => {
       if (matchMedia(DESKTOP).matches) setExpanded(true);
-      else openSheet();
     };
     window.addEventListener(RUBRICS_EVENT, onOpen);
     return () => window.removeEventListener(RUBRICS_EVENT, onOpen);
-  }, [openSheet]);
-
-  useEffect(() => {
-    const onPop = () => {
-      if (!ownedEntry.current) return;
-      ownedEntry.current = false;
-      setSheetOpen(false);
-      setHeaderSheet(null);
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
@@ -461,7 +491,6 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   const groups = groupRubrics(items);
 
   return (
-    <>
       <aside
         aria-label="Рубрики"
         className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(var(--np-desktop-height,100dvh)-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
@@ -522,24 +551,6 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
           </div>
         </nav>
       </aside>
-
-      <Sheet open={sheetOpen} onClose={() => closeSheet("pop")} label="Рубрики" side="left">
-        <div className="flex shrink-0 items-center justify-end border-b border-line px-3 py-2">
-          <button
-            type="button"
-            onClick={() => closeSheet("pop")}
-            aria-label="Затвори менюто"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-surface-2"
-            data-autofocus
-          >
-            <CloseIcon width={22} height={22} />
-          </button>
-        </div>
-        <nav aria-label="Рубрики" className="flex-1 overflow-y-auto p-3 pt-4 pb-5">
-          <RubricLinks items={items} current={current} onNavigate={() => closeSheet("navigate")} />
-        </nav>
-      </Sheet>
-    </>
   );
 }
 

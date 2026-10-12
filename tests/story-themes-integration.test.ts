@@ -125,6 +125,7 @@ beforeAll(async () => {
       hero_embed_url text, author_name text not null default 'NewsPoint.bg',
       author_kind text not null default 'newsroom', author_user_id text references staff_users(id),
       source_url text, body jsonb not null default '[]'::jsonb, listen_enabled boolean not null default false,
+      version integer not null default 1,
       updated_at timestamptz not null default now()
     );
     create table categories (
@@ -508,6 +509,13 @@ describe("deleteStoryTheme", () => {
 });
 
 describe("public sitemap queries (isolated Postgres fixtures)", () => {
+  it("exposes the actual publication version to the reader, including later updates", async () => {
+    const { getArticleByPath } = await import("../apps/web/lib/queries");
+    const [stored] = await db.select({ path: schema.articles.path }).from(schema.articles).where(eq(schema.articles.id, articleIds[0]!));
+    expect((await getArticleByPath(stored!.path))?.version).toBe(1);
+    await pg.query("update articles set version = 7 where id = $1", [articleIds[0]]);
+    expect((await getArticleByPath(stored!.path))?.version).toBe(7);
+  });
   it("links staff authors only to explicitly public profiles and preserves unknown bylines", async () => {
     const { getArticleByPath, getPublicTeam } = await import("../apps/web/lib/queries");
     const [stored] = await db.select({ path: schema.articles.path }).from(schema.articles).where(eq(schema.articles.id, articleIds[0]!));

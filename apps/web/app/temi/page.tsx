@@ -13,7 +13,7 @@ export default async function StoryThemesIndexPage() {
   const themes = await getPublishedStoryThemes({ limit: 24 });
 
   return (
-    <div className="np-container flex flex-col gap-8 pt-6 pb-12">
+    <div className="np-story-theme-index np-container flex flex-col gap-8 pt-6 pb-12">
       <JsonLd id="np-ld-themes" data={collectionPage({ origin: shareOrigin(), path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg.", items: themes.map((theme) => ({ path: `/temi/${theme.slug}/`, title: theme.title })) })} />
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">

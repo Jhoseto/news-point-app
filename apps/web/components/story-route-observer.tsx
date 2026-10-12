@@ -3,13 +3,18 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { useReducedMotion } from "./reader-preferences";
 
-function markCurrent(root: HTMLElement, index: number) {
+function markCurrent(root: HTMLElement, index: number, mobile = false) {
   root.dataset.activeStop = String(index);
   root.querySelectorAll<HTMLElement>("[data-story-stop]").forEach((node, i) => {
     node.toggleAttribute("data-current", i === index);
   });
   root.querySelectorAll<HTMLElement>("[data-story-nav]").forEach((node) => {
-    node.toggleAttribute("data-current", Number(node.dataset.storyNav) === index);
+    const current = Number(node.dataset.storyNav) === index;
+    node.toggleAttribute("data-current", current);
+    if (mobile && node.closest(".np-story-mobile-navigation")) {
+      if (current) node.setAttribute("aria-current", "location");
+      else node.removeAttribute("aria-current");
+    }
   });
 }
 
@@ -21,10 +26,12 @@ export function StoryRouteObserver({
   children,
   count,
   className,
+  mobile = false,
 }: {
   children: ReactNode;
   count: number;
   className?: string;
+  mobile?: boolean;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
@@ -38,7 +45,7 @@ export function StoryRouteObserver({
     const update = () => {
       const nodes = stops();
       if (!nodes.length) return;
-      if (reduceMotion) {
+      if (reduceMotion && !mobile) {
         el.style.setProperty("--np-route-progress", "100%");
         markCurrent(el, nodes.length - 1);
         return;
@@ -50,7 +57,7 @@ export function StoryRouteObserver({
       const end = last.top + last.height * 0.35;
       const span = end - start;
       const progress = span <= 1 ? 1 : Math.min(1, Math.max(0, (readingLine - start) / span));
-      el.style.setProperty("--np-route-progress", `${progress * 100}%`);
+      el.style.setProperty("--np-route-progress", reduceMotion ? "100%" : `${progress * 100}%`);
       let nearest = 0;
       let nearestDist = Number.POSITIVE_INFINITY;
       nodes.forEach((node, index) => {
@@ -61,17 +68,23 @@ export function StoryRouteObserver({
           nearest = index;
         }
       });
-      markCurrent(el, nearest);
+      markCurrent(el, nearest, mobile);
     };
 
     update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
+    let frame = 0;
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); });
     };
-  }, [count, reduceMotion]);
+    const onMove = mobile ? schedule : update;
+    window.addEventListener("scroll", onMove, { passive: true });
+    window.addEventListener("resize", onMove);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onMove);
+      window.removeEventListener("resize", onMove);
+    };
+  }, [count, reduceMotion, mobile]);
 
   return (
     <div

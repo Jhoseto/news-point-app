@@ -54,12 +54,12 @@ function EpisodeCard({
   </li>;
 }
 
-export function PodcastShow({ episodes, compact = false, activeSlug = null, publicOrigin }: { episodes: PublicEpisode[]; compact?: boolean; activeSlug?: string | null; publicOrigin?: string }) {
+export function PodcastShow({ episodes, compact = false, activeSlug = null, publicOrigin, aboutInitiallyOpen = true }: { episodes: PublicEpisode[]; compact?: boolean; activeSlug?: string | null; publicOrigin?: string; aboutInitiallyOpen?: boolean }) {
   const player = usePodcastPlayer();
   const suggested = episodes.find((episode) => episode.slug === activeSlug) ?? episodes[0] ?? null;
   const selected = displayedEpisode(player.episode, suggested);
   if (!episodes.length && !player.episode) return <PodcastState title="Историите скоро ще имат глас" description="Още няма публикувани епизоди. Тук ще откриете подкастите на NewsPoint." />;
-  if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} publicOrigin={publicOrigin} />;
+  if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} publicOrigin={publicOrigin} aboutInitiallyOpen={aboutInitiallyOpen} />;
   // Only the LivePoint panel reaches this branch: the page always goes to the theatre.
   return <PodcastPanelLayout episodes={episodes} suggested={suggested} selected={selected} />;
 }
@@ -112,22 +112,26 @@ function PodcastPanelLayout({
   );
 }
 
-function PodcastTheater({ episodes, selected, activeSlug, publicOrigin }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined }) {
+function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutInitiallyOpen }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined; aboutInitiallyOpen: boolean }) {
   const carousel = useRef<HTMLUListElement>(null);
-  const [aboutMounted, setAboutMounted] = useState(true);
-  const [aboutOpen, setAboutOpen] = useState(true);
+  const [aboutMounted, setAboutMounted] = useState(aboutInitiallyOpen);
+  const [aboutOpen, setAboutOpen] = useState(aboutInitiallyOpen);
   const published = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(selected.publishedAt));
   const shareUrl = publicOrigin ? new URL(selected.path, publicOrigin).href : selected.path;
   useEffect(() => {
-    setAboutMounted(true);
-    setAboutOpen(true);
-  }, [selected.id]);
+    setAboutMounted(aboutInitiallyOpen);
+    setAboutOpen(aboutInitiallyOpen);
+  }, [selected.id, aboutInitiallyOpen]);
   function moveCarousel(direction: 1 | -1) {
     carousel.current?.scrollBy({ left: direction * Math.min(360, carousel.current.clientWidth * .82), behavior: "smooth" });
   }
   function toggleAbout(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
-    if (aboutOpen) { setAboutOpen(false); return; }
+    if (aboutOpen) {
+      setAboutOpen(false);
+      if (document.documentElement.dataset.reducedMotion === "true" || matchMedia("(prefers-reduced-motion: reduce)").matches) setAboutMounted(false);
+      return;
+    }
     setAboutMounted(true);
     requestAnimationFrame(() => {
       requestAnimationFrame(() => setAboutOpen(true));

@@ -394,13 +394,14 @@
   }
 }
 @media (max-width: 48rem) {
-  .np-article-page { padding-bottom: 3.5rem; }
-  .np-article-story { margin-top: 1rem; }
-  .np-article-hero-image { max-height: none; aspect-ratio: 1.45; }
-  .np-article-header { margin-top: 1.7rem; }
-  .np-article-heading-accent { margin-bottom: 1rem; }
+  .np-article-page { padding-top: 0.75rem; padding-bottom: 3.5rem; }
+  .np-article-story { margin-top: 0.65rem; }
+  .np-article-hero-image { max-height: none; aspect-ratio: 1.8; }
+  .np-article-header { margin-top: 1rem; }
+  .np-article-heading-accent { margin-bottom: 0.7rem; }
   .np-article-header h1 { font-size: clamp(1.75rem, 7vw, 2.35rem); line-height: 1.12; }
-  .np-article-deck { margin-top: 1.05rem; }
+  .np-article-deck { margin-top: 0.75rem; }
+  .np-article-meta { margin-top: 0.9rem; }
   .np-article-inline-toc { margin-inline: -0.25rem; }
   .np-article-page .np-prose h2 { font-size: calc(1.35rem * var(--np-reader-scale, 1)); }
 }

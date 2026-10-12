@@ -10,6 +10,7 @@ import "./article-tts.css";
 
 interface ArticleTtsProps {
   articleId: string;
+  version: number;
   title: string;
   excerpt: string;
   body: ArticleBody;
@@ -55,6 +56,8 @@ export function ArticleTts(props: ArticleTtsProps) {
   const [error, setError] = useState<string | null>(null);
 
   const engineRef = useRef<SpeechEngine | null>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const positionKey = `${props.articleId}:v${props.version}`;
   const scrubbing = useRef(false);
   const scrolledAnchor = useRef<string | null>(null);
   const savedIndex = useRef(0);
@@ -82,12 +85,13 @@ export function ArticleTts(props: ArticleTtsProps) {
   }, []);
 
   useEffect(() => {
-    const saved = loadPos(props.articleId);
+    const saved = loadPos(positionKey);
     savedIndex.current = saved && saved.index > 0 ? saved.index : 0;
-  }, [props.articleId]);
+  }, [positionKey]);
 
   useEffect(() => {
     return () => {
+      requestRef.current?.abort();
       const engine = engineRef.current;
       if (!engine) return;
       pauseEngine(engine);
@@ -110,10 +114,10 @@ export function ArticleTts(props: ArticleTtsProps) {
   useEffect(() => {
     if (phase !== "playing" && phase !== "paused") return;
     const timer = window.setInterval(() => {
-      savePos(props.articleId, { index, charIndex: 0, ts: Date.now() });
+      savePos(positionKey, { index, charIndex: 0, ts: Date.now() });
     }, 4000);
     return () => window.clearInterval(timer);
-  }, [phase, index, props.articleId]);
+  }, [phase, index, positionKey]);
 
   useEffect(() => {
     document.querySelectorAll(".np-tts-active").forEach((el) => el.classList.remove("np-tts-active"));
@@ -137,11 +141,11 @@ export function ArticleTts(props: ArticleTtsProps) {
       setPhase("idle");
       setTime(0);
       setIndex(0);
-      clearPos(props.articleId);
+      clearPos(positionKey);
     });
     setPhase("playing");
     placeTime(seconds, engine.buffer.duration);
-  }, [placeTime, props.articleId]);
+  }, [placeTime, positionKey]);
 
   const onToggle = useCallback(async () => {
     const engine = engineRef.current;
@@ -163,11 +167,20 @@ export function ArticleTts(props: ArticleTtsProps) {
     setPhase("loading");
     const context = new AudioContext();
     void context.resume();
+    const controller = new AbortController();
+    requestRef.current = controller;
     try {
-      const response = await fetch(`/api/articles/${props.articleId}/speech/?v=9`);
+      const response = await fetch(`/api/articles/${props.articleId}/speech/?v=${props.version}`, { cache: "no-store", signal: controller.signal });
+      if (response.status === 409 || response.status === 404) {
+        void context.close();
+        setPhase("idle");
+        setError(response.status === 409 ? "Статията е обновена. Презаредете я и опитайте отново." : "Слушането на тази статия вече не е достъпно.");
+        return;
+      }
       if (!response.ok) throw new Error("speech");
       const parts = unpackSpeechParts(new Uint8Array(await response.arrayBuffer()));
       const buffer = await decodeSpeechParts(context, parts);
+      if (controller.signal.aborted) { void context.close(); return; }
       const next = createEngine(context, buffer);
       engineRef.current = next;
       setDuration(buffer.duration);
@@ -176,11 +189,12 @@ export function ArticleTts(props: ArticleTtsProps) {
       startAt(start);
     } catch {
       void context.close();
+      if (controller.signal.aborted) return;
       engineRef.current = null;
       setPhase("idle");
       setError("Четенето не тръгна. Опитайте отново.");
     }
-  }, [placeTime, props.articleId, startAt]);
+  }, [placeTime, props.articleId, props.version, startAt]);
 
   const onSeek = useCallback((seconds: number) => {
     const engine = engineRef.current;

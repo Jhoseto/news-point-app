@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { MAX_PHOTOS, MAX_PHOTO_BYTES } from "./photos";
+import { isSubmissionOrigin } from "./submission-origin";
 
 export class SubmissionRequestError extends Error {
   constructor(message: string, public status = 400) { super(message); }
@@ -11,7 +12,7 @@ let active = 0;
 
 /** Process-local guard for the current single local server; production needs a trusted proxy and shared limiter. */
 export function reserveSubmission(request: Request): () => void {
-  if (request.headers.get("origin") !== new URL(request.url).origin) throw new SubmissionRequestError("Заявката трябва да е от сайта.", 403);
+  if (!isSubmissionOrigin(request)) throw new SubmissionRequestError("Заявката трябва да е от сайта.", 403);
   const now = Date.now();
   for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
   const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "local";

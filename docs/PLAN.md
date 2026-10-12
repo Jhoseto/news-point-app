@@ -83,6 +83,8 @@
 
 30 е `editor_revisions`: `article_revisions.listen_enabled` + таблица `editor_qa_articles` + `enqueue_reader_push` пропуска QA статии. Приложена е на 08.10 по изрична заявка на Коце.
 
+11.10 — PWA/mobile: хамбургерът и бутонът „Рубрики“ не отваряха листа, защото exclusive Client Hints shell вече не монтира `RubricsNav` на телефон. Листът е изнесен в `MobileRubricsSheet` и се монтира от `MobileChromeIsland`.
+
 08.10 — Главна: водеща новина (hero/support/carousel) вече може да води и секцията на своята рубрика. Преди `UniquePicker` я махаше от рубричния блок (пример: GPT-6 горе на главната, а в „Технологии“ оставаха по-стари). Между рубричните секции dedupe остава.
 
 08.10 — Поправка: смяна на рубрика при „Обнови публикацията“ вече подава старата и новата рубрика в outbox `topics`, а live revalidation чисти и `/рубрика/` плюс Data Cache tag `public-listings`. Преди това оставаше стар ISR/кеш на рубричната страница (пример: „Интересни новости в навигацията Waze“ → Технологии).

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArticleImage, TimeMeta } from "./ui";
 import { asDate } from "@/lib/story-route";
 import type { StoryThemeSummary } from "@/lib/queries";
+import "./story-theme-premium.css";
 
 /** Listing card for the public theme index. Server component. */
 export function StoryThemeCard({ theme }: { theme: StoryThemeSummary }) {
@@ -9,7 +10,7 @@ export function StoryThemeCard({ theme }: { theme: StoryThemeSummary }) {
   return (
     <Link
       href={`/temi/${theme.slug}/`}
-      className="group block overflow-hidden rounded-3xl border border-line bg-surface shadow-card transition hover:shadow-lg"
+      className="np-story-index-card group block overflow-hidden rounded-3xl border border-line bg-surface shadow-card transition hover:shadow-lg"
     >
       {theme.coverUrl ? (
         <div className="aspect-[16/9] w-full overflow-hidden bg-surface-2">

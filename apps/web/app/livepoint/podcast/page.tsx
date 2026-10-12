@@ -7,6 +7,7 @@ import { PodcastShow } from "@/components/podcast/show";
 import { shareOrigin } from "@/lib/share-card";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisodes } from "@/lib/podcasts";
+import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 
 export const metadata = publicPageMetadata("podcast");
 
@@ -20,7 +21,7 @@ export default async function PodcastPage() {
     imageSrcSet: STUDIO_PHOTO.srcsetAvif,
     imageSizes: STUDIO_PHOTO.sizes,
   });
-  const episodes = await publicEpisodes();
+  const [episodes, desktop] = await Promise.all([publicEpisodes(), ssrDesktopViewport()]);
   const origin = shareOrigin();
   const visibleEpisodes = episodes.slice(0, 10);
   const page = PUBLIC_SEO_PAGES.podcast;
@@ -31,7 +32,7 @@ export default async function PodcastPage() {
         collectionPage({ origin, path: page.path, title: page.title, description: page.description, items: visibleEpisodes }),
         breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "NewsPodcast" }]),
       ]} />
-      <PodcastShow episodes={episodes} publicOrigin={origin} />
+      <PodcastShow episodes={episodes} publicOrigin={origin} aboutInitiallyOpen={desktop} />
     </PodcastPageShell>
   );
 }

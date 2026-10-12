@@ -9,7 +9,7 @@ const ThemeToggle = dynamic(() => import("./theme").then((m) => m.ThemeToggle), 
 });
 const SettingsModal = dynamic(() => import("./settings-modal").then((m) => m.SettingsModal), {
   ssr: false,
-  loading: () => <span className="inline-flex size-8 shrink-0" aria-hidden="true" />,
+  loading: () => <span className="inline-flex size-11 shrink-0 lg:size-8" aria-hidden="true" />,
 });
 
 /**
@@ -42,7 +42,7 @@ export function HeaderUtilities() {
     return (
       <div className="flex shrink-0 items-center gap-1.5" aria-hidden="true">
         <span className="inline-flex h-11 w-14 shrink-0" />
-        <span className="inline-flex size-8 shrink-0" />
+        <span className="inline-flex size-11 shrink-0 lg:size-8" />
       </div>
     );
   }

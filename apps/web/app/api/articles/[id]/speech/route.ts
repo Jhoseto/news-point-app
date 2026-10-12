@@ -46,6 +46,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   }
   const parsed = z.uuid().safeParse((await context.params).id);
   if (!parsed.success) return NextResponse.json({ error: "Невалидна статия." }, { status: 400, headers });
+  const versions = request.nextUrl.searchParams.getAll("v");
+  const version = versions.length === 1 && /^\d+$/.test(versions[0]!) ? Number(versions[0]) : NaN;
+  if (!Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Невалидна версия." }, { status: 400, headers });
 
   try {
     const db = getDb();
@@ -63,6 +66,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       .limit(1);
     if (!row) return NextResponse.json({ error: "Статията не е намерена." }, { status: 404, headers });
     if (!row.listenEnabled) return NextResponse.json({ error: "Слушането на тази статия е изключено." }, { status: 404, headers });
+    if (version !== row.version) return NextResponse.json({ error: "Статията е обновена. Презаредете я и опитайте отново." }, { status: 409, headers });
 
     const text = articleReadingText({
       id: row.id,
@@ -89,15 +93,19 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
     const audio = await bulgarianSpeech(cacheKey, text);
     if (audio.byteLength === 0) return NextResponse.json({ error: "Статията няма текст за слушане." }, { status: 404, headers });
+    // Generation may outlast an editorial update or withdrawal. Validate again
+    // before sending bytes; the on-disk cache never bypasses publication checks.
+    const [current] = await db.select({ version: articles.version }).from(articles)
+      .where(and(eq(articles.id, row.id), eq(articles.isPublic, true), eq(articles.listenEnabled, true), lte(articles.publishedAt, sql`now()`))).limit(1);
+    if (!current) return NextResponse.json({ error: "Слушането вече не е достъпно." }, { status: 404, headers });
+    if (current.version !== version) return NextResponse.json({ error: "Статията е обновена. Презаредете я и опитайте отново." }, { status: 409, headers });
     return new NextResponse(Buffer.from(audio), {
       headers: {
         "Content-Type": "application/octet-stream",
         "Content-Length": String(audio.byteLength),
-        // Same audio bytes for the same article + version — CDN can serve a
-        // single entry across all readers. The endpoint itself blocks
-        // cross-site callers via fromThisSite, so public here only widens
-        // the cache key, not the attack surface.
-        "Cache-Control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
+        // Keep generation cached on disk. Browser/CDN caching must wait until
+        // publication/visibility changes can reliably purge every public copy.
+        "Cache-Control": headers["Cache-Control"],
         "X-Content-Type-Options": "nosniff",
       },
     });
