@@ -2,10 +2,38 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, type ComponentProps } from "react";
+import { useEffect, type ComponentProps, type MouseEvent } from "react";
 import { useReducedMotion } from "./reader-preferences";
 
 const SCROLL_FLAG = "np-rubric-cards-scroll";
+
+export function isRubricFirstPageUrl(pathname: string, rubricPath: string): boolean {
+  if (rubricPath === "/") return pathname === "/";
+  const normalized = rubricPath.endsWith("/") ? rubricPath : `${rubricPath}/`;
+  return pathname === normalized || pathname === normalized.slice(0, -1);
+}
+
+export function scrollToRubricTop(reducedMotion: boolean) {
+  const behavior = reducedMotion ? ("instant" as const) : ("smooth" as const);
+  const target = document.getElementById("np-rubric-cards");
+  if (target) target.scrollIntoView({ behavior, block: "start" });
+  else window.scrollTo({ top: 0, behavior });
+}
+
+export function handleRubricMenuClick(
+  event: MouseEvent<HTMLAnchorElement>,
+  rubricPath: string,
+  pathname: string,
+  reducedMotion: boolean,
+) {
+  if (rubricPath === "/") return;
+  if (isRubricFirstPageUrl(pathname, rubricPath)) {
+    event.preventDefault();
+    scrollToRubricTop(reducedMotion);
+    return;
+  }
+  markRubricArchiveScroll();
+}
 
 export function markRubricArchiveScroll() {
   try {

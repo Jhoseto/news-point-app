@@ -1,5 +1,5 @@
-import Link from "next/link";
 import type { HomeShineAllocator } from "@/lib/home-shine";
+import { RubricChipLink } from "./rubric-chip-link";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary, CategoryRef } from "@/lib/queries";
 import { CompactCard } from "./article-card";
@@ -49,7 +49,7 @@ export function CategoryChips({
       <ul className={`np-scroll-soft flex flex-nowrap overflow-x-auto sm:flex-wrap sm:overflow-visible ${dense ? "gap-1.5 pb-0" : "gap-2 pb-1 sm:pb-0"}`}>
         {categories.map((category) => (
           <li key={category.id} className="shrink-0">
-            <Link
+            <RubricChipLink
               href={category.path}
               aria-current={category.id === activeId ? "page" : undefined}
               className={`inline-flex items-center rounded-full border border-line bg-surface font-semibold text-body transition hover:border-accent hover:text-accent aria-[current=page]:border-transparent aria-[current=page]:bg-accent aria-[current=page]:text-on-accent dark:hover:text-link ${
@@ -57,7 +57,7 @@ export function CategoryChips({
               }`}
             >
               {category.name}
-            </Link>
+            </RubricChipLink>
           </li>
         ))}
       </ul>

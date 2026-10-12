@@ -12,6 +12,21 @@ export NODE_OPTIONS="--use-system-ca --dns-result-order=ipv4first"
 APP="$HOME/newspoint-app"
 mkdir -p "$APP/logs"
 
+ensure_poll_env() {
+  local env_file="$APP/.env.local"
+  [[ -f "$env_file" ]] || return 0
+  if grep -qE '^POLL_TRUSTED_IP_HEADER=' "$env_file"; then
+    return 0
+  fi
+  {
+    echo ""
+    echo "# Poll voting: Apache injects X-Real-IP (see public_html/.htaccess)."
+    echo "POLL_TRUSTED_IP_HEADER=x-real-ip"
+  } >> "$env_file"
+}
+
+ensure_poll_env
+
 stop_pid() {
   local file="$1"
   if [[ -f "$file" ]]; then
@@ -61,6 +76,11 @@ done
 # Only this account's public folder. The old site has its own document root.
 cat > "$HOME/public_html/.htaccess" << 'HT'
 RewriteEngine On
+
+# Single client IP for poll rate limits (overwrites any browser spoof).
+SetEnvIf Remote_Addr "(.+)" NP_CLIENT_IP=$1
+RequestHeader set X-Real-IP %{NP_CLIENT_IP}e env=NP_CLIENT_IP
+
 RewriteRule ^index\.html$ http://127.0.0.1:3100/ [P,L]
 RewriteCond %{REQUEST_URI} !^/\.well-known/
 RewriteRule ^ http://127.0.0.1:3100%{REQUEST_URI} [P,L,QSA]

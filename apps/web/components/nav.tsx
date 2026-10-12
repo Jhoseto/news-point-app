@@ -44,6 +44,7 @@ import {
   SearchIcon,
   TrophyIcon,
 } from "./icons";
+import { handleRubricMenuClick } from "./category-archive-pagination";
 import { openRubrics, RUBRICS_EVENT } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
 
@@ -129,7 +130,8 @@ function RubricRow({
     <Link
       href={item.path}
       onClick={(event) => {
-        scrollHomeIfCurrent(event, item.path, pathname, reducedMotion);
+        if (item.path === "/") scrollHomeIfCurrent(event, item.path, pathname, reducedMotion);
+        else handleRubricMenuClick(event, item.path, pathname, reducedMotion);
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}
