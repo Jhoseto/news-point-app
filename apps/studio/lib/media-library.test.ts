@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { libraryImageUrl, mediaFolder, searchMediaLibrary } from "./media-library";
+import { libraryImageUrl, mediaFolder, normalizeMediaName, searchMediaLibrary } from "./media-library";
 
 it("allows only news year and month folders", () => {
   expect(mediaFolder("news/2026")).toBe("news/2026");
@@ -22,4 +22,10 @@ it("searchMediaLibrary rejects short queries and invalid folders without hitting
   expect(await searchMediaLibrary("a")).toEqual({ items: [], total: 0 });
   expect(await searchMediaLibrary("ab", { folder: "users/profiles" })).toEqual({ items: [], total: 0 });
   expect(await searchMediaLibrary("ab", { folder: "news/2026" })).toEqual({ items: [], total: 0 });
+});
+
+it("normalizes searchable media names", () => {
+  expect(normalizeMediaName("  Пловдив площад  ")).toBe("Пловдив площад");
+  expect(normalizeMediaName("")).toBe("");
+  expect(normalizeMediaName("x".repeat(300)).length).toBe(240);
 });

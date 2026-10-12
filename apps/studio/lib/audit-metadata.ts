@@ -36,16 +36,17 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   else if (clean.endsWith("/preview")) verb = "preview";
   else if (clean.endsWith("/revisions") && !isRead) verb = "revision";
   else if (clean.endsWith("/photo") && !isRead) verb = method === "DELETE" ? "deletePhoto" : "uploadPhoto";
+  else if (area === "media" && /^\/api\/editor\/media\/[^/]+$/.test(clean) && method === "PATCH") verb = "rename";
   else if (clean === "/api/editor/articles" && !isRead) verb = "create";
   else if (clean === "/api/staff" && !isRead) verb = "create";
   const entityId = textValue(routeId || input.id || input.creationId || (input.input as AuditInput | undefined)?.id || input.jobId || input.assetId || input.themeId || input.projectId || input.pageKey || input.articleId || (isRead && ["podcasts", "submissions"].includes(area) ? input.key || input.path : ""));
-  const entityLabel = textValue(input.title || (input.draft as AuditInput | undefined)?.title || input.name || input.pageKey || input.email);
-  const labels: Record<string, string> = { read: "Преглед / търсене", upload: "Качване на файл", optimize: "Оптимизиране на снимка", visibility: "Промяна на видимост", preview: "Предварителен преглед", revision: "Запазване на редакция", deletePhoto: "Изтриване на снимка", uploadPhoto: "Качване на снимка" };
+  const entityLabel = textValue(input.title || (input.draft as AuditInput | undefined)?.title || input.name || input.alt || input.pageKey || input.email);
+  const labels: Record<string, string> = { read: "Преглед / търсене", upload: "Качване на файл", optimize: "Оптимизиране на снимка", visibility: "Промяна на видимост", preview: "Предварителен преглед", revision: "Запазване на редакция", deletePhoto: "Изтриване на снимка", uploadPhoto: "Качване на снимка", rename: "Преименуване на снимка" };
   return { area, verb, action: `${area}.${verb}`, actionLabel: actions[verb] || labels[verb] || `${method} ${clean}`, entityId, entityLabel, entityKind: area, path: clean };
 }
 
 // Explicit allow-list: no passwords, cookies, reset tokens, arbitrary private payloads or reader contacts.
-const fields = new Set("action id themeId articleId articleIds projectId jobId assetId segmentId pageKey slot hours historyId expectedRevision revision listenEnabled visible isPublic role status kind note reason alex maya preset direction prompt q query view cursor limit publish actor area outcome period from to sort size page anchor export category categoryId author source hero dir date folder offset".split(" "));
+const fields = new Set("action id themeId articleId articleIds projectId jobId assetId segmentId pageKey slot hours historyId expectedRevision revision listenEnabled visible isPublic role status kind note reason alex maya preset direction prompt q query view cursor limit publish actor area outcome period from to sort size page anchor export category categoryId author source hero dir date folder offset alt".split(" "));
 export function safeAuditInput(input: AuditInput): AuditDetails {
   const result: AuditDetails = {};
   for (const [key, value] of Object.entries(input)) {

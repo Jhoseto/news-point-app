@@ -1,10 +1,12 @@
 import "server-only";
 import { auditActive, auditEvidence } from "./audit-context";
 import { isDeepStrictEqual } from "node:util";
-import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
+import { and, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
 import {
+  PUBLIC_MENU,
   arrangementDocumentSchema,
   articleBody,
+  menuName,
   removeArticleFromArrangement,
   resolveMediaUrl,
   sofiaWallToUtc,
@@ -124,12 +126,18 @@ export interface ArticleListItem {
   addedCount: number | null;
 }
 
+/** Same public rubrics as the reader menu — including „Гласът на истината“ and „На Фокус“. */
 export async function listSections() {
-  return getDb()
+  const slugs = PUBLIC_MENU.map((entry) => entry.slug);
+  const rows = await getDb()
     .select({ id: categories.id, name: categories.name, slug: categories.slug })
     .from(categories)
-    .where(eq(categories.kind, "section"))
-    .orderBy(desc(categories.inMenu), asc(categories.menuOrder), asc(categories.name));
+    .where(inArray(categories.slug, slugs));
+  const bySlug = new Map(rows.map((row) => [row.slug, row]));
+  return PUBLIC_MENU.flatMap((entry) => {
+    const row = bySlug.get(entry.slug);
+    return row ? [{ id: row.id, slug: row.slug, name: menuName(row.slug, row.name) }] : [];
+  });
 }
 
 export interface MediaOption {

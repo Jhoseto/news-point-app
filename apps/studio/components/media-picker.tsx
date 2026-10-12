@@ -50,6 +50,10 @@ export function MediaPicker({
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
   const [error, setError] = useState("");
+  const [uploadNames, setUploadNames] = useState<string[]>([]);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renameBusy, setRenameBusy] = useState(false);
   const chosenItems = useRef(new Map<string, LibraryImage>());
   const uploadedItems = useRef<MediaOption[]>([]);
   const uploadBusy = useRef(false);
@@ -58,6 +62,13 @@ export function MediaPicker({
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const uploadPreviews = useMemo(() => uploadFiles.map((file) => ({ file, url: URL.createObjectURL(file) })), [uploadFiles]);
   useEffect(() => () => uploadPreviews.forEach(({ url }) => URL.revokeObjectURL(url)), [uploadPreviews]);
+
+  const defaultUploadName = (file: File) => file.name.replace(/\.[^.]+$/, "").trim().slice(0, 240) || "Снимка";
+
+  const setUploadFileList = (files: File[]) => {
+    setUploadFiles(files);
+    setUploadNames(files.map(defaultUploadName));
+  };
 
   /** Archive picks go through the same width-ladder pipeline as new uploads. */
   const optimizeArchiveItem = async (item: LibraryImage): Promise<MediaOption> => {
@@ -75,13 +86,20 @@ export function MediaPicker({
 
   const upload = async () => {
     if (!uploadFiles.length || uploadBusy.current) return;
+    const missing = uploadFiles.findIndex((_, index) => !(uploadNames[index] ?? "").trim());
+    if (missing >= 0) {
+      setError(`Въведете име за снимка ${missing + 1}. По него ще се търси в архива.`);
+      return;
+    }
     uploadBusy.current = true;
     setUploading(true);
     setError("");
     let completed = 0;
     try {
-      for (const file of uploadFiles) {
-        const form = new FormData(); form.append("file", file); form.append("alt", file.name.replace(/\.[^.]+$/, ""));
+      for (const [index, file] of uploadFiles.entries()) {
+        const form = new FormData();
+        form.append("file", file);
+        form.append("alt", (uploadNames[index] ?? defaultUploadName(file)).trim().slice(0, 240));
         const response = await fetch(withBase("/api/editor/media/upload/"), { method: "POST", body: form });
         if (!response.ok) { const result = await response.json().catch(() => null); throw new Error(result?.error?.message ?? "Качването не беше успешно."); }
         const item = await response.json() as MediaOption;
@@ -90,13 +108,39 @@ export function MediaPicker({
       }
       const items = uploadedItems.current;
       uploadedItems.current = [];
-      setUploadFiles([]);
+      setUploadFileList([]);
       if (multiple && onSelectMany) onSelectMany(items);
       else if (items[0]) (onUpload ?? onSelect)(items[0]);
     } catch (problem) {
-      setUploadFiles(files => files.slice(completed));
+      setUploadFiles((files) => files.slice(completed));
+      setUploadNames((names) => names.slice(completed));
       setError(`${problem instanceof Error ? problem.message : "Качването не беше успешно."}${uploadedItems.current.length ? ` ${uploadedItems.current.length} снимки вече са качени; повторете само останалите.` : ""}`);
     } finally { uploadBusy.current = false; setUploading(false); }
+  };
+
+  const saveRename = async (item: LibraryImage) => {
+    const next = renameDraft.trim().slice(0, 240);
+    if (!next) { setError("Въведете име за снимката."); return; }
+    if (next === (item.alt || item.name)) { setRenamingId(null); return; }
+    setRenameBusy(true);
+    setError("");
+    try {
+      const response = await fetch(withBase(`/api/editor/media/${item.id}/`), {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ alt: next }),
+      });
+      const payload = await response.json().catch(() => null) as (LibraryImage & { error?: { message?: string } }) | null;
+      if (!response.ok) throw new Error(payload?.error?.message ?? "Преименуването не успя.");
+      const updated = { ...item, alt: payload?.alt ?? next, name: payload?.name ?? item.name };
+      setLibrary((current) => current.map((row) => (row.id === item.id ? updated : row)));
+      chosenItems.current.set(item.id, updated);
+      setRenamingId(null);
+    } catch (problem) {
+      setError(problem instanceof Error ? problem.message : "Преименуването не успя.");
+    } finally {
+      setRenameBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -110,41 +154,31 @@ export function MediaPicker({
 
   useEffect(() => {
     let cancelled = false;
-    void fetch(withBase("/api/editor/media/"), { cache: "no-store" })
+    void fetch(withBase("/api/editor/media/?years=1"), { cache: "no-store" })
       .then((response) => response.ok ? response.json() as Promise<{ years: MediaYear[] }> : { years: [] })
       .then((result) => {
         if (cancelled) return;
         const nextYears = result.years ?? [];
         setYears(nextYears);
         const year = nextYears[0];
-        if (!year) {
-          setLibraryLoading(false);
-          return;
-        }
-        setOpenYear(year.year);
-        if (!libraryTouched.current) setFolder(`news/${year.year}/${year.months[0]}`);
+        if (year) setOpenYear(year.year);
       })
-      .catch(() => { if (!cancelled) { setLibraryLoading(false); setError("Папките не се заредиха. Затворете и отворете библиотеката отново."); } })
+      .catch(() => { if (!cancelled) setError("Папките не се заредиха. Затворете и отворете библиотеката отново."); })
       .finally(() => { if (!cancelled) setYearsLoading(false); });
     return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
     const searching = debouncedQuery.length >= 2;
-    if (!searching && !folder) {
-      setLibrary([]);
-      setLibraryTotal(0);
-      setLibraryLoading(false);
-      return;
-    }
     let cancelled = false;
     setLibraryLoading(true);
     setLibraryError("");
     if (!page) { setLibrary([]); setLibraryTotal(0); }
     const params = new URLSearchParams();
-    if (folder) params.set("folder", folder);
     params.set("offset", String(page * 80));
     if (searching) params.set("q", debouncedQuery);
+    if (folder) params.set("folder", folder);
+    else if (!searching) params.set("all", "1");
     void fetch(withBase(`/api/editor/media/?${params}`), { cache: "no-store" })
       .then(async response => { if (!response.ok) throw new Error(response.status === 401 ? "Сесията изтече. Влезте отново." : "Библиотеката не се зареди. Опитайте отново."); return response.json() as Promise<{ items: LibraryImage[]; total: number }>; })
       .then((result) => {
@@ -157,7 +191,7 @@ export function MediaPicker({
     return () => { cancelled = true; };
   }, [folder, debouncedQuery, page, libraryRetry]);
 
-  const searchingAll = !folder && debouncedQuery.length >= 2;
+  const searching = debouncedQuery.length >= 2;
   const searchHint = folder ? "Търсене в папката" : "Търсене в целия архив";
   const queryPending = query.trim() !== debouncedQuery;
   const selectFolder = (nextFolder: string) => {
@@ -189,7 +223,7 @@ export function MediaPicker({
   const queueUploadFiles = (files: File[]) => {
     if (!files.length || uploading) return;
     setMode("upload");
-    setUploadFiles((current) => (multiple ? [...current, ...files] : files.slice(0, 1)));
+    setUploadFileList(multiple ? [...uploadFiles, ...files] : files.slice(0, 1));
     setError("");
   };
 
@@ -252,10 +286,44 @@ export function MediaPicker({
             queueUploadFiles(imageFilesFromDataTransfer(event.dataTransfer));
           }}
         >
-          <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFiles(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
-          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
-          {uploadPreviews.length ? <div className="mt-4 grid grid-cols-2 gap-3 text-left sm:grid-cols-4">{uploadPreviews.map(({ file, url }, index) => <div key={`${file.name}-${file.lastModified}-${index}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface"><img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" /><button type="button" disabled={uploading} onClick={() => setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index))} className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100" aria-label={`Премахни ${file.name}`}>×</button><span className="block truncate px-2 py-1.5 text-[0.6875rem] text-muted">{file.name}</span></div>)}</div> : null}
-          <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека.</p>
+          <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFileList(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
+          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
+          {uploadPreviews.length ? (
+            <div className="mt-4 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
+              {uploadPreviews.map(({ file, url }, index) => (
+                <div key={`${file.name}-${file.lastModified}-${index}`} className="group relative overflow-hidden rounded-xl border border-line bg-surface">
+                  <img src={url} alt={file.name} className="aspect-[4/3] w-full object-cover" />
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => {
+                      setUploadFiles((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                      setUploadNames((current) => current.filter((_, itemIndex) => itemIndex !== index));
+                    }}
+                    className="absolute top-1.5 right-1.5 rounded-full bg-shell/80 px-2 py-0.5 text-xs font-bold text-white opacity-0 transition group-hover:opacity-100"
+                    aria-label={`Премахни ${file.name}`}
+                  >
+                    ×
+                  </button>
+                  <div className="space-y-1 p-2">
+                    <label className="block text-[10px] font-semibold tracking-wide text-faint uppercase">
+                      Име в архива
+                      <input
+                        value={uploadNames[index] ?? ""}
+                        disabled={uploading}
+                        maxLength={240}
+                        onChange={(event) => setUploadNames((current) => current.map((name, itemIndex) => (itemIndex === index ? event.target.value : name)))}
+                        placeholder={defaultUploadName(file)}
+                        className="np-input mt-1 w-full py-1.5 text-xs"
+                      />
+                    </label>
+                    <p className="truncate text-[0.625rem] text-muted">{file.name}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека с това име (търсене в архива).</p>
           {uploadedItems.current.length && !uploading ? <button type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
           <button type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
         </div>
@@ -307,7 +375,7 @@ export function MediaPicker({
             </p>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {library.map((item) => (
-                <li key={item.id}>
+                <li key={item.id} className="overflow-hidden rounded-xl border-2 border-transparent transition has-[[aria-pressed=true]]:border-accent hover:border-accent/50">
                   <button
                     type="button"
                     onClick={() => pick(item)}
@@ -316,25 +384,61 @@ export function MediaPicker({
                       pickOne(item);
                     }}
                     title="Двоен клик добавя снимката (с оптимизация)"
-                    disabled={optimizing || libraryLoading || queryPending}
+                    disabled={optimizing || libraryLoading || queryPending || renameBusy}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
-                    className="group block w-full overflow-hidden rounded-xl border-2 border-transparent text-left transition hover:border-accent/50 aria-pressed:border-accent"
+                    className="group block w-full text-left"
                   >
                     <img src={browserMediaSrc(item.url)} alt="" loading="lazy" className="aspect-[4/3] w-full bg-surface-2 object-cover" />
-                    <span className="line-clamp-2 px-1 py-1.5 text-xs text-muted">{item.alt || item.name}</span>
                   </button>
+                  {renamingId === item.id ? (
+                    <div className="flex flex-col gap-1 p-1.5" onClick={(event) => event.stopPropagation()}>
+                      <input
+                        value={renameDraft}
+                        disabled={renameBusy}
+                        maxLength={240}
+                        autoFocus
+                        aria-label="Ново име на снимката"
+                        onChange={(event) => setRenameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") { event.preventDefault(); void saveRename(item); }
+                          if (event.key === "Escape") setRenamingId(null);
+                        }}
+                        className="np-input w-full py-1 text-xs"
+                      />
+                      <div className="flex gap-1">
+                        <button type="button" disabled={renameBusy} onClick={() => void saveRename(item)} className="np-btn np-btn-primary h-6 flex-1 px-1 text-[10px]">{renameBusy ? "…" : "Запази"}</button>
+                        <button type="button" disabled={renameBusy} onClick={() => setRenamingId(null)} className="np-btn np-btn-secondary h-6 px-1 text-[10px]">Отказ</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-1 px-1 py-1.5">
+                      <span className="line-clamp-2 min-w-0 flex-1 text-xs text-muted">{item.alt || item.name}</span>
+                      <button
+                        type="button"
+                        disabled={optimizing || renameBusy}
+                        title="Преименувай"
+                        aria-label={`Преименувай ${item.alt || item.name}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setRenamingId(item.id);
+                          setRenameDraft(item.alt || item.name);
+                          setError("");
+                        }}
+                        className="shrink-0 rounded px-1 text-[10px] font-bold text-accent hover:bg-accent/10"
+                      >
+                        Име
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
             {!libraryLoading && libraryError ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setLibraryRetry(current => current + 1)}>Повтори зареждането</button> : null}
             {!libraryLoading && !libraryError && library.length < libraryTotal ? <button type="button" className="np-btn np-btn-secondary mt-4" onClick={() => setPage(current => current + 1)}>Покажи още снимки</button> : null}
             {optimizing ? <p className="py-4 text-center text-sm font-semibold text-accent">Оптимизация на снимката за сайта…</p> : null}
-            {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searchingAll ? "Търсене в архива…" : "Зареждане на папката…"}</p> : null}
-            {!libraryLoading && !folder && debouncedQuery.length < 2 ? (
-              <p className="py-10 text-center text-sm text-muted">Изберете папка или въведете поне 2 знака за търсене в целия архив.</p>
-            ) : null}
-            {!libraryLoading && (folder || debouncedQuery.length >= 2) && library.length === 0 ? (
-              <p className="py-10 text-center text-sm text-muted">{debouncedQuery.length >= 2 ? "Няма съвпадения." : "Няма снимки в тази папка."}</p>
+            {libraryLoading ? <p className="py-10 text-center text-sm text-muted">{searching ? "Търсене…" : folder ? "Зареждане на папката…" : "Зареждане на архива…"}</p> : null}
+            {!libraryLoading && !libraryError && library.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted">{searching ? "Няма съвпадения." : folder ? "Няма снимки в тази папка." : "Архивът е празен."}</p>
             ) : null}
           </div>
         </div>

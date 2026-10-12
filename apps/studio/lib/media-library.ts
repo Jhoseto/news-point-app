@@ -1,7 +1,7 @@
 import "server-only";
-import { sql } from "@newspoint/db/orm";
+import { eq, sql } from "@newspoint/db/orm";
 import { mediaPublicPath } from "@newspoint/content";
-import { getDb } from "@newspoint/db";
+import { getDb, mediaAssets } from "@newspoint/db";
 
 /** Path on the public site. Studio and the site share one host in production. */
 export function libraryImageUrl(storageKey: string, sourceUrl: string | null): string {
@@ -54,6 +54,8 @@ function mapLibraryRows(
   }));
 }
 
+const NEWS_MASTER = sql`storage_key ~ '^news/[0-9]{4}/(0[1-9]|1[0-2])/[^/]+\\.webp$' and storage_key !~ '-card\\.webp$'`;
+
 export async function listMediaFolder(folder: string, offset = 0, limit = 80): Promise<{ items: LibraryImage[]; total: number }> {
   const safe = mediaFolder(folder);
   if (!safe || !safe.includes("/", 5)) return { items: [], total: 0 };
@@ -71,6 +73,22 @@ export async function listMediaFolder(folder: string, offset = 0, limit = 80): P
     where storage_key like ${prefix}
       and storage_key !~ '-card\\.webp$'
       and split_part(storage_key, '/', 5) = ''
+    order by storage_key desc
+    limit ${limit} offset ${offset}
+  `);
+  return { total: Number(count?.total ?? 0), items: mapLibraryRows(rows) };
+}
+
+/** Newest-first page across the whole news media archive. */
+export async function listMediaArchive(offset = 0, limit = 80): Promise<{ items: LibraryImage[]; total: number }> {
+  const db = getDb();
+  const [count] = await db.execute<{ total: number }>(sql`
+    select count(*)::int as total from media_assets where ${NEWS_MASTER}
+  `);
+  const rows = await db.execute<{ id: string; storage_key: string; alt: string; source_url: string | null }>(sql`
+    select id, storage_key, alt, source_url
+    from media_assets
+    where ${NEWS_MASTER}
     order by storage_key desc
     limit ${limit} offset ${offset}
   `);
@@ -109,4 +127,31 @@ export async function searchMediaLibrary(
     limit ${limit} offset ${offset}
   `);
   return { total: Number(count?.total ?? 0), items: mapLibraryRows(rows) };
+}
+
+/** Searchable display name (`alt`). Does not rename the file on disk. */
+export function normalizeMediaName(value: string): string {
+  return value.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 240);
+}
+
+export async function renameMediaAsset(id: string, name: string): Promise<LibraryImage> {
+  const alt = normalizeMediaName(name);
+  if (!alt) {
+    const error = new Error("Въведете име за снимката.") as Error & { status: number; code: string };
+    error.status = 400;
+    error.code = "invalid_input";
+    throw error;
+  }
+  const [row] = await getDb()
+    .update(mediaAssets)
+    .set({ alt, updatedAt: new Date() })
+    .where(eq(mediaAssets.id, id))
+    .returning({ id: mediaAssets.id, storageKey: mediaAssets.storageKey, alt: mediaAssets.alt, sourceUrl: mediaAssets.sourceUrl });
+  if (!row) {
+    const error = new Error("Снимката не съществува.") as Error & { status: number; code: string };
+    error.status = 404;
+    error.code = "not_found";
+    throw error;
+  }
+  return mapLibraryRows([{ id: row.id, storage_key: row.storageKey ?? "", alt: row.alt, source_url: row.sourceUrl }])[0]!;
 }
