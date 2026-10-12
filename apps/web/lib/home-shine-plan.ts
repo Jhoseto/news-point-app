@@ -8,15 +8,16 @@ import {
 } from "./home-shine";
 import type { ArticleSummary } from "./queries";
 
-type Layout = "grid" | "feature";
+type Layout = "grid" | "feature" | "list";
 
 function sectionCount(layout: Layout, wide: boolean) {
   return wide ? 7 : layout === "grid" ? 5 : 4;
 }
 
-/** Shine slots per category block (must match CategorySection card order). */
+/** Shine slots per category block (must match CategorySection / CompactList card order). */
 export function categoryShineSlotCount(articles: ArticleSummary[], layout: Layout, wide: boolean) {
   if (!articles.length) return 0;
+  if (layout === "list") return articles.length;
   const [, ...rest] = articles;
   const mosaic = articles.length >= sectionCount("grid", wide);
   if (layout === "feature") return 1 + rest.length;
