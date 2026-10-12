@@ -1821,6 +1821,23 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
 
 @media (min-width: 768px) {
   .np-latest-mobile-thumb { display: none; }
+  .np-latest-viewport a[data-latest-id]:has(.np-latest-mobile-thumb) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 4.5rem;
+    column-gap: 0.7rem;
+    align-items: start;
+  }
+  .np-latest-viewport .np-latest-mobile-thumb {
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    float: none;
+    width: 4.5rem;
+    height: 3.15rem;
+    margin: 0;
+    border-radius: 0.45rem;
+    object-fit: cover;
+  }
 }
 
 /* NewsPodcast · Signature Orbit. All surfaces and effects stay within this module. */

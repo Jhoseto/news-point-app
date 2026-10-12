@@ -211,7 +211,7 @@ export function ArticleTts(props: ArticleTtsProps) {
   const progress = duration > 0 ? Math.min(100, (time / duration) * 100) : 0;
 
   return (
-    <div className="np-tts-wrap">
+    <div className="np-tts-wrap" data-listening={playing ? "true" : "false"}>
       <div className="np-tts">
         <button
           type="button"

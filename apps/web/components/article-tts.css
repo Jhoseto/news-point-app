@@ -1,13 +1,18 @@
 /* Long listen bar under the article meta. One play control and a timeline. */
 
 .np-tts-wrap {
-  position: sticky;
-  top: calc(var(--np-header-h, 6.75rem) + 0.4rem);
-  z-index: 10;
+  position: static;
+  z-index: 12;
   width: var(--np-article-measure, min(100%, 64rem));
-  margin: 0.85rem auto 0;
-  padding-bottom: 0.7rem;
-  background: linear-gradient(var(--np-page, #fff) 0 76%, transparent);
+  margin: 0.65rem auto 0;
+  padding-bottom: 0;
+  background: transparent;
+}
+.np-tts-wrap[data-listening="true"] {
+  position: sticky;
+  top: calc(var(--np-header-h, 6.75rem) + 0.2rem);
+  padding-bottom: 0.3rem;
+  background: linear-gradient(var(--np-page, #fff) 0 82%, transparent);
 }
 
 

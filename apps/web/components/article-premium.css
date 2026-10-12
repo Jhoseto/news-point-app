@@ -44,6 +44,9 @@
     --np-article-rail: clamp(20rem, 18vw, 28rem);
     --np-article-story-gap: clamp(1.25rem, 1.6vw, 2.25rem);
   }
+  .np-article-page:has(.np-article-latest:not(.np-story-article-rail)) {
+    --np-article-rail: clamp(26rem, 24vw, 34rem);
+  }
   .np-article-story,
   .np-article-breadcrumb {
     width: 100%;
@@ -227,9 +230,9 @@
   margin: clamp(2.1rem, 5vw, 4.5rem) auto 0;
 }
 .np-article-reading-column {
-  width: 100%;
+  width: min(100%, 46rem);
   min-width: 0;
-  margin-inline: 0;
+  margin-inline: auto;
 }
 @media (min-width: 64rem) {
   .np-article-reading-layout { margin-top: clamp(1.75rem, 3vw, 3rem); }
@@ -304,12 +307,16 @@
 .np-article-inline-toc {
   position: sticky;
   z-index: 2;
-  top: calc(var(--np-header-h) + 4.9rem);
+  top: calc(var(--np-header-h) + 0.2rem);
   display: block;
   width: 100%;
   margin: 0 0 1.25rem;
-  padding-bottom: 0.45rem;
-  background: linear-gradient(var(--np-page) 0 72%, transparent);
+  padding-bottom: 0.35rem;
+  background: linear-gradient(var(--np-page) 0 78%, transparent);
+}
+.np-article-main:has(.np-tts-wrap) .np-article-reading-layout { margin-top: 0.4rem; }
+.np-article-main:has(.np-tts-wrap[data-listening="true"]) .np-article-inline-toc {
+  top: calc(var(--np-header-h) + 3.55rem);
 }
 @keyframes np-toc-reveal { from { opacity: 0; transform: translateY(-0.4rem); } to { opacity: 1; transform: translateY(0); } }
 
@@ -332,9 +339,13 @@
 .np-article-page .np-prose h2,
 .np-article-page .np-prose h3,
 .np-article-page .np-prose h4 {
+  width: 100%;
+  max-width: none;
   color: var(--np-ink);
   letter-spacing: -0.025em;
-  text-wrap: balance;
+  line-height: 1.28;
+  text-wrap: wrap;
+  overflow-wrap: break-word;
   scroll-margin-top: calc(var(--np-header-h, 6rem) + 5.25rem);
 }
 .np-article-page .np-prose h2 {

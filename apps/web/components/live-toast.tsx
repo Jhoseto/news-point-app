@@ -7,6 +7,15 @@ import type { LiveEvent } from "@/lib/live/events";
 import { CloseIcon } from "./icons";
 
 const TOAST_MS = 9000;
+/** Matches `.np-toast[data-leaving]` → `np-toast-out` in globals.css. */
+const TOAST_OUT_MS = 320;
+
+function toastExitAnimationsDisabled() {
+  return (
+    document.documentElement.dataset.reducedMotion === "true" ||
+    matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
 
 /** Premium "new article" card. Hover or keyboard focus pauses the countdown. */
 export function NewArticleToast({ event, onDone }: { event: LiveEvent; onDone: () => void }) {
@@ -15,6 +24,13 @@ export function NewArticleToast({ event, onDone }: { event: LiveEvent; onDone: (
   const startedAt = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const holds = useRef({ hover: false, focus: false });
+  const removed = useRef(false);
+
+  const finish = useCallback(() => {
+    if (removed.current) return;
+    removed.current = true;
+    onDone();
+  }, [onDone]);
 
   const run = useCallback(() => {
     clearTimeout(timer.current);
@@ -39,8 +55,18 @@ export function NewArticleToast({ event, onDone }: { event: LiveEvent; onDone: (
     return () => clearTimeout(timer.current);
   }, [run]);
 
+  useEffect(() => {
+    if (!leaving) return;
+    if (toastExitAnimationsDisabled()) {
+      finish();
+      return;
+    }
+    const fallback = window.setTimeout(finish, TOAST_OUT_MS + 80);
+    return () => window.clearTimeout(fallback);
+  }, [leaving, finish]);
+
   const onAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
-    if (leaving && e.target === e.currentTarget) onDone();
+    if (leaving && e.target === e.currentTarget && e.animationName === "np-toast-out") finish();
   };
 
   const card = event.card;

@@ -56,7 +56,7 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
         </div>
       ) : null}
 
-      <div data-np-latest-frame className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_clamp(18rem,22vw,22rem)] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_clamp(22rem,20vw,28rem)] 2xl:gap-[clamp(1.25rem,1.6vw,2.25rem)] 3xl:grid-cols-[minmax(0,1fr)_clamp(24rem,18vw,32rem)]">
+      <div data-np-latest-frame className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_clamp(24rem,28vw,28rem)] xl:gap-6 2xl:grid-cols-[minmax(0,1fr)_clamp(28rem,24vw,34rem)] 2xl:gap-[clamp(1.25rem,1.6vw,2.25rem)] 3xl:grid-cols-[minmax(0,1fr)_clamp(30rem,22vw,38rem)]">
         <div data-np-latest-stage className="flex min-w-0 flex-col gap-6">
           {articles.length === 0 ? (
             <p className="np-card p-6 text-body">{archive.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p>
