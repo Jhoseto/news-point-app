@@ -46,9 +46,9 @@ function precipSum24(hours: WeatherForecast["hours"]): number {
 function StatGlass({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2.5 backdrop-blur-md">
-      <p className="text-[10px] font-bold tracking-[0.14em] text-white/65 uppercase">{label}</p>
+      <p className="text-[0.75rem] font-bold tracking-[0.14em] text-white/65 uppercase">{label}</p>
       <p className="mt-0.5 text-lg font-extrabold tracking-tight text-white">{value}</p>
-      {hint ? <p className="mt-0.5 text-[11px] text-white/70">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-xs text-white/70">{hint}</p> : null}
     </div>
   );
 }
@@ -57,12 +57,12 @@ function WindCompass({ degrees, speedLabel, dirLabel }: { degrees: number | null
   const rotation = degrees != null ? (degrees + 180) % 360 : 0;
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/10 p-4 shadow-card backdrop-blur-md">
-      <p className="text-[10px] font-bold tracking-[0.14em] text-white/70 uppercase">Вятър</p>
+      <p className="text-[0.75rem] font-bold tracking-[0.14em] text-white/70 uppercase">Вятър</p>
       <div className="relative size-28 rounded-full border border-white/25 bg-black/15">
-        <span className="absolute left-1/2 top-1.5 -translate-x-1/2 text-[10px] font-bold text-white/75">С</span>
-        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white/75">Ю</span>
-        <span className="absolute top-1/2 left-1.5 -translate-y-1/2 text-[10px] font-bold text-white/75">З</span>
-        <span className="absolute top-1/2 right-1.5 -translate-y-1/2 text-[10px] font-bold text-white/75">И</span>
+        <span className="absolute left-1/2 top-1.5 -translate-x-1/2 text-[0.6875rem] font-bold text-white/75">С</span>
+        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[0.6875rem] font-bold text-white/75">Ю</span>
+        <span className="absolute top-1/2 left-1.5 -translate-y-1/2 text-[0.6875rem] font-bold text-white/75">З</span>
+        <span className="absolute top-1/2 right-1.5 -translate-y-1/2 text-[0.6875rem] font-bold text-white/75">И</span>
         <div
           className="absolute inset-4 flex items-center justify-center transition-transform duration-700 ease-out"
           style={{ transform: `rotate(${rotation}deg)` }}
@@ -86,7 +86,7 @@ function CloudRing({ pct }: { pct: number | null }) {
   const dash = (pct / 100) * c;
   return (
     <div className="flex flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/10 p-4 shadow-card backdrop-blur-md">
-      <p className="text-[10px] font-bold tracking-[0.14em] text-white/70 uppercase">Облачност</p>
+      <p className="text-[0.75rem] font-bold tracking-[0.14em] text-white/70 uppercase">Облачност</p>
       <svg viewBox="0 0 88 88" className="size-28 text-amber-200">
         <circle cx="44" cy="44" r={r} fill="none" stroke="currentColor" strokeOpacity="0.12" strokeWidth="8" />
         <circle
@@ -229,15 +229,15 @@ export function WeatherPageView({ forecast, staleMessage }: { forecast: WeatherF
                 key={hour.time}
                 className="min-w-[4.5rem] shrink-0 rounded-xl border border-line bg-surface-2 px-2 py-2.5 text-center transition-colors hover:border-accent/40"
               >
-                <p className="text-[10px] font-bold text-muted">{hourFmt.format(new Date(hour.time))}</p>
+                <p className="text-[0.6875rem] font-bold text-muted">{hourFmt.format(new Date(hour.time))}</p>
                 <div className="mx-auto mt-1 flex justify-center">
                   <WeatherSymbolIcon symbolCode={hour.symbolCode} mood={hm} className="size-8" />
                 </div>
                 <p className="mt-1 text-sm font-extrabold text-ink">{formatTempC(hour.temperatureC)}</p>
                 {(hour.precipitationMm ?? 0) > 0 ? (
-                  <p className="mt-0.5 text-[10px] font-semibold text-sky-600 dark:text-sky-400">{hour.precipitationMm} мм</p>
+                  <p className="mt-0.5 text-[0.6875rem] font-semibold text-sky-600 dark:text-sky-400">{hour.precipitationMm} мм</p>
                 ) : (
-                  <p className="mt-0.5 text-[10px] text-muted">—</p>
+                  <p className="mt-0.5 text-[0.6875rem] text-muted">—</p>
                 )}
               </li>
             );

@@ -4,7 +4,7 @@
   .np-desktop-footer { position: relative; isolation: isolate; color: var(--np-ink); background: var(--np-surface); }
   .np-desktop-footer::before { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 0 0, color-mix(in srgb, var(--np-accent) 5%, transparent), transparent 58%); }
   .np-desktop-footer-inner { max-width: 96rem; }
-  .np-desktop-footer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .85fr) minmax(0, 1.1fr); gap: clamp(1.25rem, calc(2 * var(--np-desktop-vw, 1vw)), 2.5rem); align-items: center; padding-block: 1.5rem 1.25rem; }
+  .np-desktop-footer-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(12rem, .85fr) minmax(0, 1.1fr); gap: clamp(1.25rem, 2vw, 2.5rem); align-items: center; padding-block: 1.5rem 1.25rem; }
   .np-desktop-footer-brand { position: relative; isolation: isolate; }
   .np-desktop-footer-skyline { position: absolute; z-index: -1; inset-inline: 0; bottom: 0; width: 100%; height: auto; color: var(--np-accent); opacity: .08; pointer-events: none; }
   .np-desktop-footer-logo { display: inline-flex; align-items: center; min-height: 2.75rem; max-width: 100%; }
@@ -21,9 +21,9 @@
   .np-desktop-footer-contact p { margin: 0 0 .25rem; color: var(--np-body); font-size: .75rem; line-height: 1.65; overflow-wrap: anywhere; }
   .np-desktop-footer-contact a { display: flex; align-items: center; gap: .6rem; min-height: 2.75rem; max-width: 100%; color: var(--np-ink); font-size: .75rem; font-weight: 600; }
   .np-desktop-footer-contact a > span { max-width: 100%; overflow-wrap: anywhere; }
-  .np-desktop-footer-contact .np-desktop-footer-contact-caption { flex: none; color: var(--np-muted); font-size: .625rem; font-weight: 500; }
+  .np-desktop-footer-contact .np-desktop-footer-contact-caption { flex: none; color: var(--np-muted); font-size: .75rem; font-weight: 500; }
   .np-desktop-footer-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1rem; min-height: 3.25rem; padding-block: .25rem; border-top: 1px solid var(--np-line); }
-  .np-desktop-footer-bottom p { color: var(--np-muted); font-size: .6875rem; line-height: 1.6; }
+  .np-desktop-footer-bottom p { color: var(--np-muted); font-size: .75rem; line-height: 1.6; }
   .np-desktop-footer-bottom > div { display: flex; flex-wrap: wrap; align-items: center; gap: 1.25rem; }
   .np-desktop-footer-bottom a, .np-desktop-footer-top { display: inline-flex; align-items: center; justify-content: center; min-height: 2.75rem; min-width: 2.75rem; gap: .5rem; color: var(--np-body); font-size: .75rem; font-weight: 650; }
   .np-desktop-footer :is(a, button):focus-visible { outline: 2px solid var(--np-link); outline-offset: 4px; border-radius: .35rem; }

@@ -137,8 +137,8 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
       <div className="np-traffic-toolbar rounded-2xl border border-line bg-surface shadow-card">
         <div className={`border-b border-line ${compact ? "space-y-2 px-2.5 py-2 sm:px-4" : "flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-5"}`}>
           <div className={compact ? "min-w-0" : undefined}>
-            <p className={`font-extrabold tracking-[0.12em] text-logo uppercase ${compact ? "text-[10px] leading-tight" : "text-[11px] tracking-[0.15em]"}`}>Пловдив · пътна обстановка</p>
-            <p className={`text-muted ${compact ? "truncate text-[10px] leading-tight" : "mt-1 text-xs"}`}>
+            <p className={`font-extrabold tracking-[0.12em] text-logo uppercase ${compact ? "text-[0.6875rem] leading-tight" : "text-[11px] tracking-[0.15em]"}`}>Пловдив · пътна обстановка</p>
+            <p className={`text-muted ${compact ? "truncate text-[0.6875rem] leading-tight" : "mt-1 text-xs"}`}>
               {incidents?.fetchedAt ? `Обновено ${formatFull(new Date(incidents.fetchedAt))}` : incidents ? incidents.message : "Зареждане на данните…"}
             </p>
           </div>
@@ -248,7 +248,7 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
             </div>
           </div>
           {selected && variant === "page" && <div className="border-b border-line bg-surface-2 px-4 py-3 sm:px-5" aria-live="polite">
-            <p className="text-[10px] font-extrabold tracking-[0.14em] text-logo uppercase">Избрано на картата</p>
+            <p className="text-[0.6875rem] font-extrabold tracking-[0.14em] text-logo uppercase">Избрано на картата</p>
             <p className="mt-1 text-sm font-extrabold text-ink">{selected.description}</p>
             <p className="mt-1 text-xs text-body">{[selected.from, selected.to].filter(Boolean).join(" → ") || selected.categoryLabel}</p>
             {formatDelay(selected.delaySec) && <p className="mt-1 text-xs font-semibold text-ink">{formatDelay(selected.delaySec)}</p>}
@@ -264,7 +264,7 @@ export function TrafficPanel({ connected, variant = "modal", cesiumToken }: { co
                 {visibleIncidents.map((item) => (
                   <li key={item.id}>
                     <button type="button" disabled={!item.position} aria-pressed={selectedId === item.id} onClick={() => selectIncident(item)} className={`group w-full text-left transition-colors hover:bg-surface-2 disabled:cursor-default aria-pressed:bg-surface-2 ${variant === "modal" ? "px-3 py-2 sm:px-4" : "px-4 py-3 sm:px-5"}`}>
-                      <span className="block text-[10px] font-extrabold tracking-[0.1em] text-logo uppercase">{item.categoryLabel}</span>
+                      <span className="block text-[0.6875rem] font-extrabold tracking-[0.1em] text-logo uppercase">{item.categoryLabel}</span>
                       <span className="mt-0.5 block text-xs font-bold leading-snug text-ink sm:text-sm">{item.description}</span>
                       {item.from && <span className="mt-0.5 block truncate text-[11px] text-muted">{item.from}{item.to && item.to !== item.from ? ` → ${item.to}` : ""}</span>}
                       {formatDelay(item.delaySec) && <span className="mt-0.5 block text-[11px] text-body">{formatDelay(item.delaySec)}</span>}

@@ -134,7 +134,7 @@ export async function ArticlePage({
           ) : null}
 
           {storyThemes.length > 0 ? (
-            <div className="lg:hidden">
+            <div className="xl:hidden">
               <StoryThemeLink themes={storyThemes} articles={compact?.articles ?? []} currentArticleId={article.id} />
             </div>
           ) : null}

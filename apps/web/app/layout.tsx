@@ -91,7 +91,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         <JsonLd data={[organization, website]} id="np-ld-org-website" />
       </head>
-      <body className="min-h-[var(--np-desktop-height,100dvh)]">
+      <body className="min-h-[100dvh]">
         <ThemeScript />
         <ViewportShellGate ssrDesktop={desktop} />
         <a

@@ -328,7 +328,7 @@ function RubricLinks({ items, current, onNavigate, autoFocusActive }: { items: N
       </ul>
       {groupRubrics(items).map((group) => (
         <div key={group.label} className="mt-3">
-          <p className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.625rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</p>
+          <p className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</p>
           <ul className="flex flex-col gap-1">
             {group.items.map((item) => (
               <li key={item.path}>
@@ -480,10 +480,8 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
     if (!expanded) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      // In the proportional composition Escape belongs to the open dialog;
-      // closing LivePoint/settings must not also collapse the reference rail.
-      if (document.documentElement.hasAttribute("data-np-desktop-scaled")
-        && document.querySelector('[aria-modal="true"], dialog[open]')) return;
+      // Escape belongs to an open dialog; closing LivePoint/settings must not also collapse the rail.
+      if (document.querySelector('[aria-modal="true"], dialog[open]')) return;
       setExpanded(false);
     };
     document.addEventListener("keydown", onKey);
@@ -495,7 +493,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
   return (
       <aside
         aria-label="Рубрики"
-        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(var(--np-desktop-height,100dvh)-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
+        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
           expanded ? "w-[16.5rem]" : "w-[4.25rem]"
         }`}
       >
@@ -532,7 +530,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
           {groups.map((group, groupIndex) => (
             <section key={group.label} className={groupIndex > 0 ? "mt-4" : undefined}>
               {expanded ? (
-                <h3 className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.625rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</h3>
+                <h3 className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</h3>
               ) : groupIndex > 0 ? (
                 <div className="mx-auto my-2.5 h-px w-5 bg-line" aria-hidden="true" />
               ) : null}

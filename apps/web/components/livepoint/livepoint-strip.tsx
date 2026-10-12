@@ -28,9 +28,9 @@ function StripItem({
       aria-haspopup="dialog"
       aria-expanded={on}
       data-active={on || undefined}
-      className={`np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1.5 lg:px-2 lg:py-0 lg:text-[0.8125rem] lg:font-semibold ${className ?? ""}`}
+      className={`np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2 ${className ?? ""}`}
     >
-      <span className="np-lp-item-icon" aria-hidden="true">{icon}</span>
+      <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{icon}</span>
       <span className="np-lp-item-label">{children}</span>
     </button>
   );
@@ -103,12 +103,12 @@ export function LivePointStrip() {
 
   return (
     <div className="np-lp-row flex items-center lg:pl-[var(--np-rail-w)]">
-      <div className="np-lp-strip flex h-11 w-full min-w-0 items-center px-2 lg:h-full lg:gap-1 lg:px-0 lg:pl-3 lg:pr-8 3xl:pl-4 3xl:pr-12">
+      <div className="np-lp-strip flex h-11 w-full min-w-0 items-center px-2 lg:h-full lg:gap-0 lg:px-0 lg:pl-2 lg:pr-3 xl:gap-1 xl:pl-3 xl:pr-8 3xl:pl-4 3xl:pr-12">
         <StripScroller>
           <div className="np-lp-brand flex shrink-0 items-center lg:h-full">
             <span className="hidden h-4 w-px shrink-0 bg-line lg:block" aria-hidden="true" />
             <div
-              className="np-lp-brand-mark flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:items-center lg:gap-1.5 lg:px-4 lg:py-0 lg:text-[0.8125rem] lg:font-semibold"
+              className="np-lp-brand-mark flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:items-center lg:gap-1.5 lg:px-2.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:px-4"
               aria-label="LivePoint"
             >
               <span className="np-lp-brand-mobile flex flex-col items-center gap-0.5 lg:hidden">

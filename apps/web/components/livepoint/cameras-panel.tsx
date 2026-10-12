@@ -50,7 +50,7 @@ function CameraListRow({ camera, selected, onSelect }: { camera: CameraEntry; se
           </span>
         </span>
         {live ? (
-          <span className="shrink-0 rounded-full bg-rose-600/10 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-rose-700 uppercase dark:text-rose-400">
+          <span className="shrink-0 rounded-full bg-rose-600/10 px-2 py-0.5 text-[0.75rem] font-extrabold tracking-wide text-rose-700 uppercase dark:text-rose-400">
             На живо
           </span>
         ) : null}
@@ -73,7 +73,7 @@ function CameraPlayerBlock({ camera, compact }: { camera: CameraEntry; compact?:
             </p>
           </div>
           {live ? (
-            <span className="shrink-0 rounded-full bg-rose-600/10 px-2.5 py-0.5 text-[10px] font-extrabold tracking-wide text-rose-700 uppercase dark:text-rose-400">
+            <span className="shrink-0 rounded-full bg-rose-600/10 px-2.5 py-0.5 text-[0.75rem] font-extrabold tracking-wide text-rose-700 uppercase dark:text-rose-400">
               На живо
             </span>
           ) : null}
@@ -179,7 +179,7 @@ export function CamerasPanel({ variant = "page" }: { variant?: "panel" | "page" 
               Каталог <span className="font-bold text-muted">· {cameras.length}</span>
             </h3>
           </div>
-          <ul className="np-scroll-soft max-h-[22rem] overflow-y-auto xl:max-h-[min(36rem,calc(var(--np-desktop-height,100vh)-14rem))]">
+          <ul className="np-scroll-soft max-h-[22rem] overflow-y-auto xl:max-h-[min(36rem,calc(100vh-14rem))]">
             {cameras.map((camera) => (
               <CameraListRow
                 key={camera.slug}

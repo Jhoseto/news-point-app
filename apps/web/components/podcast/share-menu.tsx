@@ -3,7 +3,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon, FacebookIcon, LinkIcon, LinkedInIcon, ShareIcon, XIcon } from "../icons";
-import { lockDesktopViewport } from "@/lib/desktop-viewport";
 import { AudioIcon, PodcastCover } from "./visuals";
 
 type Props = {
@@ -76,14 +75,12 @@ export function PodcastShareMenu({
     const element = dialog.current;
     if (!element) return;
     const previousOverflow = document.body.style.overflow;
-    const releaseViewport = lockDesktopViewport();
     document.body.style.overflow = "hidden";
     element.showModal();
     heading.current?.focus();
     return () => {
       element.close();
       document.body.style.overflow = previousOverflow;
-      releaseViewport();
       trigger.current?.focus({ preventScroll: true });
     };
   }, [open]);

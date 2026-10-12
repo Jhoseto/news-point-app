@@ -108,7 +108,7 @@ export function WeatherChart({
         className="relative rounded-xl border border-line/80 bg-gradient-to-b from-surface to-surface-2/80 p-2 sm:p-3"
         onMouseLeave={() => setTipOpen(false)}
       >
-        <div className="pointer-events-none absolute left-3 top-3 z-10 flex h-[calc(100%-2.5rem)] flex-col justify-between text-[10px] font-bold text-muted tabular-nums sm:left-4">
+        <div className="pointer-events-none absolute left-3 top-3 z-10 flex h-[calc(100%-2.5rem)] flex-col justify-between text-[0.6875rem] font-bold text-muted tabular-nums sm:left-4">
           {layout.gridLabels.map((label, i) => (
             <span key={`${label}-${i}`}>{label}°</span>
           ))}
@@ -125,7 +125,7 @@ export function WeatherChart({
               }}
               role="tooltip"
             >
-              <p className="text-[10px] font-bold tracking-[0.12em] text-white/75 uppercase tabular-nums">
+              <p className="text-[0.6875rem] font-bold tracking-[0.12em] text-white/75 uppercase tabular-nums">
                 {hourFmt.format(new Date(current.time))}
               </p>
               <p className="mt-0.5 text-2xl font-extrabold tracking-tight text-white tabular-nums">
@@ -165,7 +165,7 @@ export function WeatherChart({
           ))}
 
           <line x1={PAD.l} y1={TEMP_BOTTOM} x2={W - PAD.r} y2={TEMP_BOTTOM} stroke="currentColor" strokeOpacity="0.12" strokeWidth="1" />
-          <text x={PAD.l + 4} y={PRECIP_TOP - 6} className="fill-muted text-[10px] font-bold uppercase">
+          <text x={PAD.l + 4} y={PRECIP_TOP - 6} className="fill-muted text-[0.6875rem] font-bold uppercase">
             мм/ч
           </text>
 

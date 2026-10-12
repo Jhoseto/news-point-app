@@ -101,13 +101,13 @@ export default async function HomePage() {
         <h1 className="sr-only">NewsPoint.bg – новини</h1>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
-        <div data-np-latest-frame className="hidden h-[min(calc(56*var(--np-desktop-vh,1vh)),34rem)] min-h-0 grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_19rem] gap-4 lg:grid xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 2xl:h-[min(calc(54*var(--np-desktop-vh,1vh)),36rem)] 2xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
+        <div data-np-latest-frame className="hidden h-[min(64vh,32rem)] min-h-0 grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 lg:grid xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_18rem] 2xl:h-[min(56vh,34rem)] 2xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 3xl:h-[min(54vh,36rem)] 3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">
           {hero ? <HeroCard article={hero} priority fit="band" className="min-h-0" {...shineDelayProp(bandHero)} /> : null}
-          <div data-np-latest-stage className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-4">
+          <div data-np-latest-stage className="grid min-h-0 grid-rows-[1fr_1.25fr] gap-3 2xl:grid-rows-[1.35fr_1fr] 2xl:gap-4">
             {support[0] ? (
               <HeroCard article={support[0]} size="tile" fit="band" headingLevel="h3" className="min-h-0" {...shineDelayProp(bandSupport0)} />
             ) : null}
-            <div className="grid min-h-0 grid-cols-2 gap-4">
+            <div className="grid min-h-0 grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4">
               {support.slice(1).map((article, index) => (
                 <HeroCard
                   key={article.id}
@@ -121,7 +121,7 @@ export default async function HomePage() {
               ))}
             </div>
           </div>
-          <LatestNews24h articles={latest} asOfMs={asOfMs} dense size="band" />
+          <LatestNews24h articles={latest} asOfMs={asOfMs} dense size="band" className="max-xl:hidden" />
         </div>
 
         {focusCarousel.length ? (

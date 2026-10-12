@@ -48,13 +48,13 @@ export function HomeCategorySection({
           ) : null}
         </div>
       ) : !mosaic ? (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${wide ? "xl:grid-cols-4" : "3xl:grid-cols-4"}`}>
           {articles.slice(0, 4).map((article) => (
             <ArticleCard key={article.id} article={article} {...shineDelayProp(shine?.nextCard())} />
           ))}
         </div>
-      ) : (
-        <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 ${wide ? "2xl:grid-cols-5" : ""}`}>
+      ) : wide ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
           <div className="contents 2xl:hidden">
             <ArticleCard article={first} {...shineDelayProp(shine?.nextCard())} />
           </div>
@@ -67,6 +67,25 @@ export function HomeCategorySection({
           />
           {rest.map((article, index) => (
             <div key={article.id} className={index >= 3 ? "hidden 2xl:contents" : "contents"}>
+              <ArticleCard article={article} {...shineDelayProp(shine?.nextCard())} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        /* Shares its row with the aside lists, so the mosaic needs a wide screen. */
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 3xl:grid-cols-4">
+          <div className="contents 3xl:hidden">
+            <ArticleCard article={first} {...shineDelayProp(shine?.nextCard())} />
+          </div>
+          <HeroCard
+            article={first}
+            size="tile"
+            headingLevel="h3"
+            className="hidden 3xl:col-span-2 3xl:row-span-2 3xl:block"
+            {...shineDelayProp(shine?.nextCard())}
+          />
+          {rest.map((article, index) => (
+            <div key={article.id} className={index >= 3 ? "hidden 3xl:contents" : "contents"}>
               <ArticleCard article={article} {...shineDelayProp(shine?.nextCard())} />
             </div>
           ))}

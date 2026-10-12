@@ -69,7 +69,7 @@ export function PushSettings({ compact = true }: { compact?: boolean }) {
           {!allRubrics && rubrics.length > 0 ? (
             <div className="grid max-h-36 grid-cols-2 gap-1 overflow-y-auto overscroll-contain sm:grid-cols-3">
               {rubrics.map((item) => (
-                <label key={item.slug} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line/80 bg-surface px-1.5 py-1 text-[10px] leading-tight text-body">
+                <label key={item.slug} className="flex cursor-pointer items-center gap-1.5 rounded-md border border-line/80 bg-surface px-1.5 py-1 text-[0.6875rem] leading-tight text-body">
                   <input
                     type="checkbox"
                     checked={picked.has(item.slug)}

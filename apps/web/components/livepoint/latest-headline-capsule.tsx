@@ -41,7 +41,7 @@ export function LatestHeadlineCapsule({ latest }: { latest: LatestHeadline }) {
 
   return (
     <div
-      className="np-lp-latest relative ml-auto hidden min-w-0 max-w-[38rem] flex-1 pl-5 xl:block"
+      className="np-lp-latest relative ml-auto hidden min-w-0 max-w-[38rem] flex-1 pl-5 2xl:block"
       data-preview-open={open || undefined}
       onPointerEnter={(event) => {
         if (event.pointerType === "mouse" && window.matchMedia("(hover: hover)").matches) setOpen(true);
@@ -70,19 +70,19 @@ export function LatestHeadlineCapsule({ latest }: { latest: LatestHeadline }) {
           {latest.hero ? <ArticleImage media={{ ...latest.hero, alt: "" }} className="h-full w-full object-cover" sizes="32px" /> : <span className="np-ring mx-auto mt-2 !size-4" />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[0.5625rem] leading-tight font-bold tracking-wide text-muted">
+          <span className="flex items-center gap-1.5 text-[0.6875rem] leading-tight font-bold tracking-wide text-muted">
             <span className="truncate text-logo uppercase">Последна новина</span>
             <span aria-hidden="true">·</span>
             <time dateTime={latest.publishedAt} className="shrink-0 font-medium tracking-normal">{age}</time>
           </span>
-          <span className="mt-0.5 block truncate text-[0.75rem] leading-tight font-semibold text-ink">{latest.title}</span>
+          <span className="mt-0.5 block truncate text-[0.8125rem] leading-tight font-semibold text-ink">{latest.title}</span>
         </span>
         <ArrowRightIcon width={14} height={14} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5 group-hover:text-logo" />
       </Link>
 
       {open ? (
-        <div className="np-headline-flyout absolute top-full right-0 w-[22rem] max-w-[calc(100*var(--np-desktop-vw,1vw)-2rem)] pt-3">
-          <div id={previewId} className="np-headline-preview np-scroll-soft relative max-h-[calc(var(--np-desktop-height,100dvh)-9rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-[0_22px_60px_-16px_rgb(10_20_84/0.3)] dark:shadow-[0_22px_60px_-16px_rgb(0_0_0/0.8)]" style={categoryAccentStyle(latest.category?.slug)}>
+        <div className="np-headline-flyout absolute top-full right-0 w-[22rem] max-w-[calc(100vw-2rem)] pt-3">
+          <div id={previewId} className="np-headline-preview np-scroll-soft relative max-h-[calc(100dvh-9rem)] overflow-y-auto rounded-2xl border border-line bg-surface shadow-[0_22px_60px_-16px_rgb(10_20_84/0.3)] dark:shadow-[0_22px_60px_-16px_rgb(0_0_0/0.8)]" style={categoryAccentStyle(latest.category?.slug)}>
             <span aria-hidden="true" className="np-category-accent-line absolute inset-x-0 top-0 z-10 h-0.5" />
             {latest.hero ? <div className="h-40 overflow-hidden"><ArticleImage media={{ ...latest.hero, alt: "" }} className="h-full w-full object-cover" sizes="352px" /></div> : null}
             <div className="p-5">

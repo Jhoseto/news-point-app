@@ -40,11 +40,11 @@ export async function SiteHeader() {
 
         <div className="ml-auto flex items-center justify-end gap-1 pr-0 sm:gap-2 sm:pr-4 lg:ml-0 lg:min-w-0 lg:pr-8 xl:gap-5 3xl:pr-12">
           {desktop ? (
-            <div className="hidden lg:block">
+            <div className="hidden xl:block">
               <HeaderClock />
             </div>
           ) : null}
-          {desktop ? <span className="hidden h-8 w-px bg-line lg:block" aria-hidden="true" /> : null}
+          {desktop ? <span className="hidden h-8 w-px bg-line xl:block" aria-hidden="true" /> : null}
           <HeaderUtilities />
         </div>
 

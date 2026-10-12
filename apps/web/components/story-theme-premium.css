@@ -7,6 +7,10 @@
 .np-story-theme-page .np-article-main {
   width: min(100%, 78rem);
 }
+@media (min-width: 80rem) {
+  .np-story-theme-page .np-article-main,
+  .np-story-theme-page .np-article-header { width: 100%; max-width: none; }
+}
 
 .np-story-theme-page .np-article-header {
   width: min(100%, 64rem);
@@ -14,9 +18,9 @@
 
 .np-story-intro {
   width: min(100%, 50rem);
-  margin: clamp(1.6rem, calc(3.2 * var(--np-desktop-vw, 1vw)), 2.8rem) auto 0;
+  margin: clamp(1.6rem, 3.2vw, 2.8rem) auto 0;
   color: var(--np-body);
-  font-size: clamp(1.02rem, calc(1.15 * var(--np-desktop-vw, 1vw)), 1.12rem);
+  font-size: clamp(1.02rem, 1.15vw, 1.12rem);
   line-height: 1.72;
   white-space: pre-line;
   text-wrap: pretty;
@@ -33,14 +37,14 @@
 
 .np-story-journey {
   position: relative;
-  margin-top: clamp(2.4rem, calc(5 * var(--np-desktop-vw, 1vw)), 4.2rem);
+  margin-top: clamp(2.4rem, 5vw, 4.2rem);
 }
 
 .np-story-journey-kicker {
   width: min(100%, 50rem);
   margin: 0 auto 1.6rem;
   color: var(--np-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -67,7 +71,7 @@
   border-radius: 999px;
   background: var(--np-surface);
   color: var(--np-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 750;
   white-space: nowrap;
 }
@@ -153,7 +157,7 @@
   background: var(--np-surface);
   box-shadow: 0 10px 24px -16px var(--np-accent), 0 0 0 6px color-mix(in oklab, var(--np-page) 88%, transparent);
   color: var(--np-accent);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 
@@ -227,13 +231,13 @@
   flex-wrap: wrap;
   gap: 0.45rem 0.8rem;
   color: var(--np-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 750;
 }
 
 .np-story-card h2 {
   color: var(--np-ink);
-  font-size: clamp(1.05rem, calc(1.2 * var(--np-desktop-vw, 1vw)), 1.35rem);
+  font-size: clamp(1.05rem, 1.2vw, 1.35rem);
   font-weight: 780;
   letter-spacing: -0.03em;
   line-height: 1.22;
@@ -251,7 +255,7 @@
 
 .np-story-when-weekday {
   color: var(--np-muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -259,7 +263,7 @@
 
 .np-story-when-day {
   color: var(--np-ink);
-  font-size: clamp(2.4rem, calc(3.4 * var(--np-desktop-vw, 1vw)), 3.6rem);
+  font-size: clamp(2.4rem, 3.4vw, 3.6rem);
   font-weight: 820;
   letter-spacing: -0.07em;
   line-height: 0.9;
@@ -281,7 +285,7 @@
 }
 
 .np-story-when-time {
-  font-size: clamp(1.55rem, calc(2.1 * var(--np-desktop-vw, 1vw)), 2.15rem);
+  font-size: clamp(1.55rem, 2.1vw, 2.15rem);
   font-weight: 820;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
@@ -294,7 +298,7 @@
 .np-story-when-label {
   margin-top: 0.2rem;
   color: var(--np-faint);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   font-weight: 750;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -316,14 +320,17 @@
 }
 
 @media (min-width: 64rem) {
+  .np-story-theme-page {
+    --np-story-spine: 4.5rem;
+  }
+}
+
+@media (min-width: 80rem) {
   .np-story-theme-page .np-article-story > .np-story-map-rail {
     min-width: 0;
     width: 100%;
     max-width: 22rem;
     justify-self: end;
-  }
-  .np-story-theme-page {
-    --np-story-spine: 4.5rem;
   }
 
   .np-story-map-jump {
@@ -384,12 +391,12 @@
 
   .np-story-map-rail a span:first-child {
     color: var(--np-accent);
-    font-size: 0.68rem;
+    font-size: 0.75rem;
     font-weight: 800;
   }
 
   .np-story-map-rail a span:last-child {
-    font-size: 0.78rem;
+    font-size: 0.8125rem;
     font-weight: 650;
     line-height: 1.3;
   }

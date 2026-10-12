@@ -4,17 +4,12 @@
   position: sticky;
   top: calc(var(--np-header-h, 6.75rem) + 0.4rem);
   z-index: 10;
-  width: min(100%, 64rem);
+  width: var(--np-article-measure, min(100%, 64rem));
   margin: 0.85rem auto 0;
   padding-bottom: 0.7rem;
   background: linear-gradient(var(--np-page, #fff) 0 76%, transparent);
 }
 
-@media (min-width: 64rem) {
-  .np-tts-wrap {
-    width: min(100%, 61rem);
-  }
-}
 
 .np-tts {
   display: grid;

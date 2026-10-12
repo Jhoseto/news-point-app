@@ -69,7 +69,7 @@ export function SettingsPanel({ compact = false }: { compact?: boolean }) {
         </fieldset>
       ))}
       <section aria-labelledby={`${id}-preview`} className={`${card} overflow-hidden`}>
-        <h2 id={`${id}-preview`} className={`font-bold tracking-wide text-muted uppercase ${tight ? "mb-1.5 text-[10px]" : "mb-4 text-xs"}`}>
+        <h2 id={`${id}-preview`} className={`font-bold tracking-wide text-muted uppercase ${tight ? "mb-1.5 text-[0.6875rem]" : "mb-4 text-xs"}`}>
           Преглед
         </h2>
         <div className={`np-prose ${tight ? "np-settings-preview" : ""}`}>
@@ -77,7 +77,7 @@ export function SettingsPanel({ compact = false }: { compact?: boolean }) {
         </div>
       </section>
       <div className={`flex flex-wrap items-center justify-between ${tight ? "gap-1.5" : "gap-4"}`}>
-        <p role="status" className={`text-muted ${tight ? "max-w-[14rem] text-[10px] leading-snug" : "max-w-lg text-sm"}`}>
+        <p role="status" className={`text-muted ${tight ? "max-w-[14rem] text-[0.6875rem] leading-snug" : "max-w-lg text-sm"}`}>
           {preferences.storageAvailable
             ? tight
               ? "Запазва се в този браузър."
@@ -87,7 +87,7 @@ export function SettingsPanel({ compact = false }: { compact?: boolean }) {
         <button
           type="button"
           onClick={() => chooseReaderPreferences(DEFAULT_PREFERENCES)}
-          className={`rounded-lg border border-line bg-surface font-bold text-ink hover:bg-surface-2 ${tight ? "min-h-8 px-2.5 py-1.5 text-[10px]" : "px-4 py-3 text-sm"}`}
+          className={`rounded-lg border border-line bg-surface font-bold text-ink hover:bg-surface-2 ${tight ? "min-h-8 px-2.5 py-1.5 text-[0.6875rem]" : "px-4 py-3 text-sm"}`}
         >
           {tight ? "Стандартни" : "Върни стандартните настройки"}
         </button>

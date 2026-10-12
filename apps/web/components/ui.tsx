@@ -12,7 +12,7 @@ export function CategoryPill({ category, glass = true, className = "" }: { categ
     ? "border border-white/45 bg-white/15 text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.45)] backdrop-blur-md"
     : "bg-accent text-on-accent";
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.6875rem] font-bold tracking-wide uppercase ${look} ${className}`}>
+    <span className={`inline-flex items-center rounded-full px-1.5 py-px text-[0.5rem] leading-none font-bold tracking-[0.06em] uppercase 2xl:px-2 2xl:py-0.5 2xl:text-[0.625rem] ${look} ${className}`}>
       {category.name}
     </span>
   );
@@ -21,7 +21,7 @@ export function CategoryPill({ category, glass = true, className = "" }: { categ
 /** Small category label with a gradient dot, used on cards. */
 export function CategoryLabel({ category }: { category: CategoryRef }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-[0.6875rem] font-bold tracking-wide text-accent uppercase dark:text-link" style={categoryAccentStyle(category.slug)}>
+    <span className="inline-flex items-center gap-1.5 text-[0.625rem] font-bold tracking-[0.08em] text-accent uppercase 2xl:text-[0.6875rem] dark:text-link" style={categoryAccentStyle(category.slug)}>
       <span className="np-category-dot size-1.5 rounded-full" aria-hidden="true" />
       {category.name}
     </span>
@@ -31,7 +31,7 @@ export function CategoryLabel({ category }: { category: CategoryRef }) {
 export function NewBadge({ publishedAt }: { publishedAt: Date }) {
   const remainingSeconds = Math.max(0, (publishedAt.getTime() + 60 * 60 * 1000 - Date.now()) / 1000);
   return (
-    <span className="np-new-badge inline-flex items-center gap-1.5 rounded-full border border-white/55 bg-[#0b1552]/85 px-2.5 py-1 text-[0.625rem] font-extrabold tracking-[0.1em] text-white shadow-[0_3px_14px_rgb(0_0_0/0.24)] backdrop-blur-sm" style={{ "--np-new-ttl": `${remainingSeconds}s` } as CSSProperties}>
+    <span className="np-new-badge inline-flex items-center gap-1.5 rounded-full border border-white/55 bg-[#0b1552]/85 px-2 py-0.5 text-[0.625rem] font-extrabold tracking-[0.1em] text-white shadow-[0_3px_14px_rgb(0_0_0/0.24)] backdrop-blur-sm 2xl:px-2.5 2xl:py-1" style={{ "--np-new-ttl": `${remainingSeconds}s` } as CSSProperties}>
       <span className="np-new-dot size-1.5 rounded-full bg-[#ffdc80]" aria-hidden="true" />
       НОВО
     </span>
