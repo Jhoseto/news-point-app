@@ -1,11 +1,17 @@
 import "server-only";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { dirname, resolve, sep } from "node:path";
+import { loadRootEnv } from "@newspoint/db";
 import { readRemoteFile, remoteDiskFromEnv, remoteObjectPath, removeRemoteFile, writeRemoteFile } from "@newspoint/content/disk";
 
 const PREFIXES = ["news/", "users/", "podcasts/"] as const;
+// Test storage destinations are explicit fixtures; never fill them from the live .env.local.
+function loadMediaEnv() {
+  if (process.env.NODE_ENV !== "test") loadRootEnv();
+}
 
 export function mediaRoot(): string | null {
+  loadMediaEnv();
   const root = process.env.MEDIA_ROOT?.trim();
   return root || null;
 }
@@ -13,16 +19,18 @@ export function mediaRoot(): string | null {
 export function mediaFile(storageKey: string): string | null {
   const root = mediaRoot();
   if (!root) return null;
+  if (/[\\\u0000-\u001f\u007f]/u.test(storageKey)) return null;
   if (!storageKey.startsWith("news/") && !storageKey.startsWith("users/") && !storageKey.startsWith("podcasts/")) return null;
   const parts = storageKey.split("/");
   if (parts.some((part) => !part || part === "." || part === "..")) return null;
-  const full = resolve(root, ...parts);
-  const rootResolved = resolve(root);
-  if (full !== rootResolved && !full.startsWith(rootResolved + "/")) return null;
+  const full = resolve(/* turbopackIgnore: true */ root, ...parts);
+  const rootResolved = resolve(/* turbopackIgnore: true */ root);
+  if (full !== rootResolved && !full.startsWith(rootResolved + sep)) return null;
   return full;
 }
 
 export async function writeMediaFile(storageKey: string, bytes: Buffer): Promise<void> {
+  loadMediaEnv();
   const remote = remoteDiskFromEnv();
   if (remote) {
     await writeRemoteFile(remote, storageKey, bytes, PREFIXES);
@@ -35,6 +43,9 @@ export async function writeMediaFile(storageKey: string, bytes: Buffer): Promise
 }
 
 export async function readMediaFile(storageKey: string): Promise<Buffer | null> {
+  // /admin is proxied to Studio: its first image request may precede any web DB/page request.
+  // Load root storage settings here instead of depending on getDb() to initialize them.
+  loadMediaEnv();
   const origin = (process.env.MEDIA_ORIGIN ?? "").trim().replace(/\/+$/, "");
   if (origin && remoteObjectPath("/safe", storageKey, ["news/"])) {
     const encoded = storageKey.split("/").map((part) => encodeURIComponent(part)).join("/");
@@ -50,13 +61,14 @@ export async function readMediaFile(storageKey: string): Promise<Buffer | null> 
   const path = mediaFile(storageKey);
   if (!path) return null;
   try {
-    return await readFile(path);
+    return await readFile(/* turbopackIgnore: true */ path);
   } catch {
     return null;
   }
 }
 
 export async function removeMediaFile(storageKey: string): Promise<void> {
+  loadMediaEnv();
   const remote = remoteDiskFromEnv();
   if (remote) {
     await removeRemoteFile(remote, storageKey, PREFIXES);
