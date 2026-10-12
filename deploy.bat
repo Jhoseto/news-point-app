@@ -19,33 +19,7 @@ if not exist "%KEY%" (
 
 echo [1/4] Packing the current local source...
 if exist "%ARCHIVE%" del /f /q "%ARCHIVE%"
-tar -czf "%ARCHIVE%" ^
-  --exclude=node_modules ^
-  --exclude=.next ^
-  --exclude=.git ^
-  --exclude=.turbo ^
-  --exclude=.pnpm-store ^
-  --exclude=logs ^
-  --exclude=.env.local ^
-  --exclude=.env.tunnel ^
-  --exclude=.cursor ^
-  --exclude=.claude ^
-  --exclude=.codex ^
-  --exclude=.gemini ^
-  --exclude=.playwright-mcp ^
-  --exclude=.tts-cache ^
-  --exclude=.tts-voices ^
-  --exclude=.shots ^
-  --exclude=coverage ^
-  --exclude=playwright-report ^
-  --exclude=test-results ^
-  --exclude=blob-report ^
-  --exclude=out ^
-  --exclude=tests/reports ^
-  --exclude=docs/references ^
-  --exclude=docs/review ^
-  --exclude=*.tsbuildinfo ^
-  -C "%~dp0." .
+node scripts\pack-deploy-archive.mjs "%ARCHIVE%"
 if errorlevel 1 (
   echo Pack failed.
   pause
@@ -69,6 +43,13 @@ tar -tzf "%ARCHIVE%" >nul
 if errorlevel 1 (
   echo Pack produced a truncated or unreadable archive. Deploy stopped.
   echo Delete "%ARCHIVE%" and retry. If it keeps failing, close editors locking files under the repo.
+  pause
+  exit /b 1
+)
+
+node scripts\verify-deploy-archive.mjs "%ARCHIVE%"
+if errorlevel 1 (
+  echo Archive source verification failed. Upload skipped; the live site was not changed.
   pause
   exit /b 1
 )
