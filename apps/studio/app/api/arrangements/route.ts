@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../lib/audit";
 import { z } from "zod";
 import { arrangementDocumentSchema } from "@newspoint/content";
 import { editorMutation } from "@/lib/api";
@@ -28,7 +29,7 @@ const bodySchema = z.discriminatedUnion("action", [
   }).strict(),
 ]);
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   return editorMutation(request, bodySchema, async (staff, input) => {
     if (input.action === "save") {
       await saveArrangement(staff, input.pageKey, input.document, input.note);
@@ -43,3 +44,5 @@ export async function POST(request: Request) {
     return { placed: true };
   });
 }
+
+export const POST = withStaffAudit(handlePOST);

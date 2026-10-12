@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../lib/audit";
 import { z } from "zod";
 import { triggerRevalidate } from "@newspoint/content";
 import { podcastsReady, setPodcastStatus, updatePodcastCopy, PodcastError } from "@newspoint/db/podcasts";
@@ -30,7 +31,7 @@ async function refresh(slug: string | null) {
   return result.reason === "ok";
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: { message: "Заявката трябва да идва от Studio." } }, 403);
   const staff = await staffFromRequest(request);
   if (!staff) return json({ error: { message: "Влезте отново." } }, 401);
@@ -56,3 +57,5 @@ export async function POST(request: Request) {
     return json({ error: { message: "Записът не мина." } }, 503);
   }
 }
+
+export const POST = withStaffAudit(handlePOST);

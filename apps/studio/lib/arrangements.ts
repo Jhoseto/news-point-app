@@ -1,3 +1,4 @@
+import { auditEvidence } from "./audit-context";
 import "server-only";
 import { and, desc, eq, ilike, inArray, sql } from "@newspoint/db/orm";
 import {
@@ -128,6 +129,7 @@ export async function saveArrangement(staff: Staff, pageKey: string, document: A
   const previous = existing ? readDocument(existing.document) : emptyArrangement();
   const stamped = stamp(clean, previous, staff.name);
   const trimmedNote = note.trim().slice(0, 400);
+  auditEvidence({ document: previous, note: existing?.note ?? "" }, { document: stamped, note: trimmedNote });
   if (existing) {
     await db.update(pageArrangements).set({ document: stamped, note: trimmedNote, placedBy: staff.id }).where(eq(pageArrangements.id, existing.id));
     return;
@@ -149,6 +151,7 @@ export async function publishArrangement(staff: Staff, pageKey: string): Promise
     if (!draft) throw new EditorError(422, "not_ready", "Първо запазете подреждането.");
     const [current] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "published"))).for("update").limit(1);
     if (current) await tx.update(pageArrangements).set({ status: "history" }).where(eq(pageArrangements.id, current.id));
+    auditEvidence({ document: current?.document ?? emptyArrangement(), note: current?.note ?? "" }, { document: draft.document, note: draft.note });
     await tx.insert(pageArrangements).values({
       pageKey: page.key,
       status: "published",
@@ -185,6 +188,7 @@ export async function revertArrangement(staff: Staff, pageKey: string, historyId
     if (!history) throw new EditorError(404, "not_found", "Това подреждане вече го няма.");
     const [current] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "published"))).for("update").limit(1);
     if (current) await tx.update(pageArrangements).set({ status: "history" }).where(eq(pageArrangements.id, current.id));
+    auditEvidence({ document: current?.document ?? emptyArrangement(), note: current?.note ?? "" }, { document: history.document, note: history.note });
     await tx.insert(pageArrangements).values({
       pageKey: page.key,
       status: "published",

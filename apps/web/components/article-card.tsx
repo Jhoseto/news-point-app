@@ -187,6 +187,11 @@ export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummar
           <h3 className="text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </h3>
+          {article.excerpt ? (
+            <p className="line-clamp-6 text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
+              {article.excerpt}
+            </p>
+          ) : null}
           <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
             <span className="truncate text-xs font-semibold text-muted">{article.authorName}</span>
             <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-link">Прочети <ArrowRightIcon width={14} height={14} /></span>

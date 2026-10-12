@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../../../lib/audit";
 import { studioOrigins } from "@/lib/auth";
 import { ensureMediaVariants } from "@/lib/ensure-media-variants";
 import { staffFromRequest } from "@/lib/session";
@@ -5,7 +6,7 @@ import { staffFromRequest } from "@/lib/session";
 export const runtime = "nodejs";
 
 /** Ensure an archive media asset has the responsive WebP ladder before use. */
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) {
     return Response.json({ error: { message: "Невалиден източник." } }, { status: 403, headers: { "cache-control": "no-store" } });
   }
@@ -25,3 +26,5 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export const POST = withStaffAudit(handlePOST);

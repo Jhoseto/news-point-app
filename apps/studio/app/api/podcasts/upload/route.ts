@@ -1,3 +1,5 @@
+import { withStaffAudit } from "../../../../lib/audit";
+import { auditFacts } from "../../../../lib/audit-context";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PODCAST_AUDIO_MAX_BYTES, inspectMp3, podcastSlug } from "@newspoint/content";
 import { insertPodcast, podcastsReady } from "@newspoint/db/podcasts";
@@ -18,7 +20,7 @@ function storageKey(extension: "webp" | "mp3") {
   return `podcasts/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${extension}`;
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: { message: "Заявката трябва да идва от Studio." } }, 403);
   const staff = await staffFromRequest(request);
   if (!staff) return json({ error: { message: "Влезте отново." } }, 401);
@@ -41,6 +43,7 @@ export async function POST(request: Request) {
   const audioBytes = Buffer.from(await audio.arrayBuffer());
   const inspected = inspectMp3(audioBytes);
   if (!inspected) return json({ error: { message: "Файлът не е валиден MP3." } }, 400);
+  auditFacts({ entityLabel: title, coverFile: cover.name.slice(0, 240), audioFile: audio.name.slice(0, 240), audioBytes: audio.size, durationSec: inspected.durationSec, publish });
 
   let coverKey = "";
   let audioKey = "";
@@ -67,3 +70,5 @@ export async function POST(request: Request) {
     return json({ error: { message } }, 400);
   }
 }
+
+export const POST = withStaffAudit(handlePOST);

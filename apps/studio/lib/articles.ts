@@ -1,4 +1,5 @@
 import "server-only";
+import { auditActive, auditEvidence } from "./audit-context";
 import { isDeepStrictEqual } from "node:util";
 import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
 import { articleBody, resolveMediaUrl, sofiaWallToUtc, utcToSofiaWall, RESERVED_ARTICLE_SLUGS, type ArticleBody } from "@newspoint/content";
@@ -47,6 +48,11 @@ export class EditorError extends Error {
 const RESERVED_SLUGS = RESERVED_ARTICLE_SLUGS;
 
 const draftPath = (id: string) => `/draft/${id}/`;
+
+function publicAuditState(row: typeof articles.$inferSelect) {
+  const { title, slug, path, excerpt, body, primaryCategoryId, heroMediaId, heroEmbedUrl, authorKind, authorUserId, authorName, isPublic, listenEnabled, publishedRevision, publishedAt, scheduledPublishAt } = row;
+  return { title, slug, path, excerpt, body, primaryCategoryId, heroMediaId, heroEmbedUrl, authorKind, authorUserId, authorName, isPublic, listenEnabled, publishedRevision, publishedAt, scheduledPublishAt };
+}
 
 export interface Draft {
   title: string;
@@ -359,6 +365,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       if (requestedViews.viewSeed !== storedViews.viewSeed || requestedViews.viewTarget !== storedViews.viewTarget || intervalToSeconds(requestedViews.viewEvery, requestedViews.viewUnit) !== intervalToSeconds(storedViews.viewEvery, storedViews.viewUnit) || (await revisionListen(tx, id, 1) ?? existing.listenEnabled) !== (draft.listenEnabled ?? true) || (!existing.publishedAt && existing.scheduledPublishAt?.getTime() !== scheduleInstant(draft.publishAtSofia)?.getTime())) {
         throw new EditorError(409, "creation_id_reused", "Черновата е създадена с други настройки. Отворете записания материал.");
       }
+      auditEvidence(null, null); // Idempotent retry: no new content was written.
       return { id, revision: 1 };
     }
     await validateMedia(tx, draft, body);
@@ -420,6 +427,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
     await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
     const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
+    const auditBefore = auditActive() ? { draft: { ...toDraft(latest?.revision ?? article).draft, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
@@ -443,6 +451,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       .where(eq(articles.id, id));
     await saveViewSettings(tx, id, draft);
     if (article.isPublic) await refreshViewSchedule(tx, id);
+    if (auditBefore) auditEvidence(auditBefore, { draft: { ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
     return { revision: number };
   }).then(async (saved) => {
     await publishDueScheduled(getDb(), id);
@@ -478,6 +487,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       if (!previous || previous.articleId !== id || previous.revision !== revision || (previousSettings?.listenEnabled !== undefined && previousSettings.listenEnabled !== listenEnabled)) {
         throw new EditorError(409, "idempotency_key_reused", "Ключът вече е използван за друга публикация.");
       }
+      auditEvidence(null, null);
       return { ...(previous.outcome as PublishOutcome), duplicate: true };
     }
 
@@ -554,7 +564,8 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         updatedAt: new Date(),
       })
       .where(eq(articles.id, id))
-      .returning({ path: articles.path });
+      .returning();
+    if (auditActive()) auditEvidence(publicAuditState(article), publicAuditState(updated!));
 
     await tx.delete(articleCategories).where(eq(articleCategories.articleId, id));
     await tx.insert(articleCategories).values({ articleId: id, categoryId: category.id });
@@ -577,12 +588,13 @@ export async function setArticleVisibility(id: string, visible: boolean, actor?:
   return getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
-    if (article.isPublic === visible) return { isPublic: article.isPublic };
+    if (article.isPublic === visible) { auditEvidence({ isPublic: article.isPublic }, { isPublic: article.isPublic }); return { isPublic: article.isPublic }; }
     if (visible && !article.publishedAt) {
       throw new EditorError(422, "not_published", "Статията още не е публикувана. Пуснете я от редактора.");
     }
     const version = article.version + 1;
     await tx.update(articles).set({ isPublic: visible, version, updatedAt: new Date() }).where(eq(articles.id, id));
+    auditEvidence({ isPublic: article.isPublic, title: article.title }, { isPublic: visible, title: article.title });
     const [category] = article.primaryCategoryId
       ? await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
       : [];

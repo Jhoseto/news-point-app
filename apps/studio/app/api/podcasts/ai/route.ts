@@ -1,3 +1,5 @@
+import { withStaffAudit } from "../../../../lib/audit";
+import { auditEvidence } from "../../../../lib/audit-context";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { AI_PODCAST_VOICES, aiPodcastSegment, aiPodcastSettings, articleText, prepareSegmentEdits, scriptWords, targetWords, type AiPodcastSegment, type AiPodcastSource } from "@newspoint/content";
@@ -50,7 +52,7 @@ async function activeJob(projectId: string) {
   return Boolean(row);
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const staff = await staffFromRequest(request);
   if (!staff) return json({ error: "Влезте отново." }, 401);
   if (!["editor", "admin", "master_admin"].includes(staff.role)) return json({ error: "Нямате достъп." }, 403);
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
   return json({ projects: rows });
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: "Заявката трябва да идва от Studio." }, 403);
   const staff = await staffFromRequest(request);
   if (!staff || !["editor", "admin", "master_admin"].includes(staff.role)) return json({ error: "Нямате достъп." }, 403);
@@ -149,8 +151,10 @@ export async function POST(request: Request) {
       const [asset] = await getDb().select().from(aiPodcastAssets).where(eq(aiPodcastAssets.id, input.assetId)).limit(1);
       if (!asset || asset.kind !== "music" || !asset.preset) return json({ error: "Невалидна музика." }, 404);
       await getDb().transaction(async (tx) => {
+        const previous = await tx.select({ id: aiPodcastAssets.id, status: aiPodcastAssets.status }).from(aiPodcastAssets).where(and(eq(aiPodcastAssets.kind, "music"), eq(aiPodcastAssets.preset, asset.preset!))).for("update");
         await tx.update(aiPodcastAssets).set({ status: "candidate" }).where(and(eq(aiPodcastAssets.kind, "music"), eq(aiPodcastAssets.preset, asset.preset!)));
         await tx.update(aiPodcastAssets).set({ status: "approved" }).where(eq(aiPodcastAssets.id, asset.id));
+        auditEvidence({ music: previous }, { music: previous.map(row => ({ id: row.id, status: row.id === asset.id ? "approved" : "candidate" })) });
       });
       return json({ ok: true });
     }
@@ -248,3 +252,6 @@ export async function POST(request: Request) {
     return json({ error: "Действието не успя. Проверете настройките и опитайте отново." }, 503);
   }
 }
+
+export const GET = withStaffAudit(handleGET);
+export const POST = withStaffAudit(handlePOST);

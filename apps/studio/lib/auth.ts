@@ -1,3 +1,4 @@
+import { identifyAuditActor } from "./audit-context";
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -92,7 +93,11 @@ function createAuth() {
       after: createAuthMiddleware(async (ctx) => {
         if (ctx.path !== SIGN_IN) return;
         const email = String(ctx.body?.email ?? "");
-        if (ctx.context.newSession) guard.recordSuccess(email);
+        if (ctx.context.newSession) {
+          guard.recordSuccess(email);
+          const user = ctx.context.newSession.user;
+          if (staffRoles.includes(user.role as typeof staffRoles[number])) identifyAuditActor({ id: user.id, name: user.name, email: user.email, role: user.role as typeof staffRoles[number] });
+        }
         else guard.recordFailure(email);
       }),
     },

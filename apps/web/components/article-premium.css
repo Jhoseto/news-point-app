@@ -417,6 +417,10 @@
 /* End-of-story navigation: compact chronological neighbours, not a category promo. */
 .np-article-end { margin-top: clamp(3rem, calc(7 * var(--np-desktop-vw, 1vw)), 5rem); }
 .np-article-neighbours { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
+/* Unlayered grid display overrides Tailwind's hidden utility on mobile. */
+@media (max-width: 63.999rem) {
+  .np-article-neighbours { display: none; }
+}
 .np-article-neighbour {
   position: relative;
   display: grid;

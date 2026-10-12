@@ -1,3 +1,5 @@
+import { withStaffAudit } from "../../../../../lib/audit";
+import { auditFacts } from "../../../../../lib/audit-context";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb, mediaAssets, mediaPresentations } from "@newspoint/db";
@@ -8,7 +10,7 @@ import { prepareUploadedPhotoWithVariants, UPLOADED_PHOTO_MAX_BYTES } from "../.
 
 export const runtime = "nodejs";
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) {
     return Response.json({ error: { message: "Невалиден източник." } }, { status: 403, headers: { "cache-control": "no-store" } });
   }
@@ -37,6 +39,7 @@ export async function POST(request: Request) {
     const alt = String(form.get("alt") ?? "").trim().slice(0, 240);
     if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Изберете валидна снимка.");
     if (file.size > UPLOADED_PHOTO_MAX_BYTES) throw new Error("Снимката трябва да е до 25 MB.");
+    auditFacts({ fileName: file.name.slice(0, 240), uploadedBytes: file.size, fileType: file.type, alt });
     const photo = await prepareUploadedPhotoWithVariants(Buffer.from(await file.arrayBuffer())).catch(() => { throw new Error("Файлът не е валидна или поддържана снимка."); });
     const now = new Date();
     const base = randomUUID();
@@ -96,3 +99,5 @@ export async function POST(request: Request) {
     return Response.json({ error: { message: known ? message : "Качването не беше успешно. Опитайте отново." } }, { status: message === "Снимката трябва да е до 25 MB." ? 413 : known ? 400 : 500, headers: { "cache-control": "no-store" } });
   }
 }
+
+export const POST = withStaffAudit(handlePOST);

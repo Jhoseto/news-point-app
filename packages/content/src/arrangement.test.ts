@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activePlacement, duplicateArticleIds, emptyArrangement, type ArrangementDocument } from "./arrangement";
+import { activePlacement, duplicateArticleIds, emptyArrangement, nextArrangementChangeAt, type ArrangementDocument } from "./arrangement";
 
 const article = "6f1e2c8a-1b2d-4c3e-9a10-111111111111";
 const next = "6f1e2c8a-1b2d-4c3e-9a10-222222222222";
@@ -57,5 +57,31 @@ describe("duplicateArticleIds", () => {
       },
     };
     expect(duplicateArticleIds(doc, now, visible)).toEqual([article]);
+  });
+});
+
+describe("nextArrangementChangeAt", () => {
+  const now = Date.parse("2026-09-29T11:00:00Z");
+  const end = "2026-09-29T12:00:00Z";
+  const item = (articleId: string, startsAt: string | null, endsAt: string | null) => ({ articleId, startsAt, endsAt, placedBy: "", placedAt: null });
+
+  it("returns the exact expiry and then no boundary for an empty automatic slot", () => {
+    const doc = document([item(article, null, end)]);
+    expect(nextArrangementChangeAt(doc, now, visible)).toBe(Date.parse(end));
+    expect(nextArrangementChangeAt(doc, Date.parse(end), visible)).toBeNull();
+  });
+  it("follows a queued start after the current story expires", () => {
+    const doc = document([item(article, null, end), item(next, "2026-09-29T13:00:00Z", null)]);
+    expect(nextArrangementChangeAt(doc, now, visible)).toBe(Date.parse(end));
+    expect(nextArrangementChangeAt(doc, Date.parse(end), visible)).toBe(Date.parse("2026-09-29T13:00:00Z"));
+  });
+  it("does not refresh for an inaccessible queue behind a permanent story", () => {
+    expect(nextArrangementChangeAt(document([item(article, null, null), item(next, end, null)]), now, visible)).toBeNull();
+  });
+  it("ignores hidden stories and chooses the earliest real change across slots", () => {
+    const doc = document([item(article, null, end)]);
+    doc.slots["support-0"] = { items: [item(next, "2026-09-29T11:30:00Z", null)] };
+    expect(nextArrangementChangeAt(doc, now, visible)).toBe(Date.parse("2026-09-29T11:30:00Z"));
+    expect(nextArrangementChangeAt(doc, now, new Set())).toBeNull();
   });
 });

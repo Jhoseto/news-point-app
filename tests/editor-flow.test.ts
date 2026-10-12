@@ -10,6 +10,9 @@ import { publishDueScheduled } from "../packages/db/src/scheduled-publish";
 import { editorMutation } from "../apps/studio/lib/api";
 import { draftInput } from "../apps/studio/lib/editor/input";
 import type { DraftInput } from "../apps/studio/lib/editor/input";
+import { auditContext } from "../apps/studio/lib/audit-context";
+import { auditChanges } from "../apps/studio/lib/audit-metadata";
+import { placeArticle, publishArrangement, revertArrangement } from "../apps/studio/lib/arrangements";
 
 const holder = vi.hoisted(() => ({ db: null as ReturnType<typeof drizzle<typeof schema>> | null }));
 vi.mock("@newspoint/db", async () => ({ ...await vi.importActual<typeof import("@newspoint/db")>("@newspoint/db"), getDb: () => holder.db }));
@@ -34,7 +37,7 @@ beforeAll(async () => {
   adapt(db as never);
   const transaction = db.transaction.bind(db);
   db.transaction = ((callback: (tx: unknown) => unknown) => transaction(async tx => { adapt(tx as never); return callback(tx); })) as typeof db.transaction;
-  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 21, 24, 25, 26, 27, 30]);
+  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 20, 21, 24, 25, 26, 27, 30]);
   for (const file of readdirSync("packages/db/migrations").sort()) if (included.has(Number(file.slice(0, 2)))) await pg.exec(readFileSync(`packages/db/migrations/${file}`, "utf8"));
   await pg.exec(`insert into staff_users(id,name,email,role) values('qa-editor','QA Editor','qa@example.invalid','editor');`);
   await db.insert(schema.categories).values({ id: categoryId, slug: "qa-rubric", path: "/qa-rubric/", name: "QA", kind: "section" });
@@ -63,6 +66,43 @@ describe("editor API permissions and validation", () => {
 });
 
 describe("article editor transactions", () => {
+  it("captures exact committed revision content and view/listening settings for employee history", async () => {
+    const input = draft({ viewSeed: 15, viewEvery: 1, viewUnit: "minutes", viewTarget: 20 });
+    const created = await createArticle(staff, input);
+    const context: Parameters<typeof auditContext.run>[0] = { id: randomUUID(), actor: { ...staff, email: "qa@example.invalid" }, details: {} };
+    const next = { ...input, title: "QA променено заглавие", body: [{ type: "paragraph" as const, html: "QA нов текст" }], listenEnabled: false, viewEvery: 2 };
+    await auditContext.run(context, () => saveRevision(staff, created.id, 1, next));
+    expect(context.evidence).toMatchObject({ before: { revision: 1, draft: { title: input.title, listenEnabled: true, viewEvery: 1 } }, after: { revision: 2, draft: { title: next.title, body: next.body, listenEnabled: false, viewEvery: 2 } } });
+    const changes = auditChanges(context.evidence!.before, context.evidence!.after);
+    expect(changes).toContainEqual({ field: "draft.title", before: input.title, after: next.title });
+    expect(changes.some(change => change.field === "draft.bodyText" && String(change.after).includes("QA нов текст"))).toBe(true);
+  });
+  it("captures placement deadlines, publication and reversion with exact documents", async () => {
+    const created = await createArticle(staff, draft());
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    const context: Parameters<typeof auditContext.run>[0] = { id: randomUUID(), actor: { ...staff, email: "qa@example.invalid" }, details: {} };
+    await auditContext.run(context, () => placeArticle({ ...staff, email: "qa@example.invalid" }, { pageKey: "home", slot: "hero", articleId: created.id, hours: 3 }));
+    expect(context.evidence?.after).toMatchObject({ document: { slots: { hero: { items: [{ articleId: created.id, endsAt: expect.any(String) }] } } } });
+    await auditContext.run(context, () => publishArrangement({ ...staff, email: "qa@example.invalid" }, "home"));
+    const first = (await db.select().from(schema.pageArrangements).where(eq(schema.pageArrangements.status, "published")))[0]!;
+    await auditContext.run(context, () => placeArticle({ ...staff, email: "qa@example.invalid" }, { pageKey: "home", slot: "hero", articleId: created.id, hours: null }));
+    await auditContext.run(context, () => publishArrangement({ ...staff, email: "qa@example.invalid" }, "home"));
+    expect(auditChanges(context.evidence!.before, context.evidence!.after).some(change => change.field.includes("hero"))).toBe(true);
+    await auditContext.run(context, () => revertArrangement({ ...staff, email: "qa@example.invalid" }, "home", first.id));
+    expect(context.evidence?.after).toMatchObject({ document: first.document });
+  });
+  it("records the publication and visibility actually written, with no invented change on retries", async () => {
+    const input = draft(); const created = await createArticle(staff, input); const key = randomUUID();
+    const context: Parameters<typeof auditContext.run>[0] = { id: randomUUID(), actor: { ...staff, email: "qa@example.invalid" }, details: {} };
+    await auditContext.run(context, () => publishRevision(staff, created.id, 1, key, true));
+    expect(context.evidence).toMatchObject({ before: { isPublic: false, publishedRevision: null }, after: { isPublic: true, publishedRevision: 1, title: input.title, body: input.body } });
+    await auditContext.run(context, () => publishRevision(staff, created.id, 1, key, true));
+    expect(context.evidence).toEqual({ before: null, after: null });
+    await auditContext.run(context, () => setArticleVisibility(created.id, false, staff));
+    expect(context.evidence).toMatchObject({ before: { isPublic: true }, after: { isPublic: false } });
+    await auditContext.run(context, () => setArticleVisibility(created.id, false, staff));
+    expect(auditChanges(context.evidence!.before, context.evidence!.after)).toEqual([]);
+  });
   it("preserves unrecognized archive bodies while saving metadata and refuses a replacement", async () => {
     const input = draft(); const created = await createArticle(staff, input);
     const archive = [{ type: "future_archive_block", html: "Original archive" }];

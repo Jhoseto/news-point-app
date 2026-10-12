@@ -23,6 +23,7 @@ const NAV = [
   { href: "/stories", label: "Теми с продължение", icon: "M4 7h16M4 12h12M4 17h8" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
+const LOGS_LINK = { href: "/logs", label: "Logs", icon: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01" };
 
 function Icon({ d, size = 18 }: { d: string; size?: number }) {
   return (
@@ -46,11 +47,11 @@ function navClass(collapsed: boolean) {
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
 export function StudioShell({ user, webUrl, canManageUsers, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
-  const nav = NAV;
-  const mobileNav = canManageUsers ? [...NAV, USERS_LINK] : NAV;
+  const nav = canManageUsers ? [...NAV, LOGS_LINK] : NAV;
+  const mobileNav = canManageUsers ? [...NAV, LOGS_LINK, USERS_LINK] : NAV;
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
-  const desk = pathname === "/" || pathname === "/arrange";
+  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs";
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [collapsed, setCollapsed] = useState(wide);

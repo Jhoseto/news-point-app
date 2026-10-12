@@ -1,7 +1,8 @@
+import { withStaffAudit } from "../../../../lib/audit";
 import { listMediaFolder, listMediaYears, mediaFolder, searchMediaLibrary } from "@/lib/media-library";
 import { staffFromRequest } from "@/lib/session";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const staff = await staffFromRequest(request);
   if (!staff) return Response.json({ error: { code: "unauthenticated" } }, { status: 401, headers: { "cache-control": "no-store" } });
   const url = new URL(request.url);
@@ -27,3 +28,5 @@ export async function GET(request: Request) {
   const page = await listMediaFolder(safe, offset);
   return Response.json(page, { headers: { "cache-control": "no-store" } });
 }
+
+export const GET = withStaffAudit(handleGET);

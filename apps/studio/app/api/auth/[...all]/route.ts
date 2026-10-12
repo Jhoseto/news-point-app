@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../../lib/audit";
 import { getAuth } from "@/lib/auth";
 import { BASE_PATH } from "@/lib/paths";
 
@@ -12,10 +13,13 @@ function withFullPath(request: Request): Request {
   return new Request(url, request);
 }
 
-export function GET(request: Request) {
+function handleGET(request: Request) {
   return getAuth().handler(withFullPath(request));
 }
 
-export function POST(request: Request) {
+function handlePOST(request: Request) {
   return getAuth().handler(withFullPath(request));
 }
+
+export const GET = withStaffAudit(handleGET);
+export const POST = withStaffAudit(handlePOST);

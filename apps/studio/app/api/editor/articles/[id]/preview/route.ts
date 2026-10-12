@@ -1,8 +1,9 @@
+import { withStaffAudit } from "../../../../../../lib/audit";
 import { z } from "zod";
 import { getPreview } from "@/lib/articles";
 import { staffFromRequest } from "@/lib/session";
 
-export async function GET(request: Request, context: RouteContext<"/api/editor/articles/[id]/preview">) {
+async function handleGET(request: Request, context: RouteContext<"/api/editor/articles/[id]/preview">) {
   const staff = await staffFromRequest(request);
   if (!staff) return Response.json({ error: { code: "unauthenticated" } }, { status: 401, headers: { "cache-control": "no-store" } });
   const { id } = await context.params;
@@ -14,3 +15,5 @@ export async function GET(request: Request, context: RouteContext<"/api/editor/a
     publishedAt: preview.publishedAt?.toISOString() ?? null,
   }, { headers: { "cache-control": "no-store" } });
 }
+
+export const GET = withStaffAudit(handleGET);

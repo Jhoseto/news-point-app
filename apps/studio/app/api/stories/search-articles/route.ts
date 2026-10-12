@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../../lib/audit";
 import { NextResponse } from "next/server";
 import { searchPublicArticlesForTheme } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
@@ -5,7 +6,7 @@ import { requireStaff } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /** GET /api/stories/search-articles?q=&limit=&offset= — public articles for picker. */
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const url = new URL(request.url);
   const q = url.searchParams.get("q") ?? "";
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50));
@@ -17,3 +18,5 @@ export async function GET(request: Request) {
     { headers: { "cache-control": "no-store" } },
   );
 }
+
+export const GET = withStaffAudit(handleGET);

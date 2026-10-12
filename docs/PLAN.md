@@ -63,7 +63,7 @@
 
 ### Миграции
 
-Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–30.
+Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–31.
 
 Не се пускат на този Postgres: 11 и 15. Те пишат в Supabase Storage и тук нямат смисъл. Профилните снимки и LivePoint снимките вече са на диска на сървъра.
 
@@ -82,6 +82,8 @@
 29 е `story_theme_slug_history`: таблица `story_theme_slugs` + trigger `story_theme_slug_reservation` за запазване на всички URL-и на теми. Приложена е на 08.10 по изрична заявка на Коце.
 
 30 е `editor_revisions`: `article_revisions.listen_enabled` + таблица `editor_qa_articles` + `enqueue_reader_push` пропуска QA статии. Приложена е на 08.10 по изрична заявка на Коце.
+
+31 е `studio_audit_logs`: журнал на Studio действията (`studio_audit_logs`, `pg_trgm`, immutable trigger). Приложена е на 12.10 по изрична заявка на Коце върху `np2_newspoint2` през тунела `127.0.0.1:5433`.
 
 11.10 — PWA/mobile: хамбургерът и бутонът „Рубрики“ не отваряха листа, защото exclusive Client Hints shell вече не монтира `RubricsNav` на телефон. Листът е изнесен в `MobileRubricsSheet` и се монтира от `MobileChromeIsland`.
 
@@ -661,3 +663,9 @@ NewsPodcast, 30.09: реализирани са панел под бутона �
 08.10 — **Корекция по изричното настояване на Коце: запазва се професионалната компактна лента като в текстов редактор.** Едрите текстови бутони във VisualArticleEditor са заменени с29px B/I/U/S и SVG инструменти, разграничени групи, два реда за форматиране и отделен малък ред за Добави медия/Embed. Стилът възстановява познатата светлосива WordPress лента; няма едри карти/пълни надписи за всяка команда. Подравняването има четири отделни икони с видимо активно състояние. Българските tooltip/ARIA имена, клавиатурният фокус и съществуващите Tiptap команди са запазени. Блоковите действия също използват компактни икони. Помощта остава достъпна и в read-only режим; aria-pressed се задава само на toggle действията.
 
 Променени файлове: `apps/studio/components/visual-article-editor.tsx`, `visual-article-editor.css` и новият `editor-toolbar-icons.tsx`; без промяна на API/body/database. Реален браузър:1440×900 —118px цяла лента с media реда,29×29px инструменти;320×740 —214px,без document/toolbar преливане. Подравняване center→left→undo center и help диалог са проверени; QA версия12 остава чиста, няма нов запис/публикуване.33 съществуващи editor/selection/embed теста са успешни; Studio TypeScript и production build са успешни. Локални доказателства: `tests/reports/article-editor/toolbar-restored-desktop.png` и `toolbar-restored-proof.json`. Следващото функционално приемане остава описаното по-горе след съвместим origin build.
+
+12.10 — NewsPodcast „За епизода“: корицата вече не е принудителен квадрат и не се реже от padding/`overflow`. Показва се цялата снимка в естествено съотношение (`object-fit: contain`, `height: auto`); текстът вдясно има тънък скролбар. Само `apps/web/app/globals.css`.
+
+12.10 — По изрична заявка на Коце е приложена `packages/db/migrations/31_studio_audit_logs.sql` върху `np2_newspoint2` през `127.0.0.1:5433`. Потвърдени: таблица `studio_audit_logs`, trigger `studio_audit_immutable`, функция `protect_studio_audit_log`, extension `pg_trgm`. Скрипт: `packages/db/src/scripts/apply-migration-31.ts`. Без commit или push.
+
+12.10 — Studio `/admin/` връщаше празен 200 заради Next.js basePath + catch-all matcher в `proxy.ts` (root се пропускаше). Добавен е изричен matcher за `/`; audit записът е в try/catch. Проверено: `/admin/` → 307 към `/admin/login/`.

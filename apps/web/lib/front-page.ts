@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import {
   CATEGORY_NEXT_COUNT,
@@ -6,6 +7,7 @@ import {
   activePlacement,
   arrangementDocumentSchema,
   emptyArrangement,
+  nextArrangementChangeAt,
   referencedArticleIds,
   type ArrangementDocument,
 } from "@newspoint/content";
@@ -24,7 +26,14 @@ export async function loadPublishedArrangement(pageKey: string): Promise<Arrange
   return parsed.success ? parsed.data : emptyArrangement();
 }
 
+const readArrangement = unstable_cache(async (pageKey: string) => {
+  const document = await loadPublishedArrangement(pageKey);
+  const pinned = await getSummariesByIds(referencedArticleIds(document));
+  return { document, pinned: [...pinned] };
+}, ["public-arrangement-inputs"], { revalidate: 60, tags: ["public-listings"] });
+
 export async function homeArrangement(): Promise<{ document: ArrangementDocument; pinned: Map<string, ArticleSummary> }> {
+  // The homepage caches these inputs as one snapshot; avoid nesting two TTLs.
   const document = await loadPublishedArrangement(HOME_PAGE_KEY);
   const pinned = await getSummariesByIds(referencedArticleIds(document));
   return { document, pinned };
@@ -34,12 +43,15 @@ export interface CategoryFront {
   pins: ArticleSummary[];
   pinnedIds: string[];
   excludedIds: string[];
+  nextChangeAt: number | null;
 }
 
 /** Active first-page pins for a rubric. Later archive pages skip these ids so a pinned story is not repeated. */
 export async function categoryFront(categoryId: string, now: number): Promise<CategoryFront> {
-  const document = await loadPublishedArrangement(categoryId);
-  const pinned = await getSummariesByIds(referencedArticleIds(document));
+  const snapshot = await readArrangement(categoryId);
+  const document = snapshot.document;
+  const pinned = new Map(snapshot.pinned.map(([id, article]) => [id,
+    article.publishedAt instanceof Date ? article : { ...article, publishedAt: new Date(article.publishedAt) }]));
   const visible = new Set(pinned.keys());
   const pins: ArticleSummary[] = [];
   const lead = activePlacement(document.slots.lead, now, visible);
@@ -50,5 +62,6 @@ export async function categoryFront(categoryId: string, now: number): Promise<Ca
     const article = item ? pinned.get(item.articleId) : undefined;
     if (article && !pins.some((pin) => pin.id === article.id)) pins.push(article);
   }
-  return { pins, pinnedIds: pins.map((article) => article.id), excludedIds: document.excluded };
+  return { pins, pinnedIds: pins.map((article) => article.id), excludedIds: document.excluded,
+    nextChangeAt: nextArrangementChangeAt(document, now, visible) };
 }

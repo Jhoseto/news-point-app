@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../../../lib/audit";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
@@ -11,7 +12,7 @@ import { staffFromRequest } from "@/lib/session";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const staff = await staffFromRequest(request);
   if (!staff) return new Response("Unauthorized", { status: 401 });
   if (!["editor", "admin", "master_admin"].includes(staff.role)) return new Response("Forbidden", { status: 403 });
@@ -37,3 +38,5 @@ export async function GET(request: Request) {
   const stream = localStat?.isFile() && local ? createReadStream(local, { start: plan.start, end: plan.end }) : openRemoteRange(remote!, key, ["podcasts/", "ai-podcasts/"], plan.start, plan.end - plan.start + 1);
   return new Response(Readable.toWeb(stream) as ReadableStream, { status: plan.status, headers: { ...plan.headers, "cache-control": "private, no-store" } });
 }
+
+export const GET = withStaffAudit(handleGET);

@@ -59,6 +59,7 @@ export function LiveUpdates() {
           return;
         }
         if (event.type === "layout.updated") {
+          window.dispatchEvent(new Event("np:public-content-updated"));
           const here = window.location.pathname;
           const same = event.path === "/" ? here === "/" : here.replace(/\/$/, "") === event.path.replace(/\/$/, "");
           if (same) startTransition(() => router.refresh());

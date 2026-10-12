@@ -1,3 +1,5 @@
+import { withStaffAudit } from "../../../../../lib/audit";
+import { auditEvidence, auditFacts } from "../../../../../lib/audit-context";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import sharp from "sharp";
@@ -11,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { "cache-control": "private, no-store" } }); }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: "Заявката трябва да идва от Studio." }, 403);
   const staff = await staffFromRequest(request);
   if (!staff) return json({ error: "Влезте отново." }, 401);
@@ -33,6 +35,8 @@ export async function POST(request: Request) {
     const date = new Date();
     const key = `podcasts/${date.getUTCFullYear()}/${String(date.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.webp`;
     await writeMediaFile(key, bytes);
+    auditFacts({ entityId: id, entityLabel: project.title ?? "", fileName: file.name, bytes: bytes.length });
+    auditEvidence({ coverKey: project.coverKey }, { coverKey: key });
     await getDb().transaction(async (tx) => {
       await tx.update(aiPodcastProjects).set({ coverKey: key, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, id));
       if (project.episodeId) await tx.update(podcasts).set({ coverKey: key, updatedAt: new Date() }).where(eq(podcasts.id, project.episodeId));
@@ -44,3 +48,5 @@ export async function POST(request: Request) {
     return json({ error: "Обложката не беше записана." }, 503);
   }
 }
+
+export const POST = withStaffAudit(handlePOST);

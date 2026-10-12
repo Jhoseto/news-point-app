@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../lib/audit";
 import { z } from "zod";
 import { triggerRevalidate } from "@newspoint/content";
 import { pollsReady, listPolls, pollDetails, savePoll, correctPoll, PollError } from "@newspoint/db/polls";
@@ -15,7 +16,7 @@ function failure(e: unknown) {
   return json({error:{code:"unavailable",message:"Анкетите временно не са достъпни."}},503);
 }
 async function ready() { if (!await pollsReady()) throw new PollError(503,"migration","Първо приложете миграция 16_polls.sql."); }
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   if (!await staffFromRequest(request)) return json({error:{message:"Влезте отново."}},401);
   try {
     await ready(); const url = new URL(request.url); const id=url.searchParams.get("id");
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
     return json(id ? await pollDetails(z.uuid().parse(id),page) : await listPolls(page));
   } catch(e) { return failure(e); }
 }
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({error:{message:"Заявката трябва да идва от Studio."}},403);
   const staff = await staffFromRequest(request);
   if (!staff) return json({error:{message:"Влезте отново."}},401);
@@ -40,3 +41,6 @@ export async function POST(request: Request) {
     return json({poll,refreshed: revalidateResult.reason === "ok"});
   } catch(e) { return failure(e); }
 }
+
+export const GET = withStaffAudit(handleGET);
+export const POST = withStaffAudit(handlePOST);

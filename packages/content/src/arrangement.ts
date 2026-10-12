@@ -187,6 +187,22 @@ export function activePlacement(slot: ArrangementSlot | undefined, now: number, 
   return null;
 }
 
+/** First future boundary that actually changes a public slot, respecting queue order. */
+export function nextArrangementChangeAt(document: ArrangementDocument, now: number, visible: ReadonlySet<string>): number | null {
+  let next: number | null = null;
+  for (const slot of Object.values(document.slots)) {
+    const boundaries = slot.items.flatMap((item) => [item.startsAt, item.endsAt])
+      .filter((value): value is string => value !== null).map(Date.parse)
+      .filter((at) => Number.isFinite(at) && at > now && (next === null || at < next));
+    for (const at of boundaries) {
+      if (activePlacement(slot, at - 1, visible)?.articleId !== activePlacement(slot, at, visible)?.articleId) {
+        next = next === null ? at : Math.min(next, at);
+      }
+    }
+  }
+  return next;
+}
+
 export function duplicateArticleIds(document: ArrangementDocument, now: number, visible: ReadonlySet<string>): string[] {
   const counts = new Map<string, number>();
   for (const slot of Object.values(document.slots)) {

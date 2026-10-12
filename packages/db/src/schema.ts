@@ -22,6 +22,34 @@ const timestamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
+/** Server-authenticated employee activity; identity snapshots survive account deletion. */
+export const studioAuditLogs = pgTable("studio_audit_logs", {
+  id: uuid("id").primaryKey(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  actorId: text("actor_id"),
+  actorName: text("actor_name").notNull().default(""),
+  actorEmail: text("actor_email").notNull().default(""),
+  actorRole: text("actor_role", { enum: ["editor", "admin", "master_admin"] }),
+  area: text("area").notNull(), action: text("action").notNull(), actionLabel: text("action_label").notNull(),
+  entityKind: text("entity_kind").notNull().default(""), entityId: text("entity_id").notNull().default(""), entityLabel: text("entity_label").notNull().default(""),
+  targetPath: text("target_path"),
+  outcome: text("outcome", { enum: ["pending", "success", "failure", "access"] }).notNull(),
+  method: text("method").notNull(), path: text("path").notNull(),
+  statusCode: integer("status_code"), durationMs: integer("duration_ms"),
+  ip: text("ip").notNull().default(""), userAgent: text("user_agent").notNull().default(""),
+  details: jsonb("details").$type<Record<string, unknown>>().notNull().default({}),
+  searchText: text("search_text").notNull(),
+}, (table) => [
+  index("studio_audit_time_idx").on(table.startedAt.desc(), table.id),
+  index("studio_audit_actor_time_idx").on(table.actorId, table.startedAt.desc()),
+  index("studio_audit_area_time_idx").on(table.area, table.startedAt.desc()),
+  index("studio_audit_action_time_idx").on(table.action, table.startedAt.desc()),
+  index("studio_audit_outcome_time_idx").on(table.outcome, table.startedAt.desc()),
+  index("studio_audit_entity_idx").on(table.entityKind, table.entityId, table.startedAt.desc()),
+  index("studio_audit_search_idx").using("gin", table.searchText.op("gin_trgm_ops")),
+]);
+
 export const categories = pgTable("categories", {
   id: uuid("id").primaryKey().defaultRandom(),
   wpId: integer("wp_id").unique(),
@@ -543,6 +571,7 @@ export const storyThemeSlugs = pgTable("story_theme_slugs", {
 }, (table) => [index("story_theme_slugs_theme_idx").on(table.themeId)]);
 
 export const schemaTables = {
+  studioAuditLogs,
   polls, pollVotes, pollRevisions,
   podcasts,
   aiPodcastProjects, aiPodcastAssets, aiPodcastJobs, aiPodcastAudit, aiPodcastVoiceSettings,

@@ -12,3 +12,7 @@
 import { vi } from "vitest";
 
 vi.mock("server-only", () => ({ default: {}, __esModule: true }));
+
+// Existing route tests exercise their original validation in isolation. Audit integration
+// tests explicitly unmock this boundary and use an isolated store; no QA activity is live.
+vi.mock("../apps/studio/lib/audit", () => ({ withStaffAudit: (handler: unknown) => handler }));

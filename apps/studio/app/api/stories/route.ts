@@ -1,3 +1,4 @@
+import { withStaffAudit } from "../../../lib/audit";
 import { z } from "zod";
 import { editorMutation } from "@/lib/api";
 import {
@@ -47,7 +48,7 @@ const bodySchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("replaceArticles"), themeId: z.uuid(), articleIds: z.array(z.uuid()).max(200) }).strict(),
 ]);
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   return editorMutation(request, bodySchema, async (staff, input) => {
     const resolvedStaff = staff ?? (await requireStaff());
     switch (input.action) {
@@ -108,3 +109,5 @@ export async function POST(request: Request) {
     }
   });
 }
+
+export const POST = withStaffAudit(handlePOST);

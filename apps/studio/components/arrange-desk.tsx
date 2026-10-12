@@ -12,6 +12,7 @@ import {
   HOME_TOP_THEMES_CAROUSEL_PREFIX,
   HOME_VOICE_CAROUSEL_PREFIX,
   activePlacement,
+  nextArrangementChangeAt,
   homeCarouselSlotKey,
   homeCarouselSlotPrefix,
   type HomeCarouselSlotPrefix,
@@ -119,6 +120,18 @@ export function ArrangeDesk({
   const duplicates = duplicateArticleIds(document, now, visible);
   const planned = planHomeSections(menu);
   const category = menu.find((item) => item.id === pageKey);
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const nextChangeAt = nextArrangementChangeAt(document, now, visible);
+    const timer = setTimeout(tick, Math.min(60_000, nextChangeAt === null ? 60_000 : Math.max(1, nextChangeAt - Date.now())));
+    const resume = () => { if (!window.document.hidden) tick(); };
+    window.document.addEventListener("visibilitychange", resume);
+    return () => {
+      clearTimeout(timer);
+      window.document.removeEventListener("visibilitychange", resume);
+    };
+  }, [document, now, visible]);
 
   async function postArrangement(body: unknown): Promise<{ ok: true } | { ok: false; message: string }> {
     try {

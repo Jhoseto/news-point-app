@@ -15,6 +15,10 @@ export function canManageRoles(role: StaffRole): boolean {
   return role === "admin" || role === "master_admin";
 }
 
+export function canReadLogs(role: StaffRole): boolean {
+  return role === "admin" || role === "master_admin";
+}
+
 export function canManageAccounts(role: StaffRole): boolean {
   return role === "master_admin";
 }

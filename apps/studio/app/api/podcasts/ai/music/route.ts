@@ -1,3 +1,5 @@
+import { withStaffAudit } from "../../../../../lib/audit";
+import { auditEvidence, auditFacts } from "../../../../../lib/audit-context";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { aiPodcastSettings, inspectMp3 } from "@newspoint/content";
@@ -11,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 function json(data: unknown, status = 200) { return Response.json(data, { status, headers: { "cache-control": "private, no-store" } }); }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: "Заявката трябва да идва от Studio." }, 403);
   const staff = await staffFromRequest(request);
   if (!staff || !["editor", "admin", "master_admin"].includes(staff.role)) return json({ error: "Нямате достъп." }, 403);
@@ -41,6 +43,8 @@ export async function POST(request: Request) {
       await tx.insert(aiPodcastAudit).values({ projectId, actorId: staff.id, action: "music_uploaded", details: { assetId: created!.id, durationSec: inspected.durationSec } });
       return created!;
     });
+    auditFacts({ entityId: projectId, entityLabel: project.title ?? "", fileName: file.name, bytes: bytes.length, durationSec: inspected.durationSec, assetId: asset.id });
+    auditEvidence({ musicAssetId: project.musicAssetId, settings: project.settings }, { musicAssetId: asset.id, settings: { ...settings, music: "custom" } });
     return json({ assetId: asset.id, durationSec: inspected.durationSec }, 201);
   } catch (error) {
     await removeMediaFile(key).catch(() => {});
@@ -48,3 +52,5 @@ export async function POST(request: Request) {
     return json({ error: "Музиката не беше записана." }, 503);
   }
 }
+
+export const POST = withStaffAudit(handlePOST);
