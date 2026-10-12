@@ -251,6 +251,8 @@ export interface CategoryArchive {
   previous: string | null;
   next: string | null;
   anchored: boolean;
+  /** Keyset anchor timestamp shared by archive pagination links on this view. */
+  anchor: string;
 }
 
 /** Keyset navigation: one bounded page, one small opposite-direction probe. No COUNT/OFFSET. */
@@ -284,7 +286,7 @@ async function queryCategoryArchive(
   const pageSize = options?.limit ?? CATEGORY_PAGE_SIZE;
   const skip = options?.skipIds?.length ? notInArray(articles.id, options.skipIds) : undefined;
   const anchor = cursor?.anchor ?? (await db.select({ at: archiveNow }).from(articles).limit(1))[0]?.at;
-  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor, anchor: "" };
   const direction = cursor?.direction ?? "older";
   const filter = archiveFilter(category.id, anchor);
   const rows = await (await summaryQuery(true)).query
@@ -295,7 +297,7 @@ async function queryCategoryArchive(
   // Preserve the exact DB timestamp separately from the display Date.
   const pageRows = rows.slice(0, pageSize);
   if (direction === "newer") pageRows.reverse();
-  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor, anchor };
   const first = { id: pageRows[0]!.id!, at: pageRows[0]!.archivePublishedAt! };
   const last = { id: pageRows.at(-1)!.id!, at: pageRows.at(-1)!.archivePublishedAt! };
   let previous = direction === "newer" && rows.length > pageSize;
@@ -312,9 +314,11 @@ async function queryCategoryArchive(
   const link = (boundary: CategoryCursor["boundary"], dir: CategoryCursor["direction"]) =>
     categoryCursorUrl(category.path, { v: 1, category: category.id, anchor, boundary, direction: dir });
   return {
-    articles: pageRows.map(toSummary), anchored: !!cursor,
+    articles: pageRows.map(toSummary),
+    anchored: !!cursor,
     previous: previous ? link(first, "newer") : null,
     next: next ? link(last, "older") : null,
+    anchor,
   };
 }
 
@@ -419,10 +423,10 @@ export async function searchArticles(query: string, limit: number): Promise<Arti
 
 /** Search snapshots use the same ordering and public cutoffs as category archives. */
 export async function getSearchArchive(filters: SearchFilters, categoryId: string | null, cursor: SearchCursor | null): Promise<CategoryArchive> {
-  if (!searchTerms(filters.query).length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  if (!searchTerms(filters.query).length) return { articles: [], previous: null, next: null, anchored: !!cursor, anchor: "" };
   const db = getDb();
   const anchor = cursor?.anchor ?? (await db.select({ at: archiveNow }).from(articles).limit(1))[0]?.at;
-  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  if (!anchor) return { articles: [], previous: null, next: null, anchored: !!cursor, anchor: "" };
   const direction = cursor?.direction ?? "older";
   const filter = searchArchiveFilter(filters.query, anchor, categoryId, filters.period);
   const rows = await (await summaryQuery(true)).query
@@ -430,7 +434,7 @@ export async function getSearchArchive(filters: SearchFilters, categoryId: strin
     .orderBy(...archiveOrder(direction)).limit(CATEGORY_PAGE_SIZE + 1);
   const pageRows = rows.slice(0, CATEGORY_PAGE_SIZE);
   if (direction === "newer") pageRows.reverse();
-  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor };
+  if (!pageRows.length) return { articles: [], previous: null, next: null, anchored: !!cursor, anchor };
   const first = { id: pageRows[0]!.id!, at: pageRows[0]!.archivePublishedAt! };
   const last = { id: pageRows.at(-1)!.id!, at: pageRows.at(-1)!.archivePublishedAt! };
   let previous = direction === "newer" && rows.length > CATEGORY_PAGE_SIZE;
@@ -444,7 +448,13 @@ export async function getSearchArchive(filters: SearchFilters, categoryId: strin
   }
   const link = (boundary: SearchCursor["boundary"], dir: SearchCursor["direction"]) =>
     searchCursorUrl({ v: 1, ...filters, anchor, boundary, direction: dir });
-  return { articles: pageRows.map(toSummary), previous: previous ? link(first, "newer") : null, next: next ? link(last, "older") : null, anchored: !!cursor };
+  return {
+    articles: pageRows.map(toSummary),
+    previous: previous ? link(first, "newer") : null,
+    next: next ? link(last, "older") : null,
+    anchored: !!cursor,
+    anchor,
+  };
 }
 
 /** Summaries for live notifications, keyed by article id. Runs outside a request, so no cache(). */

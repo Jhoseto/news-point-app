@@ -2,7 +2,19 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefObject, type SVGProps } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FocusEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+  type RefObject,
+  type SVGProps,
+} from "react";
+import { useReducedMotion } from "./reader-preferences";
 import { createPortal } from "react-dom";
 import type { CategoryRef } from "@/lib/queries";
 import { currentHeaderSheet, setHeaderSheet, useHeaderSheet } from "./header-state";
@@ -25,6 +37,7 @@ import {
   HeartIcon,
   HomeIcon,
   MapIcon,
+  MegaphoneIcon,
   PaletteIcon,
   PenIcon,
   PinIcon,
@@ -35,6 +48,12 @@ import { openRubrics, RUBRICS_EVENT } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
 
 type NavItem = Pick<CategoryRef, "slug" | "name" | "path">;
+
+function scrollHomeIfCurrent(event: MouseEvent<HTMLAnchorElement>, path: string, pathname: string, reducedMotion: boolean) {
+  if (path !== "/" || pathname !== "/") return;
+  event.preventDefault();
+  window.scrollTo({ top: 0, behavior: reducedMotion ? "instant" : "smooth" });
+}
 
 type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode;
 
@@ -54,7 +73,7 @@ const RUBRIC_ICONS: Record<string, IconComponent> = {
   kultura: PaletteIcon,
   lajfstajl: CupIcon,
   izbori: BallotIcon,
-  "glasat-na-istinata": BoltIcon,
+  "glasat-na-istinata": MegaphoneIcon,
   temi: ColumnsIcon,
 };
 
@@ -103,16 +122,20 @@ function RubricRow({
   onNavigate?: () => void;
   compact?: boolean;
 }) {
+  const pathname = usePathname();
+  const reducedMotion = useReducedMotion();
   const active = isActive(current, item.path);
   return (
     <Link
       href={item.path}
-      {...(onNavigate ? { onClick: onNavigate } : {})}
+      onClick={(event) => {
+        scrollHomeIfCurrent(event, item.path, pathname, reducedMotion);
+        onNavigate?.();
+      }}
       aria-current={active ? "page" : undefined}
-      title={item.name}
-      aria-label={compact ? item.name : undefined}
+      {...(compact ? { "aria-label": item.name, "data-rubric-tip": item.name } : { title: item.name })}
       className={`np-rubric-row group relative flex shrink-0 items-center rounded-xl ${
-        compact ? "h-12 min-h-[48px] min-w-[48px] justify-center" : "h-11 gap-2.5 px-2.5"
+        compact ? "np-rubric-row--compact justify-center" : "h-11 gap-2.5 px-2.5"
       }`}
     >
       <span
@@ -124,7 +147,7 @@ function RubricRow({
       <RubricMark slug={item.slug} />
       {compact ? null : (
         <span
-          className={`min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
+          className={`np-rubric-label min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
             active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
           }`}
         >
@@ -147,10 +170,17 @@ function HomeRubricBar({
   onCollapse: () => void;
 }) {
   const home: NavItem = { name: "Начало", path: "/", slug: "" };
+  const pathname = usePathname();
+  const reducedMotion = useReducedMotion();
   const active = isActive(current, home.path);
   return (
-    <div className="np-rubric-home-bar np-rubric-row flex h-12 min-h-[48px] w-full rounded-xl lg:h-[var(--np-home-bar-h)]" aria-current={active ? "page" : undefined}>
-      <Link href={home.path} title={home.name} className="np-rubric-home-link group relative flex min-h-[48px] min-w-0 flex-1 items-center gap-2.5 px-2.5">
+    <div className="np-rubric-home-bar flex h-12 min-h-[48px] w-full rounded-xl lg:h-[var(--np-home-bar-h)] lg:min-h-0" aria-current={active ? "page" : undefined}>
+      <Link
+        href={home.path}
+        title={home.name}
+        onClick={(event) => scrollHomeIfCurrent(event, home.path, pathname, reducedMotion)}
+        className="np-rubric-home-link group relative flex h-full min-w-0 flex-1 items-center gap-2.5 px-2.5"
+      >
         <span
           className={`np-gradient-bg absolute top-1/2 left-0 h-5 w-[3px] -translate-y-1/2 rounded-full transition-[scale,opacity] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             active ? "scale-y-100 opacity-100" : "scale-y-0 opacity-0"
@@ -159,7 +189,7 @@ function HomeRubricBar({
         />
         <RubricMark slug={home.slug} />
         <span
-          className={`min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
+          className={`np-rubric-label min-w-0 flex-1 truncate text-[0.875rem] tracking-tight transition-colors duration-200 ${
             active ? "font-semibold text-ink" : "font-medium text-body group-hover:text-ink"
           }`}
         >
@@ -174,7 +204,7 @@ function HomeRubricBar({
         onClick={onCollapse}
         aria-label="Свий менюто с рубрики"
         title="Свий менюто"
-        className="np-rubric-home-collapse inline-flex min-h-[48px] min-w-[48px] w-12 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
+        className="np-rubric-home-collapse inline-flex h-full min-w-[48px] w-12 shrink-0 items-center justify-center text-muted lg:w-[var(--np-home-bar-h)]"
       >
         <ChevronLeftIcon width={22} height={22} strokeWidth={2.25} aria-hidden="true" />
       </button>
@@ -447,12 +477,44 @@ export function MobileRubricsSheet({ items }: { items: NavItem[] }) {
 export function RubricsNav({ items }: { items: NavItem[] }) {
   const current = usePathname() ?? "/";
   const [expanded, setExpanded] = useState(true);
+  const [compactTip, setCompactTip] = useState<{ label: string; x: number; y: number } | null>(null);
+  const [tipOpen, setTipOpen] = useState(false);
+  const [tipPortalReady, setTipPortalReady] = useState(false);
   const collapseBtn = useRef<HTMLButtonElement>(null);
   const expandBtn = useRef<HTMLButtonElement>(null);
+  const navRef = useRef<HTMLElement>(null);
+  const tipOpenRef = useRef(false);
+  const compactTipRef = useRef(compactTip);
+  const tipOpenFrame = useRef(0);
+  const tipHideTimer = useRef(0);
   const focusCollapse = useRef(false);
+
+  const TIP_HIDE_MS = 400;
+
+  useEffect(() => {
+    tipOpenRef.current = tipOpen;
+  }, [tipOpen]);
+
+  useEffect(() => {
+    compactTipRef.current = compactTip;
+  }, [compactTip]);
+
+  useEffect(() => {
+    setTipPortalReady(true);
+  }, []);
 
   useEffect(() => {
     document.documentElement.toggleAttribute("data-rubrics-closed", !expanded);
+    if (expanded) {
+      if (tipOpenFrame.current) cancelAnimationFrame(tipOpenFrame.current);
+      tipOpenFrame.current = 0;
+      if (tipHideTimer.current) window.clearTimeout(tipHideTimer.current);
+      tipHideTimer.current = 0;
+      tipOpenRef.current = false;
+      setTipOpen(false);
+      setCompactTip(null);
+      compactTipRef.current = null;
+    }
     return () => document.documentElement.removeAttribute("data-rubrics-closed");
   }, [expanded]);
 
@@ -490,20 +552,122 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
 
   const groups = groupRubrics(items);
 
+  const clearTipHideTimer = useCallback(() => {
+    if (!tipHideTimer.current) return;
+    window.clearTimeout(tipHideTimer.current);
+    tipHideTimer.current = 0;
+  }, []);
+
+  const showCompactTip = useCallback(
+    (next: { label: string; x: number; y: number }) => {
+      clearTipHideTimer();
+      if (tipOpenFrame.current) cancelAnimationFrame(tipOpenFrame.current);
+      tipOpenFrame.current = 0;
+      setCompactTip(next);
+      compactTipRef.current = next;
+      tipOpenRef.current = true;
+      setTipOpen(true);
+    },
+    [clearTipHideTimer],
+  );
+
+  const hideCompactTip = useCallback(() => {
+    if (!compactTipRef.current) return;
+    if (tipOpenFrame.current) cancelAnimationFrame(tipOpenFrame.current);
+    tipOpenFrame.current = 0;
+    tipOpenRef.current = false;
+    setTipOpen(false);
+    clearTipHideTimer();
+    tipHideTimer.current = window.setTimeout(() => {
+      tipHideTimer.current = 0;
+      if (tipOpenRef.current) return;
+      setCompactTip(null);
+      compactTipRef.current = null;
+    }, TIP_HIDE_MS);
+  }, [clearTipHideTimer]);
+
+  const syncCompactTip = useCallback(
+    (target: EventTarget | null) => {
+      const element =
+        target instanceof Element ? target.closest<HTMLElement>("[data-rubric-tip]") : null;
+      if (!element) {
+        hideCompactTip();
+        return;
+      }
+      const label = element.dataset.rubricTip;
+      if (!label) {
+        hideCompactTip();
+        return;
+      }
+      const rect = element.getBoundingClientRect();
+      const next = { label, x: rect.right + 10, y: rect.top + rect.height / 2 };
+      showCompactTip(next);
+    },
+    [hideCompactTip, showCompactTip],
+  );
+
+  const onCollapsedNavPointerOver = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (expanded) return;
+      syncCompactTip(event.target);
+    },
+    [expanded, syncCompactTip],
+  );
+
+  const onCollapsedNavPointerOut = useCallback(
+    (event: PointerEvent<HTMLElement>) => {
+      if (expanded) return;
+      const next = event.relatedTarget;
+      if (next instanceof Node && navRef.current?.contains(next)) return;
+      hideCompactTip();
+    },
+    [expanded, hideCompactTip],
+  );
+
+  const onCollapsedNavFocusIn = useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      if (expanded) return;
+      syncCompactTip(event.target);
+    },
+    [expanded, syncCompactTip],
+  );
+
+  const onCollapsedNavFocusOut = useCallback(
+    (event: FocusEvent<HTMLElement>) => {
+      if (expanded) return;
+      const next = event.relatedTarget;
+      if (next instanceof Node && navRef.current?.contains(next)) return;
+      hideCompactTip();
+    },
+    [expanded, hideCompactTip],
+  );
+
   return (
+    <>
       <aside
         aria-label="Рубрики"
-        className={`np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(100dvh-var(--np-bar-h))] shrink-0 flex-col lg:flex ${
-          expanded ? "w-[16.5rem]" : "w-[4.25rem]"
-        }`}
+        data-expanded={expanded ? "" : undefined}
+        className="np-rubrics-rail sticky top-[var(--np-bar-h)] z-40 hidden h-[calc(100dvh-var(--np-bar-h))] w-[var(--np-rail-w)] shrink-0 flex-col lg:flex"
       >
-        <nav aria-label="Рубрики" className="np-rubrics-nav flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-3 pb-3 lg:pt-0">
+        <nav
+          ref={navRef}
+          aria-label="Рубрики"
+          className="np-rubrics-nav flex min-h-0 flex-1 flex-col overflow-y-auto px-2 pt-3 pb-3 lg:pt-0"
+          {...(!expanded
+            ? {
+                onPointerOver: onCollapsedNavPointerOver,
+                onPointerOut: onCollapsedNavPointerOut,
+                onFocusCapture: onCollapsedNavFocusIn,
+                onBlurCapture: onCollapsedNavFocusOut,
+              }
+            : {})}
+        >
           {expanded ? (
             <div className="np-rubric-home-slot">
               <HomeRubricBar current={current} collapseBtn={collapseBtn} onCollapse={() => setExpanded(false)} />
             </div>
           ) : (
-            <div className="mb-2 flex flex-col items-center gap-2 lg:min-h-[var(--np-lp-row-h)] lg:justify-center lg:pb-2">
+            <div className="np-rubrics-collapsed-head mb-1 flex flex-col items-center gap-1 lg:min-h-[var(--np-lp-row-h)] lg:justify-center lg:pb-1">
               <button
                 ref={expandBtn}
                 type="button"
@@ -513,13 +677,13 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
                   focusCollapse.current = true;
                   setExpanded(true);
                 }}
+                data-rubric-tip="Разгъни менюто"
                 aria-label="Разгъни менюто"
-                title="Разгъни менюто"
-                className="np-rubrics-toggle inline-flex size-12 min-h-[48px] min-w-[48px] items-center justify-center rounded-[0.625rem] text-muted"
+                className="np-rubrics-toggle np-rubrics-toggle--compact inline-flex items-center justify-center rounded-[0.5rem] text-muted"
               >
-                <ChevronRightIcon width={22} height={22} strokeWidth={2.25} aria-hidden="true" />
+                <ChevronRightIcon width={18} height={18} strokeWidth={2.25} aria-hidden="true" />
               </button>
-              <ul className="flex w-full flex-col gap-0.5">
+              <ul className="flex w-full flex-col gap-px">
                 <li>
                   <RubricRow item={{ name: "Начало", path: "/", slug: "" }} current={current} compact />
                 </li>
@@ -528,13 +692,13 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
           )}
           <div className="np-rubrics-nav-body min-h-0 flex-1">
           {groups.map((group, groupIndex) => (
-            <section key={group.label} className={groupIndex > 0 ? "mt-4" : undefined}>
+            <section key={group.label} className={groupIndex > 0 ? (expanded ? "mt-4" : "mt-2") : undefined}>
               {expanded ? (
                 <h3 className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</h3>
               ) : groupIndex > 0 ? (
-                <div className="mx-auto my-2.5 h-px w-5 bg-line" aria-hidden="true" />
+                <div className="np-rubrics-collapsed-divider mx-auto h-px w-4 bg-line" aria-hidden="true" />
               ) : null}
-              <ul className="flex flex-col gap-0.5">
+              <ul className={`flex flex-col ${expanded ? "gap-0.5" : "gap-px"}`}>
                 {group.items.map((item) => (
                   <li key={item.path}>
                     <RubricRow item={item} current={current} compact={!expanded} />
@@ -543,7 +707,7 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
               </ul>
             </section>
           ))}
-            <ul className="mt-0.5 flex flex-col gap-0.5">
+            <ul className={`mt-0.5 flex flex-col ${expanded ? "gap-0.5" : "gap-px"}`}>
               <li>
                 <RubricRow item={STORIES_NAV} current={current} compact={!expanded} />
               </li>
@@ -551,6 +715,20 @@ export function RubricsNav({ items }: { items: NavItem[] }) {
           </div>
         </nav>
       </aside>
+      {tipPortalReady && !expanded && compactTip
+        ? createPortal(
+            <div
+              role="tooltip"
+              data-open={tipOpen || undefined}
+              className="np-rubric-float-tip"
+              style={{ top: compactTip.y, left: compactTip.x }}
+            >
+              {compactTip.label}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

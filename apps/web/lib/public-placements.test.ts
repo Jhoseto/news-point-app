@@ -16,6 +16,10 @@ vi.mock("@newspoint/db", () => ({
   pageArrangements: { document: "document", pageKey: "page_key", status: "status" },
 }));
 vi.mock("@newspoint/db/polls", () => ({ featuredPoll: async () => null }));
+vi.mock("./category-grid-balance.server", () => ({
+  archiveBoundaryForArticle: async () => null,
+  countCategoryArticlesAfter: async () => 0,
+}));
 vi.mock("./queries", () => ({
   getLatest: () => state.latest(), getLatest24Hours: async () => state.pool,
   getLabelled: async () => state.pool, getMenuCategories: async () => [category],
@@ -41,7 +45,7 @@ beforeEach(() => {
   state.document = emptyArrangement(); state.pool = [article(automaticId), article(pinnedId)];
   state.select.mockImplementation(() => ({ from: () => ({ where: () => ({ limit: async () => [{ document: state.document }] }) }) }));
   state.latest.mockImplementation(async () => state.pool);
-  state.archive.mockImplementation(async (_category, _cursor, options) => ({ articles: state.pool.filter(a => !options.skipIds.includes(a.id)).slice(0, options.limit), anchored: false, previous: null, next: null }));
+  state.archive.mockImplementation(async (_category, _cursor, options) => ({ articles: state.pool.filter(a => !options.skipIds.includes(a.id)).slice(0, options.limit), anchored: false, previous: null, next: null, anchor: "2026-01-01T00:00:00.000000Z" }));
 });
 afterEach(() => vi.useRealTimers());
 
