@@ -42,7 +42,8 @@ export function auditWhere(filters: AuditFilters, excludeId?: string) {
     lte(logs.startedAt, new Date(filters.anchor)), excludeId ? ne(logs.id, excludeId) : undefined,
     range.from ? gte(logs.startedAt, range.from) : undefined, range.to ? lt(logs.startedAt, range.to) : undefined,
     filters.actor ? eq(logs.actorId, filters.actor) : undefined, filters.area ? eq(logs.area, filters.area) : undefined,
-    filters.action ? eq(logs.action, filters.action) : undefined, filters.outcome ? eq(logs.outcome, filters.outcome as AuditEntry["outcome"]) : undefined,
+    filters.action ? eq(logs.action, filters.action) : undefined,
+    filters.outcome ? eq(logs.outcome, filters.outcome as AuditEntry["outcome"]) : ne(logs.outcome, "access"),
     filters.role ? eq(logs.actorRole, filters.role as NonNullable<AuditEntry["actorRole"]>) : undefined,
     ...filters.q.split(/\s+/).filter(Boolean).slice(0, 12).map(word => ilike(logs.searchText, `%${word.replace(/[\\%_]/g, "\\$&")}%`)),
   );

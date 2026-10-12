@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { withBase } from "../lib/paths";
-import { AUDIT_AREAS, AUDIT_OUTCOMES, type AuditEntry, type AuditValue, type AuditView } from "../lib/audit-types";
+import { AUDIT_AREAS, AUDIT_OUTCOME_FILTERS, AUDIT_OUTCOMES, type AuditEntry, type AuditValue, type AuditView } from "../lib/audit-types";
 import type { AuditChange } from "../lib/audit-metadata";
 import "./logs-desk.css";
 
@@ -96,7 +96,7 @@ export function LogsDesk() {
       {select("role", "Роля при действието", [["", "Всички роли"], ...Object.entries(roles)])}
       {select("area", "Раздел", [["", "Всички раздели"], ...Object.entries(AUDIT_AREAS)])}
       {select("action", "Действие", [["", "Всички действия"], ...(data?.actions ?? []).map(action => [action.value, action.label] as [string, string])])}
-      {select("outcome", "Резултат", [["", "Всички резултати"], ...Object.entries(AUDIT_OUTCOMES)])}
+      {select("outcome", "Резултат", [["", "Всички резултати"], ...Object.entries(AUDIT_OUTCOME_FILTERS)])}
       {select("sort", "Сортиране", [["newest", "Най-нови"], ["oldest", "Най-стари"], ["actor", "Служител А–Я"], ["action", "Действие А–Я"], ["entity", "Обект А–Я"], ["outcome", "Резултат"], ["duration", "Най-бавни"]])}
       {select("size", "На страница", [["25", "25 записа"], ["50", "50 записа"], ["100", "100 записа"]])}
       <button className="np-log-reset" type="button" onClick={() => { setFilters({ ...initial }); setExpanded(null); }}>Изчисти</button>

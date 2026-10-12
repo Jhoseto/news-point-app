@@ -6,6 +6,7 @@ export const AUDIT_AREAS = {
 export type AuditArea = keyof typeof AUDIT_AREAS;
 export type AuditOutcome = "pending" | "success" | "failure" | "access";
 export const AUDIT_OUTCOMES: Record<AuditOutcome, string> = { pending: "В процес / непотвърден", success: "Успешно", failure: "Отказ / грешка", access: "Отваряне на екран" };
+export const AUDIT_OUTCOME_FILTERS = Object.fromEntries(Object.entries(AUDIT_OUTCOMES).filter(([outcome]) => outcome !== "access")) as Omit<typeof AUDIT_OUTCOMES, "access">;
 export type AuditValue = string | number | boolean | null | AuditValue[] | { [key: string]: AuditValue };
 export type AuditDetails = Record<string, AuditValue>;
 export interface AuditEntry {

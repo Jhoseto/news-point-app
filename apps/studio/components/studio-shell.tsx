@@ -47,8 +47,8 @@ function navClass(collapsed: boolean) {
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
 export function StudioShell({ user, webUrl, canManageUsers, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
-  const nav = canManageUsers ? [...NAV, LOGS_LINK] : NAV;
-  const mobileNav = canManageUsers ? [...NAV, LOGS_LINK, USERS_LINK] : NAV;
+  const nav = NAV;
+  const mobileNav = canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV;
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
   const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs";
@@ -127,17 +127,30 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
         </nav>
         <div className={`border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
           {canManageUsers ? (
-            <Link
-              href={USERS_LINK.href}
-              title={USERS_LINK.label}
-              aria-label={USERS_LINK.label}
-              aria-current={isActive(USERS_LINK.href) ? "page" : undefined}
-              className={`${navClass(collapsed)} mb-2 w-full`}
-            >
-              {isActive(USERS_LINK.href) ? <span className="np-gradient-bg absolute inset-y-1.5 left-0 w-1 rounded-full" aria-hidden="true" /> : null}
-              <Icon d={USERS_LINK.icon} />
-              {collapsed ? <span className="sr-only">{USERS_LINK.label}</span> : USERS_LINK.label}
-            </Link>
+            <>
+              <Link
+                href={USERS_LINK.href}
+                title={USERS_LINK.label}
+                aria-label={USERS_LINK.label}
+                aria-current={isActive(USERS_LINK.href) ? "page" : undefined}
+                className={`${navClass(collapsed)} mb-0.5 w-full`}
+              >
+                {isActive(USERS_LINK.href) ? <span className="np-gradient-bg absolute inset-y-1.5 left-0 w-1 rounded-full" aria-hidden="true" /> : null}
+                <Icon d={USERS_LINK.icon} />
+                {collapsed ? <span className="sr-only">{USERS_LINK.label}</span> : USERS_LINK.label}
+              </Link>
+              <Link
+                href={LOGS_LINK.href}
+                title={LOGS_LINK.label}
+                aria-label={LOGS_LINK.label}
+                aria-current={isActive(LOGS_LINK.href) ? "page" : undefined}
+                className={`${navClass(collapsed)} mb-2 w-full`}
+              >
+                {isActive(LOGS_LINK.href) ? <span className="np-gradient-bg absolute inset-y-1.5 left-0 w-1 rounded-full" aria-hidden="true" /> : null}
+                <Icon d={LOGS_LINK.icon} />
+                {collapsed ? <span className="sr-only">{LOGS_LINK.label}</span> : LOGS_LINK.label}
+              </Link>
+            </>
           ) : null}
           <Link
             href="/profile"
