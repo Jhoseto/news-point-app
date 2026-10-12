@@ -9,7 +9,9 @@ import {
   HOME_FOCUS_CAROUSEL_PREFIX,
   HOME_LATEST_PIN_COUNT,
   HOME_PAGE_KEY,
+  HOME_RUBRIC_SECTIONS_CUSTOM,
   HOME_TOP_THEMES_CAROUSEL_PREFIX,
+  HOME_VOICE_RUBRIC_SLUG,
   HOME_VOICE_CAROUSEL_PREFIX,
   activePlacement,
   nextArrangementChangeAt,
@@ -54,7 +56,7 @@ function accent(slug?: string) {
 
 const CAROUSEL_ROW_TITLES: Record<HomeCarouselSlotPrefix, string> = {
   [HOME_FOCUS_CAROUSEL_PREFIX]: "На Фокус",
-  [HOME_TOP_THEMES_CAROUSEL_PREFIX]: "Топ теми",
+  [HOME_TOP_THEMES_CAROUSEL_PREFIX]: "Анализи и коментари",
   [HOME_VOICE_CAROUSEL_PREFIX]: "Гласът на истината",
 };
 
@@ -744,7 +746,8 @@ function HomeMap({
   const balIndex = planned.main.findIndex((section) => section.slug === "balgariya");
   const beforeSplit = planned.main.filter((section, index) => section.wide && index < balIndex);
   const bulgaria = planned.main.find((section) => section.slug === "balgariya");
-  const afterSplit = planned.main.filter((section, index) => section.wide && index > balIndex);
+  const voiceSection = planned.main.find((section) => section.slug === HOME_VOICE_RUBRIC_SLUG);
+  const afterSplit = planned.main.filter((section, index) => section.wide && index > balIndex && !HOME_RUBRIC_SECTIONS_CUSTOM.has(section.slug));
   return (
     <div className="flex flex-col gap-4">
       <div className="grid h-[22rem] grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_13rem] gap-3">
@@ -779,8 +782,8 @@ function HomeMap({
       />
 
       <CarouselRow
-        title="Топ теми"
-        hint="Рубрика top-temi на стария сайт"
+        title="Анализи и коментари"
+        hint="Пълното съдържание на рубриката ot-soczialnite-mrezhi"
         count={HOME_CAROUSEL_COUNT}
         slotPrefix={HOME_TOP_THEMES_CAROUSEL_PREFIX}
         color="#7650c8"
@@ -813,18 +816,15 @@ function HomeMap({
               ))}
             </div>
           </div>
-          <CarouselRow
-            title="Гласът на истината"
-            hint="Рубрика glasat-na-istinata"
-            count={HOME_CAROUSEL_COUNT}
-            slotPrefix={HOME_VOICE_CAROUSEL_PREFIX}
-            color={accent("glasat-na-istinata")}
-            selected={selected}
-            onSelect={onSelect}
-            onEditCarousel={() => onEditCarousel(HOME_VOICE_CAROUSEL_PREFIX)}
-            titleFor={titleFor}
-            metaFor={metaFor}
-          />
+          {voiceSection ? (
+            <SectionBlock
+              section={voiceSection}
+              selected={selected}
+              onSelect={onSelect}
+              titleFor={titleFor}
+              metaFor={metaFor}
+            />
+          ) : null}
         </>
       ) : null}
 

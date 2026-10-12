@@ -2,6 +2,8 @@
 export const PUBLIC_MENU: readonly { slug: string; name: string }[] = [
   { slug: "plovdiv", name: "Пловдив" },
   { slug: "regionalni-novini", name: "Регион" },
+  { slug: "na-fokus", name: "На Фокус" },
+  { slug: "glasat-na-istinata", name: "Гласът на истината" },
   { slug: "balgariya", name: "България" },
   { slug: "politika", name: "Политика" },
   { slug: "kriminalni-novini", name: "Криминални" },
@@ -14,7 +16,6 @@ export const PUBLIC_MENU: readonly { slug: string; name: string }[] = [
   { slug: "kultura", name: "Култура" },
   { slug: "lajfstajl", name: "Лайфстайл" },
   { slug: "izbori", name: "Избори" },
-  { slug: "glasat-na-istinata", name: "Гласът на истината" },
 ];
 
 const bySlug = new Map(PUBLIC_MENU.map((entry) => [entry.slug, entry.name]));

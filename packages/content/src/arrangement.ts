@@ -9,10 +9,15 @@ export const HOME_SUPPORT_COUNT = 3;
 export const HOME_CAROUSEL_COUNT = 10;
 /** Slot keys `carousel-0` … for the „На Фокус“ row (legacy prefix). */
 export const HOME_FOCUS_CAROUSEL_PREFIX = "carousel";
-/** Slot keys `top-temi-0` … for the „Топ теми“ row. */
+/** Slot keys `top-temi-0` … for the „Анализи и коментари“ carousel (legacy prefix). */
 export const HOME_TOP_THEMES_CAROUSEL_PREFIX = "top-temi";
-/** Slot keys `glasat-0` … for „Гласът на истината“. */
+/** Legacy slot prefix; homepage voice row is now a wide section, not a carousel. */
 export const HOME_VOICE_CAROUSEL_PREFIX = "glasat";
+export const HOME_FOCUS_RUBRIC_SLUG = "na-fokus";
+export const HOME_ANALYSES_RUBRIC_SLUG = "ot-soczialnite-mrezhi";
+export const HOME_VOICE_RUBRIC_SLUG = "glasat-na-istinata";
+export const HOME_RUBRIC_SECTIONS_ON_CAROUSEL = new Set<string>([HOME_FOCUS_RUBRIC_SLUG, HOME_ANALYSES_RUBRIC_SLUG]);
+export const HOME_RUBRIC_SECTIONS_CUSTOM = new Set<string>([HOME_VOICE_RUBRIC_SLUG, ...HOME_RUBRIC_SECTIONS_ON_CAROUSEL]);
 
 export const HOME_CAROUSEL_SLOT_PREFIXES = [
   HOME_FOCUS_CAROUSEL_PREFIX,
@@ -125,10 +130,7 @@ export function homeSlotCatalog(categories: { slug: string; name: string }[]): S
     slots.push({ key: homeCarouselSlotKey(HOME_FOCUS_CAROUSEL_PREFIX, index), group: "На Фокус", label: `Място ${index + 1}` });
   }
   for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
-    slots.push({ key: homeCarouselSlotKey(HOME_TOP_THEMES_CAROUSEL_PREFIX, index), group: "Топ теми", label: `Място ${index + 1}` });
-  }
-  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
-    slots.push({ key: homeCarouselSlotKey(HOME_VOICE_CAROUSEL_PREFIX, index), group: "Гласът на истината", label: `Място ${index + 1}` });
+    slots.push({ key: homeCarouselSlotKey(HOME_TOP_THEMES_CAROUSEL_PREFIX, index), group: "Анализи и коментари", label: `Място ${index + 1}` });
   }
   for (let index = 0; index < HOME_LATEST_PIN_COUNT; index += 1) {
     slots.push({ key: `latest-${index}`, group: "Последни", label: `Отгоре ${index + 1}` });
@@ -211,6 +213,15 @@ export function duplicateArticleIds(document: ArrangementDocument, now: number, 
     counts.set(active.articleId, (counts.get(active.articleId) ?? 0) + 1);
   }
   return [...counts].filter(([, count]) => count > 1).map(([id]) => id);
+}
+
+/** Drop a deleted story from every slot and from the exclusion list. */
+export function removeArticleFromArrangement(document: ArrangementDocument, articleId: string): ArrangementDocument {
+  const slots: ArrangementDocument["slots"] = {};
+  for (const [key, slot] of Object.entries(document.slots)) {
+    slots[key] = { items: slot.items.filter((item) => item.articleId !== articleId) };
+  }
+  return { slots, excluded: document.excluded.filter((id) => id !== articleId) };
 }
 
 export function referencedArticleIds(document: ArrangementDocument): string[] {

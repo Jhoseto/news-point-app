@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArticleDeskPreview } from "@/components/article-desk-preview";
+import { DeleteArticleButton } from "@/components/delete-article-button";
 import { PlaceArticle } from "@/components/place-article";
 import { ArticleFilterForm } from "@/components/article-filter-form";
 import { ArticleVisibility } from "@/components/article-visibility";
@@ -212,7 +213,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               <col className="np-articles-col-secondary w-24" />
               <col className="np-articles-col-secondary w-32" />
               <col className="np-articles-col-secondary w-32" />
-              <col className="w-36" />
+              <col className="w-44" />
             </colgroup>
             <thead className="border-b border-line bg-surface-2/60 text-[10px] font-semibold tracking-wide text-faint uppercase">
               <tr>
@@ -264,6 +265,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                     <span className="inline-flex flex-wrap items-center justify-end gap-1">
                       <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
                       <a href={withBase(`/articles/${item.id}/`)} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</a>
+                      <DeleteArticleButton id={item.id} title={item.title} />
                     </span>
                   </td>
                 </tr>

@@ -26,6 +26,8 @@ const bodySchema = z.discriminatedUnion("action", [
     slot: z.string().min(1).max(80),
     articleId: z.uuid(),
     hours: z.number().int().min(1).max(168).nullable(),
+    /** When true, publish the page arrangement so the public site shows the placement. */
+    publish: z.boolean().optional(),
   }).strict(),
 ]);
 
@@ -41,7 +43,11 @@ async function handlePOST(request: Request) {
       return { reverted: true };
     }
     await placeArticle(staff, input);
-    return { placed: true };
+    if (input.publish) {
+      const published = await publishArrangement(staff, input.pageKey);
+      return { placed: true, published: true, path: published.path };
+    }
+    return { placed: true, published: false };
   });
 }
 

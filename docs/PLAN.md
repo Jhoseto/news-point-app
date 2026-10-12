@@ -63,7 +63,7 @@
 
 ### Миграции
 
-Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–31.
+Приложени в `np2_newspoint2`: 01–10, 12–14, 16–22, 25–33.
 
 Не се пускат на този Postgres: 11 и 15. Те пишат в Supabase Storage и тук нямат смисъл. Профилните снимки и LivePoint снимките вече са на диска на сървъра.
 
@@ -669,3 +669,15 @@ NewsPodcast, 30.09: реализирани са панел под бутона �
 12.10 — По изрична заявка на Коце е приложена `packages/db/migrations/31_studio_audit_logs.sql` върху `np2_newspoint2` през `127.0.0.1:5433`. Потвърдени: таблица `studio_audit_logs`, trigger `studio_audit_immutable`, функция `protect_studio_audit_log`, extension `pg_trgm`. Скрипт: `packages/db/src/scripts/apply-migration-31.ts`. Без commit или push.
 
 12.10 — Studio `/admin/` връщаше празен 200 заради Next.js basePath + catch-all matcher в `proxy.ts` (root се пропускаше). Добавен е изричен matcher за `/`; audit записът е в try/catch. Проверено: `/admin/` → 307 към `/admin/login/`.
+
+12.10 — Начална подредба на рубрики (desktop + mobile feed): вторият карусел под „На Фокус“ е „Анализи и коментари“ с пълното съдържание на `ot-soczialnite-mrezhi` (слотове `top-temi-*` запазени). „Топ теми“ + „Гласът на истината“ (етикети) се обединяват в wide секция „Гласът на истината“ след банера под България и преди Политика; рубриките `ot-soczialnite-mrezhi` и `glasat-na-istinata` не се дублират в решетката. Studio „Уеб управление“ и slot catalog са синхронизирани. Проверка: `vitest` home-compose + arrangement (16 теста).
+
+12.10 — Публично меню с рубрики (`PUBLIC_MENU`): „Гласът на истината“ е веднага над „България“ (след Пловдив и Регион). Проверка: `vitest` `menu.test.ts`.
+
+12.10 — „На Фокус“ (`na-fokus`) е публична рубрика с архив `/na-fokus/` (catch-all като останалите): в менюто след Регион, икона в релсата, на началната само карусел (без дублиран ред). `HOME_FOCUS_RUBRIC_SLUG`. Миграция `32_na_fokus_public_menu.sql` е приложена на 12.10 върху `np2_newspoint2` през `127.0.0.1:5433` (`apply-migration-32.ts`): `na-fokus` → `kind=section`, `menu_order=3`.
+
+12.10 — Studio „Материали“: бутон „Изтрий“ с диалог за необратимо изтриване; `DELETE /api/editor/articles/[id]/` (изисква `{ confirm: true }`), `deleteArticle` — каскадно изтриване, почистване на подреждания, редове в `editor_qa_articles`, revalidate. Поправка 500: FK `editor_qa_articles` без CASCADE (миграция `33_editor_qa_cascade.sql` + изтриване в кода). Проверка: `vitest` `arrangement.test.ts`, `tsc` studio.
+
+12.10 — „На място“ от Материали: бутон „Сложи“ записва в избраното квадратче и публикува подреждането веднага (`place` + `publish: true` → `publishArrangement` + revalidate). „Чернова“ остава за запис без публикуване.
+
+12.10 — „На място“ от Материали: бутон „Сложи“ записва в избраното квадратче и публикува подреждането веднага (`place` + `publish: true` → `publishArrangement` + revalidate). „Чернова“ остава за запис без публикуване.

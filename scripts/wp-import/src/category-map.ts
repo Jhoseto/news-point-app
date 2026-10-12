@@ -11,6 +11,8 @@ export interface MenuEntry {
 export const MENU: readonly MenuEntry[] = [
   { slug: "plovdiv", label: "Пловдив" },
   { slug: "regionalni-novini", label: "Регион" },
+  { slug: "na-fokus", label: "На Фокус" },
+  { slug: "glasat-na-istinata", label: "Гласът на истината" },
   { slug: "balgariya", label: "България" },
   { slug: "politika", label: "Политика" },
   { slug: "kriminalni-novini", label: "Криминални" },
@@ -27,10 +29,8 @@ export const MENU: readonly MenuEntry[] = [
 export const EDITORIAL_LABELS: ReadonlySet<string> = new Set([
   "posledni-novini",
   "novini",
-  "na-fokus",
   "top-temi",
   "top-novina",
-  "glasat-na-istinata",
 ]);
 
 export interface CategoryPlacement {

@@ -297,7 +297,7 @@ export const articleRevisions = pgTable(
 export const editorQaArticles = pgTable("editor_qa_articles", {
   articleId: uuid("article_id")
     .primaryKey()
-    .references(() => articles.id),
+    .references(() => articles.id, { onDelete: "cascade" }),
   runId: text("run_id").notNull(),
   registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
 });

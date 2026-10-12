@@ -2,7 +2,18 @@ import "server-only";
 import { auditActive, auditEvidence } from "./audit-context";
 import { isDeepStrictEqual } from "node:util";
 import { and, asc, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
-import { articleBody, resolveMediaUrl, sofiaWallToUtc, utcToSofiaWall, RESERVED_ARTICLE_SLUGS, type ArticleBody } from "@newspoint/content";
+import {
+  arrangementDocumentSchema,
+  articleBody,
+  removeArticleFromArrangement,
+  resolveMediaUrl,
+  sofiaWallToUtc,
+  triggerRevalidate,
+  utcToSofiaWall,
+  RESERVED_ARTICLE_SLUGS,
+  type ArticleBody,
+  type ArrangementDocument,
+} from "@newspoint/content";
 import {
   articleCategories,
   articleReadCounts,
@@ -20,6 +31,9 @@ import {
   qaPublicationAllowed,
   mediaAssets,
   outboxEvents,
+  editorQaArticles,
+  hasPageArrangements,
+  pageArrangements,
   publishDueScheduled,
   publishRequests,
   staffUsers,
@@ -615,6 +629,45 @@ export async function setArticleVisibility(id: string, visible: boolean, actor?:
     }
     return { isPublic: visible };
   });
+}
+
+function readArrangementDocument(value: unknown): ArrangementDocument {
+  const parsed = arrangementDocumentSchema.safeParse(value);
+  return parsed.success ? parsed.data : { slots: {}, excluded: [] };
+}
+
+async function purgeArticlePlacements(tx: Pick<ReturnType<typeof getDb>, "select" | "update">, articleId: string) {
+  if (!await hasPageArrangements(tx as ReturnType<typeof getDb>)) return;
+  const rows = await tx
+    .select({ id: pageArrangements.id, document: pageArrangements.document })
+    .from(pageArrangements)
+    .where(inArray(pageArrangements.status, ["draft", "published"]));
+  for (const row of rows) {
+    const current = readArrangementDocument(row.document);
+    const next = removeArticleFromArrangement(current, articleId);
+    if (!isDeepStrictEqual(current, next)) {
+      await tx.update(pageArrangements).set({ document: next }).where(eq(pageArrangements.id, row.id));
+    }
+  }
+}
+
+/** Permanently removes a material and its public URL. Irreversible. */
+export async function deleteArticle(_staff: Staff, id: string): Promise<{ id: string }> {
+  const result = await getDb().transaction(async (tx) => {
+    const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
+    if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
+    const [category] = article.primaryCategoryId
+      ? await tx.select({ path: categories.path }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
+      : [];
+    auditEvidence({ article: publicAuditState(article) }, null);
+    await purgeArticlePlacements(tx, id);
+    await tx.delete(editorQaArticles).where(eq(editorQaArticles.articleId, id));
+    await tx.delete(articles).where(eq(articles.id, id));
+    return { path: article.path, categoryPath: category?.path ?? null, title: article.title };
+  });
+  const paths = [...new Set(["/", result.path, result.categoryPath, "/sitemap.xml", "/feed/"].filter((path): path is string => !!path))];
+  await triggerRevalidate(paths);
+  return { id };
 }
 
 /** Rendered preview data for Studio only; never served by the public site. */

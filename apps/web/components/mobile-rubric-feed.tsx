@@ -54,17 +54,16 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
       {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
     </div>
-    {feed.focusCarousel.length ? <div className="-mt-6">{carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus" }, "focus")}</div> : null}
-    {carousel(feed.topicsCarousel, { title: "Топ теми", motion: "to-right" }, "topics")}
+    {feed.focusCarousel.length ? <div className="-mt-6">{carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus")}</div> : null}
+    {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-right" }, "topics")}
     {feed.main.map(section => {
-      if (section.category.slug !== "balgariya" && (!section.wide || section.category.slug === "glasat-na-istinata")) return null;
+      if (section.category.slug !== "balgariya" && !section.wide) return null;
       return <Fragment key={section.category.id}>
         {section.category.slug === "balgariya" && feed.poll ? <Block id="poll" {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor="poll"><HomePoll initial={feed.poll} mobileOnly preview={preview} namespace={namespace} /></div></Block> : null}
         <Block id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><HomeCategorySection category={section.category} articles={section.articles.map(reviveFeedArticle)} layout={section.category.slug === "balgariya" ? "grid" : section.layout === "feature" ? "feature" : "grid"} wide={section.category.slug !== "balgariya"} idPrefix={`${namespace}-`} /></div></Block>
       </Fragment>;
     })}
     {feed.aside.length ? <aside className="flex flex-col gap-6" aria-label="Още новини">{feed.aside.map(section => <Block key={section.category.id} id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><CompactList title={section.category.name} accentSlug={section.category.slug} href={section.category.path} articles={section.articles.map(reviveFeedArticle)} /></div></Block>)}</aside> : null}
-    {carousel(feed.voiceCarousel, { title: "Гласът на истината" }, "voice")}
     <Block id="brand" {...(window ? { window } : {})}><section aria-label="NewsPoint.bg" className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface px-6 py-8 shadow-card sm:px-10">
       <div className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40" aria-hidden="true" />
       <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between"><Logo className="h-12 sm:h-14" /><p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Защото истината <span className="np-gradient-text">има значение.</span></p></div>

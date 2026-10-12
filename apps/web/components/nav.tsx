@@ -18,6 +18,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CupIcon,
+  EyeIcon,
   FlagIcon,
   GlobeIcon,
   GridIcon,
@@ -40,6 +41,7 @@ type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode;
 const RUBRIC_ICONS: Record<string, IconComponent> = {
   plovdiv: PinIcon,
   "regionalni-novini": MapIcon,
+  "na-fokus": EyeIcon,
   balgariya: FlagIcon,
   politika: ColumnsIcon,
   "kriminalni-novini": BadgeIcon,

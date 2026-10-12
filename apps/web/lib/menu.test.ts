@@ -6,6 +6,8 @@ describe("public menu", () => {
     expect(PUBLIC_MENU.map((entry) => entry.slug)).toEqual([
       "plovdiv",
       "regionalni-novini",
+      "na-fokus",
+      "glasat-na-istinata",
       "balgariya",
       "politika",
       "kriminalni-novini",
@@ -18,7 +20,6 @@ describe("public menu", () => {
       "kultura",
       "lajfstajl",
       "izbori",
-      "glasat-na-istinata",
     ]);
     expect(new Set(PUBLIC_MENU.map((entry) => entry.slug)).size).toBe(PUBLIC_MENU.length);
   });
@@ -28,5 +29,6 @@ describe("public menu", () => {
     expect(menuName("biznes-novini", "Икономика")).toBe("Бизнес");
     expect(menuName("regionalni-novini", "Регионални")).toBe("Регион");
     expect(menuName("novini", "Новини")).toBe("Новини");
+    expect(menuName("na-fokus", "На фокус")).toBe("На Фокус");
   });
 });

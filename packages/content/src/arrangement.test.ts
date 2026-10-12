@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { activePlacement, duplicateArticleIds, emptyArrangement, nextArrangementChangeAt, type ArrangementDocument } from "./arrangement";
+import { activePlacement, duplicateArticleIds, emptyArrangement, nextArrangementChangeAt, removeArticleFromArrangement, type ArrangementDocument } from "./arrangement";
 
 const article = "6f1e2c8a-1b2d-4c3e-9a10-111111111111";
 const next = "6f1e2c8a-1b2d-4c3e-9a10-222222222222";
@@ -83,5 +83,22 @@ describe("nextArrangementChangeAt", () => {
     doc.slots["support-0"] = { items: [item(next, "2026-09-29T11:30:00Z", null)] };
     expect(nextArrangementChangeAt(doc, now, visible)).toBe(Date.parse("2026-09-29T11:30:00Z"));
     expect(nextArrangementChangeAt(doc, now, new Set())).toBeNull();
+  });
+});
+
+describe("removeArticleFromArrangement", () => {
+  it("removes the story from slots and excluded", () => {
+    const keep = "6f1e2c8a-1b2d-4c3e-9a10-333333333333";
+    const doc: ArrangementDocument = {
+      slots: {
+        hero: { items: [{ articleId: article, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] },
+        "support-0": { items: [{ articleId: keep, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] },
+      },
+      excluded: [article],
+    };
+    const next = removeArticleFromArrangement(doc, article);
+    expect(next.slots.hero?.items).toEqual([]);
+    expect(next.slots["support-0"]?.items[0]?.articleId).toBe(keep);
+    expect(next.excluded).toEqual([]);
   });
 });

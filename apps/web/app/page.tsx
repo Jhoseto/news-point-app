@@ -19,6 +19,7 @@ import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ComposedSection } from "@/lib/home-compose";
 import { loadPublicHome } from "@/lib/public-home";
+import { HOME_ANALYSES_RUBRIC_SLUG, HOME_FOCUS_RUBRIC_SLUG, HOME_VOICE_RUBRIC_SLUG } from "@newspoint/content";
 import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { PlacementRefresh } from "@/components/placement-refresh";
@@ -27,10 +28,7 @@ export const revalidate = 60;
 const homeMetadata = publicPageMetadata("home");
 export const metadata = { ...homeMetadata, title: { absolute: "NewsPoint.bg – Гласът на истината" } };
 
-const FOCUS_LABEL = "na-fokus";
-const FOCUS_ARCHIVE_PATH = "/na-fokus/";
-/** Rubric grid is omitted; homepage uses the editorial carousel only. */
-const VOICE_SECTION_SLUG = "glasat-na-istinata";
+const FOCUS_ARCHIVE_PATH = `/${HOME_FOCUS_RUBRIC_SLUG}/`;
 
 function HomeAsideLists({
   sections,
@@ -65,7 +63,7 @@ function HomeAsideLists({
 export default async function HomePage() {
   const [home, menu, ssrDesktop] = await Promise.all([loadPublicHome(), getMenuCategories(), ssrDesktopViewport()]);
   const mobile = homeMobileFeed(home, menu);
-  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceCarousel, poll } = home;
+  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceSection, poll } = home;
 
   const shine = createHomeShine();
   const bandHero = hero ? shine.nextCard() : undefined;
@@ -74,14 +72,18 @@ export default async function HomePage() {
   const bandSupport2 = support[2] ? shine.nextCard() : undefined;
   shine.sectionBreak();
   const focusShineDelays = focusCarousel.map(() => shine.nextCard());
-  const topicShineDelays = topicsCarousel.map(() => shine.nextCard());
-  const voiceShineDelays = voiceCarousel.map(() => shine.nextCard());
+  const analysesShineDelays = topicsCarousel.map(() => shine.nextCard());
 
   const narrowMain = mainSections.filter((section) => !section.wide);
   const wideMain = mainSections.filter((section) => section.wide);
+  const shineSections = [
+    ...narrowMain,
+    ...wideMain,
+    ...(voiceSection ? [{ ...voiceSection, layout: voiceSection.layout === "feature" ? "feature" as const : "grid" as const }] : []),
+  ];
   const shineCycleSec = estimateHomeShineCycleSec(
     shine,
-    [...narrowMain, ...wideMain].map((section) => ({ ...section, layout: section.layout === "feature" ? "feature" as const : "grid" as const })),
+    shineSections,
     asideSections.map((section) => section.articles.length),
   );
 
@@ -128,12 +130,20 @@ export default async function HomePage() {
               articles={focusCarousel}
               shineDelays={focusShineDelays}
               href={FOCUS_ARCHIVE_PATH}
-              accentSlug={FOCUS_LABEL}
+              accentSlug={HOME_FOCUS_RUBRIC_SLUG}
             />
           </div>
         ) : null}
         {topicsCarousel.length ? (
-          <LeadingCarousel articles={topicsCarousel} shineDelays={topicShineDelays} title="Топ теми" headingId="sec-top-themes" motion="to-right" />
+          <LeadingCarousel
+            articles={topicsCarousel}
+            shineDelays={analysesShineDelays}
+            title="Анализи и коментари"
+            headingId="sec-analizi-komentari"
+            motion="to-right"
+            href={`/${HOME_ANALYSES_RUBRIC_SLUG}/`}
+            accentSlug={HOME_ANALYSES_RUBRIC_SLUG}
+          />
         ) : null}
 
         {mainSections.map((section) => {
@@ -148,10 +158,20 @@ export default async function HomePage() {
                   </div>
                   <HomeAsideLists sections={asideSections} shine={shine} className="hidden flex-col gap-6 lg:flex" />
                 </div>
+                {voiceSection ? (
+                  <CategorySection
+                    key={voiceSection.category.id}
+                    category={voiceSection.category}
+                    articles={voiceSection.articles}
+                    layout="feature"
+                    wide
+                    shine={shine}
+                  />
+                ) : null}
               </Fragment>
             );
           }
-          if (!section.wide || section.category.slug === VOICE_SECTION_SLUG) return null;
+          if (!section.wide || section.category.slug === HOME_VOICE_RUBRIC_SLUG) return null;
           return (
             <CategorySection
               key={section.category.id}
@@ -165,14 +185,6 @@ export default async function HomePage() {
         })}
 
         <HomeAsideLists sections={asideSections} className="flex flex-col gap-6 lg:hidden" />
-        {voiceCarousel.length ? (
-          <LeadingCarousel
-            articles={voiceCarousel}
-            shineDelays={voiceShineDelays}
-            title="Гласът на истината"
-            headingId="sec-glasat-na-istinata"
-          />
-        ) : null}
 
         <BrandBanner />
       </div>

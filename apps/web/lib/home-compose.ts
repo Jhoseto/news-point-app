@@ -141,3 +141,31 @@ export function composeLabelCarousel(input: {
   const tail = pool.filter((article) => !used.has(article.id) && !excluded.has(article.id));
   return [...head, ...tail].slice(0, maxArticles);
 }
+
+/** Newest first; duplicate ids keep the copy with the latest `publishedAt`. */
+export function mergeArticlesByRecency(...pools: ArticleSummary[][]): ArticleSummary[] {
+  const byId = new Map<string, ArticleSummary>();
+  for (const pool of pools) {
+    for (const article of pool) {
+      const existing = byId.get(article.id);
+      if (!existing || article.publishedAt > existing.publishedAt) byId.set(article.id, article);
+    }
+  }
+  return [...byId.values()].sort((left, right) => right.publishedAt.getTime() - left.publishedAt.getTime());
+}
+
+export function composeSectionArticles(input: {
+  categorySlug: string;
+  pool: ArticleSummary[];
+  count: number;
+  document: ArrangementDocument;
+  pinned: Map<string, ArticleSummary>;
+  now: number;
+}): ArticleSummary[] {
+  const visible = new Set(input.pinned.keys());
+  const excluded = new Set(input.document.excluded);
+  const slot = (key: string) => resolveSlot(input.document, key, input.now, visible, input.pinned);
+  const picker = new UniquePicker();
+  const pins = Array.from({ length: input.count }, (_, index) => slot(sectionSlotKey(input.categorySlug, index)));
+  return fillPinned(picker, input.pool, input.count, pins, excluded);
+}

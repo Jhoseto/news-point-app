@@ -1,6 +1,6 @@
 import { emptyArrangement, type ArrangementDocument } from "@newspoint/content";
 import { describe, expect, it } from "vitest";
-import { composeHome, composeLabelCarousel } from "./home-compose";
+import { composeHome, composeLabelCarousel, mergeArticlesByRecency } from "./home-compose";
 import { UniquePicker } from "./pick";
 import type { ArticleSummary, CategoryRef } from "./queries";
 
@@ -139,6 +139,16 @@ describe("composeHome", () => {
       maxArticles: 3,
     });
     expect(list.map((item) => item.id)).toEqual(["pinned", "a1", "a2"]);
+  });
+
+  it("merges label pools by recency without duplicate ids", () => {
+    const older = { ...article("shared"), publishedAt: new Date("2026-09-28T08:00:00Z") };
+    const newer = { ...article("shared"), publishedAt: new Date("2026-09-29T08:00:00Z") };
+    const onlyTop = { ...article("only-top"), publishedAt: new Date("2026-09-27T08:00:00Z") };
+    const onlyVoice = { ...article("only-voice"), publishedAt: new Date("2026-09-28T12:00:00Z") };
+    const merged = mergeArticlesByRecency([older, onlyTop], [newer, onlyVoice]);
+    expect(merged.map((item) => item.id)).toEqual(["shared", "only-voice", "only-top"]);
+    expect(merged[0]?.publishedAt.toISOString()).toBe(newer.publishedAt.toISOString());
   });
 
   it("uses a separate slot prefix for another label carousel", () => {
