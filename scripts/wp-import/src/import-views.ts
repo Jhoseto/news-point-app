@@ -7,6 +7,9 @@ delete process.env.DATABASE_URL_SESSION;
 
 const SOURCE = "https://newspoint.bg/wp-json/post-views-counter/get-post-views";
 const CONCURRENCY = Math.min(32, Math.max(1, Number(process.env.WP_IMPORT_VIEW_CONCURRENCY ?? 24) || 24));
+/** When unset, only backfill suspiciously low counts (live hits before import). Set to 1 to refresh every WP article. */
+const IMPORT_ALL = process.env.WP_IMPORT_VIEWS_ALL === "1";
+const LOW_COUNT_CEILING = Math.max(1, Number(process.env.WP_IMPORT_VIEW_LOW_CEILING ?? 100) || 100);
 
 type Row = { id: string; legacyId: number };
 
@@ -57,14 +60,21 @@ async function mapPool<T, R>(items: T[], limit: number, worker: (item: T) => Pro
 
 const { db, close } = createScriptDb("dev");
 try {
-  const rows = await db.execute<{ id: string; legacy_id: string | number }>(sql`
-    select a.id, a.legacy_id
-    from articles a
-    left join article_read_counts r on r.article_id = a.id
-    where a.source_system = 'wordpress' and a.legacy_id is not null
-      and (r.article_id is null or r.read_count <= 1)
-    order by a.legacy_id
-  `);
+  const rows = await db.execute<{ id: string; legacy_id: string | number }>(IMPORT_ALL
+    ? sql`
+      select a.id, a.legacy_id
+      from articles a
+      where a.source_system = 'wordpress' and a.legacy_id is not null
+      order by a.legacy_id
+    `
+    : sql`
+      select a.id, a.legacy_id
+      from articles a
+      left join article_read_counts r on r.article_id = a.id
+      where a.source_system = 'wordpress' and a.legacy_id is not null
+        and (r.article_id is null or r.read_count <= ${LOW_COUNT_CEILING})
+      order by a.legacy_id
+    `);
   const articles: Row[] = rows.flatMap((row) => {
     const legacyId = Number(row.legacy_id);
     return Number.isSafeInteger(legacyId) && legacyId > 0 ? [{ id: row.id, legacyId }] : [];
@@ -88,7 +98,7 @@ try {
       insert into article_read_counts (article_id, read_count, updated_at)
       values ${values}
       on conflict (article_id) do update
-      set read_count = excluded.read_count, updated_at = now()
+      set read_count = greatest(article_read_counts.read_count, excluded.read_count), updated_at = now()
     `);
     saved += batch.length;
     console.log(`saved ${saved}/${articles.length}`);
