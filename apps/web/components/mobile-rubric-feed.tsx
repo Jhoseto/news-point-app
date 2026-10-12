@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { CategoryArchivePageLink } from "./category-archive-pagination";
+import { CategoryArchiveNav } from "./category-archive-nav";
 import dynamic from "next/dynamic";
 import { Fragment } from "react";
 import { preload } from "react-dom";
@@ -12,7 +14,6 @@ import { HomeCategorySection } from "./home-category-section";
 import { SectionTitle } from "./ui";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Logo } from "./logo";
-import { ArrowRightIcon } from "./icons";
 
 const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
 const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
@@ -78,15 +79,25 @@ export function MobileCategoryFeed({ feed, preview = false, window, now = new Da
       <Breadcrumbs items={[]} dense />
       <div className="[&_.np-section-heading]:mb-0 [&_.np-ring]:!size-4 [&_h1]:text-base [&_h1]:leading-tight" data-mobile-feed-heading tabIndex={-1}><SectionTitle as="h1" accentSlug={feed.category.slug}>{feed.category.name}</SectionTitle></div>
     </div></Block>
-    {feed.anchored ? <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted"><span>Разглеждате по-ранни публикации</span><Link href={feed.category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</Link></div> : null}
-    <div className="flex flex-col gap-4">
+    {feed.anchored ? <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted"><span>Разглеждате по-ранни публикации</span><CategoryArchivePageLink href={feed.category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</CategoryArchivePageLink></div> : null}
+    <div id="np-rubric-cards" className="scroll-mt-[var(--np-header-h)] flex flex-col gap-4">
       {articles.map((article, index) => anchor(article.id, index === 0 ? <MobileLeadCard article={article} priority={!preview && !window} now={now} /> : index < 3 ? <MobileSupportingCard article={article} now={now} /> : <MobileHorizonCard article={article} now={now} />, window))}
       {!articles.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">{feed.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p></Block> : null}
     </div>
-    {feed.previous || feed.next ? <nav aria-label={`Страници на рубрика ${feed.category.name}`} data-mobile-pager-ignore className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-      {feed.previous ? <Link href={feed.previous} prefetch={false} rel="prev" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-bold text-ink"><ArrowRightIcon className="rotate-180" /> Назад</Link> : <span />}
-      {feed.next ? <Link href={feed.next} prefetch={false} rel="next" className="np-gradient-bg inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-on-accent shadow-card">Още новини <ArrowRightIcon /></Link> : <span className="text-sm text-muted">Стигнахте края на наличния архив</span>}
-    </nav> : null}
+    {feed.previous || feed.next ? (
+      <div data-mobile-pager-ignore>
+        <CategoryArchiveNav
+          categoryName={feed.category.name}
+          strip={feed.pageStrip}
+          currentPage={feed.pagination.currentPage}
+          totalPages={feed.pagination.totalPages}
+          firstHref={feed.pagination.firstHref}
+          lastHref={feed.pagination.lastPageHref}
+          previous={feed.previous}
+          next={feed.next}
+        />
+      </div>
+    ) : null}
   </div>;
 }
 export function MobileFeed({ model, preview = false, namespace, window }: { model: Feed; preview?: boolean; namespace?: string; window?: PreviewWindow }) {

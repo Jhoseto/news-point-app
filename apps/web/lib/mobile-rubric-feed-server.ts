@@ -1,6 +1,7 @@
 import "server-only";
 import { loadPublicHome, type PublicHome } from "./public-home";
 import type { ComposedSection } from "./home-compose";
+import type { CategoryCursor } from "./category-pagination";
 import { loadPublicCategory } from "./public-category";
 import { getMenuCategories, type CategoryRef } from "./queries";
 import { mobileRubrics, publicVersion, rubricMenuVersion } from "./mobile-rubric-nav";
@@ -28,13 +29,26 @@ export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {
     focusCarousel: home.focusCarousel.map(serializeFeedArticle), topicsCarousel: home.topicsCarousel.map(serializeFeedArticle),
     voiceCarousel: [], poll: home.poll }, home.nextChangeAt);
 }
-export function categoryMobileFeed(category: CategoryRef, view: Awaited<ReturnType<typeof loadPublicCategory>>, path = category.path) {
-  return envelope(path, view.asOfMs, view.menu, { kind: "category", category, articles: view.articles.map(serializeFeedArticle),
-    previous: view.archive.previous, next: view.archive.next, anchored: view.archive.anchored }, view.nextChangeAt);
+export function categoryMobileFeed(
+  category: CategoryRef,
+  view: Awaited<ReturnType<typeof loadPublicCategory>>,
+  cursor: CategoryCursor | null,
+  path = category.path,
+) {
+  return envelope(path, view.asOfMs, view.menu, {
+    kind: "category",
+    category,
+    articles: view.articles.map(serializeFeedArticle),
+    previous: view.archive.previous,
+    next: view.archive.next,
+    anchored: view.archive.anchored,
+    pageStrip: view.pageStrip,
+    pagination: view.pagination,
+  }, view.nextChangeAt);
 }
 export async function loadMobileRubricFeed(path: string): Promise<MobileRubricFeed | null> {
   const menu = await getMenuCategories();
   if (path === "/") return homeMobileFeed(await loadPublicHome(), menu);
   const category = menu.find(item => item.path === path);
-  return category ? categoryMobileFeed(category, await loadPublicCategory(category, null)) : null;
+  return category ? categoryMobileFeed(category, await loadPublicCategory(category, null), null) : null;
 }

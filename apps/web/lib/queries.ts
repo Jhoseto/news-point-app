@@ -253,6 +253,7 @@ export interface CategoryArchive {
   anchored: boolean;
   /** Keyset anchor timestamp shared by archive pagination links on this view. */
   anchor: string;
+  totalPages?: number;
 }
 
 /** Keyset navigation: one bounded page, one small opposite-direction probe. No COUNT/OFFSET. */
@@ -311,13 +312,14 @@ async function queryCategoryArchive(
     if (opposite === "newer") previous = probe.length > 0;
     else next = probe.length > 0;
   }
-  const link = (boundary: CategoryCursor["boundary"], dir: CategoryCursor["direction"]) =>
-    categoryCursorUrl(category.path, { v: 1, category: category.id, anchor, boundary, direction: dir });
+  const currentPage = cursor?.page ?? 1;
+  const link = (boundary: CategoryCursor["boundary"], dir: CategoryCursor["direction"], page: number) =>
+    categoryCursorUrl(category.path, { v: 1, category: category.id, anchor, boundary, direction: dir, page });
   return {
     articles: pageRows.map(toSummary),
     anchored: !!cursor,
-    previous: previous ? link(first, "newer") : null,
-    next: next ? link(last, "older") : null,
+    previous: previous ? (currentPage <= 2 ? category.path : link(first, "newer", currentPage - 1)) : null,
+    next: next ? link(last, "older", currentPage + 1) : null,
     anchor,
   };
 }

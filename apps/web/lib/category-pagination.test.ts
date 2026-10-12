@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { CATEGORY_PAGE_SIZE, categoryCursorUrl, parseCategoryCursor, type CategoryCursor } from "./category-pagination";
+import {
+  CATEGORY_PAGE_SIZE,
+  categoryCursorUrl,
+  listCategoryPageNumbers,
+  parseCategoryCursor,
+  type CategoryCursor,
+} from "./category-pagination";
 import { archiveBoundary, archiveFilter, archiveOrder } from "./category-archive-query";
 
 const category = "11111111-1111-4111-8111-111111111111";
@@ -12,6 +18,12 @@ const now = Date.parse("2026-09-27T09:00:00Z");
 const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
 
 describe("category archive navigation", () => {
+  it("lists page numbers with first, last, neighbours and gaps", () => {
+    expect(listCategoryPageNumbers(1, 2)).toEqual([1, 2]);
+    expect(listCategoryPageNumbers(5, 12)).toEqual([1, 3, 4, 5, 6, 7, 12]);
+    expect(listCategoryPageNumbers(1, 5)).toEqual([1, 2, 3, 4, 5]);
+  });
+
   it("keeps microsecond precision, category, direction and anchor in the URL", () => {
     const url = categoryCursorUrl("/bulgaria/", cursor);
     const token = new URL(url, "https://newspoint.bg").pathname.split("/").filter(Boolean).at(-1);

@@ -5,6 +5,7 @@ import { categoryAccentStyle } from "@/lib/category-accent";
 import { cardShineStyle } from "@/lib/shine-style";
 import { ArrowRightIcon } from "./icons";
 import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
+import { ClampedTitleTip } from "./clamped-title-tip";
 
 /**
  * Story with the title over the photo. "lead" is the top story; "tile" is the
@@ -148,9 +149,9 @@ export function ArticleCard({
             {article.category ? <CategoryLabel category={article.category} /> : <span />}
             <TimeMeta date={article.publishedAt} relative className="shrink-0" />
           </div>
-          <h3 className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
+          <ClampedTitleTip className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
-          </h3>
+          </ClampedTitleTip>
           {showExcerpt && article.excerpt ? (
             <p className="line-clamp-2 text-sm leading-relaxed text-muted">{article.excerpt}</p>
           ) : null}
@@ -184,9 +185,9 @@ export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummar
             {article.category ? <CategoryLabel category={article.category} /> : <span />}
             <TimeMeta date={article.publishedAt} relative className="shrink-0" />
           </div>
-          <h3 className="text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
+          <ClampedTitleTip className="line-clamp-3 text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
-          </h3>
+          </ClampedTitleTip>
           {article.excerpt ? (
             <p className="line-clamp-6 text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
               {article.excerpt}

@@ -3,6 +3,7 @@ import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
 import { isRecentArticle } from "@/lib/format";
 import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
+import { ClampedTitleTip } from "./clamped-title-tip";
 
 /**
  * Mobile lead card: image up top with category overlay, title BELOW the image.
@@ -217,6 +218,15 @@ function Heading({
   level?: "h2" | "h3";
 }) {
   const Tag = level;
-  const clampClass = clampLines === 2 ? "line-clamp-2" : "";
-  return <Tag className={`${clampClass} ${className ?? ""}`}>{text}</Tag>;
+  const clampClass =
+    clampLines === 2 ? "line-clamp-2" : clampLines === 3 ? "line-clamp-3" : "";
+  const merged = `${clampClass} ${className ?? ""}`.trim();
+  if (clampLines) {
+    return (
+      <ClampedTitleTip as={level} className={merged}>
+        {text}
+      </ClampedTitleTip>
+    );
+  }
+  return <Tag className={merged}>{text}</Tag>;
 }

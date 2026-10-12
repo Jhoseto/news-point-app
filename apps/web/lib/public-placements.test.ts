@@ -20,6 +20,12 @@ vi.mock("./category-grid-balance.server", () => ({
   archiveBoundaryForArticle: async () => null,
   countCategoryArticlesAfter: async () => 0,
 }));
+vi.mock("./category-archive-pages", () => ({
+  getCategoryArchiveTotalPages: async () => 3,
+  getCategoryArchivePageHref: async (_category: unknown, _anchor: unknown, page: number) =>
+    page === 1 ? "/balgariya/" : `/balgariya/archive/page-${page}/`,
+  buildCategoryArchivePageStrip: async () => [{ kind: "current", page: 1 }],
+}));
 vi.mock("./queries", () => ({
   getLatest: () => state.latest(), getLatest24Hours: async () => state.pool,
   getLabelled: async () => state.pool, getMenuCategories: async () => [category],
@@ -73,7 +79,7 @@ describe("cached listing inputs and placement clocks", () => {
     const before = await loadPublicCategory(category, null);
     expect(before.articles.map(a => a.id)).toEqual([pinnedId, automaticId]);
     expect(before.front.pins[0]?.publishedAt).toBeInstanceOf(Date);
-    expect(categoryMobileFeed(category, before).freshUntil).toBe(end);
+    expect(categoryMobileFeed(category, before, null).freshUntil).toBe(end);
     vi.setSystemTime(end);
     const after = await loadPublicCategory(category, null);
     expect(after.articles.map(a => a.id)).toEqual([automaticId, pinnedId]);

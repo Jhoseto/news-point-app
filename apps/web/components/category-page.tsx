@@ -2,8 +2,8 @@ import { DesktopFeed } from "./desktop-feed";
 import { MobileCanonicalFeed } from "./mobile-rubric-feed";
 import { categoryMobileFeed } from "@/lib/mobile-rubric-feed-server";
 import { loadPublicCategory } from "@/lib/public-category";
-import Link from "next/link";
 import { categoryCursorUrl, type CategoryCursor } from "@/lib/category-pagination";
+import { CategoryArchiveNav } from "./category-archive-nav";
 import type { CategoryRef } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { ArticleCard, FeatureCard } from "./article-card";
@@ -11,8 +11,11 @@ import { Breadcrumbs } from "./breadcrumbs";
 import { CategoryChips } from "./lists";
 import { LatestNews24h } from "./latest-news-24h";
 import { ArticleImage, SectionTitle } from "./ui";
-import { ArrowRightIcon } from "./icons";
 import { PlacementRefresh } from "./placement-refresh";
+import {
+  CategoryArchivePageLink,
+  CategoryArchiveScrollOnNavigate,
+} from "./category-archive-pagination";
 
 export async function CategoryPage({ category, cursor, canonicalPath }: { category: CategoryRef; cursor: CategoryCursor | null; canonicalPath?: string }) {
   const [view, ssrDesktop] = await Promise.all([loadPublicCategory(category, cursor), ssrDesktopViewport()]);
@@ -22,14 +25,26 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
   const menu = view.menu;
   const articles = view.articles;
   const [lead, ...rest] = articles;
-  const mobileModel = categoryMobileFeed(category, view, canonicalPath ?? (cursor ? categoryCursorUrl(category.path, cursor) : category.path));
+  const mobileModel = categoryMobileFeed(
+    category,
+    view,
+    cursor,
+    canonicalPath ?? (cursor ? categoryCursorUrl(category.path, cursor) : category.path),
+  );
 
   if (!ssrDesktop) {
-    return <><PlacementRefresh nextChangeAt={view.nextChangeAt} /><MobileCanonicalFeed ssrDesktop={false} model={mobileModel} /></>;
+    return (
+      <>
+        <CategoryArchiveScrollOnNavigate />
+        <PlacementRefresh nextChangeAt={view.nextChangeAt} />
+        <MobileCanonicalFeed ssrDesktop={false} model={mobileModel} />
+      </>
+    );
   }
 
   return (
     <DesktopFeed ssrDesktop>
+    <CategoryArchiveScrollOnNavigate />
     <PlacementRefresh nextChangeAt={view.nextChangeAt} />
     <div data-np-category-archive className="np-mobile-legacy-feed np-container flex flex-col gap-4 pt-3 pb-10 lg:gap-8 lg:pt-5">
       <div className="hidden lg:contents">
@@ -52,7 +67,7 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
       {archive.anchored ? (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">
           <span>Разглеждате по-ранни публикации</span>
-          <Link href={category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</Link>
+          <CategoryArchivePageLink href={category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</CategoryArchivePageLink>
         </div>
       ) : null}
 
@@ -63,7 +78,7 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
           ) : (
             <>
             {/* Desktop: original FeatureCard + grid layout. */}
-            <div className="hidden lg:flex lg:flex-col lg:gap-6">
+            <div id="np-rubric-cards" className="scroll-mt-[var(--np-header-h)] hidden lg:flex lg:flex-col lg:gap-6">
               {lead ? <FeatureCard article={lead} /> : null}
               {rest.length ? (
                 <section aria-labelledby="sec-more">
@@ -76,19 +91,17 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
                 </section>
               ) : null}
             </div>
-            {archive.previous || archive.next ? (
-              <nav aria-label={`Страници на рубрика ${category.name}`} className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
-                {archive.previous ? (
-                  <Link href={archive.previous} prefetch={false} rel="prev" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-bold text-ink transition hover:bg-surface-2">
-                    <ArrowRightIcon className="rotate-180" /> Назад
-                  </Link>
-                ) : <span />}
-                {archive.next ? (
-                  <Link href={archive.next} prefetch={false} rel="next" className="np-gradient-bg inline-flex min-h-11 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-on-accent shadow-card transition hover:brightness-110">
-                    Още новини <ArrowRightIcon />
-                  </Link>
-                ) : <span className="text-sm text-muted">Стигнахте края на наличния архив</span>}
-              </nav>
+            {view.pagination.totalPages > 1 || archive.previous || archive.next ? (
+              <CategoryArchiveNav
+                categoryName={category.name}
+                strip={view.pageStrip}
+                currentPage={view.pagination.currentPage}
+                totalPages={view.pagination.totalPages}
+                firstHref={view.pagination.firstHref}
+                lastHref={view.pagination.lastPageHref}
+                previous={archive.previous}
+                next={archive.next}
+              />
             ) : null}
             </>
           )}

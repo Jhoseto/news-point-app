@@ -1954,6 +1954,128 @@ html[data-reduced-motion="true"] .np-rubric-float-tip {
   transition: none !important;
 }
 
+.np-title-float-tip {
+  position: fixed;
+  z-index: 85;
+  max-width: min(22rem, calc(100vw - 2rem));
+  padding: 0.45rem 0.72rem 0.45rem 0.62rem;
+  translate: -50% calc(-100% - 0.4rem);
+  scale: 0.985;
+  opacity: 0;
+  visibility: hidden;
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--np-accent) 16%, var(--np-line));
+  border-radius: 0.625rem;
+  background: color-mix(in oklab, var(--np-surface) 96%, var(--np-accent));
+  box-shadow:
+    0 16px 38px -20px color-mix(in oklab, var(--np-accent) 34%, var(--np-ink)),
+    0 0 0 1px color-mix(in oklab, white 50%, transparent) inset;
+  color: var(--np-ink);
+  font-size: 0.8125rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  text-wrap: pretty;
+  pointer-events: none;
+  transition:
+    opacity 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    translate 260ms cubic-bezier(0.4, 0, 0.65, 1),
+    scale 260ms cubic-bezier(0.4, 0, 0.65, 1),
+    visibility 0s linear 260ms;
+}
+
+.np-title-float-tip[data-open] {
+  opacity: 1;
+  visibility: visible;
+  translate: -50% calc(-100% - 0.55rem);
+  scale: 1;
+  transition:
+    opacity 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    translate 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    scale 300ms cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0s;
+}
+
+.np-title-float-tip::before {
+  content: "";
+  position: absolute;
+  inset: 0.35rem auto 0.35rem 0;
+  width: 2px;
+  border-radius: 99px;
+  background: var(--np-gradient);
+}
+
+html[data-reduced-motion="true"] .np-title-float-tip {
+  transition: none !important;
+}
+
+.np-category-pagination-link,
+.np-category-pagination-current {
+  display: inline-flex;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding-inline: 0.55rem;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.np-category-pagination-link {
+  border: 1px solid color-mix(in oklab, var(--np-line) 88%, var(--np-accent));
+  background: var(--np-surface);
+  color: var(--np-ink);
+  transition:
+    background-color 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    color 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    box-shadow 220ms cubic-bezier(0.4, 0, 0.65, 1);
+}
+
+.np-category-pagination-link:hover {
+  border-color: color-mix(in oklab, var(--np-accent) 28%, var(--np-line));
+  background: color-mix(in oklab, var(--np-surface-2) 70%, var(--np-accent));
+  color: var(--np-logo);
+  box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--np-accent) 45%, var(--np-ink));
+}
+
+.np-category-pagination-current {
+  border: 1px solid color-mix(in oklab, var(--np-accent) 35%, transparent);
+  background: var(--np-gradient);
+  color: var(--np-on-accent);
+  box-shadow: 0 12px 28px -16px color-mix(in oklab, var(--np-accent) 55%, var(--np-ink));
+}
+
+.np-category-pagination-jump {
+  display: inline-flex;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in oklab, var(--np-line) 88%, var(--np-accent));
+  background: var(--np-surface);
+  color: var(--np-ink);
+  transition:
+    background-color 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    border-color 220ms cubic-bezier(0.4, 0, 0.65, 1),
+    color 220ms cubic-bezier(0.4, 0, 0.65, 1);
+}
+
+.np-category-pagination-jump:hover {
+  border-color: color-mix(in oklab, var(--np-accent) 28%, var(--np-line));
+  background: color-mix(in oklab, var(--np-surface-2) 70%, var(--np-accent));
+  color: var(--np-logo);
+}
+
+.np-category-pagination-jump.is-disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
 @media (max-width: 767px) {
   .np-latest-mobile-thumb { display: block; float: right; width: 3.25rem; height: 2.35rem; margin: 0 0 .35rem .6rem; border-radius: .45rem; object-fit: cover; }
 

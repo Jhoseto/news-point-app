@@ -7,7 +7,12 @@ import {
   trimCategoryGridOrphans,
 } from "./category-grid-balance";
 import { archiveBoundaryForArticle, countCategoryArticlesAfter } from "./category-grid-balance.server";
-import { CATEGORY_PAGE_SIZE, type CategoryCursor } from "./category-pagination";
+import {
+  buildCategoryArchivePageStrip,
+  getCategoryArchivePageHref,
+  getCategoryArchiveTotalPages,
+} from "./category-archive-pages";
+import { categoryArchivePageNumber, CATEGORY_PAGE_SIZE, type CategoryCursor } from "./category-pagination";
 import { getCategoryArchive, getMenuCategories, getLatest24Hours, publicAsOfMs, type ArticleSummary, type CategoryRef } from "./queries";
 
 const readCategoryView = unstable_cache(async (category: CategoryRef, cursor: CategoryCursor | null, skipIds: string[], limit: number) => {
@@ -51,6 +56,22 @@ export async function loadPublicCategory(category: CategoryRef, cursor: Category
   const balanced = await balancePublicCategoryArticles(category, articles, archive, skipIds);
   articles = balanced.articles;
   archive.next = balanced.next;
-  return { ...view, asOfMs, front: { ...front, pins }, archive, nextChangeAt: cursor ? null : front.nextChangeAt, latest24h: latest24h.map(revive),
-    articles };
+  const currentPage = categoryArchivePageNumber(cursor);
+  const totalPages = archive.anchor ? await getCategoryArchiveTotalPages(category, archive.anchor) : 1;
+  const pageStrip = archive.anchor
+    ? await buildCategoryArchivePageStrip(category, archive.anchor, currentPage, totalPages)
+    : [{ kind: "current" as const, page: 1 }];
+  const lastPageHref =
+    archive.anchor && totalPages > 1 ? await getCategoryArchivePageHref(category, archive.anchor, totalPages) : null;
+  return {
+    ...view,
+    asOfMs,
+    front: { ...front, pins },
+    archive: { ...archive, totalPages },
+    pageStrip,
+    pagination: { currentPage, totalPages, firstHref: category.path, lastPageHref },
+    nextChangeAt: cursor ? null : front.nextChangeAt,
+    latest24h: latest24h.map(revive),
+    articles,
+  };
 }

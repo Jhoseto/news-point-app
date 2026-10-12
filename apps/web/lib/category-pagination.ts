@@ -11,8 +11,29 @@ const cursorSchema = z.object({
   anchor: archiveTimestampSchema,
   direction: z.enum(["older", "newer"]),
   boundary: z.object({ at: archiveTimestampSchema, id: z.uuid() }).strict(),
+  page: z.number().int().min(1).optional(),
 }).strict();
 export type CategoryCursor = z.infer<typeof cursorSchema>;
+
+export type CategoryPageStripItem =
+  | { kind: "page"; page: number; href: string }
+  | { kind: "current"; page: number }
+  | { kind: "ellipsis" };
+
+export function categoryArchivePageNumber(cursor: CategoryCursor | null): number {
+  return cursor?.page ?? 1;
+}
+
+export function listCategoryPageNumbers(currentPage: number, totalPages: number): number[] {
+  if (totalPages <= 1) return [1];
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+  const pages = new Set<number>([1, totalPages, currentPage]);
+  for (const delta of [-2, -1, 1, 2]) {
+    const page = currentPage + delta;
+    if (page >= 1 && page <= totalPages) pages.add(page);
+  }
+  return [...pages].sort((a, b) => a - b);
+}
 
 /** Public navigation state, never an authorization token. SQL still checks visibility. */
 export function parseCategoryCursor(raw: string | string[] | undefined, category: string, now = Date.now()): CategoryCursor | null {
