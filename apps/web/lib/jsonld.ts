@@ -9,6 +9,7 @@
  */
 
 import type { PublicEpisode } from "./podcast-types";
+import { BRAND_LOGO } from "./brand-logo";
 
 export type JsonLdObject = Record<string, unknown>;
 
@@ -59,7 +60,7 @@ export function newsMediaOrganization(options: NewsMediaOrganizationOptions): Js
     "@id": `${origin}/#organization`,
     name: "NewsPoint.bg",
     url: origin,
-    logo: logoUrl ?? `${origin}/brand/newspoint-logo.webp`,
+    logo: logoUrl ?? `${origin}${BRAND_LOGO.src}`,
     slogan: "Гласът на истината",
     ...(options.contact ? {
       email: options.contact.email,

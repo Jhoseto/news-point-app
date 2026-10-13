@@ -64,7 +64,7 @@ describe("reader service worker", () => {
   });
   it("deletes only old reader caches and updates only when explicitly requested", async () => {
     const w = worker(); w.caches.keys.mockResolvedValue(["reader-pages-v1", "reader-assets-v1", "studio-assets-v1", "other-app", "reader-assets-v2"]);
-    await w.fire("activate"); expect(w.caches.delete.mock.calls.map((call) => call[0])).toEqual(["reader-pages-v1", "reader-assets-v1"]);
+    await w.fire("activate"); expect(w.caches.delete.mock.calls.map((call) => call[0])).toEqual(["reader-pages-v1", "reader-assets-v1", "reader-assets-v2"]);
     await w.fire("install"); expect(w.self.skipWaiting).not.toHaveBeenCalled();
     await w.fire("message", { data: { type: "SKIP_WAITING" } }); expect(w.self.skipWaiting).toHaveBeenCalledOnce();
   });

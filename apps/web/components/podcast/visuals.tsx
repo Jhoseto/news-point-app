@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { BRAND_MARK_EMBLEM } from "@/lib/brand-logo";
 
 export function PodcastOrbit({ className = "" }: { className?: string }) {
-  return <img src="/brand/mark.svg" alt="" aria-hidden="true" className={`np-podcast-orbit ${className}`} />;
+  return <img src={BRAND_MARK_EMBLEM} alt="" aria-hidden="true" className={`np-podcast-orbit ${className}`} />;
 }
 
 export function PodcastCover({ src, className = "" }: { src: string; className?: string }) {

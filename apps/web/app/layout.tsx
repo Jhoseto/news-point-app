@@ -21,6 +21,7 @@ import { getLatest, getMenuCategories } from "@/lib/queries";
 import { newsMediaOrganization, webSite } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
+import { BRAND_MARK_EMBLEM } from "@/lib/brand-logo";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
 export const revalidate = 60;
@@ -42,7 +43,6 @@ export const metadata: Metadata = {
     icon: [
       { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
       { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
-      { url: "/brand/mark-favicon.svg", type: "image/svg+xml" },
     ],
     shortcut: [
       { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
@@ -83,7 +83,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const website = webSite(origin, organization["@id"] as string);
   const mobileRubrics = menu.map(({ slug, name, path }) => ({ slug, name, path }));
   return (
-    <html lang="bg" suppressHydrationWarning>
+    <html lang="bg" suppressHydrationWarning style={{ ["--np-mark-emblem" as string]: `url("${BRAND_MARK_EMBLEM}")` }}>
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Inline @font-face — avoids an extra render-blocking CSS request for Manrope. */}

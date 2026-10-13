@@ -62,16 +62,41 @@ const nextConfig: NextConfig = {
         { key: "Vary", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width, Cookie" },
       ],
     };
-    // Brand art is content-hashed by scripts/build-studio-photo.mjs, so a year-long immutable
-    // cache is safe. Without this header Next serves /public with max-age=0 and every page view
-    // revalidates the background image.
-    const brandCache = {
-      source: "/brand/:path*",
+    const brandRevalidate = [
+      "/brand/icon-192.png",
+      "/brand/icon-512.png",
+      "/brand/icon-maskable-512.png",
+      "/brand/apple-touch-icon.png",
+      "/brand/apple-touch-icon-120.png",
+      "/brand/apple-touch-icon-152.png",
+      "/brand/apple-touch-icon-167.png",
+      "/brand/favicon-16.png",
+      "/brand/favicon-32.png",
+      "/brand/newspoint-logo.webp",
+      "/brand/newspoint-logo-dark.webp",
+      "/brand/mark-emblem.webp",
+      "/brand/push-badge.png",
+      "/brand/splash-750x1334.png",
+      "/brand/splash-750x1334-dark.png",
+      "/brand/splash-1242x2688.png",
+      "/brand/splash-1242x2688-dark.png",
+      "/brand/splash-1170x2532.png",
+      "/brand/splash-1170x2532-dark.png",
+      "/brand/splash-1320x2868.png",
+      "/brand/splash-1320x2868-dark.png",
+      "/brand/splash-2048x2732.png",
+      "/brand/splash-2048x2732-dark.png",
+    ].flatMap((source) => ({
+      source,
+      headers: [{ key: "Cache-Control", value: "public, max-age=0, must-revalidate" }],
+    }));
+    const brandHashed = {
+      source: "/brand/:file*",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
-    // `/_next/static/*` already gets immutable Cache-Control from Next in production.
     const workerCache = { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] };
-    return [noindex, brandCache, workerCache];
+    // Catch-all first; explicit PWA/wordmark paths below override Cache-Control.
+    return [noindex, brandHashed, ...brandRevalidate, workerCache];
   },
 };
 

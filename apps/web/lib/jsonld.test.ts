@@ -85,7 +85,7 @@ describe("newsMediaOrganization", () => {
     expect(out["@type"]).toBe("NewsMediaOrganization");
     expect(out["@id"]).toBe(`${ORIGIN}/#organization`);
     expect(out["url"]).toBe(ORIGIN);
-    expect(out["logo"]).toBe(`${ORIGIN}/brand/newspoint-logo.webp`);
+    expect(out["logo"]).toMatch(new RegExp(`^${ORIGIN.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/brand/newspoint-logo\\.webp\\?v=`));
   });
 });
 

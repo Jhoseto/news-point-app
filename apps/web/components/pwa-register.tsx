@@ -9,7 +9,7 @@ export function PwaRegister() {
     let registration: ServiceWorkerRegistration | null = null;
     let closed = false;
     let reconciling = false;
-    let updatedAt = 0;
+    let reloading = false;
     const check = async () => {
       if (document.visibilityState === "hidden") {
         registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
@@ -20,10 +20,7 @@ export function PwaRegister() {
       try {
         registration = await ensureReaderServiceWorker();
         if (closed) return;
-        if (Date.now() - updatedAt > 60 * 60_000) {
-          updatedAt = Date.now();
-          void registration.update().catch(() => {});
-        }
+        void registration.update().catch(() => {});
         if (readPushSupport().permission === "granted") await readPushServerState();
         if (!closed) window.dispatchEvent(new Event("np-pwa-ready"));
       } catch {
@@ -34,15 +31,22 @@ export function PwaRegister() {
       if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGED") void check();
     };
     const onResume = () => { void check(); };
+    const onControllerChange = () => {
+      if (reloading || closed) return;
+      reloading = true;
+      window.location.reload();
+    };
     void check();
     window.addEventListener("online", onResume);
     document.addEventListener("visibilitychange", onResume);
     navigator.serviceWorker.addEventListener("message", onMessage);
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
     return () => {
       closed = true;
       window.removeEventListener("online", onResume);
       document.removeEventListener("visibilitychange", onResume);
       navigator.serviceWorker.removeEventListener("message", onMessage);
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
     };
   }, []);
   return null;
