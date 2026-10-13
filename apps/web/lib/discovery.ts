@@ -25,7 +25,7 @@ export function llmsText(origin: string, articles: { path: string; title: string
     link(origin, "/sitemap.xml", "Sitemap индекс — всички публични канонични адреси"),
     link(origin, "/feed/", "RSS — последни новини с дата и резюме"),
     link(origin, "/temi/", "Теми с продължение"),
-    link(origin, "/livepoint/podcast/", "NewsPodcast"), "",
+    link(origin, "/livepoint/podcast/", "Podcast"), "",
     ...(themes.length ? ["## Публикувани теми", "", ...themes.map((theme) => link(origin, `/temi/${theme.slug}/`, theme.title)), ""] : []),
     ...(articles.length ? ["## Последни публикации", "", ...articles.map((article) => {
       const date = article.publishedAt && Number.isFinite(article.publishedAt.getTime()) ? `Публикувано: ${article.publishedAt.toISOString()}.` : "";

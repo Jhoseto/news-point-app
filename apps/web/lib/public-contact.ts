@@ -10,9 +10,8 @@ export const PUBLIC_CONTACT = {
   emailHref: "mailto:newspointbg@gmail.com",
 } as const;
 
-export const CONTACT_MAP_URL = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(PUBLIC_CONTACT.address)}`;
 export const ADVERTISING_MAIL_URL = `${PUBLIC_CONTACT.emailHref}?subject=${encodeURIComponent("Запитване за реклама — NewsPoint.bg")}`;
 export const PUBLIC_INFO_PAGES = {
-  contacts: { path: "/contacts/", title: "Контакти", description: "Свържете се с редакцията на NewsPoint.bg — адрес, телефон и имейл." },
+  contacts: { path: "/contacts/", title: "Контакти", description: "Свържете се с редакцията на NewsPoint.bg — телефон и имейл." },
   advertising: { path: "/advertising/", title: "Реклама", description: "Контакт за рекламни запитвания към NewsPoint.bg." },
 } as const;

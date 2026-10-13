@@ -60,7 +60,7 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
 
   if (!episode) return null;
   if (theater) return (
-    <section data-podcast-player data-playing={player.playing} className="np-podcast-player np-podcast-player--theater" aria-label="Плеър за NewsPodcast">
+    <section data-podcast-player data-playing={player.playing} className="np-podcast-player np-podcast-player--theater" aria-label="Плеър за Podcast">
       <div className="np-podcast-artwork"><PodcastCover src={episode.coverUrl} /></div>
       <button className="np-podcast-play" onClick={start} aria-label={player.playing ? "Пауза" : "Слушай"}><AudioIcon name={player.playing ? "pause" : "play"} /></button>
       <div className="np-podcast-theater-timeline">
@@ -78,13 +78,13 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
     </section>
   );
   return (
-    <section data-podcast-player data-playing={player.playing} className={`np-podcast-player ${compact ? "np-podcast-player--compact" : ""} ${theater ? "np-podcast-player--theater" : ""}`} aria-label="Плеър за NewsPodcast">
+    <section data-podcast-player data-playing={player.playing} className={`np-podcast-player ${compact ? "np-podcast-player--compact" : ""} ${theater ? "np-podcast-player--theater" : ""}`} aria-label="Плеър за Podcast">
       <div className="np-podcast-artwork">
         <PodcastCover src={episode.coverUrl} />
       </div>
       <div className="np-podcast-player-content">
         <div className="np-podcast-eyebrow"><span className="np-podcast-dot" />{loaded ? player.playing ? "Слушате" : "Пауза" : "Готов за слушане"}</div>
-        <p className="np-podcast-category">{episode.categoryName ?? "NewsPodcast"}</p>
+        <p className="np-podcast-category">{episode.categoryName ?? "Podcast"}</p>
         <h2>{episode.title}</h2>
         {compact ? (
           <button

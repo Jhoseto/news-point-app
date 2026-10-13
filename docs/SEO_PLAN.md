@@ -79,7 +79,7 @@
 Фаза B2 — направено.
 
 - Sitemap: `/sitemap.xml` → `apps/web/app/sitemap.xml/route.ts` (`revalidate: 300`), sitemap index. Архивните Data Cache записи остават с 3600 s TTL.
-  - `/sitemaps/pages.xml`: начало, теми, NewsPodcast, публични LivePoint landing страници/камери, екип, контакти/реклама и меню рубрики
+  - `/sitemaps/pages.xml`: начало, теми, Podcast, публични LivePoint landing страници/камери, екип, контакти/реклама и меню рубрики
   - `/sitemaps/articles-N.xml`: целият публичен архив, по 10 000 адреса в част, без стария таван 45 000
   - `/sitemaps/themes-N.xml` и `/sitemaps/podcasts-N.xml`: само публикувани записи с дата до текущия момент и текущите canonical slug-ове
   - `/sitemaps/news-N.xml`: истински публикации от последните 48 часа, до 1000 в част; оригинална дата, пълно заглавие, медия `NewsPoint.bg`, език `bg`. News Data Cache е 300 s; остарелите записи се филтрират и при отговора. News URL-ите умишлено присъстват и в общия архив. [Google news sitemap](https://developers.google.com/search/docs/crawling-indexing/sitemaps/news-sitemap).
@@ -264,7 +264,7 @@ S1 е реализирана. Тук остават външните стъпк�
 
 ### Подкаст share карти (08.10, допълнение)
 
-- `/share/podcast/[slug]/` вече генерира **отделна** 1200×630 карта (`podcastShareCard`): тъмен брандиран фон, закръглена обложка, play badge, NEWSPODCAST, заглавие, реална продължителност + рубрика, NewsPoint.bg. Липсваща обложка → брандиран fallback без измислена снимка.
+- `/share/podcast/[slug]/` вече генерира **отделна** 1200×630 карта (`podcastShareCard`): тъмен брандиран фон, закръглена обложка, play badge, PODCAST, заглавие, реална продължителност + рубрика, NewsPoint.bg. Липсваща обложка → брандиран fallback без измислена снимка.
 - Страницата на епизода вече сочи OG/Twitter към тази карта (`publicMetadata` + `imagePath`).
 - UI: `PodcastShareMenu` — центриран modal (`<dialog>`) с preview на епизода, иконна мрежа (Facebook / X / WhatsApp / Viber / Telegram / LinkedIn / native) и поле „Копирай линка“; touch-friendly и на mobile. Същият контрол от theatre и от картите в карусела.
 - Проверки: `lib/share-card.test.ts` (wrap + 1200×630 PNG); web typecheck EXIT=0. Без deploy.

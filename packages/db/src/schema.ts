@@ -480,7 +480,7 @@ export const pushRateLimits = pgTable("push_rate_limits", {
 
 export const podcastStatuses = ["draft", "published"] as const;
 
-/** One NewsPodcast episode. Drafts stay off the public site. */
+/** One Podcast episode. Drafts stay off the public site. */
 export const podcasts = pgTable(
   "podcasts",
   {

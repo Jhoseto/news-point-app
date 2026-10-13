@@ -200,7 +200,7 @@ export function podcastSeries(origin: string, description: string, episodes: Pic
   const url = `${origin}/livepoint/podcast/`;
   return {
     "@type": "PodcastSeries", "@id": `${url}#series`, url,
-    name: "NewsPodcast", description, inLanguage: "bg-BG",
+    name: "Podcast", description, inLanguage: "bg-BG",
     publisher: { "@id": `${origin}/#organization` },
     isPartOf: { "@id": `${origin}/#website` },
     // Only episodes represented in the visible page, without an invented total or numbering.

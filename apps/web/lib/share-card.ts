@@ -102,7 +102,7 @@ export async function podcastShareCard(input: {
   const titleRows = shareCardLines(input.title, 22, 4);
   const title = titleRows.map((line, index) => `<tspan x="612" dy="${index === 0 ? 0 : 52}">${xml(line)}</tspan>`).join("");
   const duration = episodeClock(input.durationSec);
-  const category = (input.categoryName ?? "NewsPodcast").trim() || "NewsPodcast";
+  const category = (input.categoryName ?? "Podcast").trim() || "Podcast";
   const meta = `${duration}  ·  ${category}`;
   const overlay = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -117,7 +117,7 @@ export async function podcastShareCard(input: {
     <circle cx="456" cy="459" r="36" fill="url(#bar)"/>
     <polygon points="448,442 448,476 474,459" fill="#ffffff"/>
     <rect x="612" y="118" width="72" height="7" rx="3.5" fill="url(#bar)"/>
-    <text x="612" y="168" fill="${accent}" font-family="Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="3">NEWSPODCAST</text>
+    <text x="612" y="168" fill="${accent}" font-family="Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="3">PODCAST</text>
     <text x="612" y="260" fill="#ffffff" font-family="Arial, sans-serif" font-size="44" font-weight="800">${title}</text>
     <text x="612" y="500" fill="#c9dbf5" font-family="Arial, sans-serif" font-size="24" font-weight="600">${xml(meta)}</text>
     <text x="612" y="560" fill="#ffffff" font-family="Arial, sans-serif" font-size="26" font-weight="700" opacity="0.92">NewsPoint.bg</text>

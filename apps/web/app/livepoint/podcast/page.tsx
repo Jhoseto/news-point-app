@@ -30,7 +30,7 @@ export default async function PodcastPage() {
       <JsonLd id="np-ld-podcast" data={[
         podcastSeries(origin, page.description, visibleEpisodes),
         collectionPage({ origin, path: page.path, title: page.title, description: page.description, items: visibleEpisodes }),
-        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "NewsPodcast" }]),
+        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "Podcast" }]),
       ]} />
       <PodcastShow episodes={episodes} publicOrigin={origin} aboutInitiallyOpen={desktop} />
     </PodcastPageShell>

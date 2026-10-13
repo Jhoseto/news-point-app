@@ -17,7 +17,7 @@ const photos = {
   hero: { small: "/brand/team-office-1-800-f2f61151.webp", large: "/brand/team-office-1-1600-f2f61151.webp", alt: "Редакционна обстановка на NewsPoint.bg" },
   newsroom: { small: "/brand/team-office-4-800-a87b2eb8.webp", large: "/brand/team-office-4-1600-a87b2eb8.webp", alt: "Работни места в редакционна обстановка" },
   philosophy: { small: "/brand/team-office-2-800-36eeb7ba.webp", large: "/brand/team-office-2-1600-36eeb7ba.webp", alt: "Кът за разговори в редакционна обстановка" },
-  podcast: { small: "/brand/team-office-5-800-c1b62cab.webp", large: "/brand/team-office-5-1600-c1b62cab.webp", alt: "Студио с микрофони за NewsPodcast" },
+  podcast: { small: "/brand/team-office-5-800-c1b62cab.webp", large: "/brand/team-office-5-1600-c1b62cab.webp", alt: "Студио с микрофони за Podcast" },
   contact: { small: "/brand/team-office-3-800-b06cdfef.webp", large: "/brand/team-office-3-1600-b06cdfef.webp", alt: "Микрофон в редакционна обстановка" },
 } satisfies Record<string, TeamPhoto>;
 
@@ -150,7 +150,7 @@ export default async function TeamPage() {
         <Photo photo={photos.podcast} className="np-team-cover" />
         <div className="np-team-banner-shade" aria-hidden="true" />
         <div className="np-team-banner-copy">
-          <span className="np-team-eyebrow">NewsPodcast</span>
+          <span className="np-team-eyebrow">Podcast</span>
           <h2 id="np-team-podcast-title">И когато историята<br />има нужда от повече време.</h2>
           <p>Разговори. Анализи. Истории отвъд заглавията.</p>
           <Link className="np-team-link" href="/livepoint/podcast/">Разгледай подкаста <span aria-hidden="true">→</span></Link>

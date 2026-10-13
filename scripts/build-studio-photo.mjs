@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Builds the NewsPodcast theatre background once, by hand, and generates the module the page reads.
+// Builds the Podcast theatre background once, by hand, and generates the module the page reads.
 //
 //   node scripts/build-studio-photo.mjs [source-image]
 //

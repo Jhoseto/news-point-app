@@ -66,7 +66,7 @@ export function PodcastShareMenu({
   const encodedTitle = encodeURIComponent(title);
   const encodedText = encodeURIComponent(summary ? `${title}\n${summary}` : title);
   const chatText = encodeURIComponent(summary ? `${title} — ${summary}\n${url}` : `${title}\n${url}`);
-  const meta = [durationLabel, categoryName ?? "NewsPodcast"].filter(Boolean).join(" · ");
+  const meta = [durationLabel, categoryName ?? "Podcast"].filter(Boolean).join(" · ");
 
   useEffect(() => setCanNativeShare(typeof navigator.share === "function"), []);
 
@@ -221,7 +221,7 @@ export function PodcastShareMenu({
               <div className="np-podcast-share-sheet">
                 <header className="np-podcast-share-sheet-head">
                   <div>
-                    <p className="np-podcast-share-sheet-kicker">NewsPodcast</p>
+                    <p className="np-podcast-share-sheet-kicker">Podcast</p>
                     <h2 ref={heading} id={`${dialogId}-title`} tabIndex={-1} className="np-podcast-share-sheet-title">
                       Сподели епизода
                     </h2>

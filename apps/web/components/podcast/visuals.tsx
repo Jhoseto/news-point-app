@@ -8,7 +8,7 @@ export function PodcastOrbit({ className = "" }: { className?: string }) {
 export function PodcastCover({ src, className = "" }: { src: string; className?: string }) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   return <div className={`np-podcast-cover ${className}`}>
-    {failedSrc === src ? <><PodcastOrbit /><span>NewsPodcast</span></> : <img src={src} alt="" onError={() => setFailedSrc(src)} />}
+    {failedSrc === src ? <><PodcastOrbit /><span>Podcast</span></> : <img src={src} alt="" onError={() => setFailedSrc(src)} />}
   </div>;
 }
 

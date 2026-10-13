@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { PUBLIC_CONTACT, PUBLIC_INFO_PAGES } from "@/lib/public-contact";
+import { FOOTER_NAV_LINKS } from "@/lib/footer-nav-links";
+import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { BrandLogoImg } from "./brand-logo-img";
 import { MobileFooterControls } from "./mobile-footer-controls";
 import "./mobile-footer.css";
@@ -20,13 +21,6 @@ export function PlovdivFooterSkyline({ className = "np-mobile-footer-skyline lg:
   );
 }
 
-const links = [
-  { name: "За нас", path: "/team/" },
-  { name: "NewsPodcast", path: "/livepoint/podcast/" },
-  { name: PUBLIC_INFO_PAGES.contacts.title, path: PUBLIC_INFO_PAGES.contacts.path },
-  { name: PUBLIC_INFO_PAGES.advertising.title, path: PUBLIC_INFO_PAGES.advertising.path },
-];
-
 export function MobileFooter() {
   return (
     <div className="np-mobile-footer lg:hidden">
@@ -41,25 +35,19 @@ export function MobileFooter() {
           <p className="np-mobile-footer-description">Новини от Пловдив, България и света.</p>
         </div>
 
-        <Link href="/livepoint/report/" prefetch={false} className="np-mobile-footer-report">
-          <span><small>ИМАШ ИСТОРИЯ?</small><strong>Подай сигнал</strong></span>
-          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6" /></svg>
-        </Link>
-
         <nav className="np-mobile-footer-links" aria-label="За NewsPoint">
-          {links.map((link) => <Link key={link.path} href={link.path} prefetch={false}>{link.name}<span aria-hidden="true">↗</span></Link>)}
+          {FOOTER_NAV_LINKS.map((link) => <Link key={link.path} href={link.path} prefetch={false}>{link.name}<span aria-hidden="true">↗</span></Link>)}
         </nav>
 
         <address className="np-mobile-footer-contact">
           <span className="np-mobile-footer-label">РЕДАКЦИЯТА</span>
-          <p>{PUBLIC_CONTACT.country}, {PUBLIC_CONTACT.city}<br />{PUBLIC_CONTACT.street}</p>
           <a href={PUBLIC_CONTACT.phoneHref}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 3 3 5-2 2a15 15 0 0 0 6 6l2-2 5 3c0 3-2 4-4 4C9 20 4 15 3 7c0-2 1-4 4-4Z" /></svg><span>{PUBLIC_CONTACT.phone}</span></a>
           <a href={PUBLIC_CONTACT.emailHref}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></svg><span>{PUBLIC_CONTACT.email}</span></a>
         </address>
 
         <div className="np-mobile-footer-bottom">
           <p>© {new Date().getFullYear()} NewsPoint.bg</p>
-          <div><Link href="/settings/" prefetch={false}>Настройки</Link><MobileFooterControls /></div>
+          <MobileFooterControls />
         </div>
       </div>
     </div>

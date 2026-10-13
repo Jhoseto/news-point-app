@@ -32,7 +32,7 @@ export const MODULE_LABELS: Record<LivePointModule, string> = {
   cameras: "Камери",
   report: "Подай сигнал",
   "my-news": "Моята новина",
-  podcast: "NewsPodcast",
+  podcast: "Podcast",
 };
 
 /** Location forecast API requires a descriptive User-Agent (provider terms). */

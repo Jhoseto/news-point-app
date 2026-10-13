@@ -2093,7 +2093,7 @@ html[data-reduced-motion="true"] .np-title-float-tip {
   }
 }
 
-/* NewsPodcast · Signature Orbit. All surfaces and effects stay within this module. */
+/* Podcast · Signature Orbit. All surfaces and effects stay within this module. */
 :root {
   --np-podcast-surface: #ffffff;
   --np-podcast-pearl: #f0f3fd;

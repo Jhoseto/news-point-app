@@ -31,7 +31,7 @@ function EpisodeCard({
   return <li className={`np-podcast-episode ${compact ? "np-podcast-episode--row" : ""}`} data-active={selected}>
     <div className="np-podcast-episode-art"><PodcastCover src={episode.coverUrl} /></div>
     <div className="np-podcast-episode-info">
-      <p className="np-podcast-category">{episode.categoryName ?? "NewsPodcast"}</p>
+      <p className="np-podcast-category">{episode.categoryName ?? "Podcast"}</p>
       <h3><Link href={episode.path}><span>{episode.title}</span></Link></h3>
       <p className="np-podcast-episode-summary">{episode.summary}</p>
       <div className="np-podcast-episode-meta"><time dateTime={episode.publishedAt}>{published}</time><span>·</span><span>{clock(episode.durationSec)}</span></div>
@@ -96,7 +96,7 @@ function PodcastPanelLayout({
             <p className="np-podcast-eyebrow">Истории с глас</p>
             <h2>Епизоди</h2>
           </div>
-          <span>NewsPodcast</span>
+          <span>Podcast</span>
         </div>
         {episodes.length ? (
           <ul className="np-podcast-episodes">
@@ -181,7 +181,7 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
     </section>
     <section className="np-podcast-carousel" aria-labelledby="np-podcast-carousel-title">
       <div className="np-podcast-carousel-heading">
-        <div><p>NewsPodcast</p><h2 id="np-podcast-carousel-title">Последни епизоди</h2></div>
+        <div><p>Podcast</p><h2 id="np-podcast-carousel-title">Последни епизоди</h2></div>
         <div className="np-podcast-carousel-actions">
           {activeSlug && <Link href="/livepoint/podcast/">Виж всички</Link>}
           <button onClick={() => moveCarousel(-1)} disabled={episodes.length < 2} aria-label="Предишни епизоди">←</button>
@@ -223,6 +223,6 @@ export function PodcastPanel() {
     return () => controller.abort();
   }, [attempt]);
   if (error) return <PodcastState title="Епизодите не се заредиха" description="Опитайте отново след малко." retry={() => setAttempt((value) => value + 1)} />;
-  if (!episodes) return <PodcastState title="Подготвяме епизодите" description="Зареждане на NewsPodcast…" loading />;
+  if (!episodes) return <PodcastState title="Подготвяме епизодите" description="Зареждане на Podcast…" loading />;
   return <PodcastShow episodes={episodes} compact />;
 }

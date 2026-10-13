@@ -18,7 +18,7 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const episode = await publicEpisode((await params).slug);
   if (!episode) notFound();
-  return publicMetadata({ path: episode.path, title: `${episode.title} · NewsPodcast`, description: episode.summary, imagePath: `/share/podcast/${episode.slug}/` });
+  return publicMetadata({ path: episode.path, title: `${episode.title} · Podcast`, description: episode.summary, imagePath: `/share/podcast/${episode.slug}/` });
 }
 
 export default async function PodcastEpisodePage({ params }: Props) {
@@ -39,7 +39,7 @@ export default async function PodcastEpisodePage({ params }: Props) {
       <JsonLd id="np-ld-podcast" data={[
         podcastSeries(origin, PUBLIC_SEO_PAGES.podcast.description, ordered.slice(0, 10)),
         podcastEpisode(origin, episode),
-        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "NewsPodcast", path: "/livepoint/podcast/" }, { name: episode.title }]),
+        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "Podcast", path: "/livepoint/podcast/" }, { name: episode.title }]),
       ]} />
       <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={origin} aboutInitiallyOpen={await ssrDesktopViewport()} />
     </PodcastPageShell>

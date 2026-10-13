@@ -133,7 +133,7 @@ export function LivePointStrip() {
           </div>
 
           <StripItem module="podcast" icon={<HeadphonesIcon width={17} height={17} />}>
-            NewsPodcast
+            Podcast
           </StripItem>
           <StripItem module="weather" icon={<CloudSunIcon width={17} height={17} />}>
             Време{forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}

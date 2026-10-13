@@ -169,7 +169,7 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: episode.title,
       artist: "NewsPoint",
-      album: "NewsPodcast",
+      album: "Podcast",
       artwork: [{ src: new URL(episode.coverUrl, window.location.origin).href, sizes: "512x512", type: "image/webp" }],
     });
     const pairs: [MediaSessionAction, MediaSessionActionHandler][] = [
