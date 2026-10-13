@@ -426,5 +426,5 @@ function firstScreen(model: MobileRubricFeed): MobileRubricFeed {
   const hasLeading = !!model.feed.hero || !!model.feed.support.length;
   return { ...model, feed: { ...model.feed, main: hasLeading ? [] : model.feed.main.slice(0, 1), aside: hasLeading ? [] : model.feed.aside.slice(0, 1),
     latestCarousel: hasLeading ? model.feed.latestCarousel.slice(0, 4) : [],
-    focusCarousel: hasLeading ? [] : model.feed.focusCarousel.slice(0, 4), topicsCarousel: [], voiceCarousel: [], poll: null } };
+    focusCarousel: model.feed.focusCarousel.slice(0, 4), topicsCarousel: [], voiceCarousel: [], poll: null } };
 }

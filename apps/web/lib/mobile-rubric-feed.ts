@@ -43,6 +43,7 @@ export const mobileRubricFeedSchema = z.object({ schemaVersion: z.literal(1), ca
   freshUntil: z.number().int().nonnegative(), rubrics: z.array(rubricNav).min(1), feed: z.discriminatedUnion("kind", [home, rubric]) }).strict();
 export type MobileRubricFeed = z.infer<typeof mobileRubricFeedSchema>;
 export type MobileFeedContent = MobileRubricFeed["feed"];
+export type MobileHomeMainSection = z.infer<typeof section>;
 function slimHero(hero: NonNullable<ArticleSummary["hero"]>): z.infer<typeof media> {
   // Keep mid rungs ≤960w (not only the two smallest) so mobile LCP can pick 768
   // on 2–3× DPR without downloading the master.

@@ -5,7 +5,8 @@ import dynamic from "next/dynamic";
 import { Fragment } from "react";
 import { preload } from "react-dom";
 import { MobileFeedBoundary } from "./mobile-feed-boundary";
-import type { MobileRubricFeed as Feed, MobileFeedContent } from "@/lib/mobile-rubric-feed";
+import type { MobileRubricFeed as Feed, MobileFeedContent, MobileHomeMainSection } from "@/lib/mobile-rubric-feed";
+import { HOME_LEAD_SECTION } from "@newspoint/content";
 import { reviveFeedArticle } from "@/lib/mobile-rubric-feed";
 import { articleImageAttrs } from "@/lib/article-image";
 import { MobileCompactRow, MobileHorizonCard, MobileLeadCard, MobileSmallPair, MobileSupportingCard } from "./mobile-home-cards";
@@ -41,30 +42,54 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   const hero = feed.hero ? reviveFeedArticle(feed.hero) : null;
   preloadLeadHero(hero?.hero ?? null, !preview && !window);
   const support = feed.support.map(reviveFeedArticle);
+  const plovdivSection = feed.main.find((section) => section.category.slug === HOME_LEAD_SECTION);
+  const mainAfterPlovdiv = feed.main.filter((section) => section.category.slug !== HOME_LEAD_SECTION);
   const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean }, id: string) => {
     const position = window?.[id]?.carousel;
     const rotated = position ? [...articles.slice(position.index), ...articles.slice(0, position.index)] : articles;
     return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(reviveFeedArticle)} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
   };
+  const renderMainSection = (section: MobileHomeMainSection) => {
+    if (section.category.slug !== "balgariya" && !section.wide) return null;
+    return (
+      <Fragment key={section.category.id}>
+        {section.category.slug === "balgariya" && feed.poll ? (
+          <Block id="poll" {...(window ? { window } : {})}>
+            <div data-mobile-pager-ignore data-mobile-feed-anchor="poll">
+              <HomePoll initial={feed.poll} mobileOnly preview={preview} namespace={namespace} />
+            </div>
+          </Block>
+        ) : null}
+        <Block id={`section-${section.category.id}`} {...(window ? { window } : {})}>
+          <div data-mobile-feed-anchor={`section-${section.category.id}`}>
+            <HomeCategorySection
+              category={section.category}
+              articles={section.articles.map(reviveFeedArticle)}
+              layout={section.category.slug === "balgariya" ? "grid" : section.layout === "feature" ? "feature" : "grid"}
+              wide={section.category.slug !== "balgariya"}
+              idPrefix={`${namespace}-`}
+            />
+          </div>
+        </Block>
+      </Fragment>
+    );
+  };
   return <div className={`np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
     <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини</h1>
     <div className="flex flex-col gap-5">
       {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview && !window} now={now} />, window) : null}
-      {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true }, "latest") : null}
       {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} now={now} />, window) : null}
       {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
       {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
       {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
     </div>
-    {feed.focusCarousel.length ? <div className="-mt-6">{carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus")}</div> : null}
+    <div className="np-mobile-home-pre-focus flex flex-col gap-4">
+      {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true }, "latest") : null}
+      {feed.focusCarousel.length ? carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus") : null}
+    </div>
+    {plovdivSection ? renderMainSection(plovdivSection) : null}
     {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-right" }, "topics")}
-    {feed.main.map(section => {
-      if (section.category.slug !== "balgariya" && !section.wide) return null;
-      return <Fragment key={section.category.id}>
-        {section.category.slug === "balgariya" && feed.poll ? <Block id="poll" {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor="poll"><HomePoll initial={feed.poll} mobileOnly preview={preview} namespace={namespace} /></div></Block> : null}
-        <Block id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><HomeCategorySection category={section.category} articles={section.articles.map(reviveFeedArticle)} layout={section.category.slug === "balgariya" ? "grid" : section.layout === "feature" ? "feature" : "grid"} wide={section.category.slug !== "balgariya"} idPrefix={`${namespace}-`} /></div></Block>
-      </Fragment>;
-    })}
+    {mainAfterPlovdiv.map((section) => renderMainSection(section))}
     {feed.aside.length ? <aside className="flex flex-col gap-6" aria-label="Още новини">{feed.aside.map(section => <Block key={section.category.id} id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><CompactList title={section.category.name} accentSlug={section.category.slug} href={section.category.path} articles={section.articles.map(reviveFeedArticle)} /></div></Block>)}</aside> : null}
     <Block id="brand" {...(window ? { window } : {})}><section aria-label="NewsPoint.bg" className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface px-6 py-8 shadow-card sm:px-10">
       <div className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40" aria-hidden="true" />
