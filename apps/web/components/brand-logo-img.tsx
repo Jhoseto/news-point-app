@@ -4,10 +4,42 @@ type Props = {
   className?: string;
   sizes?: string;
   fetchPriority?: "high" | "low" | "auto";
+  /** Fixed artwork on dark photo banners (ignores site theme). */
+  appearance?: "theme" | "dark" | "light";
 };
 
 /** Light wordmark by default; the dark artwork shows only under `[data-theme="dark"]`. */
-export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority }: Props) {
+export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority, appearance = "theme" }: Props) {
+  if (appearance === "dark") {
+    return (
+      <img
+        src={BRAND_LOGO_DARK.src}
+        srcSet={BRAND_LOGO_DARK.srcSet}
+        sizes={sizes}
+        alt={BRAND_LOGO.alt}
+        width={BRAND_LOGO_DARK.width}
+        height={BRAND_LOGO_DARK.height}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={className}
+      />
+    );
+  }
+  if (appearance === "light") {
+    return (
+      <img
+        src={BRAND_LOGO.src}
+        srcSet={BRAND_LOGO.srcSet}
+        sizes={sizes}
+        alt={BRAND_LOGO.alt}
+        width={BRAND_LOGO.width}
+        height={BRAND_LOGO.height}
+        decoding="async"
+        fetchPriority={fetchPriority}
+        className={className}
+      />
+    );
+  }
   // Dark twin is CSS-hidden in light theme — never compete for LCP bandwidth.
   const darkPriority = fetchPriority === "high" ? "low" : fetchPriority;
   return (

@@ -11,6 +11,7 @@ import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { PodcastProvider } from "@/components/podcast/provider";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { ThemeScript } from "@/components/theme-script";
+import { PwaSplash } from "@/components/pwa-splash";
 import { MANROPE_FACE_CSS } from "@/lib/manrope-face";
 import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
@@ -53,16 +54,16 @@ export const metadata: Metadata = {
       { url: "/brand/apple-touch-icon-120.png", sizes: "120x120", type: "image/png" },
     ],
     other: [
-      {
-        rel: "apple-touch-startup-image",
-        url: "/brand/splash-1170x2532.png",
-        media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
-      },
-      {
-        rel: "apple-touch-startup-image",
-        url: "/brand/splash-1170x2532-dark.png",
-        media: "(prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)",
-      },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-750x1334.png", media: "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-750x1334-dark.png", media: "(prefers-color-scheme: dark) and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1170x2532.png", media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1170x2532-dark.png", media: "(prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1242x2688.png", media: "(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1242x2688-dark.png", media: "(prefers-color-scheme: dark) and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1320x2868.png", media: "(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-1320x2868-dark.png", media: "(prefers-color-scheme: dark) and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-2048x2732.png", media: "(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
+      { rel: "apple-touch-startup-image", url: "/brand/splash-2048x2732-dark.png", media: "(prefers-color-scheme: dark) and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
     ],
   },
 };
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </head>
       <body className="min-h-[100dvh]">
         <ThemeScript />
+        <PwaSplash />
         <ViewportShellGate ssrDesktop={desktop} />
         <a
           href="#main"

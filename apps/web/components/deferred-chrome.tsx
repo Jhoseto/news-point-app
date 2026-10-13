@@ -8,8 +8,6 @@ const LiveUpdates = dynamic(() => import("./live-updates").then((module) => modu
 const PwaInstall = dynamic(() => import("./pwa-install").then((module) => module.PwaInstall), { ssr: false });
 const PushPromptToast = dynamic(() => import("./push-prompt-toast").then((module) => module.PushPromptToast), { ssr: false });
 const PwaRegister = dynamic(() => import("./pwa-register").then((module) => module.PwaRegister), { ssr: false });
-const PwaSplash = dynamic(() => import("./pwa-splash").then((module) => module.PwaSplash), { ssr: false });
-
 /**
  * Non-critical chrome: mount after first paint / idle so Lighthouse TBT and
  * main-thread work are not charged to the initial homepage interaction.
@@ -47,7 +45,6 @@ export function DeferredChrome() {
       <PwaInstall />
       <PushPromptToast />
       <PwaRegister />
-      <PwaSplash />
     </>
   );
 }

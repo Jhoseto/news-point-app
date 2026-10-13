@@ -1,5 +1,5 @@
 /* Reader only. Private/editorial pages never enter this cache. */
-const VERSION = "v2";
+const VERSION = "v3";
 const ASSET_CACHE = `reader-assets-${VERSION}`;
 const OFFLINE_CACHE = `reader-runtime-${VERSION}`;
 const OWN_PREFIXES = ["reader-assets-", "reader-runtime-", "reader-pages-"];

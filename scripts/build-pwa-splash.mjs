@@ -9,7 +9,7 @@ const LOGO = resolve(root, "apps/web/public/brand/newspoint-logo.webp");
 const DARK_LOGO = resolve(root, "apps/web/public/brand/newspoint-logo-dark.webp");
 const OUT_DIR = resolve(root, "apps/web/public/brand");
 const LIGHT_BG = { r: 255, g: 255, b: 255, alpha: 1 };
-const DARK_BG = { r: 5, g: 11, b: 34, alpha: 1 };
+const DARK_BG = { r: 0, g: 5, b: 22, alpha: 1 };
 
 /**
  * Apple touch startup images at common iOS point sizes. Android launchers
@@ -23,16 +23,15 @@ const DARK_BG = { r: 5, g: 11, b: 34, alpha: 1 };
 const SPLASHES = [
   // iPhone SE (2nd/3rd gen), iPhone 8
   { name: "splash-750x1334.png", width: 750, height: 1334 },
-  // iPhone 11 Pro Max, iPhone 13 Pro Max, iPhone 14 Plus / 15 Plus / 16 Plus
+  { name: "splash-750x1334-dark.png", width: 750, height: 1334, dark: true },
   { name: "splash-1242x2688.png", width: 1242, height: 2688 },
-  // iPhone 14 Pro / 15 Pro / 16 Pro and similar — most common modern iPhone
+  { name: "splash-1242x2688-dark.png", width: 1242, height: 2688, dark: true },
   { name: "splash-1170x2532.png", width: 1170, height: 2532 },
   { name: "splash-1170x2532-dark.png", width: 1170, height: 2532, dark: true },
-  // iPhone 16 Pro Max
   { name: "splash-1320x2868.png", width: 1320, height: 2868 },
   { name: "splash-1320x2868-dark.png", width: 1320, height: 2868, dark: true },
-  // iPad Pro 12.9" portrait
   { name: "splash-2048x2732.png", width: 2048, height: 2732 },
+  { name: "splash-2048x2732-dark.png", width: 2048, height: 2732, dark: true },
 ];
 
 await mkdir(OUT_DIR, { recursive: true });
@@ -59,7 +58,7 @@ for (const { name, width, height, dark } of SPLASHES) {
   // Compose the centered logo (sized to 50% of width) over the background.
   const logoWidth = Math.round(width * 0.5);
   const left = Math.round((width - logoWidth) / 2);
-  const top = Math.round(height * 0.42);
+  const top = Math.round(height * 0.4);
 
   const source = dark ? DARK_LOGO : LOGO;
   const out = await sharp(source)

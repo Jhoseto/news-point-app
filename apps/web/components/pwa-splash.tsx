@@ -1,70 +1,76 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
+import { BRAND_LOGO, BRAND_LOGO_DARK } from "@/lib/brand-logo";
+
+const HOLD_MS = 420;
+const FADE_MS = 320;
+
+function standaloneReader(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
+type SplashLogo = typeof BRAND_LOGO | typeof BRAND_LOGO_DARK;
+
+function splashLogo(): SplashLogo {
+  const dark =
+    document.documentElement.dataset.theme === "dark" ||
+    (!document.documentElement.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  return dark ? BRAND_LOGO_DARK : BRAND_LOGO;
+}
 
 /**
- * PWA opening animation. Mounts only when the reader runs as an installed
- * PWA (`display-mode: standalone`). The system startup image already
- * shows the full logo as a static frame on iOS, so this layer is the
- * "live" continuation that runs in the app shell itself:
- *
- *   1. The four rings start slightly out of place and rotate to align.
- *   2. They settle into the same NewsPoint mark.
- *   3. The overlay fades out within 900 ms, regardless of network state.
- *
- * prefers-reduced-motion: the overlay is removed immediately and the
- * interface takes over without animation. No flicker on real phones.
+ * Continuation after the static iOS/Android startup image: same wordmark, short hold, fade out.
+ * Mounted from the root layout (not deferred) so it never flashes over an already-painted feed.
  */
-
-const ANIMATION_MS = 900;
-const SHOW_DELAY_MS = 600;
-
 export function PwaSplash() {
-  // Start un-mounted on the server to avoid an SSR/CSR mismatch on non-PWA
-  // pages (the splash flashes for half a second otherwise). Only the standalone
-  // PWA path flips the state and shows the rings.
-  const [show, setShow] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [phase, setPhase] = useState<"hidden" | "show" | "leave">("hidden");
+  const [logo, setLogo] = useState<SplashLogo>(BRAND_LOGO);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const isStandalone =
-      window.matchMedia?.("(display-mode: standalone)").matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone === true;
-    if (!isStandalone) return;
-    // Only show the splash for the first paint of the session.
-    if (sessionStorage.getItem("np-splash-shown")) return;
-    sessionStorage.setItem("np-splash-shown", "1");
-    setMounted(true);
-    setShow(true);
-    const fade = setTimeout(() => setShow(false), SHOW_DELAY_MS);
-    const unmount = setTimeout(() => setMounted(false), ANIMATION_MS + 200);
+  useLayoutEffect(() => {
+    if (!standaloneReader()) return;
+    if (sessionStorage.getItem("np-splash-shown") === "1") return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      sessionStorage.setItem("np-splash-shown", "1");
+      return;
+    }
+    setLogo(splashLogo());
+    setPhase("show");
+    const leaveTimer = window.setTimeout(() => setPhase("leave"), HOLD_MS);
+    const hideTimer = window.setTimeout(() => {
+      setPhase("hidden");
+      sessionStorage.setItem("np-splash-shown", "1");
+    }, HOLD_MS + FADE_MS);
     return () => {
-      clearTimeout(fade);
-      clearTimeout(unmount);
+      window.clearTimeout(leaveTimer);
+      window.clearTimeout(hideTimer);
     };
   }, []);
 
-  if (!mounted) return null;
+  if (phase === "hidden") return null;
 
   return (
     <div
       role="presentation"
       aria-hidden="true"
       className="np-pwa-splash"
-      data-visible={show || undefined}
-      data-leaving={!show && mounted ? "" : undefined}
+      data-phase={phase}
     >
-      <div className="np-pwa-splash-rings" aria-hidden="true">
-        <span className="np-pwa-splash-ring ring-a" />
-        <span className="np-pwa-splash-ring ring-b" />
-        <span className="np-pwa-splash-ring ring-c" />
-        <span className="np-pwa-splash-ring ring-d" />
-      </div>
-      <div className="np-pwa-splash-mark" aria-hidden="true">
-        <span className="np-pwa-splash-wordmark">NewsPoint.bg</span>
-        <span className="np-pwa-splash-slogan">Гласът на истината</span>
-      </div>
+      <img
+        className="np-pwa-splash-logo"
+        src={logo.src}
+        srcSet={logo.srcSet}
+        sizes="(max-width: 640px) 72vw, 18rem"
+        alt=""
+        width={logo.width}
+        height={logo.height}
+        decoding="sync"
+        fetchPriority="high"
+      />
     </div>
   );
 }
