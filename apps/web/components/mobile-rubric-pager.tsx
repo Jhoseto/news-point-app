@@ -13,7 +13,7 @@ import { MOBILE_RUBRIC_NAVIGATE, MOBILE_RUBRIC_STATUS, commitSwipe, idlePager, m
 type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFeed | null; targetPath: string | null;
   label: string; direction: -1 | 1; top: number; height: number; width: number; originOffset: number; targetOffset: number; distant: boolean;
   originWindow: PreviewWindow };
-type Gesture = { id: number; x: number; y: number; time: number; width: number; dx: number; held: number;
+type Gesture = { id: number; x: number; y: number; time: number; width: number; dx: number;
   samples: Array<{ x: number; at: number }>; origin: MobileRubricFeed; captured: boolean };
 const IGNORE = "[data-mobile-pager-ignore],button,input,textarea,select,option,video,audio,iframe,canvas,[contenteditable],[role='slider'],[role='button'],[role='dialog'],.np-carousel-viewport";
 
@@ -110,7 +110,7 @@ export function MobileRubricPager() {
     const releaseGesture = () => {
       const previous = gesture; gesture = null;
       if (!previous) return;
-      clearTimeout(previous.held);
+      document.documentElement.removeAttribute("data-mobile-pager-tracking");
       if (main.hasPointerCapture(previous.id)) main.releasePointerCapture(previous.id);
     };
     const clearVisual = () => {
@@ -182,13 +182,7 @@ export function MobileRubricPager() {
       let next: MobileRubricFeed;
       try { next = mobileRubricFeedSchema.parse(JSON.parse(script.textContent ?? "null")); } catch { return; }
       if (next.canonicalPath !== routePath()) return;
-      const nextItems = [...document.querySelectorAll<HTMLAnchorElement>(".np-mobile-rubric-tabs a")].map(element => ({ path: element.getAttribute("href")!, name: element.textContent?.trim() ?? "" }));
-      if (!nextItems.length) {
-        model = next; sourceKey = key(); signature = nextSignature; items = [];
-        if (operation.committed && operation.target === next.canonicalPath) { update({ type: "ready", token: operation.token }); finish(); }
-        else if (operation.phase !== "idle") cancel("external");
-        cache.clear(); return;
-      }
+      const nextItems = next.rubrics;
       if (rubricMenuVersion(nextItems) !== next.menuVersion) return;
       if (model && model.menuVersion !== next.menuVersion && !operation.committed && operation.phase !== "idle") cancel();
       const changed = !model || model.canonicalPath !== next.canonicalPath || model.contentVersion !== next.contentVersion || model.menuVersion !== next.menuVersion;
@@ -292,11 +286,10 @@ export function MobileRubricPager() {
     const down = (event: PointerEvent) => {
       if (gesture && event.pointerId !== gesture.id) { cancel(); return; }
       if (main.inert || operation.phase !== "idle" || !event.isPrimary || event.button !== 0 || !model || !currentRoute().swipe || blocked()) return;
-      if (event.clientX < 24 || event.clientX > innerWidth - 24 || event.composedPath().some(element => element instanceof HTMLElement && element.matches(IGNORE))) return;
+      if (event.clientX < 22 || event.clientX > innerWidth - 10 || event.composedPath().some(element => element instanceof HTMLElement && element.matches(IGNORE))) return;
       savePosition(); update({ type: "track", token: ++token });
       gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, width: main.getBoundingClientRect().width,
-        dx: 0, samples: [{ x: event.clientX, at: event.timeStamp }], origin: model, captured: false,
-        held: window.setTimeout(() => { if (gesture && !gesture.captured) cancel(); }, 350) };
+        dx: 0, samples: [{ x: event.clientX, at: event.timeStamp }], origin: model, captured: false };
     };
     const move = (event: PointerEvent) => {
       const current = gesture;
@@ -307,7 +300,8 @@ export function MobileRubricPager() {
         const intent = swipeIntent(dx, dy, event.timeStamp - current.time);
         if (intent === "cancel") { cancel(); return; }
         if (intent === "wait") return;
-        current.captured = true; clearTimeout(current.held);
+        current.captured = true;
+        document.documentElement.setAttribute("data-mobile-pager-tracking", "");
         try { main.setPointerCapture(current.id); } catch {}
       }
       event.preventDefault(); current.dx = dx;
@@ -324,7 +318,7 @@ export function MobileRubricPager() {
       if (!current.captured) { cancel(); return; }
       const dx = event.clientX - current.x;
       const first = current.samples[0];
-      const velocity = first && event.timeStamp > first.at && event.timeStamp - first.at <= 100 ? (event.clientX - first.x) / (event.timeStamp - first.at) : 0;
+      const velocity = first && event.timeStamp > first.at && event.timeStamp - first.at <= 140 ? (event.clientX - first.x) / (event.timeStamp - first.at) : 0;
       clickSuppressedUntil = performance.now() + 400;
       const target = dx < 0 ? rubricNeighbour(items, currentRoute().index, 1)?.path : rubricNeighbour(items, currentRoute().index, -1)?.path;
       releaseGesture();
@@ -431,5 +425,6 @@ function firstScreen(model: MobileRubricFeed): MobileRubricFeed {
   if (model.feed.kind === "category") return { ...model, feed: { ...model.feed, articles: model.feed.articles.slice(0, 8), previous: null, next: null } };
   const hasLeading = !!model.feed.hero || !!model.feed.support.length;
   return { ...model, feed: { ...model.feed, main: hasLeading ? [] : model.feed.main.slice(0, 1), aside: hasLeading ? [] : model.feed.aside.slice(0, 1),
+    latestCarousel: hasLeading ? model.feed.latestCarousel.slice(0, 4) : [],
     focusCarousel: hasLeading ? [] : model.feed.focusCarousel.slice(0, 4), topicsCarousel: [], voiceCarousel: [], poll: null } };
 }

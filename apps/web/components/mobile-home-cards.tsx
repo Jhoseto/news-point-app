@@ -37,7 +37,7 @@ export function MobileLeadCard({
             <CategoryPill category={article.category} className="absolute top-3 left-3" glass={!!article.hero} />
           ) : null}
           {isRecentArticle(article.publishedAt, now) ? (
-            <span className="absolute top-3 right-3"><NewBadge publishedAt={article.publishedAt} /></span>
+            <span className="absolute top-2.5 right-2.5"><NewBadge publishedAt={article.publishedAt} compact /></span>
           ) : null}
         </div>
         <div className="flex flex-col gap-2 p-4">

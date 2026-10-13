@@ -2009,6 +2009,41 @@ html[data-reduced-motion="true"] .np-title-float-tip {
     width: min(82vw, 19rem);
     flex-basis: min(82vw, 19rem);
   }
+  .np-carousel-mobile-card--compact {
+    width: min(42vw, 9.5rem);
+    flex-basis: min(42vw, 9.5rem);
+  }
+  .np-carousel-compact .np-section-heading h2 {
+    font-size: 1rem;
+  }
+  .np-carousel-compact [data-carousel-card] h3 {
+    font-size: 0.78rem;
+    line-height: 1.28;
+    -webkit-line-clamp: 2;
+  }
+  .np-carousel-compact [data-carousel-card] a > div:last-child {
+    gap: 0.3rem;
+    padding: 0.45rem 0.55rem 0.5rem;
+  }
+  .np-carousel-compact [data-carousel-card] a > div:last-child > div:last-child {
+    display: none;
+  }
+  .np-carousel-compact [data-carousel-card] .text-xs {
+    font-size: 0.625rem;
+  }
+  .np-carousel-compact .np-new-badge {
+    gap: 0.2rem;
+    padding: 1px 0.35rem;
+    font-size: 0.5rem;
+    letter-spacing: 0.06em;
+  }
+  .np-carousel-compact .np-new-badge .np-new-dot {
+    width: 0.25rem;
+    height: 0.25rem;
+  }
+  .np-carousel-compact .np-mobile-touch-carousel {
+    mask-image: linear-gradient(to right, transparent 0, #000 .5rem, #000 calc(100% - .5rem), transparent 100%);
+  }
 }
 
 /* Desktop carousels only: smaller story cards. Phones keep the sizes above. */
@@ -3142,7 +3177,6 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 /* Mobile rubric navigation and temporary compositor. Desktop remains the canonical composition. */
 @media (max-width: 63.999rem) {
   .np-mobile-legacy-feed { display: none; }
-  html:has(.np-mobile-rubric-tabs) { --np-header-h: calc(var(--np-bar-h) + 6.25rem + env(safe-area-inset-top) + 1px); scroll-padding-top: var(--np-header-h); }
   .np-mobile-rubric-tabs { height: 2.75rem; min-width: 0; border-top: 1px solid var(--np-line); background: var(--np-surface); }
   .np-mobile-rubric-tabs-scroll { position: relative; display: flex; height: 100%; gap: .125rem; padding-inline: .75rem; overflow-x: auto; overscroll-behavior-x: contain; touch-action: pan-x pan-y pinch-zoom; scrollbar-width: none; }
   .np-mobile-rubric-tabs-scroll::-webkit-scrollbar { display: none; }
@@ -3154,6 +3188,7 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   /* Retained, closed sheets must not change native gesture arbitration.
      The mobile controller excludes active overlays; their touch surfaces sit outside main. */
   html:has([data-mobile-rubric-canonical]) #main { touch-action: pan-y pinch-zoom; }
+  html[data-mobile-pager-tracking] #main { touch-action: none; -webkit-user-select: none; user-select: none; }
   #main [data-mobile-pager-ignore], #main .np-carousel-viewport { touch-action: pan-x pan-y pinch-zoom; }
   /* Search/rubrics sheets reserve the bottom menu; only their actual surfaces take hits. */
   .np-mobile-nav-sheet-root { pointer-events: none; }

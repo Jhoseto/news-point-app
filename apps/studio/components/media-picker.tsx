@@ -254,9 +254,9 @@ export function MediaPicker({
         if (event.target === event.currentTarget && !uploading) onClose();
       }}
       aria-labelledby="media-heading"
-      className="m-auto max-h-[85dvh] w-[min(56rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
+      className="m-auto flex max-h-[85dvh] w-[min(56rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
     >
-      <div className="flex items-center gap-3 border-b border-line px-5 py-4">
+      <div className="flex shrink-0 items-center gap-3 border-b border-line px-5 py-4">
         <h2 id="media-heading" className="text-lg font-extrabold text-ink">
           Медии
         </h2>
@@ -271,14 +271,15 @@ export function MediaPicker({
           ×
         </button>
       </div>
-      <div className="flex gap-1 border-b border-line px-5 pt-3">
+      <div className="flex shrink-0 gap-1 border-b border-line px-5 pt-3">
         <button type="button" disabled={uploading} onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
         <button type="button" disabled={uploading} onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
       </div>
-      {error || (mode === "library" && libraryError) ? <p role="alert" className="px-5 py-3 text-sm text-danger">{error || libraryError}</p> : null}
+      {error || (mode === "library" && libraryError) ? <p role="alert" className="shrink-0 px-5 py-3 text-sm text-danger">{error || libraryError}</p> : null}
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {mode === "upload" ? (
         <div
-          className="m-5 rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5"
           onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; }}
           onDrop={(event) => {
             event.preventDefault();
@@ -286,6 +287,7 @@ export function MediaPicker({
             queueUploadFiles(imageFilesFromDataTransfer(event.dataTransfer));
           }}
         >
+        <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
           <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFileList(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
           {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
           {uploadPreviews.length ? (
@@ -327,9 +329,10 @@ export function MediaPicker({
           {uploadedItems.current.length && !uploading ? <button type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
           <button type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
         </div>
+        </div>
       ) : null}
       {mode === "library" ? (
-        <div className="flex h-[min(62dvh,36rem)] min-h-0">
+        <div className="flex min-h-0 flex-1">
           <nav aria-label="Папки в хранилището" className="w-44 shrink-0 overflow-y-auto border-r border-line bg-surface-2/50 p-2 text-xs">
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
             <button
@@ -443,8 +446,9 @@ export function MediaPicker({
           </div>
         </div>
       ) : null}
+      </div>
       {multiple ? (
-        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-3">
           <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
           <button
             type="button"

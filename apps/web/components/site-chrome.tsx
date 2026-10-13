@@ -9,7 +9,6 @@ import { RubricsNav } from "./nav";
 import { RubricsButton } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
 import { HeaderUtilities } from "./header-utilities";
-import { MobileRubricTabs } from "./mobile-rubric-tabs";
 import { MobileFooter } from "./mobile-footer";
 import { DesktopFooter } from "./desktop-footer";
 
@@ -20,7 +19,7 @@ import { DesktopFooter } from "./desktop-footer";
  * Mobile vs desktop chrome is exclusive by Client Hints — do not ship both trees.
  */
 export async function SiteHeader() {
-  const [menu, desktop] = await Promise.all([getMenuCategories(), ssrDesktopViewport()]);
+  const desktop = await ssrDesktopViewport();
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="np-masthead relative flex h-[3.25rem] items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
@@ -57,7 +56,6 @@ export async function SiteHeader() {
         ) : null}
       </div>
       <LivePointStrip />
-      {!desktop ? <MobileRubricTabs menu={menu.map(({ name, path }) => ({ name, path }))} /> : null}
     </header>
   );
 }

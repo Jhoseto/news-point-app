@@ -21,14 +21,20 @@ describe("mobile rubric navigation", () => {
     expect(rubricMenuVersion(items)).not.toBe(rubricMenuVersion([...items].reverse()));
   });
   it("locks horizontal intent only after distance and rejects vertical, ambiguous and held gestures", () => {
-    expect(swipeIntent(11, 0, 20)).toBe("wait"); expect(swipeIntent(12, 8, 20)).toBe("drag");
-    expect(swipeIntent(12, 9, 20)).toBe("cancel"); expect(swipeIntent(1, 15, 20)).toBe("cancel");
-    expect(swipeIntent(40, 0, 350)).toBe("cancel");
+    expect(swipeIntent(9, 0, 20)).toBe("wait");
+    expect(swipeIntent(12, 8, 20)).toBe("drag");
+    expect(swipeIntent(10, 14, 20)).toBe("cancel");
+    expect(swipeIntent(1, 15, 20)).toBe("cancel");
+    expect(swipeIntent(40, 0, 350)).toBe("drag");
+    expect(swipeIntent(0, 0, 560)).toBe("cancel");
   });
   it("commits only release distance or recent matching flick velocity", () => {
-    expect(commitSwipe(97.5, 390, 0)).toBe(true); expect(commitSwipe(90, 390, .1)).toBe(false);
-    expect(commitSwipe(-40, 390, -.5)).toBe(true); expect(commitSwipe(-39, 390, -2)).toBe(false);
-    expect(commitSwipe(-60, 390, .9)).toBe(false); expect(commitSwipe(100, 768, 0)).toBe(true);
+    expect(commitSwipe(86, 390, 0)).toBe(true);
+    expect(commitSwipe(80, 390, 0.1)).toBe(false);
+    expect(commitSwipe(-40, 390, -0.5)).toBe(true);
+    expect(commitSwipe(-31, 390, -2)).toBe(false);
+    expect(commitSwipe(-60, 390, 0.9)).toBe(false);
+    expect(commitSwipe(100, 768, 0)).toBe(true);
   });
   it("waits for both mounted route and motion, regardless of completion order", () => {
     const tracked = pagerTransition(idlePager, { type: "track", token: 1 });

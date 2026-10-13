@@ -34,17 +34,32 @@ const TextAttributes = Extension.create({
   }, { types: ["blockquote"], attributes: { cite: { default: "", parseHTML: element => element.dataset.cite ?? "", renderHTML: attrs => ({ "data-cite": attrs.cite }) } } }],
 });
 
+function isMediaBlock(value: unknown): value is Extract<Block, { type: "image" | "embed" }> {
+  if (!value || typeof value !== "object") return false;
+  const type = (value as Block).type;
+  return type === "image" || type === "embed";
+}
+
 function MediaView({ node, selected, updateAttributes, editor, getPos }: NodeViewProps) {
-  const block = node.attrs.block as Extract<Block, { type: "image" | "embed" }>;
+  const rawBlock = node.attrs.block;
   const media = (editor.storage as unknown as { npImage: { findMedia: (id: string) => MediaOption | undefined } }).npImage.findMedia;
-  const asset = block.type === "image" ? media(block.mediaAssetId) : undefined;
-  const frame = block.type === "embed" ? embedFrameUrl(block.url) : null;
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const resize = useRef<{ x: number; width: number; container: number; next: number } | null>(null);
-  const layout = composition(block);
   const position = getPos();
   const inGallery = typeof position === "number" && editor.state.doc.resolve(position).parent.type.name === "npGallery";
   const select = () => { const pos = getPos(); if (typeof pos === "number") editor.commands.setNodeSelection(pos); };
+  if (!isMediaBlock(rawBlock)) {
+    return (
+      <NodeViewWrapper className={`np-editor-media np-editor-media--broken ${selected ? "is-selected" : ""}`} contentEditable={false}>
+        <p>Медийният блок е повреден или празен. Изберете го и изтрийте, или добавете снимка отново.</p>
+        <button type="button" onClick={select}>Избери блока</button>
+      </NodeViewWrapper>
+    );
+  }
+  const block = rawBlock;
+  const asset = block.type === "image" ? media(block.mediaAssetId) : undefined;
+  const frame = block.type === "embed" ? embedFrameUrl(block.url) : null;
+  const layout = composition(block);
   const ratio = block.type === "image" ? ({ square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"]) : embedAspectRatio(block.url);
   return <NodeViewWrapper className={`np-editor-media ${layout.className} ${selected ? "is-selected" : ""}`} style={{ ...layout.style, ...(dragWidth !== null ? { "--np-media-width": `${dragWidth}%` } : {}) }} data-node-kind={block.type}>
     <div className="np-media-heading" contentEditable={false}>
@@ -65,7 +80,10 @@ function MediaView({ node, selected, updateAttributes, editor, getPos }: NodeVie
   </NodeViewWrapper>;
 }
 function ArchiveView({ node }: NodeViewProps) {
-  const block = node.attrs.block as Block;
+  const block = node.attrs.block as Block | null;
+  if (!block || typeof block !== "object" || !("type" in block)) {
+    return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · липсват данни</small></NodeViewWrapper>;
+  }
   const html = block.type === "list" ? `<${block.ordered ? "ol" : "ul"}>${block.items.map(item => `<li>${item}</li>`).join("")}</${block.ordered ? "ol" : "ul"}>` : "html" in block ? block.html ?? "" : "";
   return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · запазва се без промяна</small><div dangerouslySetInnerHTML={{ __html: html }} /></NodeViewWrapper>;
 }

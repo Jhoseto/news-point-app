@@ -53,11 +53,16 @@ export function pagerTransition(state: PagerOperation, event: PagerEvent): Pager
   const next = { ...state, motionDone: state.motionDone || event.type === "motion", routeReady: state.routeReady || event.type === "ready" };
   return { ...next, phase: next.motionDone && next.routeReady ? "idle" : next.motionDone ? "navigating" : "settling" };
 }
+/** Horizontal rubric swipe. Slow iOS drags must not time out once movement starts. */
 export function swipeIntent(dx: number, dy: number, elapsed: number): "wait" | "cancel" | "drag" {
-  if (elapsed >= 350) return "cancel";
-  if (Math.max(Math.abs(dx), Math.abs(dy)) < 12) return "wait";
-  return Math.abs(dx) >= Math.abs(dy) * 1.5 ? "drag" : "cancel";
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  const travel = Math.max(adx, ady);
+  if (travel < 10) return elapsed >= 550 ? "cancel" : "wait";
+  if (adx < 8 && ady >= 12) return "cancel";
+  return adx >= ady * 1.2 ? "drag" : "cancel";
 }
 export function commitSwipe(dx: number, width: number, velocity: number): boolean {
-  return Math.abs(dx) >= Math.min(width * .25, 100) || (Math.abs(dx) >= 40 && Math.abs(velocity) >= .5 && Math.sign(velocity) === Math.sign(dx));
+  const distance = Math.min(width * 0.22, 88);
+  return Math.abs(dx) >= distance || (Math.abs(dx) >= 32 && Math.abs(velocity) >= 0.35 && Math.sign(velocity) === Math.sign(dx));
 }

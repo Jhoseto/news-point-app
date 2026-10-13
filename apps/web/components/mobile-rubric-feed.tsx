@@ -41,7 +41,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   const hero = feed.hero ? reviveFeedArticle(feed.hero) : null;
   preloadLeadHero(hero?.hero ?? null, !preview && !window);
   const support = feed.support.map(reviveFeedArticle);
-  const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-right" }, id: string) => {
+  const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean }, id: string) => {
     const position = window?.[id]?.carousel;
     const rotated = position ? [...articles.slice(position.index), ...articles.slice(0, position.index)] : articles;
     return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(reviveFeedArticle)} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
@@ -50,6 +50,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
     <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини</h1>
     <div className="flex flex-col gap-5">
       {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview && !window} now={now} />, window) : null}
+      {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true }, "latest") : null}
       {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} now={now} />, window) : null}
       {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
       {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}

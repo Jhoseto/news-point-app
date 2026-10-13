@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { MobileRubricCache } from "./mobile-rubric-cache";
 import type { MobileRubricFeed } from "./mobile-rubric-feed";
 const fixture = (path: string, version = "menu"): MobileRubricFeed => ({ schemaVersion: 1, canonicalPath: path, menuVersion: version, contentVersion: "empty", asOfMs: Date.now(), freshUntil: Date.now() + 60_000,
-  feed: { kind: "home", hero: null, support: [], main: [], aside: [], focusCarousel: [], topicsCarousel: [], voiceCarousel: [], poll: null } });
+  rubrics: [{ name: "За теб", path: "/" }, { name: "Fixture rubric", path: "/plovdiv/" }],
+  feed: { kind: "home", hero: null, support: [], latestCarousel: [], main: [], aside: [], focusCarousel: [], topicsCarousel: [], voiceCarousel: [], poll: null } });
 const response = (path: string) => new Response(JSON.stringify(fixture(path)), { headers: { "Content-Type": "application/json" } });
 describe("bounded public rubric snapshots", () => {
   it("does not rebind browser fetch to the cache instance", async () => {

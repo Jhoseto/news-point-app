@@ -25,6 +25,7 @@ export function LeadingCarousel({
   preview = false,
   previewOffset = 0,
   mobileOnly = false,
+  compactCards = false,
 }: {
   articles: ArticleSummary[];
   /** Precomputed on the homepage (server); one delay per article, originals only. */
@@ -40,6 +41,8 @@ export function LeadingCarousel({
   preview?: boolean;
   previewOffset?: number;
   mobileOnly?: boolean;
+  /** Half-width cards for the mobile „Последни новини“ strip only. */
+  compactCards?: boolean;
 }) {
   const viewport = useRef<HTMLDivElement>(null);
   const firstSet = useRef<HTMLDivElement>(null);
@@ -175,7 +178,7 @@ export function LeadingCarousel({
         key={`${duplicate ? "copy" : "original"}-${article.id}`}
         data-carousel-card
         aria-hidden={duplicate || undefined}
-        className="np-carousel-mobile-card w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"
+        className={compactCards ? "np-carousel-mobile-card np-carousel-mobile-card--compact shrink-0" : "np-carousel-mobile-card w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"}
       >
         <ArticleCard
           article={article}
@@ -191,7 +194,7 @@ export function LeadingCarousel({
     <section
       aria-labelledby={headingId}
       data-mobile-pager-ignore
-      className="group/carousel min-w-0"
+      className={`group/carousel min-w-0${compactCards ? " np-carousel-compact" : ""}`}
       onPointerEnter={() => (paused.current = true)}
       onPointerLeave={() => (paused.current = false)}
       onFocusCapture={() => (paused.current = true)}
@@ -199,7 +202,7 @@ export function LeadingCarousel({
         if (!event.currentTarget.contains(event.relatedTarget)) paused.current = false;
       }}
     >
-      <div className="np-section-heading mb-5 flex items-center justify-between gap-4" style={categoryAccentStyle(accentSlug)}>
+      <div className={`np-section-heading flex items-center justify-between gap-4 ${compactCards ? "mb-3" : "mb-5"}`} style={categoryAccentStyle(accentSlug)}>
         <h2 id={headingId} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
           <span className="np-ring" aria-hidden="true" />
           {title}
@@ -281,11 +284,11 @@ export function LeadingCarousel({
         }}
       >
         <div className="flex w-max">
-          <div ref={firstSet} className="flex gap-5 pr-5">
+          <div ref={firstSet} className={`flex pr-5 ${compactCards ? "gap-2.5" : "gap-5"}`}>
             {cards(false)}
           </div>
           {loopReady ? (
-            <div className="flex gap-5 pr-5" aria-hidden="true">
+            <div className={`flex pr-5 ${compactCards ? "gap-2.5" : "gap-5"}`} aria-hidden="true">
               {cards(true)}
             </div>
           ) : null}

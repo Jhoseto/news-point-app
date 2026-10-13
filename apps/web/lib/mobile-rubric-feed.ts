@@ -15,7 +15,7 @@ const section = z.object({ category, articles, layout: z.enum(["grid", "feature"
 const poll = z.object({ id: z.string().max(80), question: text, description: text, startsAt: z.iso.datetime().nullable(),
   endsAt: z.iso.datetime().nullable(), open: z.boolean(), adjusted: z.boolean(), total: z.number().int().nonnegative(),
   options: z.array(z.object({ id: z.string().max(80), label: text, count: z.number().int().nonnegative(), percent: z.number().min(0).max(100) }).strict()).max(6) }).strict();
-const home = z.object({ kind: z.literal("home"), hero: article.nullable(), support: articles, main: z.array(section).max(24),
+const home = z.object({ kind: z.literal("home"), hero: article.nullable(), support: articles, latestCarousel: articles, main: z.array(section).max(24),
   aside: z.array(section).max(24), focusCarousel: articles, topicsCarousel: articles, voiceCarousel: articles, poll: poll.nullable() }).strict();
 const pageStripItem = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("page"), page: z.number().int().min(1), href: path }).strict(),
@@ -37,9 +37,10 @@ const rubric = z.object({
     lastPageHref: path.nullable(),
   }).strict(),
 }).strict();
+const rubricNav = z.object({ name: text, path }).strict();
 export const mobileRubricFeedSchema = z.object({ schemaVersion: z.literal(1), canonicalPath: path,
   menuVersion: z.string().max(80), contentVersion: z.string().max(80), asOfMs: z.number().int().nonnegative(),
-  freshUntil: z.number().int().nonnegative(), feed: z.discriminatedUnion("kind", [home, rubric]) }).strict();
+  freshUntil: z.number().int().nonnegative(), rubrics: z.array(rubricNav).min(1), feed: z.discriminatedUnion("kind", [home, rubric]) }).strict();
 export type MobileRubricFeed = z.infer<typeof mobileRubricFeedSchema>;
 export type MobileFeedContent = MobileRubricFeed["feed"];
 function slimHero(hero: NonNullable<ArticleSummary["hero"]>): z.infer<typeof media> {
