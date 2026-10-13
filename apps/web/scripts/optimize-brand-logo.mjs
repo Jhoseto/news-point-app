@@ -18,14 +18,21 @@ try {
   /* jpg fallback */
 }
 
+/** Transparent background with soft edges so glows stay smooth in WebP. */
 async function knockOutBlack(image) {
   const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const threshold = 28;
+  const hard = 24;
+  const soft = 48;
   for (let i = 0; i < data.length; i += 4) {
     const r = data[i];
     const g = data[i + 1];
     const b = data[i + 2];
-    if (r <= threshold && g <= threshold && b <= threshold) data[i + 3] = 0;
+    const peak = Math.max(r, g, b);
+    if (peak <= hard) data[i + 3] = 0;
+    else if (peak <= soft) {
+      const t = (peak - hard) / (soft - hard);
+      data[i + 3] = Math.round(data[i + 3] * t);
+    }
   }
   return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } });
 }
@@ -36,7 +43,7 @@ const meta = await cutout.metadata();
 const displayWidth = Math.min(1024, meta.width);
 const displayHeight = Math.round((meta.height / meta.width) * displayWidth);
 
-const webpOpts = { quality: 88, alphaQuality: 100, effort: 6, smartSubsample: true };
+const webpOpts = { quality: 92, alphaQuality: 100, effort: 6, smartSubsample: false, nearLossless: false };
 
 await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo.webp"));
 

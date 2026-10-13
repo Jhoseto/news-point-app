@@ -1,13 +1,13 @@
 {
-  "intrinsicWidth": 983,
-  "intrinsicHeight": 309,
-  "aspectRatio": 3.1812,
-  "sourceWidth": 983,
-  "sourceHeight": 309,
+  "intrinsicWidth": 981,
+  "intrinsicHeight": 278,
+  "aspectRatio": 3.5288,
+  "sourceWidth": 981,
+  "sourceHeight": 278,
   "dark": {
-    "intrinsicWidth": 985,
-    "intrinsicHeight": 309,
-    "sourceWidth": 985,
-    "sourceHeight": 309
+    "intrinsicWidth": 974,
+    "intrinsicHeight": 339,
+    "sourceWidth": 974,
+    "sourceHeight": 339
   }
 }
