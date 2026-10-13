@@ -2,9 +2,9 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import { SpotlightField } from "./spotlight-field";
 
 const LiveUpdates = dynamic(() => import("./live-updates").then((module) => module.LiveUpdates), { ssr: false });
-const SpotlightField = dynamic(() => import("./spotlight-field").then((module) => module.SpotlightField), { ssr: false });
 const PwaInstall = dynamic(() => import("./pwa-install").then((module) => module.PwaInstall), { ssr: false });
 const PushPromptToast = dynamic(() => import("./push-prompt-toast").then((module) => module.PushPromptToast), { ssr: false });
 const PwaRegister = dynamic(() => import("./pwa-register").then((module) => module.PwaRegister), { ssr: false });
