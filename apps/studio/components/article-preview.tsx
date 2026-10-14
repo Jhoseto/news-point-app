@@ -1,4 +1,4 @@
-import { articleSubtitle, bodyGroups, composition, embedFrameUrl, videoSourceUrl, EMBED_PROVIDER_LABEL, observeEmbedFrame, embedAspectRatio, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, EMBED_PROVIDER_LABEL, observeEmbedFrame, embedAspectRatio, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { documentWords } from "@/lib/editor/document";
 import { formatFull } from "@/lib/format";
@@ -26,6 +26,12 @@ export interface PreviewArticle {
 
 function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) {
   const layout = composition(block);
+  const videoHtml = block.type === "legacy_html" || block.type === "paragraph" ? block.html : null;
+  const importedVideo = videoHtml !== null ? standaloneVideoUrl(videoHtml) : null;
+  if (importedVideo && videoHtml !== null) return <div className={layout.className} style={layout.style}>
+    <div className="studio-preview-embed np-embed-canvas" style={{ aspectRatio: "16/9" }}><video src={importedVideo} controls preload="metadata" playsInline aria-label="Видео от статията" /></div>
+    <div className="np-legacy" dangerouslySetInnerHTML={{ __html: videoHtml }} />
+  </div>;
   switch (block.type) {
     case "paragraph":
       return <p className={layout.className} style={layout.style} dangerouslySetInnerHTML={{ __html: block.html }} />;
@@ -75,7 +81,7 @@ export function ArticlePreview({ article, theme, device = "desktop" }: { article
     <div data-theme={theme} className={`np-site @container min-h-full bg-page font-sans text-body${device === "phone" ? " np-preview-phone" : ""}`}>
       <header className="border-b border-line bg-surface/90">
         <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-4 @2xl:h-16 @2xl:px-6">
-          <BrandLogoImg className="h-8 w-auto @2xl:h-9" />
+          <BrandLogoImg className="size-8 @2xl:size-9" />
           <span className="np-gradient-bg ml-auto h-1 w-16 rounded-full opacity-70" aria-hidden="true" />
         </div>
       </header>

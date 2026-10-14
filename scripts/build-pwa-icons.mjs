@@ -1,21 +1,27 @@
 import { createRequire } from "node:module";
-import { resolve } from "node:path";
-import { mkdir, stat } from "node:fs/promises";
+import { resolve, join } from "node:path";
+import { copyFile, mkdir, stat } from "node:fs/promises";
 
 const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
 
-const LIGHT_SOURCE = resolve(root, "apps/web/scripts/brand/newspoint-logo-source.png");
-const PWA_SOURCE = resolve(root, "apps/web/scripts/brand/pwa-launch-logo-source.png");
+const EMBLEM_SOURCE = resolve(root, "apps/web/scripts/brand/emblem-favicon-source.png");
 const OUT_DIR = resolve(root, "apps/web/public/brand");
+const STUDIO_BRAND = resolve(root, "apps/studio/public/brand");
 
-/** Crop the left emblem from the premium wordmark (same rings as the new logo). */
-async function emblemBuffer(source) {
-  const rotated = sharp(source).rotate();
-  const meta = await rotated.metadata();
-  const cropW = Math.min(Math.round(meta.width * 0.26), meta.width);
-  const cropped = await rotated.extract({ left: 0, top: 0, width: cropW, height: meta.height }).png().toBuffer();
-  return sharp(cropped).trim({ threshold: 8 }).png().toBuffer();
+/** Koce emblem: circular rings on white (source PNG). */
+async function emblemPng() {
+  return sharp(EMBLEM_SOURCE).rotate().trim({ threshold: 10 }).png().toBuffer();
+}
+
+/** White square canvas with the emblem centered (site favicon / PWA / studio tile). */
+async function squareEmblemPipeline(emblem, size, { maskable = false } = {}) {
+  const inner = Math.round(size * (maskable ? 0.78 : 0.92));
+  const mark = await sharp(emblem).resize(inner, inner, { fit: "contain", background: "#ffffff" }).png().toBuffer();
+  const meta = await sharp(mark).metadata();
+  return sharp({ create: { width: size, height: size, channels: 3, background: "#ffffff" } }).composite([
+    { input: mark, left: Math.round((size - meta.width) / 2), top: Math.round((size - meta.height) / 2) },
+  ]);
 }
 
 const SIZES = [
@@ -31,44 +37,23 @@ const SIZES = [
 ];
 
 await mkdir(OUT_DIR, { recursive: true });
-const emblem = await emblemBuffer(LIGHT_SOURCE);
+await mkdir(STUDIO_BRAND, { recursive: true });
+const emblem = await emblemPng();
 
 for (const { name, size, maskable } of SIZES) {
   const target = resolve(OUT_DIR, name);
-  if (name.startsWith("icon-") || name.startsWith("apple-touch-icon")) {
-    const logo = await sharp(PWA_SOURCE)
-      .resize({ width: Math.round(size * (maskable ? .78 : .84)), withoutEnlargement: true })
-      .png()
-      .toBuffer();
-    const meta = await sharp(logo).metadata();
-    await sharp({ create: { width: size, height: size, channels: 3, background: "#ffffff" } })
-      .composite([{ input: logo, left: Math.round((size - meta.width) / 2), top: Math.round((size - meta.height) / 2) }])
-      .png({ compressionLevel: 9 })
-      .toFile(target);
-    const info = await stat(target);
-    console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
-    continue;
-  }
-  if (!maskable) {
-    await sharp(emblem)
-      .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png({ compressionLevel: 9, palette: size <= 32 })
-      .toFile(target);
-  } else {
-    const finalSize = Math.round(size * 1.4);
-    const mark = await sharp(emblem)
-      .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .png()
-      .toBuffer();
-    await sharp({
-      create: { width: finalSize, height: finalSize, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-    })
-      .composite([{ input: mark, top: Math.round((finalSize - size) / 2), left: Math.round((finalSize - size) / 2) }])
-      .png({ compressionLevel: 9 })
-      .toFile(target);
-  }
+  const image = await squareEmblemPipeline(emblem, size, { maskable });
+  const pngOpts = { compressionLevel: 9, ...(size <= 32 ? { palette: true } : {}) };
+  await image.png(pngOpts).toFile(target);
   const info = await stat(target);
   console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
+}
+
+await (await squareEmblemPipeline(emblem, 512)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark-512w.webp"));
+await (await squareEmblemPipeline(emblem, 256)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark.webp"));
+
+for (const name of ["studio-mark.webp", "studio-mark-512w.webp", "favicon-16.png", "favicon-32.png"]) {
+  await copyFile(join(OUT_DIR, name), join(STUDIO_BRAND, name));
 }
 
 console.log("done");

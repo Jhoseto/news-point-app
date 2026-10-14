@@ -17,6 +17,13 @@ const wordmark = localFont({
 export const metadata: Metadata = {
   title: { default: "NewsPoint Studio", template: "%s · NewsPoint Studio" },
   robots: { index: false, follow: false },
+  icons: {
+    icon: [
+      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
+    ],
+    apple: [{ url: "/brand/studio-mark-512w.webp", sizes: "512x512", type: "image/webp" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -15,6 +15,33 @@ export function videoSourceUrl(value: string): string | null {
     return url.protocol === "https:" && !url.username && !url.password && /\.(?:mp4|webm)$/i.test(url.pathname) ? url.href : null;
   } catch { return null; }
 }
+
+/** Imported WordPress video fallback: a lone video link in plain wrappers. */
+export function standaloneVideoUrl(html: string): string | null {
+  if (!/<a\b/i.test(html)) return null;
+  let links = 0;
+  let source: string | null = null;
+  let unsupported = false;
+  const wrappers = ["a", "p", "div", "span", "br"];
+  const remainder = sanitizeHtml(html, {
+    allowedTags: wrappers,
+    allowedAttributes: { a: ["href"] },
+    allowedSchemes: ["https"],
+    transformTags: {
+      "*": (tagName, attribs) => {
+        if (!wrappers.includes(tagName)) unsupported = true;
+        return { tagName, attribs };
+      },
+    },
+    exclusiveFilter: frame => {
+      if (frame.tag !== "a") return false;
+      links++;
+      source = videoSourceUrl(frame.attribs.href ?? "");
+      return true;
+    },
+  }).replace(/<\/?(?:p|div|span|br)\b[^>]*>/gi, "").replace(/&nbsp;|&#160;|&#xA0;/gi, " ").trim();
+  return !unsupported && links === 1 && !remainder ? source : null;
+}
 export function embedProviderFromUrl(value: string): EmbedProvider {
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^(www|m)\./, "");

@@ -6,7 +6,7 @@ import { EditorContent, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer,
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { NodeSelection } from "@tiptap/pm/state";
-import { composition, mediaWidth, EMBED_PROVIDER_LABEL, embedFrameUrl, observeEmbedFrame, embedAspectRatio, videoSourceUrl, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
+import { composition, mediaWidth, EMBED_PROVIDER_LABEL, embedFrameUrl, observeEmbedFrame, embedAspectRatio, videoSourceUrl, standaloneVideoUrl, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { browserMediaSrc } from "@/lib/media-src";
 import { bodyToEditorHtml, documentToBody, escapeHtml } from "@/lib/editor/document";
@@ -88,7 +88,8 @@ function ArchiveView({ node }: NodeViewProps) {
     return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · липсват данни</small></NodeViewWrapper>;
   }
   const html = block.type === "list" ? `<${block.ordered ? "ol" : "ul"}>${block.items.map(item => `<li>${item}</li>`).join("")}</${block.ordered ? "ol" : "ul"}>` : "html" in block ? block.html ?? "" : "";
-  return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · запазва се без промяна</small><div dangerouslySetInnerHTML={{ __html: html }} /></NodeViewWrapper>;
+  const video = block.type === "legacy_html" || block.type === "paragraph" ? standaloneVideoUrl(html) : null;
+  return <NodeViewWrapper className="np-archive-block" contentEditable={false}><small>Архивен блок · запазва се без промяна</small>{video ? <video src={video} controls preload="metadata" playsInline aria-label="Видео от статията" className="w-full" /> : null}<div dangerouslySetInnerHTML={{ __html: html }} /></NodeViewWrapper>;
 }
 function GalleryView({ selected, editor, getPos }: NodeViewProps) {
   const select = () => { const pos = getPos(); if (typeof pos === "number") editor.commands.setNodeSelection(pos); };

@@ -1,4 +1,4 @@
-import { bodyGroups, composition, embedFrameUrl, videoSourceUrl, EMBED_PROVIDER_LABEL, type Block } from "@newspoint/content";
+import { bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, EMBED_PROVIDER_LABEL, type Block } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ExternalIcon } from "./icons";
@@ -11,6 +11,12 @@ import "@newspoint/content/composition.css";
 // Stored HTML is sanitized by the importer and re-checked by the block schema.
 function BlockView({ block, media, index, gallery }: { block: Block; media: Map<string, Media>; index: number; gallery: ArticleImageGallery }) {
   const layout = composition(block);
+  const videoHtml = block.type === "legacy_html" || block.type === "paragraph" ? block.html : null;
+  const importedVideo = videoHtml !== null ? standaloneVideoUrl(videoHtml) : null;
+  if (importedVideo && videoHtml !== null) return <div id={articleSectionId(index)} className={layout.className} style={layout.style}>
+    <ArticleEmbedFrame src={importedVideo} provider="other" title="Видео от статията" />
+    <div className="np-legacy" dangerouslySetInnerHTML={{ __html: videoHtml }} />
+  </div>;
   switch (block.type) {
     case "paragraph":
       return <p id={articleSectionId(index)} className={layout.className} style={layout.style} dangerouslySetInnerHTML={{ __html: block.html }} />;
