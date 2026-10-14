@@ -1,7 +1,13 @@
 .np-prose:has(.np-wrap-left, .np-wrap-right) { display: flow-root; }
 .np-prose .np-composition-media { width: var(--np-media-width, 100%); max-width: 100%; }
-.np-prose .np-wrap-left { float: left; width: var(--np-media-width, 50%); margin: .5em 1.5em 1em 0; }
-.np-prose .np-wrap-right { float: right; width: var(--np-media-width, 50%); margin: .5em 0 1em 1.5em; }
+.np-prose.np-prose .np-composition-media.np-wrap-left { float:left; width:var(--np-media-width, 50%); margin:0 1.5rem 1em 0; }
+.np-prose.np-prose .np-composition-media.np-wrap-right { float:right; width:var(--np-media-width, 50%); margin:0 0 1em 1.5rem; }
+/* Article and preview figure margins must not replace the wrapping gutter. */
+.np-prose.np-prose .np-composition-media:is(.np-wrap-left, .np-wrap-right) > .np-article-embed-frame { margin:0; max-width:none; }
+@media (min-width:64rem) {
+  .np-prose.np-prose > :is(p, h2, h3, h4, ul, ol, blockquote):has(+ :is(.np-wrap-left, .np-wrap-right, .node-npImage:has(.np-wrap-left, .np-wrap-right), .node-npEmbed:has(.np-wrap-left, .np-wrap-right))) { margin-block-end:1.3em; }
+  .np-prose.np-prose > :is(.np-wrap-left, .np-wrap-right) + :is(p, h2, h3, h4, ul, ol, blockquote):not([style*="clear:"]) { margin-block-start:0; }
+}
 .np-prose .np-article-gallery { clear: both; }
 .np-prose .np-article-gallery .np-composition-media { width: 100%; float: none; }
 .np-prose .np-media-canvas { overflow: hidden; }
@@ -14,9 +20,11 @@
 [data-theme="dark"] .np-text-purple { color: #d2a7ff; } [data-theme="dark"] .np-text-muted { color: #b5b7ca; }
 [data-theme="dark"] .np-text-accent { color: #f1d18a; }
 @media (max-width: 63.999rem) {
-  .np-prose .np-wrap-left, .np-prose .np-wrap-right { float: none; width: 100%; margin-inline: 0; }
+  .np-prose.np-prose .np-composition-media:is(.np-wrap-left, .np-wrap-right) { float:none; width:100%; margin:1em 0; }
 }
-.np-preview-phone .np-prose .np-wrap-left, .np-preview-phone .np-prose .np-wrap-right { float: none; width: 100%; margin-inline: 0; }
+.np-preview-phone .np-prose.np-prose .np-composition-media:is(.np-wrap-left, .np-wrap-right) { float:none; width:100%; margin:1em 0; }
+/* Gallery members stay in their grid even if an archived block has wrap settings. */
+.np-prose.np-prose :is(.np-article-gallery, .studio-preview-gallery, .np-gallery-images) .np-composition-media.np-composition-media { float:none; width:100%; margin:0; }
 
 .np-prose .np-composition-media .np-media-canvas img { border:0; border-radius:0; box-shadow:none; }
 .np-prose .np-composition-media .np-media-canvas.frame-line { border:1px solid var(--np-line); }
