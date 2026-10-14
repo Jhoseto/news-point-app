@@ -7,7 +7,11 @@ export interface EditorDocumentNode {
 }
 export const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const data = (block: unknown) => escapeHtml(encodeURIComponent(JSON.stringify(block)));
-const presentation = (block: Block) => ` data-indent="${"indent" in block ? block.indent ?? 0 : 0}"${"textAlign" in block && block.textAlign ? ` style="text-align:${block.textAlign}"` : ""}`;
+const presentation = (block: Block) => {
+  const clear = block.type === "paragraph" && block.clearMedia;
+  const style = ["textAlign" in block && block.textAlign ? `text-align:${block.textAlign}` : "", clear ? "clear:both" : ""].filter(Boolean).join(";");
+  return ` data-indent="${"indent" in block ? block.indent ?? 0 : 0}"${clear ? ' data-clear-media="true"' : ""}${style ? ` style="${style}"` : ""}`;
+};
 
 /** Media and archive blocks carry their complete original attributes through parsing. */
 export function bodyToEditorHtml(body: ArticleBody): string {
@@ -52,7 +56,7 @@ const inline = (node: EditorDocumentNode) => (node.content ?? []).map(inlineHtml
 const plain = (node: EditorDocumentNode): string => node.text ?? (node.type === "hardBreak" ? " " : (node.content ?? []).map(plain).join(""));
 function textAttributes(node: EditorDocumentNode) {
   if (["blockquote", "bulletList", "orderedList"].includes(node.type)) { let first = node.content?.[0]; if (first?.type === "listItem") first = first.content?.[0]; node = { ...node, attrs: { ...first?.attrs, ...Object.fromEntries(Object.entries(node.attrs ?? {}).filter(([, value]) => value !== null && value !== 0)) } }; }
-  return { ...(node.attrs?.textAlign && node.attrs.textAlign !== "left" ? { textAlign: node.attrs.textAlign } : {}), ...(Number(node.attrs?.indent) > 0 ? { indent: node.attrs?.indent } : {}) };
+  return { ...(node.attrs?.textAlign && node.attrs.textAlign !== "left" ? { textAlign: node.attrs.textAlign } : {}), ...(Number(node.attrs?.indent) > 0 ? { indent: node.attrs?.indent } : {}), ...(node.type === "paragraph" && node.attrs?.clearMedia === true ? { clearMedia: true } : {}) };
 }
 
 export function documentToBody(doc: EditorDocumentNode): ArticleBody {
@@ -60,7 +64,7 @@ export function documentToBody(doc: EditorDocumentNode): ArticleBody {
   for (const node of doc.content ?? []) {
     const attrs = node.attrs ?? {};
     switch (node.type) {
-      case "paragraph": if (inline(node).trim()) result.push({ type: "paragraph", html: inline(node), ...textAttributes(node) }); break;
+      case "paragraph": if (inline(node).trim() || attrs.clearMedia === true) result.push({ type: "paragraph", html: inline(node), ...textAttributes(node) }); break;
       case "heading": result.push({ type: "heading", level: attrs.level, text: plain(node), ...(node.content?.some(item => item.marks?.length) ? { html: inline(node) } : {}), ...textAttributes(node) }); break;
       case "blockquote": result.push({ type: "quote", html: inline(node), ...(attrs.cite ? { cite: attrs.cite } : {}), ...textAttributes(node) }); break;
       case "bulletList": case "orderedList": result.push({ type: "list", ordered: node.type === "orderedList", items: (node.content ?? []).map(inline), ...textAttributes(node) }); break;

@@ -1,4 +1,4 @@
-import type { ArticleBody } from "@newspoint/content";
+import type { ArticleBody, EmbedProvider } from "@newspoint/content";
 
 // The editor keeps a safe plain-text source while offering block controls.
 // Blank lines separate blocks; headings, quotes and lists use familiar Markdown
@@ -37,8 +37,8 @@ export function textToBody(text: string): ArticleBody {
 
   return chunks.map((lines) => {
     const first = lines[0]!.trim();
-    const embedMatch = first.match(/^\[\[embed:(youtube|facebook|instagram|x|tiktok|vimeo|other)\|([^\]]+)\]\]$/i);
-    if (lines.length === 1 && embedMatch && (/^https:\/\//i.test(embedMatch[2]!) || /^\/media\/news\//.test(embedMatch[2]!))) return { type: "embed", provider: embedMatch[1]!.toLowerCase() as "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "vimeo" | "other", url: embedMatch[2]! };
+    const embedMatch = first.match(/^\[\[embed:(youtube|facebook|instagram|x|tiktok|vimeo|reddit|other)\|([^\]]+)\]\]$/i);
+    if (lines.length === 1 && embedMatch && (/^https:\/\//i.test(embedMatch[2]!) || /^\/media\/news\//.test(embedMatch[2]!))) return { type: "embed", provider: embedMatch[1]!.toLowerCase() as EmbedProvider, url: embedMatch[2]! };
     const imageMatch = first.match(/^\[\[image:([0-9a-f-]{36})(?:\|([^\]]+))?\]\]$/i);
     if (lines.length === 1 && imageMatch) {
       const options = Object.fromEntries((imageMatch[2] ?? "").split("|").filter(Boolean).map((item) => item.split("=") as [string, string]));
@@ -70,7 +70,7 @@ export function textToBody(text: string): ArticleBody {
 export function bodyToText(body: ArticleBody): string | null {
   const parts: string[] = [];
   for (const block of body) {
-    if (("textAlign" in block && block.textAlign) || ("indent" in block && block.indent) || ("html" in block && /<(?:u|s|span|sub|sup|mark|small|table|pre)\b/i.test(block.html ?? "")) || (block.type === "heading" && block.html) || (block.type === "image" && (block.widthPercent !== undefined || block.wrap || block.alt !== undefined || block.caption !== undefined)) || (block.type === "embed" && (block.widthPercent !== undefined || block.wrap || block.align))) return null;
+    if ((block.type === "paragraph" && block.clearMedia) || ("textAlign" in block && block.textAlign) || ("indent" in block && block.indent) || ("html" in block && /<(?:u|s|span|sub|sup|mark|small|table|pre)\b/i.test(block.html ?? "")) || (block.type === "heading" && block.html) || (block.type === "image" && (block.widthPercent !== undefined || block.wrap || block.alt !== undefined || block.caption !== undefined)) || (block.type === "embed" && (block.widthPercent !== undefined || block.wrap || block.align))) return null;
     if (block.type === "paragraph") parts.push(unescapeHtml(block.html));
     else if (block.type === "heading" && block.level !== 4) parts.push(`${"#".repeat(block.level)} ${block.text}`);
     else if (block.type === "quote" && !block.cite)

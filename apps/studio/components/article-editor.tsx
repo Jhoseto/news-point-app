@@ -6,7 +6,7 @@ import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/article
 import { callApi } from "@/lib/client-api";
 import { textToBody } from "@/lib/editor/body";
 import { documentWords } from "@/lib/editor/document";
-import { embedFrameUrl, localVideoUrl, videoSourceUrl } from "@newspoint/content";
+import { observeEmbedFrame, embedFrameUrl, localVideoUrl, videoSourceUrl } from "@newspoint/content";
 import { VisualArticleEditor, type VisualEditorHandle } from "./visual-article-editor";
 import { parseEmbedInput } from "@/lib/editor/embed";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
@@ -829,8 +829,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
-        <h3>Водещ embed</h3><label>HTTPS адрес или iframe код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
-        {parseEmbedInput(heroInput) && (embedFrameUrl(parseEmbedInput(heroInput)!.url) || videoSourceUrl(parseEmbedInput(heroInput)!.url)) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(heroInput)!.url) ? <video src={videoSourceUrl(parseEmbedInput(heroInput)!.url)!} controls preload="metadata" playsInline /> : <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen />}</div> : null}
+        <h3>Водещ embed</h3><label>HTTPS адрес или embed код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
+        {parseEmbedInput(heroInput) && (embedFrameUrl(parseEmbedInput(heroInput)!.url) || videoSourceUrl(parseEmbedInput(heroInput)!.url)) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(heroInput)!.url) ? <video src={videoSourceUrl(parseEmbedInput(heroInput)!.url)!} controls preload="metadata" playsInline /> : <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen />}</div> : null}
         {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
       </EditorDialog> : null}
       {videoTarget ? <VideoUploadDialog onClose={() => setVideoTarget(null)} onUploaded={url => { if (!localVideoUrl(url)) return; if (videoTarget === "hero") setDraft(current => ({ ...current, heroEmbedUrl: url, heroMediaId: null })); else visualRef.current?.insertVideo(url); setVideoTarget(null); }} /> : null}

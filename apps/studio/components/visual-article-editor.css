@@ -41,6 +41,9 @@
 .np-visual-editor button:disabled { opacity:.45; cursor:not-allowed; }
 .np-visual-document { padding:24px; min-height:420px; outline:none; font-size:17px; line-height:1.75; }
 .np-visual-document p { margin-block: 1em; } .np-visual-document h2 { font-size:1.65em; font-weight:800; } .np-visual-document h3 { font-size:1.35em; font-weight:750; }
+.np-visual-document p[data-clear-media="true"] { clear:both; min-height:1.75em; }
+.np-media-continue { min-height:32px; padding:6px 10px; border:1px solid var(--np-line); border-radius:4px; background:var(--np-surface); color:var(--np-ink); font-weight:700; }
+.np-editor-continue { display:block; width:calc(100% - 32px); min-height:44px; margin:0 16px 16px; padding:8px 12px; border:1px dashed var(--np-line); border-radius:8px; background:var(--np-surface-2); color:var(--np-ink); text-align:left; }
 .np-visual-document ul { list-style:disc; padding-left:1.5em; } .np-visual-document ol { list-style:decimal; padding-left:1.5em; }
 .np-visual-document blockquote { border-left:4px solid var(--np-accent); padding:12px 20px; background:var(--np-surface-2); }
 .np-visual-document a { text-decoration:underline; } .np-visual-document hr { clear:both; margin:24px 0; border-top:1px solid var(--np-line); }

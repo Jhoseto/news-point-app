@@ -1,7 +1,8 @@
 import type { ArticleBody, Block } from "./blocks";
+import sanitizeHtml from "sanitize-html";
 
-export type EmbedProvider = "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "vimeo" | "other";
-export const EMBED_PROVIDER_LABEL: Record<EmbedProvider, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", vimeo: "Vimeo", other: "външен източник" };
+export type EmbedProvider = "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "vimeo" | "reddit" | "other";
+export const EMBED_PROVIDER_LABEL: Record<EmbedProvider, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", vimeo: "Vimeo", reddit: "Reddit", other: "външен източник" };
 const LOCAL_VIDEO = /^\/media\/news\/\d{4}\/(?:0[1-9]|1[0-2])\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\.mp4$/i;
 
 export function localVideoUrl(value: string): string | null {
@@ -23,6 +24,7 @@ export function embedProviderFromUrl(value: string): EmbedProvider {
     if (host === "x.com" || host === "twitter.com") return "x";
     if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "tiktok";
     if (host === "vimeo.com" || host === "player.vimeo.com") return "vimeo";
+    if (["reddit.com", "old.reddit.com", "embed.reddit.com", "redditmedia.com"].includes(host)) return "reddit";
   } catch { /* invalid */ }
   return "other";
 }
@@ -74,6 +76,14 @@ export function embedFrameUrl(value: string): string | null {
       const match = /^\/(p|reel|tv)\/([A-Za-z0-9_-]+)(?:\/embed)?\/?$/.exec(url.pathname);
       return match ? `https://www.instagram.com/${match[1]}/${match[2]}/embed/` : null;
     }
+    if (provider === "reddit") {
+      // Same post/comment routes used by Reddit's official widgets.js. Never
+      // forward tracking, redirects, or arbitrary embed options from the paste.
+      const post = /^\/(r|user)\/([A-Za-z0-9_]+)\/comments\/([a-z0-9]+)\/([A-Za-z0-9_-]*)(?:\/([a-z0-9]+))?\/?$/i.exec(url.pathname);
+      if (!post) return null;
+      const path = `/${post[1]}/${post[2]}/comments/${post[3]}/${post[4]}/${post[5] ? `${post[5]}/` : ""}`;
+      return `https://embed.reddit.com${path}?embed=true&showmedia=true`;
+    }
   } catch { /* invalid */ }
   return null;
 }
@@ -82,12 +92,34 @@ export function embedAspectRatio(value: string): string {
   const frame = embedFrameUrl(value);
   if (frame && embedProviderFromUrl(frame) === "facebook") { const url = new URL(frame); return `${url.searchParams.get("width")}/${url.searchParams.get("height")}`; }
   if (frame && ["instagram", "tiktok"].includes(embedProviderFromUrl(frame))) return "9/16";
+  if (frame && embedProviderFromUrl(frame) === "reddit") return "4/5";
   return "16/9";
+}
+
+/** Extract only a vetted post URL from Reddit's official blockquote snippet. */
+function redditSnippetUrl(raw: string): string | null {
+  if (!/<blockquote\b/i.test(raw)) return null;
+  const sanitized = sanitizeHtml(raw, {
+    allowedTags: ["blockquote", "a"],
+    allowedAttributes: { blockquote: ["class"], a: ["href"] },
+    allowedClasses: { blockquote: ["reddit-embed-bq"] },
+    allowedSchemes: ["https"],
+  });
+  const quote = /<blockquote class="reddit-embed-bq">([\s\S]*?)<\/blockquote>/i.exec(sanitized)?.[1];
+  if (!quote) return null;
+  for (const link of quote.matchAll(/<a\b[^>]*\bhref="([^"]+)"/gi)) {
+    const href = link[1]!.replace(/&amp;/gi, "&");
+    if (embedProviderFromUrl(href) === "reddit") {
+      const frame = embedFrameUrl(href);
+      if (frame) return frame;
+    }
+  }
+  return null;
 }
 
 export function parseEmbedInput(raw: string): { url: string; provider: EmbedProvider } | null {
   const match = raw.match(/<iframe\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/i);
-  const value = (match?.[1] ?? raw.trim().replace(/^["']|["']$/g, "")).replace(/&amp;|&#38;/gi, "&");
+  const value = (match?.[1] ?? redditSnippetUrl(raw) ?? raw.trim().replace(/^["']|["']$/g, "")).replace(/&amp;|&#38;/gi, "&");
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || !url.hostname.includes(".")) return null;
@@ -147,6 +179,7 @@ export function composition(block: Block): { className: string; style: Record<st
       ...(media && wrap === "none" ? { marginInlineStart: block.align === "left" ? 0 : "auto", marginInlineEnd: block.align === "right" ? 0 : "auto" } : {}),
       ...("textAlign" in block && block.textAlign ? { textAlign: block.textAlign } : {}),
       ...("indent" in block && block.indent ? { paddingInlineStart: `${block.indent * 1.5}em` } : {}),
+      ...(block.type === "paragraph" && block.clearMedia ? { clear: "both" } : {}),
     },
   };
 }

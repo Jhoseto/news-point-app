@@ -1,17 +1,5 @@
 const FB_VIDEO = "https://www.facebook.com/plugins/video.php";
-
-export function embedProviderFromUrl(url: string): string {
-  try {
-    const host = new URL(url).hostname.replace(/^www\./, "");
-    if (/(^|\.)facebook\.com$/.test(host)) return "facebook";
-    if (/(^|\.)youtube(-nocookie)?\.com$|^youtu\.be$/.test(host)) return "youtube";
-    if (/(^|\.)instagram\.com$/.test(host)) return "instagram";
-    if (/(^|\.)(twitter|x)\.com$/.test(host)) return "x";
-  } catch {
-    // fall through
-  }
-  return "other";
-}
+export { embedProviderFromUrl } from "@newspoint/content";
 
 /** Normalize third-party embed URLs for in-article iframes (mobile-friendly where needed). */
 export function articleEmbedPlayUrl(url: string, provider: string): string {

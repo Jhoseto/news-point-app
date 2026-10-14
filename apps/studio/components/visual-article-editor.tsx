@@ -6,11 +6,12 @@ import { EditorContent, NodeViewContent, NodeViewWrapper, ReactNodeViewRenderer,
 import StarterKit from "@tiptap/starter-kit";
 import TextAlign from "@tiptap/extension-text-align";
 import { NodeSelection } from "@tiptap/pm/state";
-import { composition, mediaWidth, EMBED_PROVIDER_LABEL, embedFrameUrl, embedAspectRatio, videoSourceUrl, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
+import { composition, mediaWidth, EMBED_PROVIDER_LABEL, embedFrameUrl, observeEmbedFrame, embedAspectRatio, videoSourceUrl, parseEmbedInput, type ArticleBody, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { browserMediaSrc } from "@/lib/media-src";
 import { bodyToEditorHtml, documentToBody, escapeHtml } from "@/lib/editor/document";
 import { mediaInsertionPosition } from "@/lib/editor/selection";
+import { clearEmptyWrappedParagraph, isWrappedMedia, paragraphBelowMedia } from "@/lib/editor/media-continuation";
 import { EditorDialog } from "./editor-dialog";
 import { EditorToolIcon } from "./editor-toolbar-icons";
 import "./visual-article-editor.css";
@@ -31,7 +32,9 @@ const TextAttributes = Extension.create({
   addGlobalAttributes: () => [{
     types: ["paragraph", "heading", "blockquote", "bulletList", "orderedList"],
     attributes: { indent: { default: 0, parseHTML: element => Math.max(0, Math.min(3, Number(element.dataset.indent) || 0)), renderHTML: attrs => ({ "data-indent": attrs.indent, style: `padding-inline-start:${attrs.indent * 1.5}em` }) } },
-  }, { types: ["blockquote"], attributes: { cite: { default: "", parseHTML: element => element.dataset.cite ?? "", renderHTML: attrs => ({ "data-cite": attrs.cite }) } } }],
+  }, { types: ["blockquote"], attributes: { cite: { default: "", parseHTML: element => element.dataset.cite ?? "", renderHTML: attrs => ({ "data-cite": attrs.cite }) } } }, {
+    types: ["paragraph"], attributes: { clearMedia: { default: false, parseHTML: element => element.dataset.clearMedia === "true", renderHTML: attrs => attrs.clearMedia ? { "data-clear-media": "true", style: "clear:both" } : {} } },
+  }],
 });
 
 function isMediaBlock(value: unknown): value is Extract<Block, { type: "image" | "embed" }> {
@@ -68,7 +71,7 @@ function MediaView({ node, selected, updateAttributes, editor, getPos }: NodeVie
     </div>
     <div className={`np-media-canvas np-editor-media-canvas ${block.type === "image" ? `shape-${block.shape ?? "rectangle"} frame-${block.frame ?? "none"}` : ""}`} style={{ aspectRatio: block.type === "embed" && !frame && !videoSourceUrl(block.url) ? undefined : ratio }} contentEditable={false} onClick={select}>
       {block.type === "image" ? asset ? <img src={browserMediaSrc(asset.url)} alt={block.alt ?? asset.alt} draggable={false} style={{ objectPosition: `${block.focalX ?? 50}% ${block.focalY ?? 50}%`, transform: `scale(${(block.cropZoom ?? 100) / 100})`, transformOrigin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} /> : <p>Снимката не е достъпна</p>
-        : videoSourceUrl(block.url) ? <video src={browserMediaSrc(block.url)} controls preload="metadata" playsInline onClick={event => event.stopPropagation()} /> : frame ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={frame} title={`Преглед: ${block.provider}`} loading="lazy" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}
+        : videoSourceUrl(block.url) ? <video src={browserMediaSrc(block.url)} controls preload="metadata" playsInline onClick={event => event.stopPropagation()} /> : frame ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={frame} title={`Преглед: ${block.provider}`} loading="lazy" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}
     </div>
     {block.type === "image" && ((block.caption ?? asset?.caption) || asset?.credit) ? <p contentEditable={false} className="np-media-caption">{block.caption ?? asset?.caption}{asset?.credit ? ` · Снимка: ${asset.credit}` : ""}</p> : null}
     {selected && editor.isEditable && !inGallery ? <button type="button" className="np-resize-handle" contentEditable={false} aria-label="Промени ширината с влачене или стрелки" title="Влачене за размер; стрелките променят с 5%"
@@ -153,6 +156,22 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     editorProps: {
       attributes: { class: "np-prose np-visual-document", "aria-label": "Текст на материала", role: "textbox", "aria-multiline": "true" },
       handlePaste: (view, event) => { if (!pastePlain.current) return false; const text = event.clipboardData?.getData("text/plain"); if (text === undefined) return false; event.preventDefault(); const nodes = text.replace(/\r\n?/g, "\n").split("\n").map(line => ({ type: "paragraph", content: line ? [{ type: "text", text: line }] : [] })); editor?.chain().insertContent(nodes).run(); pastePlain.current = false; setPlainPaste(false); return true; },
+      handleKeyDown: (view, event) => {
+        if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || !view.editable) return false;
+        const selection = view.state.selection;
+        const tr = selection instanceof NodeSelection && isWrappedMedia(selection.node)
+          ? paragraphBelowMedia(view.state, selection.from) : clearEmptyWrappedParagraph(view.state);
+        if (!tr) return false;
+        view.dispatch(tr); return true;
+      },
+      handleClick: (view, _position, event) => {
+        if (!view.editable || event.target !== view.dom || !view.dom.querySelector(".np-wrap-left, .np-wrap-right")) return false;
+        const blocks = [...Array.from(view.dom.children), ...Array.from(view.dom.querySelectorAll(".np-editor-media"))];
+        if (blocks.some(element => event.clientY < element.getBoundingClientRect().bottom)) return false;
+        const tr = paragraphBelowMedia(view.state);
+        if (!tr) return false;
+        view.dispatch(tr); view.focus(); return true;
+      },
     },
     onUpdate: ({ editor: current }) => {
       try { const body = documentToBody(current.getJSON()); lastBody.current = JSON.stringify(body); changeRef.current(body); validityRef.current(true); setError(""); }
@@ -188,6 +207,12 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const selected = selectedBlock(editor);
   const block = ["npImage", "npEmbed"].includes(selected?.node.type.name ?? "") ? selected?.node.attrs.block as Extract<Block, { type: "image" | "embed" }> : null;
   const inGallery = !!selected && editor.state.doc.resolve(selected.pos).parent.type.name === "npGallery";
+  const continueBelowMedia = (position?: number) => {
+    if (!editor.isEditable) return;
+    const tr = paragraphBelowMedia(editor.state, position);
+    if (!tr) return;
+    editor.view.dispatch(tr); editor.commands.focus();
+  };
   const imageSize = block?.type === "image" ? Object.entries({ small: 35, medium: 60, large: 82, full: 100 }).find(([, width]) => width === mediaWidth(block))?.[0] ?? "custom" : "custom";
   const patch = (change: Record<string, unknown>) => {
     if (!selected || !block) return;
@@ -200,7 +225,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
   const dialogOpen = (kind: typeof dialog) => { setUrl(kind === "link" ? editor.getAttributes("link").href ?? "" : ""); setError(""); setDialog(kind); };
   const submitUrl = () => {
     if (dialog === "embed") {
-      const parsed = parseEmbedInput(url); if (!parsed) { setError("Поставете валиден HTTPS адрес или iframe код."); return; }
+      const parsed = parseEmbedInput(url); if (!parsed) { setError("Поставете валиден HTTPS адрес или поддържан embed код."); return; }
       editor.chain().focus().insertContentAt(insertionPosition(editor), { type: "npEmbed", attrs: { block: { type: "embed", ...parsed } } }).run();
     } else {
       if (!url.trim()) editor.chain().focus().extendMarkRange("link").unsetLink().run();
@@ -261,6 +286,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
       {block.type === "image" ? <label>Размер <select disabled={inGallery} aria-label="Размер на снимката" value={imageSize} onChange={event => { if (event.target.value === "custom") return; patch({ size: event.target.value, widthPercent: { small: 35, medium: 60, large: 82, full: 100 }[event.target.value], wrap: "none" }); }}><option value="custom">По избор</option><option value="small">Малък · 35%</option><option value="medium">Среден · 60%</option><option value="large">Голям · 82%</option><option value="full">Цялата колона · 100%</option></select></label> : null}
       <label>Позиция <select disabled={inGallery} aria-label="Позиция на медията" value={block.align ?? "center"} onChange={event => patch({ align: event.target.value })}><option value="left">Вляво</option><option value="center">Център</option><option value="right">Вдясно</option></select></label>
       <label>Текст около медията <select disabled={inGallery} aria-label="Обтичане на медията" value={block.wrap ?? "none"} onChange={event => patch({ wrap: event.target.value })}><option value="none">Отделен блок</option><option value="left">Медия вляво</option><option value="right">Медия вдясно</option></select></label>
+      {!inGallery && selected && isWrappedMedia(selected.node) ? <button type="button" className="np-media-continue" onMouseDown={event => event.preventDefault()} onClick={() => continueBelowMedia(selected.pos)}>Пиши под медията ↓</button> : null}
       {block.type === "image" ? <>
         <label>Форма <select aria-label="Форма на снимката" value={block.shape ?? "rectangle"} onChange={event => patch({ shape: event.target.value })}>{[["rectangle", "Правоъгълна"], ["rounded", "Заоблена"], ["circle", "Кръгла"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>Рамка <select aria-label="Рамка на снимката" value={block.frame ?? "none"} onChange={event => patch({ frame: event.target.value })}><option value="none">Без рамка</option><option value="soft">Сянка</option><option value="line">Контур</option></select></label>
@@ -280,11 +306,12 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     </div>
     {error && !dialog ? <p role="alert" className="np-editor-error">{error}</p> : null}
     <EditorContent editor={editor} />
+    {!readOnly && value.some(item => (item.type === "image" || item.type === "embed") && item.wrap && item.wrap !== "none") ? <button type="button" className="np-editor-continue" onMouseDown={event => event.preventDefault()} onClick={() => continueBelowMedia()}>Продължи под медията ↓</button> : null}
     {value.some(item => item.type === "heading") ? <details className="np-document-outline"><summary>Заглавия в материала</summary>{value.filter(item => item.type === "heading").map((item, index) => item.type === "heading" ? <button type="button" key={index} onClick={() => { let found = 0; editor.state.doc.descendants((node, pos) => { if (node.type.name === "heading" && found++ === index) { editor.commands.setTextSelection(pos + 1); editor.commands.focus(); editor.view.dom.querySelectorAll("h2,h3,h4")[index]?.scrollIntoView({ block: "center", behavior: "smooth" }); } }); }}>{item.text}</button> : null)}</details> : null}
     {dialog ? <EditorDialog onClose={() => setDialog(null)} label={dialog === "embed" ? "Добавяне на embed" : dialog === "link" ? "Редактиране на връзка" : dialog === "symbol" ? "Специални символи" : "Помощ за редактора"}>
-      {dialog === "embed" || dialog === "link" ? <><h3>{dialog === "embed" ? "Външна публикация" : "Връзка"}</h3><label>Адрес{dialog === "embed" ? " или iframe код" : ""}<textarea autoFocus value={url} onChange={event => { setUrl(event.target.value); setError(""); }} /></label>{dialog === "embed" && parseEmbedInput(url) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(url)!.url) ? <video src={videoSourceUrl(parseEmbedInput(url)!.url)!} controls preload="metadata" playsInline /> : embedFrameUrl(parseEmbedInput(url)!.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(url)!.url)!} title="Преглед на embed" allowFullScreen /> : <a href={parseEmbedInput(url)!.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[parseEmbedInput(url)!.provider]}</a>}</div> : null}{error ? <p role="alert">{error}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={submitUrl}>Приложи</button></>
+      {dialog === "embed" || dialog === "link" ? <><h3>{dialog === "embed" ? "Външна публикация" : "Връзка"}</h3><label>Адрес{dialog === "embed" ? " или embed код" : ""}<textarea autoFocus value={url} onChange={event => { setUrl(event.target.value); setError(""); }} /></label>{dialog === "embed" && parseEmbedInput(url) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(url)!.url) ? <video src={videoSourceUrl(parseEmbedInput(url)!.url)!} controls preload="metadata" playsInline /> : embedFrameUrl(parseEmbedInput(url)!.url) ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(url)!.url)!} title="Преглед на embed" allowFullScreen /> : <a href={parseEmbedInput(url)!.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[parseEmbedInput(url)!.provider]}</a>}</div> : null}{error ? <p role="alert">{error}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={submitUrl}>Приложи</button></>
         : dialog === "symbol" ? <><h3>Специални символи</h3><div className="np-symbols">{["©", "®", "™", "§", "€", "£", "°", "±", "×", "÷", "…", "—", "„", "“", "«", "»", "→", "✓"].map(symbol => <button key={symbol} type="button" onClick={() => { editor.chain().focus().insertContent(escapeHtml(symbol)).run(); setDialog(null); }}>{symbol}</button>)}</div></>
-        : <><h3>Работа с редактора</h3><p>Кликнете върху снимка или embed за настройки. Влачете дръжката ⠿ между абзаците; стрелките в действията местят избрания блок. Дръжката ↔ променя ширината. На телефон обтичането се подрежда над текста.</p><p>Ctrl+S записва ръчно. Ctrl+Z отменя, Ctrl+Shift+Z повтаря. „Поставяне като чист текст“ важи за следващото поставяне. Архивните блокове се запазват без промяна.</p></>}
+        : <><h3>Работа с редактора</h3><p>Кликнете върху снимка или embed за настройки. Влачете дръжката ⠿ между абзаците; стрелките в действията местят избрания блок. Дръжката ↔ променя ширината. На телефон обтичането се подрежда над текста.</p><p>За текст под обтичаща медия използвайте „Пиши под медията“ или натиснете Enter на празен абзац до нея. Можете и да кликнете в празното място под последния блок.</p><p>Ctrl+S записва ръчно. Ctrl+Z отменя, Ctrl+Shift+Z повтаря. „Поставяне като чист текст“ важи за следващото поставяне. Архивните блокове се запазват без промяна.</p></>}
     </EditorDialog> : null}
   </div>;
 }

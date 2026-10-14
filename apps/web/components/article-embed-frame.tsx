@@ -1,4 +1,6 @@
-import { embedFrameUrl, embedAspectRatio, videoSourceUrl } from "@newspoint/content";
+"use client";
+
+import { embedFrameUrl, embedAspectRatio, videoSourceUrl, observeEmbedFrame } from "@newspoint/content";
 
 export function ArticleEmbedFrame({
   src,
@@ -20,6 +22,7 @@ export function ArticleEmbedFrame({
   return (
     <div id={id} className={`${className} np-embed-canvas`} style={{ aspectRatio: embedAspectRatio(src) }}>
       <iframe
+        ref={observeEmbedFrame}
         src={playSrc}
         title={title}
         loading={provider === "facebook" ? "eager" : "lazy"}

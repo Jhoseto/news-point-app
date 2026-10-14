@@ -59,7 +59,7 @@ const mediaPresentation = {
   wrap: z.enum(["none", "left", "right"]).optional(),
 };
 
-export const paragraphBlock = z.strictObject({ type: z.literal("paragraph"), html: safeHtml, ...textPresentation });
+export const paragraphBlock = z.strictObject({ type: z.literal("paragraph"), html: safeHtml, clearMedia: z.boolean().optional(), ...textPresentation });
 
 export const headingBlock = z.strictObject({
   type: z.literal("heading"),
@@ -103,7 +103,7 @@ export const listBlock = z.strictObject({
 
 export const embedBlock = z.strictObject({
   type: z.literal("embed"),
-  provider: z.enum(["youtube", "facebook", "instagram", "x", "tiktok", "vimeo", "other"]),
+  provider: z.enum(["youtube", "facebook", "instagram", "x", "tiktok", "vimeo", "reddit", "other"]),
   url: z.string().refine(value => !!localVideoUrl(value) || z.url({ protocol: /^https$/ }).safeParse(value).success, "Invalid video or embed URL"),
   ...mediaPresentation,
   align: z.enum(["left", "center", "right"]).optional(),

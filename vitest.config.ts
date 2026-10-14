@@ -14,6 +14,8 @@ const serverOnlyEmpty = resolve(
 );
 
 export default defineConfig({
+  // Next preserves JSX for its compiler; render regressions need Vite to compile it.
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: [
       { find: /^server-only$/, replacement: serverOnlyEmpty },
