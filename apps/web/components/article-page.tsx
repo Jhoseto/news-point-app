@@ -25,7 +25,7 @@ import { ArticleTts } from "./article-tts";
 import { RelatedStories } from "./related-stories";
 import { StoryRoadmap } from "./story-roadmap";
 import { StoryThemeLink } from "./story-theme-link";
-import type { LightboxImage } from "./article-lightbox";
+import { articleImageGallery } from "@/lib/article-image-gallery";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon } from "./icons";
 import { LatestNews24h } from "./latest-news-24h";
@@ -78,17 +78,7 @@ export async function ArticlePage({
     : [{ name: article.title }];
 
   // Lightbox gallery: hero first, then every body image in document order.
-  const lightboxImages: LightboxImage[] = article.hero
-    ? [
-        { src: article.hero.url, alt: article.hero.alt, caption: article.hero.caption, credit: article.hero.credit },
-        ...Array.from(article.media.values()).map((m) => ({
-          src: m.url,
-          alt: m.alt,
-          caption: m.caption,
-          credit: m.credit,
-        })),
-      ].filter((img) => img.src)
-    : [];
+  const imageGallery = articleImageGallery(article.body, article.media, article.heroEmbedUrl ? null : article.hero);
 
   return (
     <div className="np-container np-article-page">
@@ -100,7 +90,7 @@ export async function ArticlePage({
           {article.heroEmbedUrl ? (
             <ArticleEmbedFrame src={article.heroEmbedUrl} provider={embedProviderFromUrl(article.heroEmbedUrl)} title="Вградено hero съдържание" className="np-article-hero-embed" />
           ) : article.hero ? (
-            <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={lightboxImages} />
+            <ArticleHeroZoom hero={article.hero} category={article.category} lightboxImages={imageGallery.images} />
           ) : null}
 
           <header className="np-article-header">
@@ -142,7 +132,7 @@ export async function ArticlePage({
           <div className="np-article-reading-layout">
             <div className="np-article-reading-column">
               {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
-              <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} /></div>
+              <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} imageGallery={imageGallery} /></div>
               <footer className="np-article-end">
                 <ArticleNeighbours
                   older={older}

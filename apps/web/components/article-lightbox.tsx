@@ -192,6 +192,16 @@ export function ArticleLightbox({
   useEffect(() => {
     opener.current = (document.activeElement as HTMLElement | null) ?? null;
     panel.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+      if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
+    };
+  }, []);
+
+  // Navigation updates keyboard bindings without recapturing the opening button.
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -226,12 +236,8 @@ export function ArticleLightbox({
       }
     };
     document.addEventListener("keydown", onKey);
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-      if (opener.current?.isConnected) opener.current.focus({ preventScroll: true });
     };
   }, [close, go, index, zoomIn, zoomOut, resetZoom]);
 
@@ -249,6 +255,8 @@ export function ArticleLightbox({
   }, []);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    // Controls keep their click target; only image gestures capture the pointer.
+    if ((event.target as Element).closest("button")) return;
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const target = event.currentTarget;
     target.setPointerCapture(event.pointerId);
@@ -304,6 +312,7 @@ export function ArticleLightbox({
   };
 
   const onDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if ((event.target as Element).closest("button")) return;
     event.preventDefault();
     if (zoom > 1) {
       resetZoom();

@@ -362,6 +362,8 @@
 .np-article-page .np-prose li + li { margin-top: 0.35em; }
 .np-article-page .np-prose li::marker { color: var(--np-accent); }
 .np-article-page .np-prose .np-article-figure { margin: 2.4rem 0; }
+.np-article-image-zoom { display:block; width:100%; min-height:0; padding:0; border:0; border-radius:inherit; background:transparent; cursor:zoom-in; line-height:0; text-align:inherit; }
+.np-article-image-zoom:focus-visible { outline:2px solid var(--np-accent); outline-offset:4px; }
 .np-article-gallery { display: flex; align-items: flex-start; gap: 1rem; margin: 2.4rem 0; }
 .np-article-gallery .np-article-figure { min-width: 0; flex: 1 1 0; margin: 0; }
 .np-article-gallery .np-article-figure img { width: 100%; }
