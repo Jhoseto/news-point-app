@@ -1,50 +1,29 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
-import { BRAND_LOGO, BRAND_LOGO_DARK } from "@/lib/brand-logo";
 
-const HOLD_MS = 420;
-const FADE_MS = 320;
+const DURATION_MS = 2600;
+const EXIT_MS = 400;
 
 function standaloneReader(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
+  return window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-type SplashLogo = typeof BRAND_LOGO | typeof BRAND_LOGO_DARK;
-
-function splashLogo(): SplashLogo {
-  const dark =
-    document.documentElement.dataset.theme === "dark" ||
-    (!document.documentElement.dataset.theme && window.matchMedia("(prefers-color-scheme: dark)").matches);
-  return dark ? BRAND_LOGO_DARK : BRAND_LOGO;
-}
-
-/**
- * Continuation after the static iOS/Android startup image: same wordmark, short hold, fade out.
- * Mounted from the root layout (not deferred) so it never flashes over an already-painted feed.
- */
+/** The server-rendered first frame matches the static OS launch image. */
 export function PwaSplash() {
-  const [phase, setPhase] = useState<"hidden" | "show" | "leave">("hidden");
-  const [logo, setLogo] = useState<SplashLogo>(BRAND_LOGO);
+  const [phase, setPhase] = useState<"ready" | "play" | "leave" | "hidden">("ready");
 
   useLayoutEffect(() => {
-    if (!standaloneReader()) return;
-    if (sessionStorage.getItem("np-splash-shown") === "1") return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      sessionStorage.setItem("np-splash-shown", "1");
+    if (!standaloneReader() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPhase("hidden");
       return;
     }
-    setLogo(splashLogo());
-    setPhase("show");
-    const leaveTimer = window.setTimeout(() => setPhase("leave"), HOLD_MS);
+    setPhase("play");
+    const leaveTimer = window.setTimeout(() => setPhase("leave"), DURATION_MS);
     const hideTimer = window.setTimeout(() => {
       setPhase("hidden");
-      sessionStorage.setItem("np-splash-shown", "1");
-    }, HOLD_MS + FADE_MS);
+    }, DURATION_MS + EXIT_MS);
     return () => {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(hideTimer);
@@ -54,23 +33,17 @@ export function PwaSplash() {
   if (phase === "hidden") return null;
 
   return (
-    <div
-      role="presentation"
-      aria-hidden="true"
-      className="np-pwa-splash"
-      data-phase={phase}
-    >
-      <img
-        className="np-pwa-splash-logo"
-        src={logo.src}
-        srcSet={logo.srcSet}
-        sizes="(max-width: 640px) 72vw, 18rem"
-        alt=""
-        width={logo.width}
-        height={logo.height}
-        decoding="sync"
-        fetchPriority="high"
-      />
+    <div className="np-pwa-splash" data-phase={phase} role="presentation" aria-hidden="true">
+      <div className="np-pwa-splash-scene">
+        <span className="np-pwa-splash-mark">
+          <svg viewBox="0 0 92 92" fill="none" aria-hidden="true">
+            <path className="np-pwa-splash-n" d="M28 68V24L64 68V24" />
+          </svg>
+        </span>
+        <span className="np-pwa-splash-name">NewsPoint<span>.bg</span></span>
+        <span className="np-pwa-splash-tagline">Гласът на истината</span>
+        <span className="np-pwa-splash-track"><span /></span>
+      </div>
     </div>
   );
 }

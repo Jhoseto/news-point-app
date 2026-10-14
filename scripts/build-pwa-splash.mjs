@@ -1,24 +1,20 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { mkdir, stat } from "node:fs/promises";
+import { launchPosterSvg } from "./pwa-launch-art.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
 
-const LOGO = resolve(root, "apps/web/public/brand/newspoint-logo.webp");
-const DARK_LOGO = resolve(root, "apps/web/public/brand/newspoint-logo-dark.webp");
 const OUT_DIR = resolve(root, "apps/web/public/brand");
-const LIGHT_BG = { r: 255, g: 255, b: 255, alpha: 1 };
-const DARK_BG = { r: 0, g: 5, b: 22, alpha: 1 };
 
 /**
  * Apple touch startup images at common iOS point sizes. Android launchers
  * compose their own background and use the icon as the splash, so no extra
  * Android-specific image is required.
  *
- * The full NewsPoint logo (rings + wordmark + slogan) is centered on a solid
- * background. The iOS system fades this out as the app renders the first
- * frame, so the splash must match the actual app theme (light/dark).
+ * Keep the OS frame identical for light/dark so it can pass to the web animation
+ * without a black flash. The browser then reveals the actual app theme.
  */
 const SPLASHES = [
   // iPhone SE (2nd/3rd gen), iPhone 8
@@ -36,40 +32,12 @@ const SPLASHES = [
 
 await mkdir(OUT_DIR, { recursive: true });
 
-// Pre-scale the logo so the largest splash can reuse the same buffer.
-const MAX_W = Math.max(...SPLASHES.map((s) => s.width));
-const logoBuf = await sharp(LOGO)
-  .resize({ width: Math.round(MAX_W * 0.6), withoutEnlargement: false })
-  .png()
-  .toBuffer();
-
 const darkOnly = process.argv.includes("--dark");
 
 for (const { name, width, height, dark } of SPLASHES) {
   if (darkOnly && !dark) continue;
   const target = resolve(OUT_DIR, name);
-  const bg = dark ? DARK_BG : LIGHT_BG;
-  const fg = dark ? { r: 199, g: 207, b: 219, alpha: 1 } : { r: 47, g: 61, b: 105, alpha: 1 };
-
-  const canvas = sharp({
-    create: { width, height, channels: 4, background: bg },
-  });
-
-  // Compose the centered logo (sized to 50% of width) over the background.
-  const logoWidth = Math.round(width * 0.5);
-  const left = Math.round((width - logoWidth) / 2);
-  const top = Math.round(height * 0.4);
-
-  const source = dark ? DARK_LOGO : LOGO;
-  const out = await sharp(source)
-    .resize({ width: logoWidth, withoutEnlargement: false })
-    .png()
-    .toBuffer();
-
-  await canvas
-    .composite([{ input: out, top, left }])
-    .png({ compressionLevel: 9 })
-    .toFile(target);
+  await sharp(launchPosterSvg(width, height)).png({ compressionLevel: 9 }).toFile(target);
 
   const info = await stat(target);
   console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB, ${width}x${height}, ${dark ? "dark" : "light"})`);

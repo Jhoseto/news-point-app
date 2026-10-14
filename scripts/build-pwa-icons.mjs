@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { mkdir, stat } from "node:fs/promises";
+import { launchMarkSvg } from "./pwa-launch-art.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
@@ -34,6 +35,12 @@ const emblem = await emblemBuffer(LIGHT_SOURCE);
 
 for (const { name, size, maskable } of SIZES) {
   const target = resolve(OUT_DIR, name);
+  if (name.startsWith("icon-") || name.startsWith("apple-touch-icon")) {
+    await sharp(launchMarkSvg(size, maskable)).png({ compressionLevel: 9 }).toFile(target);
+    const info = await stat(target);
+    console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
+    continue;
+  }
   if (!maskable) {
     await sharp(emblem)
       .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })

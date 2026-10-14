@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 /**
  * Читателски PWA — отделен от редакционния. Не споделя manifest с apps/studio.
- * Стартовата снимка е статична (iPhone OS не анимира), анимацията с пръстените
- * се изпълнява в самия първи кадър на приложението, не в системната снимка.
+ * Системният стартов кадър е статичен. След него приложението показва
+ * същата сребриста композиция с три секунди движение.
  *
- * Иконите са базирани на /brand/newspoint-logo.webp. За iOS се ползва apple-touch-icon.
+ * Иконите използват изчистения N знак. За iOS се ползва apple-touch-icon.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -20,24 +20,24 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#ffffff",
-    theme_color: "#ffffff",
+    background_color: "#edf3f8",
+    theme_color: "#edf3f8",
     categories: ["news", "magazines"],
     icons: [
       {
-        src: "/brand/icon-192.png",
+        src: "/brand/icon-192.png?v=2",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-512.png",
+        src: "/brand/icon-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-maskable-512.png",
+        src: "/brand/icon-maskable-512.png?v=2",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
