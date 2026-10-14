@@ -34,7 +34,7 @@ async function inspectAudio(file: string): Promise<AudioInfo> {
 
 /** Store one podcast delivery file; temp originals never enter media storage. */
 export async function preparePodcastAudio(bytes: Buffer, name: string): Promise<{ buffer: Buffer; extension: PodcastAudioExtension; durationSec: number; originalBytes: number; optimized: boolean }> {
-  if (!bytes.length || bytes.length > PODCAST_AUDIO_MAX_BYTES || !/\.(mp3|m4a|wav|flac)$/i.test(name)) throw new Error("Качете MP3, M4A, WAV или FLAC до 80 MB.");
+  if (!bytes.length || bytes.length > PODCAST_AUDIO_MAX_BYTES || !/\.(mp3|m4a|wav|flac)$/i.test(name)) throw new Error("Качете MP3, M4A, WAV или FLAC до 100 MB.");
   const directory = await mkdtemp(path.join(tmpdir(), "np-podcast-audio-"));
   try {
     const input = path.join(/* turbopackIgnore: true */ directory, "input.audio");

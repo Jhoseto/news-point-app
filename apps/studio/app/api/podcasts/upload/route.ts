@@ -4,7 +4,7 @@ import { refreshPodcastPages } from "../../../../lib/podcast-refresh";
 import { randomBytes, randomUUID } from "node:crypto";
 import { PODCAST_AUDIO_MAX_BYTES, podcastSlug } from "@newspoint/content";
 import { preparePodcastAudio } from "@newspoint/content/audio";
-import { insertPodcast, podcastAudioFormatsReady, podcastForStaff, podcastsReady, updatePodcastFiles } from "@newspoint/db/podcasts";
+import { insertPodcast, podcastAudioFormatsReady, podcastAudioSizeReady, podcastForStaff, podcastsReady, updatePodcastFiles } from "@newspoint/db/podcasts";
 import { staffFromRequest } from "@/lib/session";
 import { studioOrigins } from "@/lib/auth";
 import { removeMediaFile, writeMediaFile } from "@/lib/media-disk";
@@ -28,7 +28,14 @@ async function handlePOST(request: Request) {
   if (!staff) return json({ error: { message: "Влезте отново." } }, 401);
   if (!["editor", "admin", "master_admin"].includes(staff.role)) return json({ error: { message: "Нямате права." } }, 403);
   if (!await podcastsReady()) return json({ error: { message: "Първо приложете миграция 22_podcasts.sql." } }, 503);
-  const form = await request.formData();
+  const uploadLimit = PODCAST_AUDIO_MAX_BYTES + UPLOADED_PHOTO_MAX_BYTES + 256 * 1024;
+  if (Number(request.headers.get("content-length")) > uploadLimit) return json({ error: { code: "upload_too_large", message: "Качете звук до 100 MB и корица до 25 MB." } }, 413);
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: { code: "upload_interrupted", message: "Качването е прекъснато. Епизодът не е записан. Опитайте отново със същите файлове." } }, 400);
+  }
   const title = String(form.get("title") ?? "").trim();
   const summary = String(form.get("summary") ?? "").trim();
   const categoryId = String(form.get("categoryId") ?? "").trim() || null;
@@ -42,13 +49,14 @@ async function handlePOST(request: Request) {
   if (id && !existing) return json({ error: { message: "Епизодът не е намерен." } }, 404);
   if ((!existing && (!(cover instanceof File) || !(audio instanceof File))) || (cover != null && !(cover instanceof File)) || (audio != null && !(audio instanceof File))) return json({ error: { message: "Качете корица и звуков файл." } }, 400);
   if (cover instanceof File && (!cover.type.startsWith("image/") || cover.size > UPLOADED_PHOTO_MAX_BYTES)) return json({ error: { message: "Качете снимка до 25 MB." } }, 400);
-  if (audio instanceof File && audio.size > PODCAST_AUDIO_MAX_BYTES) return json({ error: { message: "Звуковият файл трябва да е до 80 MB." } }, 413);
+  if (audio instanceof File && audio.size > PODCAST_AUDIO_MAX_BYTES) return json({ error: { message: "Звуковият файл трябва да е до 100 MB." } }, 413);
 
   const createdKeys: string[] = [];
   let committed = false;
   try {
     const prepared = audio instanceof File ? await preparePodcastAudio(Buffer.from(await audio.arrayBuffer()), audio.name) : null;
     if (prepared?.extension === "m4a" && !await podcastAudioFormatsReady()) return json({ error: { message: "Първо приложете миграция 35_podcast_audio_formats.sql." } }, 503);
+    if (prepared && prepared.buffer.length > 80 * 1024 * 1024 && !await podcastAudioSizeReady()) return json({ error: { message: "Крайният звуков файл е над стария лимит 80 MB. Първо приложете миграция 36_podcast_audio_size.sql за лимит 100 MB." } }, 503);
     const photo = cover instanceof File ? await prepareUploadedPhoto(Buffer.from(await cover.arrayBuffer())) : null;
     let coverKey = existing?.coverKey;
     let audioKey = existing?.audioKey;

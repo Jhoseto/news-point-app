@@ -82,6 +82,14 @@ export async function podcastForStaff(id: string) {
   return row ?? null;
 }
 
+export async function podcastAudioSizeReady(): Promise<boolean> {
+  const rows = await getDb().execute<{ ready: boolean }>(sql`select exists (
+    select 1 from pg_constraint where conrelid='public.podcasts'::regclass
+    and conname='podcasts_bytes_check' and position('104857600' in pg_get_constraintdef(oid)) > 0
+  ) as ready`);
+  return rows[0]?.ready === true;
+}
+
 export async function updatePodcastFiles(id: string, input: { title: string; summary: string; categoryId: string | null; coverKey?: string; audioKey?: string; durationSec?: number; bytes?: number }) {
   const [row] = await getDb().update(podcasts).set({ ...input, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning();
   return row ?? null;

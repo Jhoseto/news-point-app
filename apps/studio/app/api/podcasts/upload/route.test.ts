@@ -1,11 +1,11 @@
 import { beforeEach, expect, it, vi } from "vitest";
-const mocks=vi.hoisted(()=>({staff:vi.fn(),ready:vi.fn(),formats:vi.fn(),existing:vi.fn(),insert:vi.fn(),update:vi.fn(),audio:vi.fn(),photo:vi.fn(),write:vi.fn(),remove:vi.fn(),refresh:vi.fn(),audit:vi.fn()}));
+const mocks=vi.hoisted(()=>({staff:vi.fn(),ready:vi.fn(),formats:vi.fn(),sizeReady:vi.fn(),existing:vi.fn(),insert:vi.fn(),update:vi.fn(),audio:vi.fn(),photo:vi.fn(),write:vi.fn(),remove:vi.fn(),refresh:vi.fn(),audit:vi.fn()}));
 vi.mock("@/lib/session",()=>({staffFromRequest:mocks.staff}));
 vi.mock("@/lib/auth",()=>({studioOrigins:()=>({trusted:["https://studio.test"]})}));
 vi.mock("@/lib/media-disk",()=>({writeMediaFile:mocks.write,removeMediaFile:mocks.remove}));
 vi.mock("@/lib/uploaded-photo",()=>({prepareUploadedPhoto:mocks.photo,UPLOADED_PHOTO_MAX_BYTES:25*1024*1024}));
 vi.mock("@newspoint/content/audio",()=>({preparePodcastAudio:mocks.audio}));
-vi.mock("@newspoint/db/podcasts",()=>({podcastsReady:mocks.ready,podcastAudioFormatsReady:mocks.formats,podcastForStaff:mocks.existing,insertPodcast:mocks.insert,updatePodcastFiles:mocks.update}));
+vi.mock("@newspoint/db/podcasts",()=>({podcastsReady:mocks.ready,podcastAudioFormatsReady:mocks.formats,podcastAudioSizeReady:mocks.sizeReady,podcastForStaff:mocks.existing,insertPodcast:mocks.insert,updatePodcastFiles:mocks.update}));
 vi.mock("../../../../lib/podcast-refresh",()=>({refreshPodcastPages:mocks.refresh}));
 vi.mock("../../../../lib/audit-context",()=>({auditFacts:mocks.audit}));
 import {POST} from "./route";
@@ -20,7 +20,7 @@ function request({editing=false,audio=true,cover=true,origin="https://studio.tes
 }
 beforeEach(()=>{
   for(const mock of Object.values(mocks))mock.mockReset();
-  mocks.staff.mockResolvedValue({id:"fixture-editor",role:"editor"});mocks.ready.mockResolvedValue(true);mocks.formats.mockResolvedValue(true);mocks.existing.mockResolvedValue(old);
+  mocks.staff.mockResolvedValue({id:"fixture-editor",role:"editor"});mocks.ready.mockResolvedValue(true);mocks.formats.mockResolvedValue(true);mocks.sizeReady.mockResolvedValue(true);mocks.existing.mockResolvedValue(old);
   mocks.audio.mockResolvedValue({buffer:Buffer.from("aac"),extension:"m4a",durationSec:60,originalBytes:14,optimized:true});mocks.photo.mockResolvedValue({buffer:Buffer.from("webp")});
   mocks.write.mockResolvedValue(undefined);mocks.remove.mockResolvedValue(undefined);mocks.refresh.mockResolvedValue(true);
   mocks.insert.mockImplementation(async input=>({...old,...input,id}));mocks.update.mockImplementation(async(_id,input)=>({...old,...input}));
@@ -70,4 +70,38 @@ it("does not create a duplicate when an edited episode no longer exists",async()
 });
 it("rejects incomplete new episodes",async()=>{
   expect((await POST(request({audio:false}))).status).toBe(400);expect((await POST(request({cover:false}))).status).toBe(400);expect(mocks.write).not.toHaveBeenCalled();
+});
+it("reports an interrupted multipart upload without creating media or an episode",async()=>{
+  const input=request();vi.spyOn(input,"formData").mockRejectedValue(new TypeError("aborted"));
+  const response=await POST(input);expect(response.status).toBe(400);
+  expect((await response.json()).error.code).toBe("upload_interrupted");
+  expect(mocks.audio).not.toHaveBeenCalled();expect(mocks.write).not.toHaveBeenCalled();expect(mocks.insert).not.toHaveBeenCalled();
+});
+it("rejects an oversized aggregate body before reading it",async()=>{
+  const input=request();input.headers.set("content-length",String(126*1024*1024));
+  const read=vi.spyOn(input,"formData");const response=await POST(input);
+  expect(response.status).toBe(413);expect((await response.json()).error.code).toBe("upload_too_large");
+  expect(read).not.toHaveBeenCalled();expect(mocks.write).not.toHaveBeenCalled();
+});
+it("accepts a 100 MiB audio file and publishes only the optimized asset",async()=>{
+  const input=request();const form=await input.formData();
+  const audio=form.get("audio") as File;Object.defineProperty(audio,"size",{value:100*1024*1024});
+  form.set("publish","1");vi.spyOn(input,"formData").mockResolvedValue(form);
+  const response=await POST(input);expect(response.status).toBe(200);
+  expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({status:"published",audioKey:expect.stringMatching(/\.m4a$/)}));
+  expect(mocks.write).toHaveBeenCalledTimes(2);expect(mocks.write.mock.calls[1]![1]).toEqual(Buffer.from("aac"));
+});
+it("rejects audio above 100 MiB even without content-length",async()=>{
+  const input=request();const form=await input.formData();
+  const audio=form.get("audio") as File;Object.defineProperty(audio,"size",{value:100*1024*1024+1});
+  vi.spyOn(input,"formData").mockResolvedValue(form);
+  expect((await POST(input)).status).toBe(413);expect(mocks.audio).not.toHaveBeenCalled();expect(mocks.write).not.toHaveBeenCalled();
+});
+it("requires migration 36 before writing a delivery file over the old 80 MiB cap",async()=>{
+  const buffer=Buffer.from("explicit mocked file size");Object.defineProperty(buffer,"length",{value:81*1024*1024});
+  mocks.audio.mockResolvedValue({buffer,extension:"m4a",durationSec:60,originalBytes:100*1024*1024,optimized:true});
+  mocks.sizeReady.mockResolvedValue(false);
+  const response=await POST(request());expect(response.status).toBe(503);
+  expect((await response.json()).error.message).toContain("36_podcast_audio_size.sql");
+  expect(mocks.write).not.toHaveBeenCalled();expect(mocks.insert).not.toHaveBeenCalled();
 });

@@ -1,5 +1,5 @@
 export type PodcastAudioExtension = "mp3" | "m4a";
-export const PODCAST_AUDIO_MAX_BYTES = 80 * 1024 * 1024;
+export const PODCAST_AUDIO_MAX_BYTES = 100 * 1024 * 1024;
 export const PODCAST_AUDIO_ACCEPT = "audio/mpeg,audio/mp4,audio/wav,audio/x-wav,audio/flac,.mp3,.m4a,.wav,.flac";
 
 export function podcastAudioExtension(key: string): PodcastAudioExtension | null {

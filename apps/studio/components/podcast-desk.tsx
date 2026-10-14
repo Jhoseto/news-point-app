@@ -149,6 +149,8 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
             onCreated={(episode) => {
               setEpisodes((rows) => [episode, ...rows]);
               setSelectedId(episode.id);
+              setFilter("all");
+              setQuery("");
               setTab("editor");
             }}
             onCancel={episodes.length > 0 ? () => setTab(initial.length === 0 ? "empty" : "editor") : () => undefined}
@@ -264,7 +266,7 @@ function NewEpisodeForm({
       form.set("audio", audioFile);
       const response = await fetch(withBase("/api/podcasts/upload/"), { method: "POST", body: form });
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error?.message ?? "Качването не мина.");
+      if (!response.ok) throw new Error(data.error?.message ?? (response.status === 413 ? "Качете звук до 100 MB и корица до 25 MB." : "Сървърът не потвърди качването. Проверете списъка с епизоди преди нов опит."));
       if (data.episode) {
         onCreated({
           ...data.episode,
@@ -284,6 +286,7 @@ function NewEpisodeForm({
   return (
     <form
       className="np-podcast-form"
+      aria-busy={submitting}
       onSubmit={(event) => {
         event.preventDefault();
         const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
@@ -297,12 +300,16 @@ function NewEpisodeForm({
         </div>
         <div className="np-podcast-form-actions">
           {onCancel ? (
-            <button type="button" onClick={onCancel} className="np-podcast-ghost-btn">Откажи</button>
+            <button type="button" onClick={onCancel} disabled={submitting} className="np-podcast-ghost-btn">Откажи</button>
           ) : null}
           <button type="submit" value="0" disabled={!valid} className="np-podcast-secondary-btn">Запиши чернова</button>
-          <button type="submit" value="1" disabled={!valid} className="np-podcast-primary-btn">Публикувай</button>
+          <button type="submit" value="1" disabled={!valid} className="np-podcast-primary-btn">{submitting ? "Качва се…" : "Публикувай"}</button>
         </div>
       </header>
+
+      {submitting ? <p role="status" className="np-podcast-alert">Качване и оптимизиране на звука. Изчакайте потвърждението, преди да затворите страницата.</p> : null}
+      {error ? <p role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</p> : null}
+      {notice ? <p role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</p> : null}
 
       <div className="np-podcast-form-grid">
         <DropZone
@@ -316,7 +323,7 @@ function NewEpisodeForm({
         />
         <AudioDropZone
           label="Звуков файл"
-          hint="MP3, M4A, WAV или FLAC до 80 MB · автоматична оптимизация"
+          hint="MP3, M4A, WAV или FLAC до 100 MB · автоматична оптимизация"
           inputRef={audioInputRef}
           accept={PODCAST_AUDIO_ACCEPT}
           onPick={setAudioFile}
@@ -366,9 +373,7 @@ function NewEpisodeForm({
         </label>
       </div>
 
-      {error ? <p role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</p> : null}
-      {notice ? <p role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</p> : null}
-      {!valid ? (
+      {!valid && !submitting ? (
         <p className="np-podcast-hint">Попълнете заглавие, резюме и качете двата файла, за да запишете.</p>
       ) : null}
     </form>

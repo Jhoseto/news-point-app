@@ -22,6 +22,9 @@ function mediaOrigin(): string {
 const nextConfig: NextConfig = {
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
+  // /admin uploads are externally rewritten to Studio. Allow the full 100 MiB
+  // podcast plus 25 MiB cover and multipart overhead; handlers keep file limits.
+  experimental: { proxyClientMaxBodySize: "130mb" },
   // Preserve the pinned Next list (social previews included) and put metadata
   // in <head> for AI readers that do not execute streamed client scripts.
   // Recheck this Next internal export when upgrading the pinned version.

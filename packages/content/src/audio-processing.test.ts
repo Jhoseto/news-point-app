@@ -1,5 +1,5 @@
 import {expect,it} from "vitest";
-import {mkdtemp,readFile,rm,writeFile} from "node:fs/promises";
+import {mkdtemp,readFile,readdir,rm,writeFile} from "node:fs/promises";
 import {tmpdir} from "node:os";
 import path from "node:path";
 import {execFile} from "node:child_process";
@@ -10,7 +10,10 @@ it.each([1,2])("compresses a real %i-channel WAV while preserving channels and d
   const directory=await mkdtemp(path.join(tmpdir(),"np-podcast-test-"));
   try {
     const input=path.join(directory,"fixture.wav");await run(process.env.FFMPEG_PATH||"ffmpeg",["-v","error","-f","lavfi","-i","sine=frequency=440:sample_rate=48000","-t","3","-ac",String(channels),input],{windowsHide:true});
+    const tempInputs=async()=>(await readdir(tmpdir())).filter(name=>name.startsWith("np-podcast-audio-")).sort();
+    const before=await tempInputs();
     const source=await readFile(input),audio=await preparePodcastAudio(source,"fixture.wav");
+    expect(await tempInputs()).toEqual(before);
     expect(audio.extension).toBe("m4a");expect(audio.durationSec).toBe(3);expect(audio.buffer.length).toBeLessThan(source.length/4);
     const output=path.join(directory,"fixture.m4a");await writeFile(output,audio.buffer);
     const probe=JSON.parse((await run(process.env.FFPROBE_PATH||"ffprobe",["-v","error","-show_entries","stream=codec_name,channels,sample_rate","-of","json",output],{windowsHide:true})).stdout);
@@ -29,10 +32,13 @@ it("keeps compact MP3 audio without another lossy encoding",async()=>{
   } finally {await rm(directory,{recursive:true,force:true});}
 },30_000);
 it("rejects deceptive/empty/unbounded audio input",async()=>{
+  const tempInputs=async()=>(await readdir(tmpdir())).filter(name=>name.startsWith("np-podcast-audio-")).sort();
+  const before=await tempInputs();
   await expect(preparePodcastAudio(Buffer.from("<html>not sound</html>"),"fixture.mp3")).rejects.toThrow();
   await expect(preparePodcastAudio(Buffer.from("fixture"),"playlist.m3u")).rejects.toThrow();
   await expect(preparePodcastAudio(Buffer.from("ffconcat version 1.0\nfile '/not-an-upload.wav'\n"),"fake.mp3")).rejects.toThrow();
   await expect(preparePodcastAudio(Buffer.alloc(0),"fixture.wav")).rejects.toThrow();
+  expect(await tempInputs()).toEqual(before);
 });
 it("rejects a video disguised as M4A",async()=>{
   const directory=await mkdtemp(path.join(tmpdir(),"np-podcast-video-test-"));
