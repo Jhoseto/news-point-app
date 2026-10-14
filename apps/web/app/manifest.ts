@@ -25,19 +25,19 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["news", "magazines"],
     icons: [
       {
-        src: "/brand/icon-192.png?v=4",
+        src: "/brand/icon-192.png?v=7",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-512.png?v=4",
+        src: "/brand/icon-512.png?v=7",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-maskable-512.png?v=4",
+        src: "/brand/icon-maskable-512.png?v=7",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

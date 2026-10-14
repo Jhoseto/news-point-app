@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
+import { withBase } from "@/lib/paths";
 import "@fontsource-variable/manrope";
 import "./globals.css";
 
@@ -19,10 +20,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
   icons: {
     icon: [
-      { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { url: "/brand/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: withBase("/brand/favicon-32.png"), sizes: "32x32", type: "image/png" },
+      { url: withBase("/brand/favicon-16.png"), sizes: "16x16", type: "image/png" },
     ],
-    apple: [{ url: "/brand/studio-mark-512w.webp", sizes: "512x512", type: "image/webp" }],
+    shortcut: [{ url: withBase("/brand/favicon-32.png"), type: "image/png" }],
+    apple: [{ url: withBase("/brand/apple-touch-icon.png"), sizes: "180x180", type: "image/png" }],
   },
 };
 
