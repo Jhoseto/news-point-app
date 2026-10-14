@@ -64,6 +64,7 @@ export async function listMediaFolder(folder: string, offset = 0, limit = 80): P
   const [count] = await db.execute<{ total: number }>(sql`
     select count(*)::int as total from media_assets
     where storage_key like ${prefix}
+      and (mime is null or mime not like 'video/%')
       and storage_key !~ '-card\\.webp$'
       and split_part(storage_key, '/', 5) = ''
   `);
@@ -71,6 +72,7 @@ export async function listMediaFolder(folder: string, offset = 0, limit = 80): P
     select id, storage_key, alt, source_url
     from media_assets
     where storage_key like ${prefix}
+      and (mime is null or mime not like 'video/%')
       and storage_key !~ '-card\\.webp$'
       and split_part(storage_key, '/', 5) = ''
     order by storage_key desc

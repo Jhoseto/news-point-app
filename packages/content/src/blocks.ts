@@ -1,4 +1,5 @@
 import sanitizeHtml from "sanitize-html";
+import { localVideoUrl } from "./editorial";
 import { z } from "zod";
 
 // Minimal body format for rendering imported articles (DEC-106). Not the
@@ -102,8 +103,8 @@ export const listBlock = z.strictObject({
 
 export const embedBlock = z.strictObject({
   type: z.literal("embed"),
-  provider: z.enum(["youtube", "facebook", "instagram", "x", "tiktok", "other"]),
-  url: z.url({ protocol: /^https$/ }),
+  provider: z.enum(["youtube", "facebook", "instagram", "x", "tiktok", "vimeo", "other"]),
+  url: z.string().refine(value => !!localVideoUrl(value) || z.url({ protocol: /^https$/ }).safeParse(value).success, "Invalid video or embed URL"),
   ...mediaPresentation,
   align: z.enum(["left", "center", "right"]).optional(),
 });

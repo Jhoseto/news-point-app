@@ -1,5 +1,6 @@
 import { readMediaFile } from "@/lib/media-disk";
 import { mediaCacheControl } from "@/lib/media-cache";
+import { videoResponse } from "@/lib/video-stream";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,10 @@ const TYPES: Record<string, string> = {
   avif: "image/avif",
 };
 
-export async function GET(_request: Request, context: { params: Promise<{ key: string[] }> }) {
+export async function GET(request: Request, context: { params: Promise<{ key: string[] }> }) {
   const { key } = await context.params;
   const storageKey = key.join("/").replace(/\/+$/, "");
+  if (storageKey.endsWith(".mp4")) return videoResponse(storageKey, request.headers.get("range"));
   const cover = storageKey.startsWith("podcasts/") && storageKey.endsWith(".webp");
   if (!storageKey.startsWith("news/") && !cover) return new Response("Not found", { status: 404 });
   const bytes = await readMediaFile(storageKey);

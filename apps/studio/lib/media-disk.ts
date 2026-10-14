@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
 import { readRemoteFile, remoteDiskFromEnv, removeRemoteFile, writeRemoteFile } from "@newspoint/content/disk";
 
@@ -32,6 +32,19 @@ export async function writeMediaFile(storageKey: string, bytes: Buffer): Promise
   if (!path) throw new Error("storage unavailable");
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, bytes);
+}
+
+/** Production copies the optimized file directly; laptop SSH needs a bounded buffer. */
+export async function writeMediaFromFile(storageKey: string, sourcePath: string): Promise<void> {
+  const remote = remoteDiskFromEnv();
+  if (remote) {
+    await writeRemoteFile(remote, storageKey, await readFile(sourcePath), PREFIXES);
+    return;
+  }
+  const path = mediaFile(storageKey);
+  if (!path) throw new Error("storage unavailable");
+  await mkdir(dirname(path), { recursive: true });
+  await copyFile(sourcePath, path);
 }
 
 export async function readMediaFile(storageKey: string): Promise<Buffer | null> {

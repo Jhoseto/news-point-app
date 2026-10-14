@@ -37,8 +37,8 @@ export function textToBody(text: string): ArticleBody {
 
   return chunks.map((lines) => {
     const first = lines[0]!.trim();
-    const embedMatch = first.match(/^\[\[embed:(youtube|facebook|instagram|x|tiktok|other)\|([^\]]+)\]\]$/i);
-    if (lines.length === 1 && embedMatch && /^https:\/\//i.test(embedMatch[2]!)) return { type: "embed", provider: embedMatch[1]!.toLowerCase() as "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "other", url: embedMatch[2]! };
+    const embedMatch = first.match(/^\[\[embed:(youtube|facebook|instagram|x|tiktok|vimeo|other)\|([^\]]+)\]\]$/i);
+    if (lines.length === 1 && embedMatch && (/^https:\/\//i.test(embedMatch[2]!) || /^\/media\/news\//.test(embedMatch[2]!))) return { type: "embed", provider: embedMatch[1]!.toLowerCase() as "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "vimeo" | "other", url: embedMatch[2]! };
     const imageMatch = first.match(/^\[\[image:([0-9a-f-]{36})(?:\|([^\]]+))?\]\]$/i);
     if (lines.length === 1 && imageMatch) {
       const options = Object.fromEntries((imageMatch[2] ?? "").split("|").filter(Boolean).map((item) => item.split("=") as [string, string]));

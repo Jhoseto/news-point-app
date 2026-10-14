@@ -258,6 +258,7 @@
   .studio-preview-gallery .studio-preview-image img { width: 100%; }
   .studio-preview-embed { overflow: hidden; margin: 1.2rem 0; border: 1px solid var(--np-line); border-radius: 1rem; background: var(--np-surface); }
   .studio-preview-embed iframe { display: block; width: 100%; min-height: 24rem; border: 0; }
+  .studio-preview-embed video { display: block; width: 100%; height: 100%; background: #000; }
   @media (max-width: 40rem) { .studio-preview-gallery { flex-wrap: wrap; } .studio-preview-gallery .studio-preview-image { flex-basis: calc(50% - .375rem); } }
 
   .studio-editor-classic {

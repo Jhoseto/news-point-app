@@ -1,6 +1,7 @@
 @echo off
 setlocal EnableExtensions
 cd /d "%~dp0"
+if not exist "package.json" cd /d "%~dp0.."
 
 echo.
 echo NewsPoint 2.0 deploy - only the new site account np2

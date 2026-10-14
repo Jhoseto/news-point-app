@@ -6,7 +6,7 @@ import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/article
 import { callApi } from "@/lib/client-api";
 import { textToBody } from "@/lib/editor/body";
 import { documentWords } from "@/lib/editor/document";
-import { embedFrameUrl } from "@newspoint/content";
+import { embedFrameUrl, localVideoUrl, videoSourceUrl } from "@newspoint/content";
 import { VisualArticleEditor, type VisualEditorHandle } from "./visual-article-editor";
 import { parseEmbedInput } from "@/lib/editor/embed";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
@@ -17,6 +17,7 @@ import { withBase } from "@/lib/paths";
 import { ArticlePreview, type PreviewTheme } from "./article-preview";
 import { EditorDialog } from "./editor-dialog";
 import { MediaPicker } from "./media-picker";
+import { VideoUploadDialog } from "./video-upload-dialog";
 
 export interface EditorProps {
   staff: { id: string; name: string };
@@ -91,6 +92,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
   const [seedLocked, setSeedLocked] = useState(article.viewSeedLocked);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
+  const [videoTarget, setVideoTarget] = useState<"body" | "hero" | null>(null);
   const [device, setDevice] = useState<Device>("desktop");
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
@@ -175,8 +177,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
 
   const applyHeroEmbed = () => {
     const parsed = parseEmbedInput(heroInput);
-    if (!parsed || !embedFrameUrl(parsed.url)) {
-      setHeroError("Водещият embed трябва да е поддържана YouTube или Facebook публикация.");
+    if (!parsed || !embedFrameUrl(parsed.url) && !videoSourceUrl(parsed.url)) {
+      setHeroError("Използвайте поддържан YouTube, Facebook, Vimeo, TikTok, Instagram или пряк MP4/WebM адрес.");
       return;
     }
     setDraft(current => ({ ...current, heroEmbedUrl: parsed.url, heroMediaId: null }));
@@ -548,6 +550,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
                         {hero ? "Смени" : "Избери"}
                       </button>
                       <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary">Embed</button>
+                      <button type="button" onClick={() => setVideoTarget("hero")} className="np-btn np-btn-secondary">Качи видео</button>
                       {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary">Махни embed</button> : null}
                       {hero ? (
                         <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary">
@@ -663,7 +666,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} handleRef={visualRef} />
+            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
             <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
               <legend className="px-1 text-xs font-bold text-ink">Автор и публикуване</legend>
@@ -827,9 +830,10 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или iframe код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
-        {parseEmbedInput(heroInput) && embedFrameUrl(parseEmbedInput(heroInput)!.url) ? <div className="np-dialog-embed-preview"><iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen /></div> : null}
+        {parseEmbedInput(heroInput) && (embedFrameUrl(parseEmbedInput(heroInput)!.url) || videoSourceUrl(parseEmbedInput(heroInput)!.url)) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(heroInput)!.url) ? <video src={videoSourceUrl(parseEmbedInput(heroInput)!.url)!} controls preload="metadata" playsInline /> : <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen />}</div> : null}
         {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
       </EditorDialog> : null}
+      {videoTarget ? <VideoUploadDialog onClose={() => setVideoTarget(null)} onUploaded={url => { if (!localVideoUrl(url)) return; if (videoTarget === "hero") setDraft(current => ({ ...current, heroEmbedUrl: url, heroMediaId: null })); else visualRef.current?.insertVideo(url); setVideoTarget(null); }} /> : null}
       {pickerOpen ? (
         <MediaPicker
           media={availableMedia}

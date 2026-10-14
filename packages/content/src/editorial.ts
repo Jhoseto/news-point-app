@@ -1,7 +1,19 @@
 import type { ArticleBody, Block } from "./blocks";
 
-export type EmbedProvider = "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "other";
-export const EMBED_PROVIDER_LABEL: Record<EmbedProvider, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", other: "външен източник" };
+export type EmbedProvider = "youtube" | "facebook" | "instagram" | "x" | "tiktok" | "vimeo" | "other";
+export const EMBED_PROVIDER_LABEL: Record<EmbedProvider, string> = { youtube: "YouTube", facebook: "Facebook", instagram: "Instagram", x: "X", tiktok: "TikTok", vimeo: "Vimeo", other: "външен източник" };
+const LOCAL_VIDEO = /^\/media\/news\/\d{4}\/(?:0[1-9]|1[0-2])\/[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\.mp4$/i;
+
+export function localVideoUrl(value: string): string | null {
+  return LOCAL_VIDEO.test(value) ? value : null;
+}
+export function videoSourceUrl(value: string): string | null {
+  if (localVideoUrl(value)) return value;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password && /\.(?:mp4|webm)$/i.test(url.pathname) ? url.href : null;
+  } catch { return null; }
+}
 export function embedProviderFromUrl(value: string): EmbedProvider {
   try {
     const host = new URL(value).hostname.toLowerCase().replace(/^(www|m)\./, "");
@@ -10,6 +22,7 @@ export function embedProviderFromUrl(value: string): EmbedProvider {
     if (host === "instagram.com") return "instagram";
     if (host === "x.com" || host === "twitter.com") return "x";
     if (host === "tiktok.com" || host.endsWith(".tiktok.com")) return "tiktok";
+    if (host === "vimeo.com" || host === "player.vimeo.com") return "vimeo";
   } catch { /* invalid */ }
   return "other";
 }
@@ -45,6 +58,22 @@ export function embedFrameUrl(value: string): string | null {
       if (t && /^\d+$/.test(t)) frame.searchParams.set("t", t);
       return frame.href;
     }
+    if (provider === "vimeo") {
+      const id = url.hostname === "player.vimeo.com" ? /^\/video\/(\d+)\/?$/.exec(url.pathname)?.[1] : /^\/(\d+)(?:\/([a-f0-9]+))?\/?$/.exec(url.pathname)?.[1];
+      if (!id) return null;
+      const frame = new URL(`https://player.vimeo.com/video/${id}`);
+      const hash = url.searchParams.get("h") ?? (url.hostname !== "player.vimeo.com" ? /^\/\d+\/([a-f0-9]+)\/?$/.exec(url.pathname)?.[1] : null);
+      if (hash && /^[a-f0-9]{6,64}$/i.test(hash)) frame.searchParams.set("h", hash);
+      return frame.href;
+    }
+    if (provider === "tiktok") {
+      const id = /^\/player\/v1\/(\d+)\/?$/.exec(url.pathname)?.[1] ?? /^\/@[^/]+\/video\/(\d+)\/?$/.exec(url.pathname)?.[1];
+      return id ? `https://www.tiktok.com/player/v1/${id}` : null;
+    }
+    if (provider === "instagram") {
+      const match = /^\/(p|reel|tv)\/([A-Za-z0-9_-]+)(?:\/embed)?\/?$/.exec(url.pathname);
+      return match ? `https://www.instagram.com/${match[1]}/${match[2]}/embed/` : null;
+    }
   } catch { /* invalid */ }
   return null;
 }
@@ -52,6 +81,7 @@ export function embedFrameUrl(value: string): string | null {
 export function embedAspectRatio(value: string): string {
   const frame = embedFrameUrl(value);
   if (frame && embedProviderFromUrl(frame) === "facebook") { const url = new URL(frame); return `${url.searchParams.get("width")}/${url.searchParams.get("height")}`; }
+  if (frame && ["instagram", "tiktok"].includes(embedProviderFromUrl(frame))) return "9/16";
   return "16/9";
 }
 
@@ -80,7 +110,7 @@ export function publicationProblems(draft: {
   else if (RESERVED_ARTICLE_SLUGS.has(draft.slug)) problems.push("Този адрес е запазен. Изберете друг.");
   if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
   if (!draft.primaryCategoryId) problems.push("Изберете рубрика.");
-  if (draft.heroEmbedUrl ? !embedFrameUrl(draft.heroEmbedUrl) : !draft.heroMediaId) problems.push("Изберете основна снимка или поддържан водещ embed.");
+  if (draft.heroEmbedUrl ? !embedFrameUrl(draft.heroEmbedUrl) && !videoSourceUrl(draft.heroEmbedUrl) : !draft.heroMediaId) problems.push("Изберете основна снимка или поддържан водещ embed.");
   if (draft.authorKind === "manual" && (draft.authorName.trim().length < 2 || draft.authorName.length > 120 || /[<>\u0000-\u001f\u007f]/u.test(draft.authorName))) problems.push("Въведете валидно име на автора.");
   return problems;
 }

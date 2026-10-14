@@ -1,4 +1,4 @@
-import { articleSubtitle, bodyGroups, composition, embedFrameUrl, EMBED_PROVIDER_LABEL, embedAspectRatio, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, videoSourceUrl, EMBED_PROVIDER_LABEL, embedAspectRatio, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { documentWords } from "@/lib/editor/document";
 import { formatFull } from "@/lib/format";
@@ -58,7 +58,7 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
       return asset ? <figure style={imageLayout.style} className={`${imageLayout.className} studio-preview-image is-${block.shape ?? "rectangle"} is-${block.size ?? "large"} is-${block.align ?? "center"} is-${block.frame ?? "none"} is-crop-${block.crop ?? "original"}`}>{custom ? <div className={`np-media-canvas frame-${block.frame ?? "none"}`} style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset.width && asset.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>{image}</div> : image}{caption || asset.credit ? <figcaption>{caption}{caption && asset.credit ? " · " : ""}{asset.credit ? `Снимка: ${asset.credit}` : ""}</figcaption> : null}</figure> : null;
     }
     case "embed":
-      return <div className={`${layout.className} studio-preview-embed ${embedFrameUrl(block.url) ? "np-embed-canvas" : ""}`} style={{ ...layout.style, aspectRatio: embedFrameUrl(block.url) ? embedAspectRatio(block.url) : undefined }}>{embedFrameUrl(block.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}</div>;
+      return <div className={`${layout.className} studio-preview-embed ${embedFrameUrl(block.url) || videoSourceUrl(block.url) ? "np-embed-canvas" : ""}`} style={{ ...layout.style, aspectRatio: embedFrameUrl(block.url) || videoSourceUrl(block.url) ? embedAspectRatio(block.url) : undefined }}>{videoSourceUrl(block.url) ? <video src={browserMediaSrc(block.url)} controls preload="metadata" playsInline /> : embedFrameUrl(block.url) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(block.url)!} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}</div>;
     case "divider": return <hr />;
     case "legacy_html": return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
   }
@@ -88,7 +88,7 @@ export function ArticlePreview({ article, theme, device = "desktop" }: { article
         ) : null}
         <div className="relative overflow-hidden rounded-3xl shadow-card">
           {article.heroEmbedUrl ? (
-            embedFrameUrl(article.heroEmbedUrl) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
+            videoSourceUrl(article.heroEmbedUrl) ? <video src={browserMediaSrc(article.heroEmbedUrl)} controls preload="metadata" playsInline className="aspect-[16/9] w-full bg-black object-contain" /> : embedFrameUrl(article.heroEmbedUrl) ? <iframe referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
           ) : article.hero ? (
             <img src={browserMediaSrc(article.hero.url)} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
           ) : (

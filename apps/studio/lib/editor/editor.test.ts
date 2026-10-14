@@ -4,7 +4,7 @@ import { bodyToText, textToBody, wordCount } from "./body";
 import { draftInput, publishProblems } from "./input";
 import { canChangeRole, canDeleteAccount, canManageAccounts } from "./roles";
 import { articlePath, slugify, SLUG_MAX, SLUG_PATTERN } from "./slug";
-import { bodyGroups, composition, embedFrameUrl, embedAspectRatio } from "@newspoint/content";
+import { bodyGroups, composition, embedFrameUrl, embedAspectRatio, localVideoUrl, videoSourceUrl } from "@newspoint/content";
 import { bodyToEditorHtml, documentToBody } from "./document";
 
 describe("structured visual document", () => {
@@ -49,7 +49,18 @@ describe("structured visual document", () => {
     expect(embedFrameUrl("https://youtu.be/dQw4w9WgXcQ")).toBe("https://www.youtube.com/embed/dQw4w9WgXcQ");
     expect(embedFrameUrl("https://facebook.com.evil.test/plugins/video.php")).toBeNull();
     expect(embedFrameUrl("https://user:secret@youtube.com/watch?v=dQw4w9WgXcQ")).toBeNull();
-    expect(embedFrameUrl("https://instagram.com/p/example/")).toBeNull();
+    expect(embedFrameUrl("https://instagram.com/p/example/")).toBe("https://www.instagram.com/p/example/embed/");
+    expect(embedFrameUrl("https://vimeo.com/76979871")).toBe("https://player.vimeo.com/video/76979871");
+    expect(embedFrameUrl("https://vimeo.com/76979871?h=5e2d1c1e6d")).toBe("https://player.vimeo.com/video/76979871?h=5e2d1c1e6d");
+    expect(embedFrameUrl("https://www.tiktok.com/@scout2015/video/6718335390845095173")).toBe("https://www.tiktok.com/player/v1/6718335390845095173");
+    expect(embedFrameUrl("https://vimeo.com.evil.test/76979871")).toBeNull();
+    expect(embedFrameUrl("https://www.tiktok.com/@scout2015/video/not-an-id")).toBeNull();
+    const ownVideo = "/media/news/2026/10/00000000-0000-4000-8000-000000000001.mp4";
+    expect(localVideoUrl(ownVideo)).toBe(ownVideo);
+    expect(videoSourceUrl("https://cdn.example.org/news/clip.mp4?token=123")).toBe("https://cdn.example.org/news/clip.mp4?token=123");
+    expect(videoSourceUrl("https://user:secret@cdn.example.org/news/clip.mp4")).toBeNull();
+    expect(articleBody.safeParse([{ type: "embed", provider: "other", url: ownVideo }]).success).toBe(true);
+    expect(localVideoUrl("/media/news/2026/10/../../secret.mp4")).toBeNull();
   });
   it("accepts either body transport and rejects ambiguous or oversized input", () => {
     const draft = { title: "Материал", slug: "material", excerpt: "", primaryCategoryId: null, heroMediaId: null, authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" };

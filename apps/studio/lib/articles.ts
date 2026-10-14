@@ -153,7 +153,7 @@ export interface MediaOption {
 /** Only existing MediaAssets can be chosen (DEC-104); uploads come later. */
 export async function listRecentMedia(limit = 48, include: string | string[] | null = null): Promise<MediaOption[]> {
   const db = getDb();
-  const rows = await db.select().from(mediaAssets).orderBy(desc(mediaAssets.createdAt)).limit(limit);
+  const rows = await db.select().from(mediaAssets).where(sql`${mediaAssets.mime} is null or ${mediaAssets.mime} not like 'video/%'`).orderBy(desc(mediaAssets.createdAt)).limit(limit);
   const includeIds = [...new Set((Array.isArray(include) ? include : include ? [include] : []).filter(Boolean))];
   for (const id of includeIds) {
     if (rows.some((row) => row.id === id)) continue;
