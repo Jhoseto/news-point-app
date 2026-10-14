@@ -69,6 +69,24 @@ export async function listStudioPodcasts() {
   return listed().orderBy(desc(podcasts.createdAt));
 }
 
+export async function podcastAudioFormatsReady(): Promise<boolean> {
+  const rows = await getDb().execute<{ ready: boolean }>(sql`select exists (
+    select 1 from pg_constraint where conrelid='public.podcasts'::regclass
+    and conname='podcasts_audio_key_check' and position('m4a' in pg_get_constraintdef(oid)) > 0
+  ) as ready`);
+  return rows[0]?.ready === true;
+}
+
+export async function podcastForStaff(id: string) {
+  const [row] = await listed().where(eq(podcasts.id, id)).limit(1);
+  return row ?? null;
+}
+
+export async function updatePodcastFiles(id: string, input: { title: string; summary: string; categoryId: string | null; coverKey?: string; audioKey?: string; durationSec?: number; bytes?: number }) {
+  const [row] = await getDb().update(podcasts).set({ ...input, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning();
+  return row ?? null;
+}
+
 export async function insertPodcast(input: {
   title: string;
   slug: string;
@@ -82,7 +100,7 @@ export async function insertPodcast(input: {
   createdBy: string;
 }) {
   const publishedAt = input.status === "published" ? new Date() : null;
-  const [row] = await getDb().insert(podcasts).values({ ...input, publishedAt }).returning({ id: podcasts.id, slug: podcasts.slug });
+  const [row] = await getDb().insert(podcasts).values({ ...input, publishedAt }).returning();
   return row!;
 }
 

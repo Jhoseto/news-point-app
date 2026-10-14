@@ -1,11 +1,11 @@
 import "server-only";
 
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { capSpeechText } from "./utterances";
-import { newsSpeechTurns, packSpeechParts, speechByteChunks } from "./speech-parts";
+import { newsSpeechTurns, packSpeechParts, speechByteChunks, unpackSpeechParts } from "./speech-parts";
+import { checkSpeechEncoder, compressSpeechParts } from "@newspoint/content/audio";
+import { checkSpeechCacheWritable, readCompressedSpeech, readSourceSpeech, speechCachePath, speechSourceCachePath, writeSpeechCache } from "./speech-cache";
+import type { SpeechFormat } from "./speech-format";
 
-const CACHE_DIR = path.join(process.cwd(), ".tts-cache");
 const API = "https://generativelanguage.googleapis.com/v1beta/interactions";
 const MODEL = "gemini-3.8-flash-lite-tts";
 const VOICE = "Charon";
@@ -19,44 +19,50 @@ const STYLE = [
 ].join(" ");
 
 const pending = new Map<string, Promise<Uint8Array>>();
+const pendingSource = new Map<string, Promise<Uint8Array>>();
 
 type GeminiAudio = {
   steps?: Array<{ type?: string; content?: Array<{ type?: string; data?: string }> }>;
   error?: { message?: string };
 };
 
-export function speechCachePath(cacheKey: string): string {
-  return path.join(CACHE_DIR, `${cacheKey.replace(/[^\w.-]+/g, "_")}.glite4.parts`);
-}
-
-export async function bulgarianSpeech(cacheKey: string, text: string): Promise<Uint8Array> {
+export async function bulgarianSpeech(cacheKey: string, text: string, format: SpeechFormat = "aac"): Promise<Uint8Array> {
   const script = capSpeechText(text);
   if (!script) return new Uint8Array();
-  const current = pending.get(cacheKey);
+  const jobKey = `${cacheKey}:${format}`;
+  const current = pending.get(jobKey);
   if (current) return current;
-  const job = loadOrSpeak(cacheKey, script).finally(() => {
-    if (pending.get(cacheKey) === job) pending.delete(cacheKey);
+  const job = loadOrSpeak(cacheKey, script, format).finally(() => {
+    if (pending.get(jobKey) === job) pending.delete(jobKey);
   });
-  pending.set(cacheKey, job);
+  pending.set(jobKey, job);
   return job;
 }
 
-async function loadOrSpeak(cacheKey: string, text: string): Promise<Uint8Array> {
-  const file = speechCachePath(cacheKey);
-  try {
-    return await readFile(file);
-  } catch {
-    /* generate below */
-  }
-  const parts = await speakGemini(text);
-  const audio = packSpeechParts(parts);
-  try {
-    await mkdir(CACHE_DIR, { recursive: true });
-    await writeFile(file, audio);
-  } catch {
-    /* the response still plays if the disk cache cannot be written */
-  }
+async function loadOrSpeak(cacheKey: string, text: string, format: SpeechFormat): Promise<Uint8Array> {
+  const cached = await readCompressedSpeech(cacheKey, format);
+  if (cached) return cached;
+  await checkSpeechCacheWritable();
+  await checkSpeechEncoder(format);
+  const existing = pendingSource.get(cacheKey);
+  const job = existing ?? loadOrGenerateSource(cacheKey, text).finally(() => {
+    if (pendingSource.get(cacheKey) === job) pendingSource.delete(cacheKey);
+  });
+  if (!existing) pendingSource.set(cacheKey, job);
+  const source = await job;
+  const audio = packSpeechParts(await compressSpeechParts(unpackSpeechParts(source), format));
+  await writeSpeechCache(speechCachePath(cacheKey, format), audio);
   return audio;
+}
+
+async function loadOrGenerateSource(cacheKey: string, text: string): Promise<Uint8Array> {
+  let source = await readSourceSpeech(cacheKey);
+  if (!source) {
+    source = packSpeechParts(await speakGemini(text));
+  }
+  // Save paid output or a legacy source before encoding so retries reuse it.
+  await writeSpeechCache(speechSourceCachePath(cacheKey), source);
+  return source;
 }
 
 async function speakGemini(text: string): Promise<Uint8Array[]> {

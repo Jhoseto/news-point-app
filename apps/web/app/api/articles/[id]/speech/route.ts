@@ -1,12 +1,13 @@
-import { access } from "node:fs/promises";
 import { NextResponse, type NextRequest } from "next/server";
 import { and, eq, lte, sql } from "drizzle-orm";
 import { articles, getDb } from "@newspoint/db";
 import { articleBody } from "@newspoint/content";
 import { isArticleReadSameOrigin } from "@/lib/article-read";
-import { bulgarianSpeech, speechCachePath } from "@/lib/tts/remote-voice";
+import { bulgarianSpeech } from "@/lib/tts/remote-voice";
+import { hasCachedSpeech } from "@/lib/tts/speech-cache";
 import { articleReadingText } from "@/lib/tts/utterances";
 import { z } from "zod";
+import { parseSpeechFormat } from "@/lib/tts/speech-format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,6 +50,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const versions = request.nextUrl.searchParams.getAll("v");
   const version = versions.length === 1 && /^\d+$/.test(versions[0]!) ? Number(versions[0]) : NaN;
   if (!Number.isSafeInteger(version) || version < 1) return NextResponse.json({ error: "Невалидна версия." }, { status: 400, headers });
+  const format = parseSpeechFormat(request.nextUrl.searchParams.getAll("format"));
+  if (!format) return NextResponse.json({ error: "Невалиден аудиоформат." }, { status: 400, headers });
 
   try {
     const db = getDb();
@@ -77,13 +80,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!text) return NextResponse.json({ error: "Статията няма текст за слушане." }, { status: 404, headers });
 
     const cacheKey = `${row.id}-v${row.version}`;
-    let cached = false;
-    try {
-      await access(speechCachePath(cacheKey));
-      cached = true;
-    } catch {
-      cached = false;
-    }
+    const cached = await hasCachedSpeech(cacheKey, format);
     if (!cached) {
       const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "local";
       if (!allowGeneration(`${ip}:${row.id}`)) {
@@ -91,7 +88,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
       }
     }
 
-    const audio = await bulgarianSpeech(cacheKey, text);
+    const audio = await bulgarianSpeech(cacheKey, text, format);
     if (audio.byteLength === 0) return NextResponse.json({ error: "Статията няма текст за слушане." }, { status: 404, headers });
     // Generation may outlast an editorial update or withdrawal. Validate again
     // before sending bytes; the on-disk cache never bypasses publication checks.

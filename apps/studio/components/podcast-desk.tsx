@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { withBase } from "@/lib/paths";
+import { PODCAST_AUDIO_ACCEPT } from "@newspoint/content";
 import {
   bytesText,
   clock,
@@ -186,7 +187,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         </svg>
       </div>
       <h2>Първият епизод започва тук</h2>
-      <p>Качете корица и MP3, дайте заглавие и резюме. Продължителността и размерите се взимат автоматично при качване.</p>
+      <p>Качете корица и звуков файл, дайте заглавие и резюме. Звукът се оптимизира автоматично при качване.</p>
       <button type="button" onClick={onCreate} className="np-podcast-primary-btn">
         Създай първия епизод
       </button>
@@ -292,7 +293,7 @@ function NewEpisodeForm({
       <header className="np-podcast-form-head">
         <div>
           <h2>Нов епизод</h2>
-          <p>Заглавие, резюме, рубрика, корица и MP3. Продължителността идват от метаданните на файла.</p>
+          <p>Заглавие, резюме, рубрика, корица и звук. Файлът се оптимизира автоматично при качване.</p>
         </div>
         <div className="np-podcast-form-actions">
           {onCancel ? (
@@ -314,10 +315,10 @@ function NewEpisodeForm({
           file={coverFile}
         />
         <AudioDropZone
-          label="MP3"
-          hint="До 80 MB · продължителността се чете автоматично"
+          label="Звуков файл"
+          hint="MP3, M4A, WAV или FLAC до 80 MB · автоматична оптимизация"
           inputRef={audioInputRef}
-          accept="audio/mpeg,.mp3"
+          accept={PODCAST_AUDIO_ACCEPT}
           onPick={setAudioFile}
           file={audioFile}
           durationSec={audioDuration}
@@ -476,12 +477,12 @@ function EpisodeEditor({
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error?.message ?? "Качването не мина.");
         if (data.episode) {
-          onPatch(data.episode);
+          onPatch({ ...data.episode, categoryName: categories.find(category => category.id === data.episode.categoryId)?.name ?? null });
           setCoverFile(null);
           setAudioFile(null);
           setLastSavedAt(new Date().toISOString());
           setDirty(false);
-          setNotice("Записано е.");
+          setNotice(data.audioOptimization?.savedBytes > 0 ? `Записано е. Звукът е намален от ${bytesText(data.audioOptimization.originalBytes)} на ${bytesText(data.audioOptimization.storedBytes)}.` : "Записано е.");
           return;
         }
       } else if (fieldsDirty) {
@@ -572,10 +573,10 @@ function EpisodeEditor({
             existingLabel={coverFile ? "Нова корица" : "Текуща корица"}
           />
           <AudioDropZone
-            label="MP3"
-            hint="Файлът остава активен при запис"
+            label="Звуков файл"
+            hint="Новият файл се оптимизира при запис"
             inputRef={audioInputRef}
-            accept="audio/mpeg,.mp3"
+            accept={PODCAST_AUDIO_ACCEPT}
             onPick={setAudioFile}
             file={audioFile}
             durationSec={audioDuration}
@@ -762,7 +763,7 @@ function AudioDropZone({
             <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
         </span>
-        <span className="np-podcast-audio-name">{file ? file.name : "Кликнете или пуснете MP3"}</span>
+        <span className="np-podcast-audio-name">{file ? file.name : "Кликнете или пуснете звуков файл"}</span>
         <span className="np-podcast-audio-meta">
           {durationSec != null ? <span>{clock(durationSec)}</span> : null}
           {bytes != null ? <span>{bytesText(bytes)}</span> : null}

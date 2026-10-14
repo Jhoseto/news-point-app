@@ -1,13 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ArticleBody } from "@newspoint/content";
 import {
-  blockIndexOf,
   buildUtterances,
-  articleSpeechText,
   articleReadingText,
   capSpeechText,
-  nextUtteranceIndex,
-  previousUtteranceIndex,
 } from "./utterances";
 
 const bodyOf = (...blocks: ArticleBody): ArticleBody => blocks;
@@ -133,11 +129,6 @@ describe("buildUtterances", () => {
     expect(list.map((u) => u.kind)).toEqual(["paragraph", "heading", "paragraph"]);
   });
 
-  it("joins the article into one speech script", () => {
-    const text = articleSpeechText(sample);
-    expect(text.startsWith("Заглавие на статията")).toBe(true);
-    expect(text).toContain("Първи параграф от тялото.");
-  });
 
   it("keeps written Bulgarian for the neural voice", () => {
     const text = articleReadingText({
@@ -153,39 +144,5 @@ describe("buildUtterances", () => {
     const capped = capSpeechText(`${"Изречение. ".repeat(2000)}`, 500);
     expect(capped.length).toBeLessThanOrEqual(500);
     expect(capped.endsWith(".")).toBe(true);
-  });
-});
-
-describe("nextUtteranceIndex / previousUtteranceIndex", () => {
-  const list = buildUtterances(sample);
-
-  it("returns the next index while there is one", () => {
-    expect(nextUtteranceIndex(0, list.length)).toBe(1);
-    expect(nextUtteranceIndex(2, list.length)).toBe(3);
-  });
-
-  it("returns null at the end", () => {
-    expect(nextUtteranceIndex(list.length - 1, list.length)).toBeNull();
-  });
-
-  it("returns null when already at 0", () => {
-    expect(previousUtteranceIndex(0)).toBeNull();
-  });
-
-  it("returns the previous index while there is one", () => {
-    expect(previousUtteranceIndex(2)).toBe(1);
-  });
-});
-
-describe("blockIndexOf", () => {
-  it("returns the block index of the utterance", () => {
-    const list = buildUtterances(sample);
-    expect(blockIndexOf(list, 0)).toBe(-1);
-    expect(blockIndexOf(list, 2)).toBe(0);
-    expect(blockIndexOf(list, 3)).toBe(1);
-  });
-
-  it("returns null when the index is out of range", () => {
-    expect(blockIndexOf(buildUtterances(sample), 99)).toBeNull();
   });
 });

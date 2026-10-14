@@ -24,7 +24,7 @@ export function speechByteChunks(text: string, maxBytes = 4500): string[] {
   return parts;
 }
 
-/** Length-prefixed speech pieces. One MP3 cannot be seeked after the pieces are glued together. */
+/** Length-prefixed complete audio files, decoded separately before playback. */
 
 export function packSpeechParts(parts: readonly Uint8Array[]): Uint8Array {
   const usable = parts.filter((part) => part.byteLength > 0);
@@ -43,18 +43,20 @@ export function packSpeechParts(parts: readonly Uint8Array[]): Uint8Array {
 }
 
 export function unpackSpeechParts(bytes: Uint8Array): Uint8Array[] {
-  if (bytes.byteLength < 4) return [];
+  if (bytes.byteLength < 4) throw new Error("Invalid speech parts.");
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const count = view.getUint32(0, true);
+  if (count > Math.floor((bytes.byteLength - 4) / 5)) throw new Error("Invalid speech parts.");
   const parts: Uint8Array[] = [];
   let offset = 4;
   for (let index = 0; index < count; index += 1) {
-    if (offset + 4 > bytes.byteLength) break;
+    if (offset + 4 > bytes.byteLength) throw new Error("Invalid speech parts.");
     const length = view.getUint32(offset, true);
     offset += 4;
-    if (offset + length > bytes.byteLength) break;
+    if (!length || offset + length > bytes.byteLength) throw new Error("Invalid speech parts.");
     parts.push(bytes.slice(offset, offset + length));
     offset += length;
   }
+  if (offset !== bytes.byteLength) throw new Error("Invalid speech parts.");
   return parts;
 }

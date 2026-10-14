@@ -6,25 +6,12 @@
 
 const PREFIX = "np-tts-";
 const POS_KEY = (articleId: string) => `${PREFIX}pos-${articleId}`;
-const PREFS_KEY = `${PREFIX}prefs`;
 
 export interface TtsPosition {
   index: number;
   charIndex: number;
   ts: number;
 }
-
-export interface TtsPrefs {
-  voiceName: string | null;
-  rate: number;
-  pitch: number;
-}
-
-export const DEFAULT_PREFS: TtsPrefs = {
-  voiceName: null,
-  rate: 1,
-  pitch: 1,
-};
 
 const POS_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -57,15 +44,6 @@ class MemoryStorage implements FullStorage {
   removeItem(key: string): void {
     this.map.delete(key);
   }
-  get length(): number {
-    return this.map.size;
-  }
-  clear(): void {
-    this.map.clear();
-  }
-  key(index: number): string | null {
-    return [...this.map.keys()][index] ?? null;
-  }
 }
 
 const DEFAULT_STORAGE: FullStorage = defaultStorage() ?? new MemoryStorage();
@@ -97,23 +75,4 @@ export function savePos(articleId: string, position: TtsPosition, storage: FullS
 
 export function clearPos(articleId: string, storage: FullStorage = DEFAULT_STORAGE): void {
   storage.removeItem(POS_KEY(articleId));
-}
-
-export function loadPrefs(storage: PickStorage = DEFAULT_STORAGE): TtsPrefs {
-  const raw = storage.getItem(PREFS_KEY);
-  if (!raw) return { ...DEFAULT_PREFS };
-  try {
-    const parsed = JSON.parse(raw) as Partial<TtsPrefs>;
-    return {
-      voiceName: typeof parsed.voiceName === "string" ? parsed.voiceName : null,
-      rate: typeof parsed.rate === "number" && parsed.rate > 0 && parsed.rate <= 4 ? parsed.rate : DEFAULT_PREFS.rate,
-      pitch: typeof parsed.pitch === "number" && parsed.pitch > 0 && parsed.pitch <= 4 ? parsed.pitch : DEFAULT_PREFS.pitch,
-    };
-  } catch {
-    return { ...DEFAULT_PREFS };
-  }
-}
-
-export function savePrefs(prefs: TtsPrefs, storage: FullStorage = DEFAULT_STORAGE): void {
-  storage.setItem(PREFS_KEY, JSON.stringify(prefs));
 }

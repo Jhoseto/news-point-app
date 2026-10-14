@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AI_PODCAST_VOICES, scriptWords, targetWords, transcript, type AiPodcastSegment, type AiPodcastSettings, type AiPodcastSource, type AiPodcastWarning } from "@newspoint/content";
+import { AI_PODCAST_VOICES, PODCAST_AUDIO_ACCEPT, scriptWords, targetWords, transcript, type AiPodcastSegment, type AiPodcastSettings, type AiPodcastSource, type AiPodcastWarning } from "@newspoint/content";
 import { withBase } from "@/lib/paths";
 import type { Category } from "./podcast-desk-types";
 import "./ai-podcast-studio.css";
@@ -227,7 +227,7 @@ export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId,
           <section className="np-ai-card"><small className="np-ai-eyebrow">АУДИО</small><h2>Фонова музика</h2><p>Изберете подходящ инструментален фон. След прослушване го смесете с готовия разговор; гласовете няма да се генерират повторно.</p>
             <label>Описание за AI музика<input value={musicPrompt} onChange={(event) => setMusicPrompt(event.target.value)} placeholder="Спокоен, съвременен новинарски инструментал без вокали" /></label>
             <button type="button" className="np-ai-secondary" disabled={!canEdit || musicPrompt.trim().length < 10} onClick={() => void act({ action: "music", preset: null, projectId: project.id, prompt: musicPrompt }, "Генерирането на музика е заявено. Следете работния монитор.")}>Генерирай музика</button>
-            <label>Или качете своя музика (MP3, до 30 MB)<input type="file" accept=".mp3,audio/mpeg" onChange={(event) => setMusicFile(event.target.files?.[0] ?? null)} /></label>
+            <label>Или качете своя музика (MP3, M4A, WAV или FLAC до 30 MB · автоматична оптимизация)<input type="file" accept={PODCAST_AUDIO_ACCEPT} onChange={(event) => setMusicFile(event.target.files?.[0] ?? null)} /></label>
             <button type="button" className="np-ai-secondary" disabled={!canEdit || !musicFile} onClick={() => void uploadMusic()}>Качи музика</button>
             {musicAsset && <div><p>Избрана музика: {musicAsset.prompt}</p><audio controls preload="metadata" src={media(musicAsset.storageKey)} /></div>}
             {episode && musicAsset && <div><p>{musicAwaitingMix ? "Музиката още не е в аудио черновата." : "Музиката е в последното успешно смесване."}{unsaved && " Първо запазете редакциите в сценария."}</p><button type="button" className="np-ai-primary" disabled={!canEdit || unsaved || project.settings.music !== "custom" || !musicAwaitingMix} onClick={() => void act({ action: "remix", projectId: project.id }, "Смесването е заявено. Следете работния монитор.")}>Смеси с музиката</button></div>}

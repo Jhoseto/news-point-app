@@ -95,7 +95,10 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
     <div className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-[4.25rem]" : "lg:pl-64"}`}>
       <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col bg-shell text-white/80 transition-[width] duration-200 lg:flex ${collapsed ? "w-[4.25rem]" : "w-64"}`}>
         <div className={`flex h-14 shrink-0 items-center border-b border-line bg-surface ${collapsed ? "justify-center px-1.5" : "gap-2.5 px-3"}`}>
-          <BrandLogoImg className={`h-8 w-auto shrink object-contain object-left ${collapsed ? "max-w-[2.4rem]" : "max-w-[8.5rem]"}`} />
+          <BrandLogoImg
+            className={`h-7 w-auto shrink-0 object-contain object-left ${collapsed ? "max-w-[2.25rem] overflow-hidden" : "max-w-[10.5rem]"}`}
+            sizes={collapsed ? "36px" : "168px"}
+          />
           {collapsed ? null : <span className="np-studio-wordmark shrink-0">Studio</span>}
         </div>
         <button
@@ -198,7 +201,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
       </aside>
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
-        <BrandLogoImg className="h-7 w-auto max-w-[6.5rem] shrink-0 object-contain" />
+        <BrandLogoImg className="h-7 w-auto max-w-[9rem] shrink-0 object-contain object-left" sizes="144px" />
         <nav className="relative ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
           {mobileNav.map((item) => (
             <StudioNavLink

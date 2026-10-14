@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { newsSpeechTurns, packSpeechParts, speechByteChunks, unpackSpeechParts } from "./speech-parts";
 
 describe("speech parts", () => {
+  it("rejects truncated, trailing and impossible bundles instead of partial playback", () => {
+    const valid = packSpeechParts([new Uint8Array([1,2,3])]);
+    for (const bytes of [new Uint8Array(), valid.slice(0,-1), new Uint8Array([...valid,0]), new Uint8Array([255,255,255,255])]) {
+      expect(() => unpackSpeechParts(bytes)).toThrow("Invalid speech parts");
+    }
+  });
   it("round-trips several pieces", () => {
     const parts = [Uint8Array.from([1, 2, 3]), Uint8Array.from([9]), Uint8Array.from([4, 5])];
     const unpacked = unpackSpeechParts(packSpeechParts(parts));

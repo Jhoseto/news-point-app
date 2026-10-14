@@ -3,22 +3,22 @@ export type AudioPlan =
   | { status: 416; headers: Record<string, string> }
   | { status: 200 | 206; start: number; end: number; headers: Record<string, string> };
 
-/** Headers for one MP3 response. An empty file is missing, not a partial range. */
-export function planPodcastAudio(size: number, rangeHeader: string | null, downloadName: string | null): AudioPlan {
+/** Headers for one podcast recording. An empty file is missing. */
+export function planPodcastAudio(size: number, rangeHeader: string | null, downloadName: string | null, mime: "audio/mp4" | "audio/mpeg" = "audio/mpeg"): AudioPlan {
   if (!Number.isInteger(size) || size < 1) return { status: 404 };
   const range = parseByteRange(rangeHeader, size);
   if (range === "invalid") return { status: 416, headers: { "content-range": `bytes */${size}`, "accept-ranges": "bytes" } };
   const start = range?.start ?? 0;
   const end = range?.end ?? size - 1;
   const headers: Record<string, string> = {
-    "content-type": "audio/mpeg",
+    "content-type": mime,
     "content-length": String(end - start + 1),
     "accept-ranges": "bytes",
     "cache-control": "public, max-age=86400",
     "x-content-type-options": "nosniff",
   };
   if (range) headers["content-range"] = `bytes ${start}-${end}/${size}`;
-  if (downloadName && /^[a-z0-9]+(?:-[a-z0-9]+)*\.mp3$/.test(downloadName)) {
+  if (downloadName && /^[a-z0-9]+(?:-[a-z0-9]+)*\.(mp3|m4a)$/.test(downloadName)) {
     headers["content-disposition"] = `attachment; filename="${downloadName}"`;
   }
   return { status: range ? 206 : 200, start, end, headers };

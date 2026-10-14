@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ArticleBody } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
-import { buildUtterances, clearPos, loadPos, savePos } from "@/lib/tts";
-import { createEngine, decodeSpeechParts, engineTime, pauseEngine, playEngine, type SpeechEngine } from "@/lib/tts/speech-engine";
+import { buildUtterances } from "@/lib/tts/utterances";
+import { clearPos, loadPos, savePos } from "@/lib/tts/storage";
+import { createEngine, loadDecodedSpeech, engineTime, pauseEngine, playEngine, type SpeechEngine } from "@/lib/tts/speech-engine";
 import { unpackSpeechParts } from "@/lib/tts/speech-parts";
+import { preferredSpeechFormat } from "@/lib/tts/speech-format";
 import "./article-tts.css";
 
 interface ArticleTtsProps {
@@ -170,16 +172,17 @@ export function ArticleTts(props: ArticleTtsProps) {
     const controller = new AbortController();
     requestRef.current = controller;
     try {
-      const response = await fetch(`/api/articles/${props.articleId}/speech/?v=${props.version}`, { cache: "no-store", signal: controller.signal });
-      if (response.status === 409 || response.status === 404) {
-        void context.close();
-        setPhase("idle");
-        setError(response.status === 409 ? "Статията е обновена. Презаредете я и опитайте отново." : "Слушането на тази статия вече не е достъпно.");
-        return;
-      }
-      if (!response.ok) throw new Error("speech");
-      const parts = unpackSpeechParts(new Uint8Array(await response.arrayBuffer()));
-      const buffer = await decodeSpeechParts(context, parts);
+      const capability = document.createElement("audio");
+      const preferred = preferredSpeechFormat(mime => capability.canPlayType(mime));
+      const buffer = await loadDecodedSpeech(context, async format => {
+        if (controller.signal.aborted) throw new Error("aborted");
+        const response = await fetch(`/api/articles/${props.articleId}/speech/?v=${props.version}&format=${format}`, { cache: "no-store", signal: controller.signal });
+        if (response.status === 409 || response.status === 404) {
+          throw new Error(response.status === 409 ? "Статията е обновена. Презаредете я и опитайте отново." : "Слушането на тази статия вече не е достъпно.");
+        }
+        if (!response.ok) throw new Error("speech");
+        return unpackSpeechParts(new Uint8Array(await response.arrayBuffer()));
+      }, preferred);
       if (controller.signal.aborted) { void context.close(); return; }
       const next = createEngine(context, buffer);
       engineRef.current = next;
@@ -187,12 +190,12 @@ export function ArticleTts(props: ArticleTtsProps) {
       const start = savedIndex.current > 0 ? ratioAtIndex(weightsRef.current, savedIndex.current) * buffer.duration : 0;
       await context.resume();
       startAt(start);
-    } catch {
+    } catch (cause) {
       void context.close();
       if (controller.signal.aborted) return;
       engineRef.current = null;
       setPhase("idle");
-      setError("Четенето не тръгна. Опитайте отново.");
+      setError(cause instanceof Error && (cause.message.startsWith("Статията е обновена") || cause.message.startsWith("Слушането на тази статия")) ? cause.message : "Четенето не тръгна. Опитайте отново.");
     }
   }, [placeTime, props.articleId, props.version, startAt]);
 

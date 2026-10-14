@@ -18,7 +18,7 @@ async function handleGET(request: Request) {
   if (!["editor", "admin", "master_admin"].includes(staff.role)) return new Response("Forbidden", { status: 403 });
   const url = new URL(request.url);
   const key = url.searchParams.get("key") ?? "";
-  if (!/^(ai-podcasts|podcasts)\/[a-z0-9/-]+\.(mp3|webp)$/.test(key)) return new Response("Not found", { status: 404 });
+  if (!/^(ai-podcasts|podcasts)\/[a-z0-9/-]+\.(mp3|m4a|webp)$/.test(key)) return new Response("Not found", { status: 404 });
   const [asset] = await getDb().select({ id: aiPodcastAssets.id }).from(aiPodcastAssets).where(eq(aiPodcastAssets.storageKey, key)).limit(1);
   const [cover] = await getDb().select({ id: aiPodcastProjects.id }).from(aiPodcastProjects).where(eq(aiPodcastProjects.coverKey, key)).limit(1);
   const [episode] = await getDb().select({ id: podcasts.id }).from(podcasts).where(eq(podcasts.audioKey, key)).limit(1);
@@ -32,7 +32,7 @@ async function handleGET(request: Request) {
   const localStat = local ? await stat(local).catch(() => null) : null;
   const size = localStat?.isFile() ? localStat.size : remote ? await remoteFileSize(remote, key, ["podcasts/", "ai-podcasts/"]) : null;
   if (size == null) return new Response("Not found", { status: 404 });
-  const plan = planPodcastAudio(size, request.headers.get("range"), null);
+  const plan = planPodcastAudio(size, request.headers.get("range"), null, key.endsWith(".m4a") ? "audio/mp4" : "audio/mpeg");
   if (plan.status === 416) return new Response(null, { status: 416, headers: plan.headers });
   if (plan.status === 404) return new Response("Not found", { status: 404 });
   const stream = localStat?.isFile() && local ? createReadStream(local, { start: plan.start, end: plan.end }) : openRemoteRange(remote!, key, ["podcasts/", "ai-podcasts/"], plan.start, plan.end - plan.start + 1);

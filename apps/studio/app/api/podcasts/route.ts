@@ -1,6 +1,6 @@
 import { withStaffAudit } from "../../../lib/audit";
 import { z } from "zod";
-import { triggerRevalidate } from "@newspoint/content";
+import { refreshPodcastPages } from "../../../lib/podcast-refresh";
 import { podcastsReady, setPodcastStatus, updatePodcastCopy, PodcastError } from "@newspoint/db/podcasts";
 import { staffFromRequest } from "@/lib/session";
 import { studioOrigins } from "@/lib/auth";
@@ -23,14 +23,6 @@ function json(data: unknown, status = 200) {
   return Response.json(data, { status, headers: { "cache-control": "private, no-store" } });
 }
 
-async function refresh(slug: string | null) {
-  // The episode must reach the RSS feed and the sitemap too, not only the podcast pages.
-  const paths = ["/", "/livepoint/podcast/", "/feed/", "/sitemap.xml"];
-  if (slug) paths.push(`/livepoint/podcast/${slug}/`, `/share/podcast/${slug}/`);
-  const result = await triggerRevalidate(paths);
-  return result.reason === "ok";
-}
-
 async function handlePOST(request: Request) {
   if (!studioOrigins().trusted.includes(request.headers.get("origin") ?? "")) return json({ error: { message: "Заявката трябва да идва от Studio." } }, 403);
   const staff = await staffFromRequest(request);
@@ -43,13 +35,13 @@ async function handlePOST(request: Request) {
       const { title, summary, categoryId } = parsed.data;
       const row = await updatePodcastCopy(parsed.data.id, { title, summary, categoryId });
       if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
-      const refreshed = row.status === "published" ? await refresh(row.slug) : false;
+      const refreshed = row.status === "published" ? await refreshPodcastPages(row.slug) : false;
       return json({ ok: true, refreshed });
     }
     const status = parsed.data.action === "publish" ? "published" : "draft";
     const row = await setPodcastStatus(parsed.data.id, status, { id: staff.id, name: staff.name ?? staff.email });
     if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
-    const refreshed = status === "published" || row.status === "draft" ? await refresh(row.slug) : false;
+    const refreshed = status === "published" || row.status === "draft" ? await refreshPodcastPages(row.slug) : false;
     return json({ ok: true, refreshed });
   } catch (error) {
     if (error instanceof PodcastError) return json({ error: { message: error.message } }, error.status);

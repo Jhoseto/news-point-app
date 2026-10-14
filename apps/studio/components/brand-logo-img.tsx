@@ -6,18 +6,31 @@ type Props = {
   sizes?: string;
 };
 
-/** Square emblem on white — same rings as the public site favicon. */
+/** Full NewsPoint wordmark (light surface / dark shell). */
 export function BrandLogoImg({ className, sizes }: Props) {
   return (
-    <img
-      src={withBase(BRAND_LOGO.src)}
-      srcSet={`${withBase("/brand/studio-mark-512w.webp")} 512w, ${withBase(BRAND_LOGO.src)} 256w`}
-      sizes={sizes ?? "64px"}
-      alt={BRAND_LOGO.alt}
-      width={BRAND_LOGO.width}
-      height={BRAND_LOGO.height}
-      decoding="async"
-      className={className}
-    />
+    <>
+      <img
+        src={withBase(BRAND_LOGO.src)}
+        srcSet={`${withBase("/brand/newspoint-logo-512w.webp")} 512w, ${withBase(BRAND_LOGO.src)} ${BRAND_LOGO.width}w`}
+        sizes={sizes ?? BRAND_LOGO.sizes}
+        alt={BRAND_LOGO.alt}
+        width={BRAND_LOGO.width}
+        height={BRAND_LOGO.height}
+        decoding="async"
+        className={`${className ?? ""} np-brand-logo-mark--light`}
+      />
+      <img
+        src={withBase(BRAND_LOGO_DARK.src)}
+        srcSet={`${withBase("/brand/newspoint-logo-dark-512w.webp")} 512w, ${withBase(BRAND_LOGO_DARK.src)} ${BRAND_LOGO_DARK.width}w`}
+        sizes={sizes ?? BRAND_LOGO.sizes}
+        alt=""
+        aria-hidden="true"
+        width={BRAND_LOGO_DARK.width}
+        height={BRAND_LOGO_DARK.height}
+        decoding="async"
+        className={`${className ?? ""} np-brand-logo-mark--dark`}
+      />
+    </>
   );
 }

@@ -195,8 +195,14 @@ export function LeadingCarousel({
       aria-labelledby={headingId}
       data-mobile-pager-ignore
       className={`group/carousel min-w-0${compactCards ? " np-carousel-compact" : ""}`}
-      onPointerEnter={() => (paused.current = true)}
-      onPointerLeave={() => (paused.current = false)}
+      onPointerOverCapture={() => {
+        paused.current = true;
+      }}
+      onPointerOutCapture={(event) => {
+        const next = event.relatedTarget;
+        if (next instanceof Node && event.currentTarget.contains(next)) return;
+        paused.current = false;
+      }}
       onFocusCapture={() => (paused.current = true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) paused.current = false;

@@ -4,35 +4,68 @@ import { createPortal } from "react-dom";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useReducedMotion } from "./reader-preferences";
 
+function isPageScroll(event: Event) {
+  const target = event.target;
+  return (
+    target === document ||
+    target === document.documentElement ||
+    target === document.body
+  );
+}
+
 function isClamped(element: HTMLElement) {
-  return element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1;
+  if (element.scrollHeight > element.clientHeight + 1 || element.scrollWidth > element.clientWidth + 1) {
+    return true;
+  }
+  const { webkitLineClamp: clamp, lineHeight } = getComputedStyle(element);
+  if (!clamp || clamp === "none") return false;
+  const lines = Number.parseInt(clamp, 10);
+  const lh = Number.parseFloat(lineHeight);
+  if (!Number.isFinite(lines) || lines <= 0 || !Number.isFinite(lh) || lh <= 0) return false;
+  return element.scrollHeight > lines * lh + 1;
+}
+
+function tipPosition(element: HTMLElement) {
+  const rect = element.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top };
 }
 
 export function ClampedTitleTip({
   as: Tag = "h3",
   className = "",
+  tipClassName = "np-title-float-tip",
   children,
 }: {
-  as?: "h2" | "h3";
+  as?: "h1" | "h2" | "h3";
   className?: string;
+  /** Extra class on the portaled tooltip (e.g. on-photo hero titles). */
+  tipClassName?: string;
   children: string;
 }) {
   const anchor = useRef<HTMLHeadingElement | null>(null);
+  const hideTimer = useRef(0);
   const [portalReady, setPortalReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; open: boolean } | null>(null);
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     setPortalReady(true);
+    return () => {
+      if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    };
   }, []);
 
-  const hide = useCallback(() => setTip(null), []);
+  const hide = useCallback(() => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => setTip(null), 140);
+  }, []);
 
   const show = useCallback(() => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
     const element = anchor.current;
     if (!element || !isClamped(element)) return;
-    const rect = element.getBoundingClientRect();
-    setTip({ x: rect.left + rect.width / 2, y: rect.top, open: reducedMotion });
+    const { x, y } = tipPosition(element);
+    setTip({ x, y, open: reducedMotion });
     if (reducedMotion) return;
     requestAnimationFrame(() => {
       setTip((current) => (current ? { ...current, open: true } : null));
@@ -41,10 +74,20 @@ export function ClampedTitleTip({
 
   useEffect(() => {
     if (!tip) return;
-    const onScroll = () => hide();
-    window.addEventListener("scroll", onScroll, true);
+    const onScroll = (event: Event) => {
+      if (!isPageScroll(event)) return;
+      if (hideTimer.current) window.clearTimeout(hideTimer.current);
+      const element = anchor.current;
+      if (!element) {
+        setTip(null);
+        return;
+      }
+      const { x, y } = tipPosition(element);
+      setTip((current) => (current ? { ...current, x, y } : null));
+    };
+    window.addEventListener("scroll", onScroll, { capture: true, passive: true });
     return () => window.removeEventListener("scroll", onScroll, true);
-  }, [hide, tip]);
+  }, [tip]);
 
   return (
     <>
@@ -63,7 +106,7 @@ export function ClampedTitleTip({
             <div
               role="tooltip"
               data-open={tip.open || undefined}
-              className="np-title-float-tip"
+              className={tipClassName}
               style={{ left: tip.x, top: tip.y }}
             >
               {children}

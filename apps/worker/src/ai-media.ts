@@ -104,7 +104,7 @@ export async function masterAudio(wavs: Buffer[], music: Buffer | null, targetSe
     const seconds = await Promise.all(wavs.map((_, i) => run(process.env.FFPROBE_PATH || "ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", join(dir, `voice-${i}.wav`)], 30_000).then((value) => Number(value.trim()))));
     if (seconds.some((value) => !Number.isFinite(value) || value <= 0)) throw new Error("Invalid voice segment duration");
     if (music) {
-      const path = join(dir, "music.mp3");
+      const path = join(dir, "music.audio");
       await writeFile(path, music);
       inputs.push("-stream_loop", "-1", "-i", path);
     }

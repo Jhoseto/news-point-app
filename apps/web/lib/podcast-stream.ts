@@ -2,7 +2,7 @@ import "server-only";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
-import { planPodcastAudio } from "@newspoint/content";
+import { planPodcastAudio, podcastAudioExtension, podcastAudioMime } from "@newspoint/content";
 import { openRemoteRange, remoteDiskFromEnv, remoteFileSize } from "@newspoint/content/disk";
 import { mediaFile } from "./media-disk";
 import { cachedPodcastAudio, podcastCacheKey, warmPodcastAudio } from "./podcast-audio-cache";
@@ -10,13 +10,14 @@ import { cachedPodcastAudio, podcastCacheKey, warmPodcastAudio } from "./podcast
 const PREFIXES = ["podcasts/"] as const;
 
 export async function podcastAudioResponse(storageKey: string, rangeHeader: string | null, downloadName: string | null): Promise<Response> {
-  if (!storageKey.startsWith("podcasts/") || !storageKey.endsWith(".mp3")) return new Response("Not found", { status: 404 });
+  const extension = podcastAudioExtension(storageKey);
+  if (!extension) return new Response("Not found", { status: 404 });
   const remote = remoteDiskFromEnv();
   const local = (remote && cachedPodcastAudio(podcastCacheKey(storageKey, remote))) || mediaFile(storageKey);
   const localStat = local ? await stat(local).catch(() => null) : null;
   const size = localStat?.isFile() ? localStat.size : remote ? await remoteFileSize(remote, storageKey, PREFIXES) : null;
   if (size == null) return new Response("Not found", { status: 404 });
-  const plan = planPodcastAudio(size, rangeHeader, downloadName);
+  const plan = planPodcastAudio(size, rangeHeader, downloadName, podcastAudioMime(extension));
   if (plan.status === 404) return new Response("Not found", { status: 404 });
   if (plan.status === 416) return new Response(null, { status: 416, headers: plan.headers });
   if (!localStat?.isFile() && remote) warmPodcastAudio(storageKey, size, remote);

@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   clearPos,
-  DEFAULT_PREFS,
   loadPos,
-  loadPrefs,
   savePos,
-  savePrefs,
 } from "./storage";
 
 class MemoryStorage implements Storage {
@@ -69,36 +66,5 @@ describe("loadPos / savePos / clearPos", () => {
     savePos("article-1", { index: 1, charIndex: 0, ts: Date.now() }, storage);
     clearPos("article-1", storage);
     expect(loadPos("article-1", storage)).toBeNull();
-  });
-});
-
-describe("loadPrefs / savePrefs", () => {
-  it("returns defaults when nothing is stored", () => {
-    const storage = new MemoryStorage();
-    expect(loadPrefs(storage)).toEqual(DEFAULT_PREFS);
-  });
-
-  it("round-trips stored preferences", () => {
-    const storage = new MemoryStorage();
-    savePrefs({ voiceName: "Microsoft Pavel", rate: 1.25, pitch: 1 }, storage);
-    expect(loadPrefs(storage)).toEqual({ voiceName: "Microsoft Pavel", rate: 1.25, pitch: 1 });
-  });
-
-  it("falls back to defaults for missing fields", () => {
-    const storage = new MemoryStorage();
-    storage.setItem("np-tts-prefs", JSON.stringify({ rate: 1.5 }));
-    expect(loadPrefs(storage)).toEqual({ voiceName: null, rate: 1.5, pitch: DEFAULT_PREFS.pitch });
-  });
-
-  it("rejects out-of-range rates and pitches", () => {
-    const storage = new MemoryStorage();
-    storage.setItem("np-tts-prefs", JSON.stringify({ rate: -1, pitch: 99 }));
-    expect(loadPrefs(storage)).toEqual(DEFAULT_PREFS);
-  });
-
-  it("rejects malformed JSON", () => {
-    const storage = new MemoryStorage();
-    storage.setItem("np-tts-prefs", "{nope");
-    expect(loadPrefs(storage)).toEqual(DEFAULT_PREFS);
   });
 });

@@ -5,9 +5,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { openRemoteRange, remoteDiskFromEnv } from "@newspoint/content/disk";
+import { PODCAST_AUDIO_MAX_BYTES } from "@newspoint/content";
 
 // Only the SSH development path needs this cache. Production reads MEDIA_ROOT.
-// At most two files, each limited to the existing 90 MB audio storage limit.
+// At most two files, each limited to the shared upload/storage limit.
 const entries = new Map<string, { path: string | null; directory: string | null; expires: number }>();
 const ttl = 15 * 60_000;
 
@@ -17,7 +18,7 @@ export function cachedPodcastAudio(key: string): string | null {
 }
 
 export function warmPodcastAudio(key: string, size: number, disk: NonNullable<ReturnType<typeof remoteDiskFromEnv>>) {
-  if (size <= 0 || size > 90_000_000) return;
+  if (size <= 0 || size > PODCAST_AUDIO_MAX_BYTES) return;
   const identity = `${disk.target}:${disk.root}:${key}`;
   for (const [id, entry] of entries) {
     if (entry.expires > Date.now()) continue;
@@ -36,7 +37,7 @@ export function warmPodcastAudio(key: string, size: number, disk: NonNullable<Re
   void (async () => {
     const directory = await mkdtemp(join(tmpdir(), "newspoint-podcast-"));
     entry.directory = directory;
-    const path = join(directory, "audio.mp3");
+    const path = join(directory, "audio.bin");
     await pipeline(openRemoteRange(disk, key, ["podcasts/"], 0, size), createWriteStream(path));
     if ((await stat(path)).size !== size) throw new Error("Incomplete audio cache");
     entry.path = path;

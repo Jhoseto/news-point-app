@@ -81,7 +81,7 @@ export function ArticlePreview({ article, theme, device = "desktop" }: { article
     <div data-theme={theme} className={`np-site @container min-h-full bg-page font-sans text-body${device === "phone" ? " np-preview-phone" : ""}`}>
       <header className="border-b border-line bg-surface/90">
         <div className="mx-auto flex h-14 max-w-[1320px] items-center gap-3 px-4 @2xl:h-16 @2xl:px-6">
-          <BrandLogoImg className="size-8 @2xl:size-9" />
+          <BrandLogoImg className="h-8 w-auto max-w-[8rem] @2xl:h-9 @2xl:max-w-[9rem]" />
           <span className="np-gradient-bg ml-auto h-1 w-16 rounded-full opacity-70" aria-hidden="true" />
         </div>
       </header>

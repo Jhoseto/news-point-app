@@ -2,7 +2,8 @@ import { withStaffAudit } from "../../../../../lib/audit";
 import { auditEvidence, auditFacts } from "../../../../../lib/audit-context";
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
-import { aiPodcastSettings, inspectMp3 } from "@newspoint/content";
+import { aiPodcastSettings } from "@newspoint/content";
+import { preparePodcastAudio } from "@newspoint/content/audio";
 import { aiPodcastAssets, aiPodcastAudit, aiPodcastJobs, aiPodcastProjects, getDb, podcasts } from "@newspoint/db";
 import { studioOrigins } from "@/lib/auth";
 import { removeMediaFile, writeMediaFile } from "@/lib/media-disk";
@@ -20,10 +21,7 @@ async function handlePOST(request: Request) {
   const form = await request.formData().catch(() => null);
   const projectId = String(form?.get("projectId") ?? "");
   const file = form?.get("music");
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId) || !(file instanceof File) || file.size < 1024 || file.size > 30 * 1024 * 1024 || !/\.mp3$/i.test(file.name)) return json({ error: "Изберете MP3 файл до 30 MB." }, 400);
-  const bytes = Buffer.from(await file.arrayBuffer());
-  const inspected = inspectMp3(bytes);
-  if (!inspected || inspected.durationSec < 10) return json({ error: "MP3 файлът е невалиден или по-къс от 10 секунди." }, 400);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId) || !(file instanceof File) || file.size < 1024 || file.size > 30 * 1024 * 1024 || !/\.(mp3|m4a|wav|flac)$/i.test(file.name)) return json({ error: "Изберете MP3, M4A, WAV или FLAC до 30 MB." }, 400);
   const [project] = await getDb().select().from(aiPodcastProjects).where(eq(aiPodcastProjects.id, projectId)).limit(1);
   if (!project || !["review", "ready"].includes(project.status)) return json({ error: "Проектът не е готов за музика." }, 409);
   const [active] = await getDb().select({ id: aiPodcastJobs.id }).from(aiPodcastJobs).where(and(eq(aiPodcastJobs.projectId, projectId), inArray(aiPodcastJobs.status, ["queued", "running"]))).limit(1);
@@ -33,21 +31,27 @@ async function handlePOST(request: Request) {
     if (episode?.status === "published") return json({ error: "Първо скрийте публикувания епизод." }, 409);
   }
   const now = new Date();
-  const key = `ai-podcasts/assets/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.mp3`;
+  let key = "";
+  let committed = false;
   try {
+    const prepared = await preparePodcastAudio(Buffer.from(await file.arrayBuffer()), file.name);
+    if (prepared.durationSec < 10) return json({ error: "Музикалният файл трябва да е поне 10 секунди." }, 400);
+    const bytes = prepared.buffer;
+    key = `ai-podcasts/assets/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}.${prepared.extension}`;
     await writeMediaFile(key, bytes);
     const settings = aiPodcastSettings.parse(project.settings);
     const asset = await getDb().transaction(async (tx) => {
-      const [created] = await tx.insert(aiPodcastAssets).values({ kind: "music", preset: null, status: "candidate", storageKey: key, prompt: file.name.slice(0, 180), model: "uploaded", metadata: { projectId, durationSec: inspected.durationSec, bytes: bytes.length }, createdBy: staff.id }).returning({ id: aiPodcastAssets.id });
+      const [created] = await tx.insert(aiPodcastAssets).values({ kind: "music", preset: null, status: "candidate", storageKey: key, prompt: file.name.slice(0, 180), model: "uploaded", metadata: { projectId, durationSec: prepared.durationSec, bytes: bytes.length, originalBytes: prepared.originalBytes }, createdBy: staff.id }).returning({ id: aiPodcastAssets.id });
       await tx.update(aiPodcastProjects).set({ musicAssetId: created!.id, settings: { ...settings, music: "custom" }, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, projectId));
-      await tx.insert(aiPodcastAudit).values({ projectId, actorId: staff.id, action: "music_uploaded", details: { assetId: created!.id, durationSec: inspected.durationSec } });
+      await tx.insert(aiPodcastAudit).values({ projectId, actorId: staff.id, action: "music_uploaded", details: { assetId: created!.id, durationSec: prepared.durationSec } });
       return created!;
     });
-    auditFacts({ entityId: projectId, entityLabel: project.title ?? "", fileName: file.name, bytes: bytes.length, durationSec: inspected.durationSec, assetId: asset.id });
+    committed = true;
+    auditFacts({ entityId: projectId, entityLabel: project.title ?? "", fileName: file.name, bytes: bytes.length, originalBytes: prepared.originalBytes, durationSec: prepared.durationSec, assetId: asset.id });
     auditEvidence({ musicAssetId: project.musicAssetId, settings: project.settings }, { musicAssetId: asset.id, settings: { ...settings, music: "custom" } });
-    return json({ assetId: asset.id, durationSec: inspected.durationSec }, 201);
+    return json({ assetId: asset.id, durationSec: prepared.durationSec }, 201);
   } catch (error) {
-    await removeMediaFile(key).catch(() => {});
+    if (key && !committed) await removeMediaFile(key).catch(() => {});
     console.error("[ai-music-upload]", error instanceof Error ? error.message : error);
     return json({ error: "Музиката не беше записана." }, 503);
   }

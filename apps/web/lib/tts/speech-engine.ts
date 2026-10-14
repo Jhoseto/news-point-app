@@ -1,4 +1,5 @@
 /** Playback of one decoded recording. Seeking starts again from the chosen second. */
+import type { SpeechFormat } from "./speech-format";
 
 export interface SpeechEngine {
   context: AudioContext;
@@ -82,4 +83,19 @@ export async function decodeSpeechParts(context: AudioContext, parts: readonly U
     }
   }
   return mixed;
+}
+
+/** Some browsers advertise WebM support but fail Web Audio decoding. */
+export async function loadDecodedSpeech(
+  context: AudioContext,
+  load: (format: SpeechFormat) => Promise<Uint8Array[]>,
+  preferred: SpeechFormat,
+): Promise<AudioBuffer> {
+  const parts = await load(preferred);
+  try {
+    return await decodeSpeechParts(context, parts);
+  } catch (error) {
+    if (preferred !== "opus") throw error;
+    return decodeSpeechParts(context, await load("aac"));
+  }
 }

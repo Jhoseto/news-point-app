@@ -621,13 +621,6 @@ function tidySpeech(text: string): string {
     .trim();
 }
 
-/** Rough news-reading pace used to draw the timeline. Not a clock from the synthesizer. */
-export function speechDurationMs(text: string, rate = 1): number {
-  const chars = Math.max(1, text.replace(/\s+/g, " ").trim().length);
-  const safeRate = rate > 0 ? rate : 1;
-  return Math.max(700, Math.round((chars / 13.5) * 1000 / safeRate));
-}
-
 /** Main entry point — runs the full pipeline. */
 export function prepareForSpeech(text: string): string {
   if (!text) return "";

@@ -86,10 +86,10 @@ describe("AI podcast mastering", () => {
     const dir = await mkdtemp(join(tmpdir(), "np-ai-test-"));
     try {
       const source = join(dir, "music.wav");
-      const mp3 = join(dir, "music.mp3");
+      const musicFile = join(dir, "music.m4a");
       await writeFile(source, wav(3));
-      await promisify(execFile)(process.env.FFMPEG_PATH!, ["-y", "-loglevel", "error", "-i", source, "-b:a", "128k", mp3]);
-      const result = await masterAudio([wav(1), wav(1)], await readFile(mp3), 30);
+      await promisify(execFile)(process.env.FFMPEG_PATH!, ["-y", "-loglevel", "error", "-i", source, "-c:a", "aac", "-b:a", "128k", musicFile]);
+      const result = await masterAudio([wav(1), wav(1)], await readFile(musicFile), 30);
       expect(result.tempo).toBe(.94);
       expect(result.durationSec).toBeGreaterThanOrEqual(2);
       expect(result.bytes.length).toBeGreaterThan(1000);

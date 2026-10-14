@@ -48,6 +48,16 @@ read_env() {
 export STUDIO_URL="$(read_env STUDIO_URL "http://127.0.0.1:3101")"
 export WEB_URL="$(read_env WEB_URL "https://site44159-izdo3c.scloudsite101.com")"
 export STUDIO_PUBLIC_URL="$(read_env STUDIO_PUBLIC_URL "${WEB_URL%/}/admin")"
+export TTS_CACHE_DIR="$(read_env TTS_CACHE_DIR "$HOME/.cache/newspoint/tts")"
+case "$TTS_CACHE_DIR" in
+  /*) ;;
+  *) echo "TTS_CACHE_DIR must be an absolute private directory." >&2; exit 1 ;;
+esac
+TTS_CACHE_DIR="$(realpath -m -- "$TTS_CACHE_DIR")"
+case "$TTS_CACHE_DIR/" in
+  "$LIVE/"*|"$STAGE/"*|"$PREV/"*|"$HOME/public_html/"*|"$HOME/storage/"*)
+    echo "TTS_CACHE_DIR must stay outside replaced/public directories." >&2; exit 1 ;;
+esac
 
 cd "$SOURCE"
 echo "Installing dependencies..."
@@ -81,6 +91,7 @@ install_starter() {
 }
 
 if [[ "$SOURCE" == "$LIVE" ]]; then
+  bash "$SOURCE/deploy/np2/preserve-tts-cache.sh" "$LIVE/apps/web/.tts-cache" "$TTS_CACHE_DIR"
   install_starter
   echo "Restarting the new site..."
   bash "$HOME/start-newspoint.sh"
@@ -92,6 +103,11 @@ echo "Build succeeded. Replacing the live copy with this source..."
 stop_pid "$LIVE/logs/web.pid"
 stop_pid "$LIVE/logs/studio.pid"
 stop_pid "$LIVE/logs/worker.pid"
+if ! bash "$SOURCE/deploy/np2/preserve-tts-cache.sh" "$LIVE/apps/web/.tts-cache" "$TTS_CACHE_DIR"; then
+  echo "Could not preserve paid TTS recordings. Keeping the live checkout." >&2
+  bash "$HOME/start-newspoint.sh"
+  exit 1
+fi
 rm -rf "$PREV"
 if [[ -d "$LIVE" ]]; then
   mv "$LIVE" "$PREV"

@@ -1,9 +1,8 @@
 /**
- * Split an article into `Utterance`s ready to feed the Web Speech API.
+ * Build article reading anchors and text weights for recorded-audio playback.
  *
  * Each utterance keeps enough metadata so the player can:
  * - scroll & highlight the originating block (`anchorId`),
- * - skip to the previous/next paragraph (`index`),
  * - persist the position across reloads (`id` is stable per article).
  */
 
@@ -120,15 +119,6 @@ export function buildUtterances(article: ArticleUtteranceInput): Utterance[] {
   return out;
 }
 
-/** The full article as one Bulgarian speech script. */
-export function articleSpeechText(article: ArticleUtteranceInput): string {
-  return buildUtterances(article)
-    .map((item) => item.text)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 /** Keep one listen request inside a bounded script, ending on a sentence when possible. */
 export function capSpeechText(text: string, max = 12_000): string {
   const clean = text.replace(/\s+/g, " ").trim();
@@ -242,22 +232,4 @@ function pushBlock(out: Utterance[], article: ArticleUtteranceInput, block: Bloc
       return;
     }
   }
-}
-
-/** Skip an utterance without ending playback. Returns the next index, or null. */
-export function nextUtteranceIndex(current: number, total: number): number | null {
-  if (current + 1 >= total) return null;
-  return current + 1;
-}
-
-/** Move to the previous utterance. Returns null when already at the start. */
-export function previousUtteranceIndex(current: number): number | null {
-  if (current <= 0) return null;
-  return current - 1;
-}
-
-/** Map the actual block index (in `article.body`) that an utterance belongs to. */
-export function blockIndexOf(utterances: readonly Utterance[], utteranceIndex: number): number | null {
-  const u = utterances[utteranceIndex];
-  return u ? u.blockIndex : null;
 }

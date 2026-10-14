@@ -32,7 +32,6 @@ export function HeroCard({
   shineDelaySec?: number;
   priority?: boolean;
 }) {
-  const Heading = headingLevel;
   const lead = size === "lead";
   const mini = size === "mini";
   const tile = size === "tile";
@@ -82,7 +81,8 @@ export function HeroCard({
         {article.category ? <CategoryPill category={article.category} className={`absolute z-10 ${mini ? "top-2 left-2" : "top-3 left-3"}`} /> : null}
         {!mini && isRecentArticle(article.publishedAt) ? <span className="absolute top-3 right-3 z-20"><NewBadge publishedAt={article.publishedAt} /></span> : null}
         <div className={`absolute inset-x-0 bottom-0 flex flex-col ${lead ? "gap-3 p-5 sm:p-7 lg:p-8" : mini ? "gap-1.5 p-3" : "gap-2.5 p-4 sm:p-5"}`}>
-          <Heading
+          <ClampedTitleTip
+            as={headingLevel}
             className={
               lead
                 ? "line-clamp-3 max-w-3xl text-xl leading-[1.18] font-extrabold tracking-tight text-balance text-white [text-shadow:0_2px_8px_rgb(0_0_0/0.9),0_1px_2px_rgb(0_0_0/0.95)] sm:line-clamp-4 sm:text-2xl xl:text-[1.625rem] 2xl:text-[1.875rem] 3xl:text-[2rem]"
@@ -92,7 +92,7 @@ export function HeroCard({
             }
           >
             {article.title}
-          </Heading>
+          </ClampedTitleTip>
           {lead && article.excerpt ? (
             <p className="hidden max-w-2xl text-[0.95rem] leading-relaxed text-white/82 sm:line-clamp-2">{article.excerpt}</p>
           ) : null}
@@ -214,9 +214,9 @@ export function CompactCard({ article, shineDelaySec }: { article: ArticleSummar
         </div>
         <div className="flex min-w-0 flex-col gap-1.5">
           {article.category ? <CategoryLabel category={article.category} /> : null}
-          <h3 className="line-clamp-3 text-sm leading-snug font-bold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
+          <ClampedTitleTip className="line-clamp-3 text-sm leading-snug font-bold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
-          </h3>
+          </ClampedTitleTip>
           <TimeMeta date={article.publishedAt} />
         </div>
       </Link>
@@ -233,9 +233,9 @@ export function TimelineItem({ article, className = "" }: { article: ArticleSumm
       </time>
       <span className="np-gradient-bg absolute top-1.5 left-12 size-2 rounded-full ring-4 ring-surface" aria-hidden="true" />
       <Link href={article.path} prefetch={false} className="flex min-h-11 flex-col justify-center">
-        <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
+        <ClampedTitleTip className="line-clamp-2 text-sm leading-snug font-semibold text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
           {article.title}
-        </h3>
+        </ClampedTitleTip>
         {article.category ? <span className="mt-0.5 block text-xs text-muted">{article.category.name}</span> : null}
       </Link>
     </li>
