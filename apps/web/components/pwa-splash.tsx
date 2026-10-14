@@ -10,7 +10,7 @@ function standaloneReader(): boolean {
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-/** The server-rendered first frame matches the static OS launch image. */
+/** The supplied logo is present from the server's first frame through the reveal. */
 export function PwaSplash() {
   const [phase, setPhase] = useState<"ready" | "play" | "leave" | "hidden">("ready");
 
@@ -35,13 +35,18 @@ export function PwaSplash() {
   return (
     <div className="np-pwa-splash" data-phase={phase} role="presentation" aria-hidden="true">
       <div className="np-pwa-splash-scene">
-        <span className="np-pwa-splash-mark">
-          <svg viewBox="0 0 92 92" fill="none" aria-hidden="true">
-            <path className="np-pwa-splash-n" d="M28 68V24L64 68V24" />
-          </svg>
-        </span>
-        <span className="np-pwa-splash-name">NewsPoint<span>.bg</span></span>
-        <span className="np-pwa-splash-tagline">Гласът на истината</span>
+        <img
+          className="np-pwa-splash-logo"
+          src="/brand/pwa-launch-logo-1024.webp?v=3"
+          srcSet="/brand/pwa-launch-logo-512.webp?v=3 512w, /brand/pwa-launch-logo-1024.webp?v=3 1024w"
+          sizes="(max-width: 640px) 84vw, 42rem"
+          alt=""
+          width={1024}
+          height={341}
+          decoding="sync"
+          loading="lazy"
+        />
+        <span className="np-pwa-splash-sheen" />
         <span className="np-pwa-splash-track"><span /></span>
       </div>
     </div>

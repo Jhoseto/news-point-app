@@ -2917,15 +2917,14 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   }
 }
 
-/* The OS frame and this first paint share one silver stage. Animation takes 3s. */
+/* The OS frame and the first app frame show the supplied logo on white. */
 .np-pwa-splash {
   position: fixed;
   inset: 0;
   z-index: 100;
   display: none;
   overflow: hidden;
-  background: linear-gradient(135deg, #f8fbfd, #edf3f8);
-  color: #142643;
+  background: #fff;
   pointer-events: auto;
 }
 @media (display-mode: standalone) {
@@ -2935,54 +2934,35 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 .np-pwa-splash[data-phase="leave"] { animation: np-pwa-exit 400ms ease-in both; }
 .np-pwa-splash-scene {
   position: absolute;
-  top: 46%;
+  top: 43%;
   left: 50%;
-  display: flex;
-  width: min(100% - 2rem, 24rem);
-  align-items: center;
-  flex-direction: column;
-  transform: translate(-50%, -98px);
-  text-align: center;
+  width: min(84vw, 42rem);
+  transform: translate(-50%, -50%);
+  isolation: isolate;
 }
-.np-pwa-splash-mark {
-  display: grid;
-  place-items: center;
-  width: 92px;
-  height: 92px;
-  border: 1px solid #d4e1ed;
-  border-radius: 20px;
-  background: #fff;
-  box-shadow: 0 14px 30px -24px rgb(27 56 100 / .36), inset 0 1px 0 #fff;
-}
-.np-pwa-splash-mark svg { width: 92px; height: 92px; }
-.np-pwa-splash-n {
-  stroke: #315fc2;
-  stroke-width: 7;
-  stroke-linecap: square;
-  stroke-linejoin: round;
-  stroke-dasharray: 180;
-}
-.np-pwa-splash-name {
+.np-pwa-splash-logo {
   display: block;
-  margin-top: 20px;
-  font-size: 31px;
-  font-weight: 800;
-  letter-spacing: -.05em;
-  line-height: 1.2;
+  width: 100%;
+  height: auto;
+  transform-origin: 50% 50%;
 }
-.np-pwa-splash-name span { color: #315fc2; }
-.np-pwa-splash-tagline { margin-top: 5px; color: #62748c; font-size: 9px; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; }
-.np-pwa-splash-track { display: block; width: 102px; height: 2px; margin-top: 37px; overflow: hidden; border-radius: 2px; background: #cbd9e8; }
-.np-pwa-splash-track span { display: block; width: 100%; height: 100%; transform: scaleX(0); transform-origin: left; background: linear-gradient(90deg, #315fc2, #087b9d); }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-mark { animation: np-pwa-mark 1150ms cubic-bezier(.2,.8,.2,1) both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-n { animation: np-pwa-draw 1250ms cubic-bezier(.2,.7,.2,1) both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-name { animation: np-pwa-name 1350ms cubic-bezier(.2,.8,.2,1) both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-tagline { animation: np-pwa-tagline 1700ms ease both; }
+.np-pwa-splash-sheen {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background: linear-gradient(108deg, transparent 31%, rgb(30 183 234 / .03) 42%, rgb(250 255 255 / .75) 49%, rgb(82 103 245 / .2) 55%, transparent 67%);
+  transform: translateX(-105%);
+}
+.np-pwa-splash-track { position: absolute; top: calc(100% + 1.9rem); left: 50%; display: block; width: clamp(5.5rem, 25%, 8rem); height: 2px; overflow: hidden; border-radius: 2px; background: rgb(17 67 142 / .12); transform: translateX(-50%); opacity: 0; }
+.np-pwa-splash-track span { display: block; width: 100%; height: 100%; transform: scaleX(0); transform-origin: center; background: linear-gradient(90deg, #193c9b, #16a9d1 55%, #7033c3); }
+.np-pwa-splash[data-phase="play"] .np-pwa-splash-logo { animation: np-pwa-logo 2250ms cubic-bezier(.22,.7,.2,1) both; }
+.np-pwa-splash[data-phase="play"] .np-pwa-splash-sheen { -webkit-mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat; mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat; animation: np-pwa-sheen 1600ms cubic-bezier(.2,.6,.25,1) 420ms both; }
+.np-pwa-splash[data-phase="play"] .np-pwa-splash-track { animation: np-pwa-track-appear 500ms ease 650ms both; }
 .np-pwa-splash[data-phase="play"] .np-pwa-splash-track span { animation: np-pwa-progress 2600ms linear both; }
-@keyframes np-pwa-mark { from { box-shadow: 0 0 0 0 rgb(49 95 194 / .2), inset 0 1px 0 #fff; } 60% { box-shadow: 0 0 0 13px rgb(49 95 194 / .035), 0 18px 32px -22px rgb(27 56 100 / .35); } to { box-shadow: 0 14px 30px -24px rgb(27 56 100 / .36), inset 0 1px 0 #fff; } }
-@keyframes np-pwa-draw { from { stroke-dashoffset: 180; } to { stroke-dashoffset: 0; } }
-@keyframes np-pwa-name { from { opacity: .55; transform: translateY(12px); letter-spacing: .01em; } to { opacity: 1; transform: translateY(0); letter-spacing: -.05em; } }
-@keyframes np-pwa-tagline { from { opacity: .25; } to { opacity: 1; } }
+@keyframes np-pwa-logo { 0% { transform: translateZ(0) scale(1); filter: saturate(1); } 45% { transform: translateY(-3px) scale(1.035); filter: saturate(1.1); } 100% { transform: translateY(0) scale(1); filter: saturate(1); } }
+@keyframes np-pwa-sheen { 0% { opacity: 0; transform: translateX(-105%); } 18% { opacity: .85; } 70% { opacity: .85; } 100% { opacity: 0; transform: translateX(105%); } }
+@keyframes np-pwa-track-appear { to { opacity: 1; } }
 @keyframes np-pwa-progress { to { transform: scaleX(1); } }
 @keyframes np-pwa-exit { to { opacity: 0; transform: scale(1.015); } }
 @media (prefers-reduced-motion: reduce) {

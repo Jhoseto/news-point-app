@@ -1,12 +1,12 @@
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { mkdir, stat } from "node:fs/promises";
-import { launchMarkSvg } from "./pwa-launch-art.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
 
 const LIGHT_SOURCE = resolve(root, "apps/web/scripts/brand/newspoint-logo-source.png");
+const PWA_SOURCE = resolve(root, "apps/web/scripts/brand/pwa-launch-logo-source.png");
 const OUT_DIR = resolve(root, "apps/web/public/brand");
 
 /** Crop the left emblem from the premium wordmark (same rings as the new logo). */
@@ -36,7 +36,15 @@ const emblem = await emblemBuffer(LIGHT_SOURCE);
 for (const { name, size, maskable } of SIZES) {
   const target = resolve(OUT_DIR, name);
   if (name.startsWith("icon-") || name.startsWith("apple-touch-icon")) {
-    await sharp(launchMarkSvg(size, maskable)).png({ compressionLevel: 9 }).toFile(target);
+    const logo = await sharp(PWA_SOURCE)
+      .resize({ width: Math.round(size * (maskable ? .78 : .84)), withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    const meta = await sharp(logo).metadata();
+    await sharp({ create: { width: size, height: size, channels: 3, background: "#ffffff" } })
+      .composite([{ input: logo, left: Math.round((size - meta.width) / 2), top: Math.round((size - meta.height) / 2) }])
+      .png({ compressionLevel: 9 })
+      .toFile(target);
     const info = await stat(target);
     console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
     continue;

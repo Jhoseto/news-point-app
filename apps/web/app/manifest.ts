@@ -3,9 +3,9 @@ import type { MetadataRoute } from "next";
 /**
  * Читателски PWA — отделен от редакционния. Не споделя manifest с apps/studio.
  * Системният стартов кадър е статичен. След него приложението показва
- * същата сребриста композиция с три секунди движение.
+ * същото оригинално лого на бяло с три секунди движение.
  *
- * Иконите използват изчистения N знак. За iOS се ползва apple-touch-icon.
+ * Иконите използват логото, предоставено от Koce. За iOS се ползва apple-touch-icon.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -20,24 +20,24 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     display: "standalone",
     orientation: "portrait",
-    background_color: "#edf3f8",
-    theme_color: "#edf3f8",
+    background_color: "#ffffff",
+    theme_color: "#ffffff",
     categories: ["news", "magazines"],
     icons: [
       {
-        src: "/brand/icon-192.png?v=2",
+        src: "/brand/icon-192.png?v=3",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-512.png?v=2",
+        src: "/brand/icon-512.png?v=3",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/brand/icon-maskable-512.png?v=2",
+        src: "/brand/icon-maskable-512.png?v=3",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
