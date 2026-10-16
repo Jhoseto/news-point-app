@@ -1,8 +1,11 @@
 "use client";
 
 import { createPortal } from "react-dom";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
+import { DESKTOP_QUERY } from "../lib/viewport-shell";
 import { useReducedMotion } from "./reader-preferences";
+
+const TITLE_TIP_QUERY = `${DESKTOP_QUERY} and (hover: hover) and (pointer: fine)`;
 
 function isPageScroll(event: Event) {
   const target = event.target;
@@ -60,7 +63,17 @@ export function ClampedTitleTip({
     hideTimer.current = window.setTimeout(() => setTip(null), 140);
   }, []);
 
-  const show = useCallback(() => {
+  const dismiss = useCallback(() => {
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    setTip(null);
+  }, []);
+
+  const show = useCallback((event: PointerEvent<HTMLHeadingElement>) => {
+    // Touch also emits pointerenter, even on a laptop with a fine primary pointer.
+    if (event.pointerType !== "mouse" || !window.matchMedia(TITLE_TIP_QUERY).matches) {
+      dismiss();
+      return;
+    }
     if (hideTimer.current) window.clearTimeout(hideTimer.current);
     const element = anchor.current;
     if (!element || !isClamped(element)) return;
@@ -70,10 +83,15 @@ export function ClampedTitleTip({
     requestAnimationFrame(() => {
       setTip((current) => (current ? { ...current, open: true } : null));
     });
-  }, [reducedMotion]);
+  }, [dismiss, reducedMotion]);
 
   useEffect(() => {
     if (!tip) return;
+    const query = window.matchMedia(TITLE_TIP_QUERY);
+    const onCapabilityChange = () => {
+      if (!query.matches) dismiss();
+    };
+    onCapabilityChange();
     const onScroll = (event: Event) => {
       if (!isPageScroll(event)) return;
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
@@ -86,8 +104,14 @@ export function ClampedTitleTip({
       setTip((current) => (current ? { ...current, x, y } : null));
     };
     window.addEventListener("scroll", onScroll, { capture: true, passive: true });
-    return () => window.removeEventListener("scroll", onScroll, true);
-  }, [tip]);
+    window.addEventListener("resize", dismiss);
+    query.addEventListener("change", onCapabilityChange);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", dismiss);
+      query.removeEventListener("change", onCapabilityChange);
+    };
+  }, [dismiss, tip]);
 
   return (
     <>
@@ -96,7 +120,9 @@ export function ClampedTitleTip({
         className={className}
         onPointerEnter={show}
         onPointerLeave={hide}
-        onFocus={show}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse") dismiss();
+        }}
         onBlur={hide}
       >
         {children}

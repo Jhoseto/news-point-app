@@ -10,7 +10,7 @@ let directory: string;
 const files = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/studio/app/api/logs/route.ts", "apps/studio/app/(studio)/logs/page.tsx", "apps/web/app/page.tsx"];
 beforeAll(() => {
   directory = mkdtempSync(join(tmpdir(), "np-deploy-archive-qa-"));
-  for (const file of [...files, "logs/web.pid", "logs/private.log"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
+  for (const file of [...files, "logs/web.pid", "logs/private.log", "AGENTS.md", "apps/web/AGENTS.md", "docs/PLAN.md"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
 });
 afterAll(() => { const target = resolve(directory); if (target.startsWith(join(tmpdir(), "np-deploy-archive-qa-"))) rmSync(target, { recursive: true, force: true }); });
 function pack(exclusion: string) {
@@ -29,6 +29,7 @@ describe("Actual deployment tar exclusions", () => {
     expect(listing.status).toBe(0);
     const report = verifyDeployArchive(listing.stdout.split(/\r?\n/).filter(Boolean), directory);
     expect(report.missing).toEqual([]); expect(report.forbidden).toEqual([]);
+    expect(listing.stdout).not.toMatch(/AGENTS\.md|docs\/PLAN\.md/);
   });
   it("catches the old broad exclusion before uploading a broken release", () => {
     const report = verifyDeployArchive(pack("logs"), directory);
