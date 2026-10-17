@@ -68,15 +68,18 @@ export function composeHome(input: {
   const excluded = new Set(document.excluded);
   const slot = (key: string) => resolveSlot(document, key, now, visible, pinned);
   const picker = new UniquePicker();
+  // Reserve every explicit hero position before automatic filling can consume its story.
+  const heroPins = [slot("hero"), ...Array.from({ length: HOME_SUPPORT_COUNT }, (_, index) => slot(`support-${index}`))];
+  const reservedHeroIds = new Set(heroPins.flatMap(article => article ? [article.id] : []));
   const heroPool = latest.filter((article) => article.category && menuIds.has(article.category.id));
-  const hero = picker.claim(slot("hero")) ?? picker.take(heroPool.filter((article) => !excluded.has(article.id)), 1)[0];
+  const hero = picker.claim(heroPins[0]) ?? picker.take(heroPool.filter((article) => !excluded.has(article.id) && !reservedHeroIds.has(article.id)), 1)[0];
 
   // „На Фокус“ carousel slots are filled only via composeLabelCarousel — not the hero band pool.
   const bandPins = [
-    ...Array.from({ length: HOME_SUPPORT_COUNT }, (_, index) => slot(`support-${index}`)),
+    ...heroPins.slice(1),
     ...Array.from({ length: HOME_CAROUSEL_COUNT }, () => null),
   ];
-  const band = fillPinned(picker, [...featured, ...latest], HOME_BAND_COUNT, bandPins, excluded);
+  const band = fillPinned(picker, [...featured, ...latest].filter(article => !reservedHeroIds.has(article.id)), HOME_BAND_COUNT, bandPins, excluded);
   const support = band.slice(0, HOME_SUPPORT_COUNT);
   const carousel = band.slice(HOME_SUPPORT_COUNT, HOME_SUPPORT_COUNT + HOME_CAROUSEL_COUNT);
 

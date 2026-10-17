@@ -16,6 +16,8 @@ export default async function ArrangePage({ searchParams }: { searchParams: Prom
       <div>
         <h1 className="mb-2 text-base font-bold text-ink">Уеб управление</h1>
         <ArrangeDesk
+          key={`${data.pageKey}:${data.version}`}
+          version={data.version}
           pageKey={data.pageKey}
           menu={data.menu}
           draft={data.draft}

@@ -4,7 +4,6 @@ import { isDeepStrictEqual } from "node:util";
 import { and, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
 import {
   PUBLIC_MENU,
-  arrangementDocumentSchema,
   articleBody,
   menuName,
   removeArticleFromArrangement,
@@ -14,7 +13,6 @@ import {
   utcToSofiaWall,
   RESERVED_ARTICLE_SLUGS,
   type ArticleBody,
-  type ArrangementDocument,
 } from "@newspoint/content";
 import {
   articleCategories,
@@ -27,6 +25,7 @@ import {
   hasArticleReadCounts,
   hasArticleViewBoosts,
   applyArticlePublishViews,
+  hasRevisionHomeHero, revisionHomeHero, writeRevisionHomeHero, publishHomeHero, lockArrangements, readArrangementDocument,
   hasRevisionListen,
   revisionListen,
   writeRevisionListen,
@@ -88,6 +87,7 @@ export interface Draft {
   viewUnit: ViewUnit;
   viewTarget: number | null;
   publishAtSofia: string | null;
+  homeHeroPosition?: 1 | 2 | 3 | 4 | null;
 }
 
 export interface EditorArticle {
@@ -127,6 +127,10 @@ export interface ArticleListItem {
 }
 
 /** Same public rubrics as the reader menu — including „Гласът на истината“ and „На Фокус“. */
+export async function homeHeroReady(): Promise<boolean> {
+  return await hasRevisionHomeHero(getDb()) && await hasPageArrangements(getDb());
+}
+
 export async function listSections() {
   const slugs = PUBLIC_MENU.map((entry) => entry.slug);
   const rows = await getDb()
@@ -220,6 +224,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
 
   const source = latest?.revision ?? { ...article, slug: article.isPublic ? article.slug : "" };
   const { draft, editableBody } = toDraft(source);
+  draft.homeHeroPosition = latest && latest.revision.number > (article.publishedRevision ?? 0) ? await revisionHomeHero(db, id, latest.revision.number) : null;
   draft.listenEnabled = latest ? (await revisionListen(db, id, latest.revision.number)) ?? article.listenEnabled : article.listenEnabled;
   const boostsReady = await hasArticleViewBoosts(db);
   const [boost] = boostsReady
@@ -295,6 +300,11 @@ function revisionValues(draft: DraftInput, body: unknown, authorship: Authorship
 async function saveListening(tx: Pick<ReturnType<typeof getDb>, "execute">, id: string, number: number, enabled: boolean | undefined, current: boolean) {
   if (await hasRevisionListen(tx)) await writeRevisionListen(tx, id, number, enabled ?? current);
   else if (enabled !== undefined && enabled !== current) throw new EditorError(422, "migration_required", "Настройката за слушане изисква миграция 30. Другите промени не са записани.");
+}
+
+async function saveHomeHero(tx: Pick<ReturnType<typeof getDb>, "execute">, id: string, number: number, position: DraftInput["homeHeroPosition"]) {
+  if (await hasRevisionHomeHero(tx)) await writeRevisionHomeHero(tx, id, number, position ?? null);
+  else if (position != null) throw new EditorError(422, "migration_required", "Изборът на позиция изисква миграция 38. Промените не са записани.");
 }
 
 async function validateMedia(tx: Pick<ReturnType<typeof getDb>, "select">, draft: { heroMediaId: string | null }, body: ArticleBody) {
@@ -384,7 +394,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       const requestedViews = { viewSeed: draft.viewSeed ?? null, viewEvery: draft.viewEvery ?? null, viewUnit: draft.viewUnit ?? "minutes", viewTarget: draft.viewTarget ?? null };
       const storedViews = await viewDraft(tx, id);
       // A key cannot silently accept different options after a lost response.
-      if (requestedViews.viewSeed !== storedViews.viewSeed || requestedViews.viewTarget !== storedViews.viewTarget || intervalToSeconds(requestedViews.viewEvery, requestedViews.viewUnit) !== intervalToSeconds(storedViews.viewEvery, storedViews.viewUnit) || (await revisionListen(tx, id, 1) ?? existing.listenEnabled) !== (draft.listenEnabled ?? true) || (!existing.publishedAt && existing.scheduledPublishAt?.getTime() !== scheduleInstant(draft.publishAtSofia)?.getTime())) {
+      if ((await revisionHomeHero(tx, id, 1)) !== (draft.homeHeroPosition ?? null) || requestedViews.viewSeed !== storedViews.viewSeed || requestedViews.viewTarget !== storedViews.viewTarget || intervalToSeconds(requestedViews.viewEvery, requestedViews.viewUnit) !== intervalToSeconds(storedViews.viewEvery, storedViews.viewUnit) || (await revisionListen(tx, id, 1) ?? existing.listenEnabled) !== (draft.listenEnabled ?? true) || (!existing.publishedAt && existing.scheduledPublishAt?.getTime() !== scheduleInstant(draft.publishAtSofia)?.getTime())) {
         throw new EditorError(409, "creation_id_reused", "Черновата е създадена с други настройки. Отворете записания материал.");
       }
       auditEvidence(null, null); // Idempotent retry: no new content was written.
@@ -392,6 +402,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
     }
     await validateMedia(tx, draft, body);
     await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
+    await saveHomeHero(tx, id, 1, draft.homeHeroPosition);
     await saveListening(tx, id, 1, draft.listenEnabled, true);
     const qaRun = process.env.EDITOR_QA_RUN_ID;
     if (qaRun) {
@@ -421,6 +432,9 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
   return getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
+    if (draft.homeHeroPosition != null && draft.homeHeroExpectedPublishedRevision !== undefined && draft.homeHeroExpectedPublishedRevision !== article.publishedRevision) {
+      throw new EditorError(409, "publication_changed", "Статията е публикувана от друг екран или по график. Презаредете я, преди да изберете нова позиция.");
+    }
     if (article.publishedAt && draft.slug !== article.slug) {
       throw new EditorError(422, "slug_locked", "Адресът на публикувана статия не се сменя.");
     }
@@ -438,7 +452,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
         media: await listMediaByIds([...new Set([latest!.revision.heroMediaId, ...(articleBody.safeParse(latest!.revision.body).data ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((mediaId): mediaId is string => !!mediaId))], tx),
-        draft: { ...toDraft(latest!.revision).draft, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
+        draft: { ...toDraft(latest!.revision).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
@@ -449,8 +463,9 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
     await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
     const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
-    const auditBefore = auditActive() ? { draft: { ...toDraft(latest?.revision ?? article).draft, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
+    const auditBefore = auditActive() ? { draft: { ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
+    await saveHomeHero(tx, id, number, draft.homeHeroPosition);
     await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
     await tx
@@ -473,7 +488,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       .where(eq(articles.id, id));
     await saveViewSettings(tx, id, draft);
     if (article.isPublic) await refreshViewSchedule(tx, id);
-    if (auditBefore) auditEvidence(auditBefore, { draft: { ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
+    if (auditBefore) auditEvidence(auditBefore, { draft: { ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, homeHeroPosition: draft.homeHeroPosition ?? null, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
     return { revision: number };
   }).then(async (saved) => {
     await publishDueScheduled(getDb(), id);
@@ -489,6 +504,7 @@ export interface PublishOutcome {
   eventId: number;
   type: "article.published" | "article.updated";
   duplicate?: boolean;
+  homeHeroPosition?: 1 | 2 | 3 | 4 | null;
 }
 
 /**
@@ -599,8 +615,18 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics } })
       .returning({ id: outboxEvents.id });
 
-    const outcome: PublishOutcome & { listenEnabled: boolean } = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type, listenEnabled: versionListening ?? listenEnabled };
+    const homeHeroPosition = revision > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, revision) : null;
+    if (homeHeroPosition !== null) {
+      if (!await hasPageArrangements(tx)) throw new EditorError(422, "migration_required", "Подреждането изисква миграция 20.");
+      const placement = await publishHomeHero(tx, id, homeHeroPosition, staff.id, staff.name);
+      if (auditActive()) auditEvidence({ article: publicAuditState(article), homeArrangement: placement.before }, { article: publicAuditState(updated!), homeArrangement: placement.after });
+    }
+    const outcome: PublishOutcome & { listenEnabled: boolean } = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type, homeHeroPosition, listenEnabled: versionListening ?? listenEnabled };
     await tx.update(publishRequests).set({ outcome }).where(eq(publishRequests.idempotencyKey, idempotencyKey));
+    return outcome;
+  }).then(async outcome => {
+    // Immediate refresh after commit; the durable layout outbox remains the retry path.
+    if (outcome.homeHeroPosition != null) await triggerRevalidate(["/"]);
     return outcome;
   });
 }
@@ -639,13 +665,9 @@ export async function setArticleVisibility(id: string, visible: boolean, actor?:
   });
 }
 
-function readArrangementDocument(value: unknown): ArrangementDocument {
-  const parsed = arrangementDocumentSchema.safeParse(value);
-  return parsed.success ? parsed.data : { slots: {}, excluded: [] };
-}
-
-async function purgeArticlePlacements(tx: Pick<ReturnType<typeof getDb>, "select" | "update">, articleId: string) {
+async function purgeArticlePlacements(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {
   if (!await hasPageArrangements(tx as ReturnType<typeof getDb>)) return;
+  await lockArrangements(tx);
   const rows = await tx
     .select({ id: pageArrangements.id, document: pageArrangements.document })
     .from(pageArrangements)
@@ -719,11 +741,15 @@ export async function listRevisionHistory(id: string) {
   const rows = await db.select({ revision: articleRevisions, savedBy: staffUsers.name }).from(articleRevisions)
     .leftJoin(staffUsers, eq(staffUsers.id, articleRevisions.createdBy))
     .where(eq(articleRevisions.articleId, id)).orderBy(desc(articleRevisions.number)).limit(50);
-  const revisions = await Promise.all(rows.map(async ({ revision, savedBy }) => ({
+  const revisions = await Promise.all(rows.map(async ({ revision, savedBy }) => {
+    const parsed = toDraft(revision);
+    parsed.draft.homeHeroPosition = await revisionHomeHero(db, id, revision.number);
+    return {
     number: revision.number, savedAt: revision.createdAt, savedBy,
-    ...toDraft(revision),
+    ...parsed,
     listenEnabled: (await revisionListen(db, id, revision.number)) ?? article.listenEnabled,
-  })));
+    };
+  }));
   const ids = [...new Set(revisions.flatMap(item => [item.draft.heroMediaId, ...(item.draft.body ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])]).filter((value): value is string => !!value))];
   return { revisions, media: ids.length ? await listMediaByIds(ids) : [] };
 }

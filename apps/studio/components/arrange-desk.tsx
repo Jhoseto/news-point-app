@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   ARRANGEMENT_QUEUE_LIMIT,
@@ -90,6 +90,7 @@ function remaining(endsAt: string | null, now: number): string {
 }
 
 export function ArrangeDesk({
+  version,
   pageKey,
   menu,
   draft,
@@ -98,6 +99,7 @@ export function ArrangeDesk({
   history,
   ready,
 }: {
+  version: string;
   pageKey: string;
   menu: MenuCategory[];
   draft: ArrangementDocument;
@@ -107,6 +109,7 @@ export function ArrangeDesk({
   ready: boolean;
 }) {
   const router = useRouter();
+  const versionRef = useRef(version);
   const [document, setDocument] = useState(draft);
   const [deskNote, setDeskNote] = useState(note);
   const [known, setKnown] = useState(articles);
@@ -135,22 +138,23 @@ export function ArrangeDesk({
     };
   }, [document, now, visible]);
 
-  async function postArrangement(body: unknown): Promise<{ ok: true } | { ok: false; message: string }> {
+  async function postArrangement(body: Record<string, unknown>): Promise<{ ok: true } | { ok: false; message: string }> {
     try {
       const response = await fetch(withBase("/api/arrangements/"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, expectedVersion: versionRef.current }),
       });
-      const data = await response.json() as { error?: { message?: string } };
+      const data = await response.json() as { version?: string; error?: { message?: string } };
       if (!response.ok) return { ok: false, message: data.error?.message ?? "Неуспешен запис." };
+      if (data.version) versionRef.current = data.version;
       return { ok: true };
     } catch {
       return { ok: false, message: "Няма връзка." };
     }
   }
 
-  async function send(body: unknown) {
+  async function send(body: Record<string, unknown>) {
     setBusy(true);
     setMessage("");
     try {

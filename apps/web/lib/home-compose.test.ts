@@ -193,3 +193,16 @@ describe("composeHome", () => {
     expect(composed.latest.map((item) => item.id)).toEqual(["pinned-latest", "h1"]);
   });
 });
+
+
+describe("exact hero pin reservation", () => {
+  it.each(["support-0", "support-1", "support-2"])("keeps a newest/featured story in its explicit %s slot", key => {
+    const story = article("newest-pin");
+    const pool = [story, ...Array.from({ length: 20 }, (_, i) => article(`pool-${i}`))];
+    const composed = composeHome({ latest: pool, latest24h: pool, featured: pool, sections: [], menuIds: new Set(pool.map(item => item.category!.id)), pinned: new Map([[story.id, story]]), document: { slots: { [key]: { items: [{ articleId: story.id, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] } }, excluded: [] }, now: Date.now() });
+    const band = [composed.hero, ...composed.support];
+    expect(band[Number(key.slice(-1)) + 1]?.id).toBe(story.id);
+    expect(band.filter(item => item?.id === story.id)).toHaveLength(1);
+    expect(composed.carousel.map(item => item.id)).not.toContain(story.id);
+  });
+});

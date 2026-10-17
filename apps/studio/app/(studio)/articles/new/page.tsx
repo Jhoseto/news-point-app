@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ArticleEditor } from "@/components/article-editor";
-import { listRecentMedia, listSections } from "@/lib/articles";
+import { homeHeroReady, listRecentMedia, listSections } from "@/lib/articles";
 import { listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
 
@@ -12,6 +12,7 @@ export default async function NewArticlePage() {
   const [sections, media, storyThemes] = await Promise.all([listSections(), listRecentMedia(), listStoryThemeOptions()]);
   return (
     <ArticleEditor
+      homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}
       article={{
         id: null,

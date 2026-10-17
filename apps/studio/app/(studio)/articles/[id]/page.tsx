@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { ArticleEditor } from "@/components/article-editor";
-import { getEditorArticle, listRecentMedia, listSections } from "@/lib/articles";
+import { homeHeroReady, getEditorArticle, listRecentMedia, listSections } from "@/lib/articles";
 import { bodyImageIds } from "@/lib/editor/body";
 import { getArticleStoryThemeId, listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
@@ -27,6 +27,7 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
   return (
     <ArticleEditor
       key={id}
+      homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}
       article={{ ...rest, publishedAt: publishedAt?.toISOString() ?? null, revisionSavedAt: revisionSavedAt?.toISOString() ?? null }}
       draft={draft}

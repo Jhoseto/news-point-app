@@ -129,6 +129,7 @@
   .studio-editor-pane fieldset { min-inline-size: 0; margin: 0; }
   .studio-editor-pane .np-input { border-radius: .65rem; padding: .45rem .7rem; font-size: .8125rem; }
   .studio-editor-pane select:not(.studio-editor-classic-select) { min-height: 2.35rem; border-radius: .65rem; padding: .35rem .65rem; font-size: .8125rem; }
+  .studio-editor-pane select.np-home-hero-position { height: 2rem; min-height: 2rem; padding: .25rem .5rem; font-size: .75rem; }
   .studio-editor-pane button:not(.studio-editor-classic-tool):not(.studio-editor-media) { min-height: 2.25rem; border-radius: .65rem; padding-inline: .7rem; font-size: .75rem; }
   .studio-editor-pane .studio-meta .np-label { margin-bottom: .12rem; }
   .studio-editor-pane .studio-meta-fields {

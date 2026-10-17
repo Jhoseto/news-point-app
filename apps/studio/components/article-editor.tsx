@@ -20,6 +20,7 @@ import { MediaPicker } from "./media-picker";
 import { VideoUploadDialog } from "./video-upload-dialog";
 
 export interface EditorProps {
+  homeHeroReady?: boolean;
   staff: { id: string; name: string };
   article: {
     id: string | null;
@@ -71,10 +72,10 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
   );
 }
 
-export function ArticleEditor({ article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
+export function ArticleEditor({ homeHeroReady = false, article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
   const [articleId, setArticleId] = useState(article.id);
   const idRef = useRef(article.id);
-  const initial = { ...initialDraft, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
+  const initial = { ...initialDraft, homeHeroPosition: initialDraft.homeHeroPosition ?? null, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
   const [draft, setDraft] = useState<Draft>(initial);
   const manualAuthorName = useRef(initial.authorKind === "manual" ? initial.authorName : "");
   const [saved, setSaved] = useState<Draft>(initial);
@@ -202,7 +203,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       savingRef.current = true;
       const snapshot = draft;
       const { bodyText: legacyText, ...structured } = snapshot;
-      const payload = snapshot.body !== undefined ? structured : snapshot;
+      const content = snapshot.body !== undefined ? structured : snapshot;
+      const payload = { ...content, ...(snapshot.homeHeroPosition != null ? { homeHeroExpectedPublishedRevision: published.revision } : {}) };
       const themeId = storyThemeId;
       const themeChanged = themeId !== savedStoryThemeId;
       setPhase("saving");
@@ -262,7 +264,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
         setPhase("idle");
       }
     },
-    [draft, revision, saved, storyThemeId, savedStoryThemeId, editorValid],
+    [draft, revision, saved, storyThemeId, savedStoryThemeId, editorValid, published.revision],
   );
 
   async function publish() {
@@ -293,6 +295,8 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       return;
     }
     publishKey.current = null;
+    setDraft(current => ({ ...current, homeHeroPosition: null }));
+    setSaved(current => ({ ...current, homeHeroPosition: null }));
     if (draft.viewSeed != null) setSeedLocked(true);
     setPublished((current) => ({ isPublic: true, revision: result.data.revision, path: result.data.path, at: current.at ?? new Date().toISOString() }));
     setNotice({
@@ -666,6 +670,19 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
+            <div className="mt-2 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <label htmlFor="home-hero-position" className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-muted">
+                Начална страница
+                <select id="home-hero-position" aria-describedby="home-hero-hint" className="np-home-hero-position h-8 min-w-0 max-w-full rounded-md border border-line bg-surface px-2 text-xs text-ink" disabled={readOnly || busy || !homeHeroReady} value={draft.homeHeroPosition ?? ""} onChange={event => update("homeHeroPosition", event.target.value ? Number(event.target.value) as 1 | 2 | 3 | 4 : null)}>
+                  <option value="">Без промяна</option>
+                  <option value="1">Позиция 1 — водеща</option>
+                  <option value="2">Позиция 2 — втора голяма</option>
+                  <option value="3">Позиция 3 — лява малка</option>
+                  <option value="4">Позиция 4 — дясна малка</option>
+                </select>
+              </label>
+              <span id="home-hero-hint" className="text-faint">{!homeHeroReady ? "Изборът изисква миграция 38 и готово подреждане." : draft.homeHeroPosition ? "Без срок. Заменя съдържанието и опашката на тази позиция при публикуване." : "При публикуване или в насрочения час."}</span>
+            </div>
             <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
             <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
@@ -826,7 +843,7 @@ export function ArticleEditor({ article, draft: initialDraft, staff, sections, m
       </EditorDialog> : null}
       {history ? <EditorDialog label="История на версиите" onClose={() => setHistory(null)}>
         <h3>Версии на материала</h3><p>Зареждането заменя текущите полета. Запишете ръчно, за да създадете нова версия. Публикуването е отделно действие.</p>
-        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
+        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, homeHeroPosition: item.draft.homeHeroPosition ?? null, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или embed код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>

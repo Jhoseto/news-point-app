@@ -23,7 +23,7 @@ import { MOBILE_OVERLAY_CHANGE, requestMobileOverlay, type MobileOverlay } from 
 import {
   BadgeIcon,
   BallotIcon,
-  BoltIcon,
+  ClockIcon,
   BriefcaseIcon,
   ChipIcon,
   CloseIcon,
@@ -838,7 +838,7 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
           className={itemClass}
         >
           <span aria-hidden="true" className="np-bottom-nav-mark" />
-          <BoltIcon width={21} height={21} />
+          <ClockIcon width={21} height={21} />
           Последни
         </button>
         <button

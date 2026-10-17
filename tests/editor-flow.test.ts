@@ -5,14 +5,14 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "@newspoint/db/schema";
-import { listRevisionHistory, createArticle, getEditorArticle, publishRevision, saveRevision, setArticleVisibility } from "../apps/studio/lib/articles";
+import { listRevisionHistory, createArticle, getEditorArticle, publishRevision, saveRevision, setArticleVisibility, deleteArticle } from "../apps/studio/lib/articles";
 import { publishDueScheduled } from "../packages/db/src/scheduled-publish";
 import { editorMutation } from "../apps/studio/lib/api";
 import { draftInput } from "../apps/studio/lib/editor/input";
 import type { DraftInput } from "../apps/studio/lib/editor/input";
 import { auditContext } from "../apps/studio/lib/audit-context";
 import { auditChanges } from "../apps/studio/lib/audit-metadata";
-import { placeArticle, publishArrangement, revertArrangement } from "../apps/studio/lib/arrangements";
+import { placeArticle, publishArrangement, revertArrangement, saveArrangement, loadArrangement } from "../apps/studio/lib/arrangements";
 
 const holder = vi.hoisted(() => ({ db: null as ReturnType<typeof drizzle<typeof schema>> | null }));
 vi.mock("@newspoint/db", async () => ({ ...await vi.importActual<typeof import("@newspoint/db")>("@newspoint/db"), getDb: () => holder.db }));
@@ -37,7 +37,7 @@ beforeAll(async () => {
   adapt(db as never);
   const transaction = db.transaction.bind(db);
   db.transaction = ((callback: (tx: unknown) => unknown) => transaction(async tx => { adapt(tx as never); return callback(tx); })) as typeof db.transaction;
-  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 20, 21, 24, 25, 26, 27, 30]);
+  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 20, 21, 24, 25, 26, 27, 30, 38]);
   for (const file of readdirSync("packages/db/migrations").sort()) if (included.has(Number(file.slice(0, 2)))) await pg.exec(readFileSync(`packages/db/migrations/${file}`, "utf8"));
   await pg.exec(`insert into staff_users(id,name,email,role) values('qa-editor','QA Editor','qa@example.invalid','editor');`);
   await db.insert(schema.categories).values({ id: categoryId, slug: "qa-rubric", path: "/qa-rubric/", name: "QA", kind: "section" });
@@ -204,5 +204,153 @@ describe("article editor transactions", () => {
     const article = await getEditorArticle(created.id);
     expect(article).toMatchObject({ isPublic: true, listenEnabled: false });
     expect(await db.select().from(schema.articleCategories).where(eq(schema.articleCategories.articleId, created.id))).toHaveLength(1);
+  });
+});
+
+
+describe("article hero placement", () => {
+  const actor = { ...staff, email: "qa@example.invalid" };
+  const keys = ["hero", "support-0", "support-1", "support-2"];
+  const item = (id: string) => ({ articleId: id, startsAt: null, endsAt: null, placedBy: "Редактор", placedAt: null });
+  const state = () => loadArrangement("home");
+  beforeAll(async () => { await db.insert(schema.categories).values({ slug: "plovdiv", path: "/plovdiv/", name: "Пловдив", kind: "section" }); });
+  beforeEach(async () => { await db.delete(schema.pageArrangements); });
+
+  it.each([1, 2, 3, 4] as const)("publishes directly at position %i, replaces its whole queue and preserves other draft/live differences", async position => {
+    const old = await createArticle(staff, draft());
+    const queued = await createArticle(staff, draft());
+    const input = draft({ homeHeroPosition: position });
+    const created = await createArticle(staff, input);
+    const original = { slots: Object.fromEntries(keys.map(key => [key, { items: [item(old.id), item(queued.id)] }])), excluded: [old.id] };
+    await saveArrangement(actor, "home", original, "live note");
+    await publishArrangement(actor, "home");
+    const liveBefore = (await state()).published;
+    const draftOnly = { ...original, slots: { ...original.slots, "latest-0": { items: [item(queued.id)] } } };
+    await saveArrangement(actor, "home", draftOnly, "private draft note");
+    expect((await getEditorArticle(created.id))?.draft.homeHeroPosition).toBe(position);
+    const draftBefore = (await state()).draft;
+    expect((await state()).published).toEqual(liveBefore);
+    const key = randomUUID();
+    await publishRevision(staff, created.id, 1, key, true);
+    const after = await state();
+    const target = keys[position - 1]!;
+    expect(after.published.slots[target]?.items).toEqual([{ articleId: created.id, startsAt: null, endsAt: null, placedBy: staff.name, placedAt: expect.any(String) }]);
+    expect(after.draft.slots[target]).toEqual(after.published.slots[target]);
+    expect(after.published.slots["latest-0"]).toBeUndefined();
+    expect(after.draft.slots["latest-0"]).toEqual(draftBefore.slots["latest-0"]);
+    expect(after.note).toBe("private draft note");
+    expect(after.published.excluded).toEqual(original.excluded);
+    for (const other of keys.filter(key => key !== target)) expect(after.published.slots[other]).toEqual(liveBefore.slots[other]);
+    expect((await getEditorArticle(created.id))?.draft.homeHeroPosition).toBeNull();
+    const version = after.version;
+    expect((await publishRevision(staff, created.id, 1, key, true)).duplicate).toBe(true);
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    expect((await state()).version).toBe(version);
+  });
+
+  it("schedules placement with the latest saved revision, never on draft save", async () => {
+    const input = draft({ homeHeroPosition: 1, publishAtSofia: "2099-01-01T12:00" });
+    const created = await createArticle(staff, input);
+    await saveRevision(staff, created.id, 1, { ...input, homeHeroPosition: 4 });
+    expect((await state()).published.slots).toEqual({});
+    await db.update(schema.articles).set({ scheduledPublishAt: sql`now()-interval '1 minute'` }).where(eq(schema.articles.id, created.id));
+    expect(await publishDueScheduled(db as never, created.id)).toBe(1);
+    expect((await state()).published.slots["support-2"]?.items[0]).toMatchObject({ articleId: created.id, endsAt: null, placedBy: staff.name });
+    expect(await publishDueScheduled(db as never, created.id)).toBe(0);
+    const editor = (await getEditorArticle(created.id))!;
+    expect(editor.draft.homeHeroPosition).toBeNull();
+    const { bodyText, ...next } = editor.draft;
+    await saveRevision(staff, created.id, 2, { ...next, title: "Обновено заглавие" });
+    const before = (await state()).version;
+    await publishRevision(staff, created.id, 3, randomUUID(), true);
+    expect((await state()).version).toBe(before);
+  });
+
+  it("moves an article only within hero and leaves its rubric placement intact", async () => {
+    const input = draft({ homeHeroPosition: 1 }); const created = await createArticle(staff, input);
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    const current = await state();
+    await saveArrangement(actor, "home", { ...current.draft, slots: { ...current.draft.slots, "section:plovdiv:0": { items: [item(created.id)] } } }, "");
+    await publishArrangement(actor, "home");
+    await saveRevision(staff, created.id, 1, { ...input, homeHeroPosition: 3 });
+    await publishRevision(staff, created.id, 2, randomUUID(), true);
+    expect((await state()).published.slots.hero?.items).toEqual([]);
+    expect((await state()).published.slots["support-1"]?.items[0]?.articleId).toBe(created.id);
+    expect((await state()).published.slots["section:plovdiv:0"]?.items[0]?.articleId).toBe(created.id);
+    await deleteArticle(staff, created.id);
+    expect((await state()).published.slots["support-1"]?.items).toEqual([]);
+  });
+
+  it("rejects all stale arrangement writers after direct article placement", async () => {
+    const first = await createArticle(staff, draft()); await publishRevision(staff, first.id, 1, randomUUID(), true);
+    await placeArticle(actor, { pageKey: "home", slot: "hero", articleId: first.id, hours: 2 });
+    await publishArrangement(actor, "home");
+    const stale = await state();
+    const second = await createArticle(staff, draft({ homeHeroPosition: 2 }));
+    await publishRevision(staff, second.id, 1, randomUUID(), true);
+    await expect(saveArrangement(actor, "home", stale.draft, "", stale.version)).rejects.toMatchObject({ code: "arrangement_conflict" });
+    await expect(publishArrangement(actor, "home", stale.version)).rejects.toMatchObject({ code: "arrangement_conflict" });
+    await expect(revertArrangement(actor, "home", randomUUID(), stale.version)).rejects.toMatchObject({ code: "arrangement_conflict" });
+    await expect(placeArticle(actor, { pageKey: "home", slot: "hero", articleId: first.id, hours: null, expectedVersion: stale.version })).rejects.toMatchObject({ code: "arrangement_conflict" });
+    const fresh = await state();
+    const saved = await saveArrangement(actor, "home", fresh.draft, "fresh", fresh.version);
+    await publishArrangement(actor, "home", saved.version);
+    expect((await state()).published.slots["support-0"]?.items[0]?.articleId).toBe(second.id);
+  });
+
+  it("does not reapply a pending choice from an editor left open across scheduled publication", async () => {
+    const input = draft({ homeHeroPosition: 2, publishAtSofia: "2099-01-01T12:00" });
+    const created = await createArticle(staff, input);
+    await db.update(schema.articles).set({ scheduledPublishAt: sql`now()-interval '1 minute'` }).where(eq(schema.articles.id, created.id));
+    await publishDueScheduled(db as never, created.id);
+    await expect(saveRevision(staff, created.id, 1, { ...input, title: "Stale editor", homeHeroExpectedPublishedRevision: null })).rejects.toMatchObject({ code: "publication_changed" });
+    expect((await getEditorArticle(created.id))?.revision).toBe(1);
+  });
+
+  it("places through the old dialog without publishing unrelated saved draft changes", async () => {
+    const a = await createArticle(staff, draft()); await publishRevision(staff, a.id, 1, randomUUID(), true);
+    const b = await createArticle(staff, draft()); await publishRevision(staff, b.id, 1, randomUUID(), true);
+    await placeArticle(actor, { pageKey: "home", slot: "hero", articleId: a.id, hours: null, publish: true });
+    const live = await state();
+    await saveArrangement(actor, "home", { ...live.draft, slots: { ...live.draft.slots, "latest-0": { items: [item(b.id)] } } }, "unpublished");
+    await placeArticle(actor, { pageKey: "home", slot: "support-0", articleId: b.id, hours: 2, publish: true });
+    const after = await state();
+    expect(after.published.slots["latest-0"]).toBeUndefined();
+    expect(after.draft.slots["latest-0"]?.items[0]?.articleId).toBe(b.id);
+    expect(after.published.slots["support-0"]?.items[0]?.articleId).toBe(b.id);
+  });
+
+  it("rolls back the article, revision receipt and arrangement together on placement failure", async () => {
+    const created = await createArticle(staff, draft({ homeHeroPosition: 2 }));
+    await pg.exec("create function qa_reject_layout() returns trigger language plpgsql as $$ begin if new.type='layout.updated' then raise exception 'QA failure'; end if; return new; end $$; create trigger qa_reject_layout before insert on outbox_events for each row execute function qa_reject_layout();");
+    const key = randomUUID();
+    try {
+      await expect(publishRevision(staff, created.id, 1, key, true)).rejects.toThrow();
+      expect((await getEditorArticle(created.id))?.isPublic).toBe(false);
+      expect((await state()).published.slots).toEqual({});
+      expect(await db.select().from(schema.publishRequests).where(eq(schema.publishRequests.idempotencyKey, key))).toHaveLength(0);
+    } finally { await pg.exec("drop trigger qa_reject_layout on outbox_events; drop function qa_reject_layout();"); }
+    await publishRevision(staff, created.id, 1, key, true);
+    expect((await state()).published.slots["support-0"]?.items[0]?.articleId).toBe(created.id);
+  });
+
+  it("keeps old databases usable but rejects a selected position without migration 38", async () => {
+    await pg.exec("alter table article_revisions drop column home_hero_position");
+    try {
+      const normal = await createArticle(staff, draft());
+      await publishRevision(staff, normal.id, 1, randomUUID(), true);
+      const id = randomUUID();
+      await expect(createArticle(staff, draft({ creationId: id, homeHeroPosition: 2 }))).rejects.toMatchObject({ code: "migration_required" });
+      expect(await db.select().from(schema.articles).where(eq(schema.articles.id, id))).toHaveLength(0);
+    } finally { await pg.exec(readFileSync("packages/db/migrations/38_article_home_hero.sql", "utf8")); }
+  });
+
+  it("validates positions and preserves pending settings on revision conflicts and in history", async () => {
+    for (const position of [0, 5, 1.5, "2"]) expect(draftInput.safeParse(draft({ homeHeroPosition: position as never })).success).toBe(false);
+    const input = draft({ homeHeroPosition: 1 }); const created = await createArticle(staff, input);
+    await saveRevision(staff, created.id, 1, { ...input, homeHeroPosition: 4 });
+    await expect(saveRevision(staff, created.id, 1, input)).rejects.toMatchObject({ code: "conflict", details: { draft: { homeHeroPosition: 4 } } });
+    const history = await listRevisionHistory(created.id);
+    expect(history.revisions.map(row => row.draft.homeHeroPosition)).toEqual([4, 1]);
   });
 });

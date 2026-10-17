@@ -4,14 +4,13 @@ import { and, desc, eq, ilike, inArray, sql } from "@newspoint/db/orm";
 import {
   HOME_PAGE_KEY,
   PUBLIC_MENU,
-  arrangementDocumentSchema,
   emptyArrangement,
   referencedArticleIds,
   sanitizeArrangement,
   triggerRevalidate,
   type ArrangementDocument,
 } from "@newspoint/content";
-import { articles, categories, getDb, hasPageArrangements, outboxEvents, pageArrangements } from "@newspoint/db";
+import { arrangementState, lockArrangements, writeArrangementDraft, writePublishedArrangement, type ArrangementTx, readArrangementDocument as readDocument, articles, categories, getDb, hasPageArrangements, pageArrangements } from "@newspoint/db";
 import { EditorError } from "./articles";
 import type { ArrangementArticle, ArrangementHistoryItem, MenuCategory } from "./arrangement-types";
 import type { Staff } from "./session";
@@ -42,11 +41,6 @@ function pageOf(pageKey: string, menu: MenuCategory[]): { key: string; path: str
   const category = menu.find((item) => item.id === pageKey);
   if (!category) throw new EditorError(404, "not_found", "Няма такава страница.");
   return { key: category.id, path: category.path, title: category.name, categories: menu };
-}
-
-function readDocument(value: unknown): ArrangementDocument {
-  const parsed = arrangementDocumentSchema.safeParse(value);
-  return parsed.success ? parsed.data : emptyArrangement();
 }
 
 function stamp(next: ArrangementDocument, previous: ArrangementDocument, name: string): ArrangementDocument {
@@ -80,6 +74,7 @@ async function requireReady() {
 
 export async function loadArrangement(pageKey: string): Promise<{
   ready: boolean;
+  version: string;
   menu: MenuCategory[];
   pageKey: string;
   draft: ArrangementDocument;
@@ -91,149 +86,108 @@ export async function loadArrangement(pageKey: string): Promise<{
   const menu = await menuCategories();
   const ready = await arrangementReady();
   if (!ready) {
-    return { ready, menu, pageKey: HOME_PAGE_KEY, draft: emptyArrangement(), note: "", published: emptyArrangement(), history: [], articles: {} };
+    return { ready, version: "", menu, pageKey: HOME_PAGE_KEY, draft: emptyArrangement(), note: "", published: emptyArrangement(), history: [], articles: {} };
   }
   const page = pageOf(pageKey, menu);
   const db = getDb();
-  const [draftRow, publishedRow, historyRows] = await Promise.all([
-    db.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "draft"))).limit(1),
-    db.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "published"))).limit(1),
+  const [state, historyRows] = await Promise.all([
+    arrangementState(db, page.key),
     db.select({ id: pageArrangements.id, publishedAt: pageArrangements.publishedAt, note: pageArrangements.note })
       .from(pageArrangements)
       .where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "history")))
       .orderBy(desc(pageArrangements.createdAt))
       .limit(HISTORY_LIMIT),
   ]);
-  const published = readDocument(publishedRow[0]?.document);
-  const draft = draftRow[0] ? readDocument(draftRow[0].document) : published;
+  const published = readDocument(state.published?.document);
+  const draft = state.draft ? readDocument(state.draft.document) : published;
   const articles = await articleMap([...new Set([...referencedArticleIds(draft), ...referencedArticleIds(published)])]);
   return {
     ready,
+    version: state.version,
     menu,
     pageKey: page.key,
     draft,
-    note: draftRow[0]?.note ?? publishedRow[0]?.note ?? "",
+    note: state.draft?.note ?? state.published?.note ?? "",
     published,
     history: historyRows.map((row) => ({ id: row.id, publishedAt: row.publishedAt?.toISOString() ?? null, note: row.note })),
     articles,
   };
 }
 
-export async function saveArrangement(staff: Staff, pageKey: string, document: ArrangementDocument, note: string): Promise<void> {
+async function checkedState(tx: ArrangementTx, pageKey: string, expectedVersion?: string) {
+  await lockArrangements(tx);
+  const state = await arrangementState(tx, pageKey);
+  if (expectedVersion !== undefined && state.version !== expectedVersion) throw new EditorError(409, "arrangement_conflict", "Подреждането е променено от друг екран или публикация. Презаредете страницата, преди да записвате.");
+  return state;
+}
+
+export async function saveArrangement(staff: Staff, pageKey: string, document: ArrangementDocument, note: string, expectedVersion?: string): Promise<{ version: string }> {
   await requireReady();
-  const menu = await menuCategories();
-  const page = pageOf(pageKey, menu);
+  const page = pageOf(pageKey, await menuCategories());
   const clean = sanitizeArrangement(page.key, document, page.categories);
-  const db = getDb();
-  const [existing] = await db.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "draft"))).limit(1);
-  const previous = existing ? readDocument(existing.document) : emptyArrangement();
-  const stamped = stamp(clean, previous, staff.name);
-  const trimmedNote = note.trim().slice(0, 400);
-  auditEvidence({ document: previous, note: existing?.note ?? "" }, { document: stamped, note: trimmedNote });
-  if (existing) {
-    await db.update(pageArrangements).set({ document: stamped, note: trimmedNote, placedBy: staff.id }).where(eq(pageArrangements.id, existing.id));
-    return;
-  }
-  await db.insert(pageArrangements).values({ pageKey: page.key, status: "draft", document: stamped, note: trimmedNote, placedBy: staff.id });
-}
-
-async function revalidate(path: string) {
-  await triggerRevalidate([path]);
-}
-
-export async function publishArrangement(staff: Staff, pageKey: string): Promise<{ path: string }> {
-  await requireReady();
-  const menu = await menuCategories();
-  const page = pageOf(pageKey, menu);
-  const db = getDb();
-  await db.transaction(async (tx) => {
-    const [draft] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "draft"))).for("update").limit(1);
-    if (!draft) throw new EditorError(422, "not_ready", "Първо запазете подреждането.");
-    const [current] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "published"))).for("update").limit(1);
-    if (current) await tx.update(pageArrangements).set({ status: "history" }).where(eq(pageArrangements.id, current.id));
-    auditEvidence({ document: current?.document ?? emptyArrangement(), note: current?.note ?? "" }, { document: draft.document, note: draft.note });
-    await tx.insert(pageArrangements).values({
-      pageKey: page.key,
-      status: "published",
-      document: draft.document,
-      note: draft.note,
-      placedBy: staff.id,
-      publishedAt: new Date(),
-    });
-    const history = await tx
-      .select({ id: pageArrangements.id })
-      .from(pageArrangements)
-      .where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "history")))
-      .orderBy(desc(pageArrangements.createdAt));
-    const extra = history.slice(HISTORY_LIMIT).map((row) => row.id);
-    if (extra.length) await tx.delete(pageArrangements).where(inArray(pageArrangements.id, extra));
-    await tx.insert(outboxEvents).values({
-      type: "layout.updated",
-      entityId: null,
-      version: 1,
-      payload: { path: page.path, title: page.title, topics: [] },
-    });
+  return getDb().transaction(async tx => {
+    const state = await checkedState(tx, page.key, expectedVersion);
+    const previous = readDocument(state.draft?.document ?? state.published?.document);
+    const stamped = stamp(clean, previous, staff.name);
+    const trimmedNote = note.trim().slice(0, 400);
+    auditEvidence({ document: previous, note: state.draft?.note ?? "" }, { document: stamped, note: trimmedNote });
+    await writeArrangementDraft(tx, page.key, stamped, trimmedNote, staff.id);
+    return { version: (await arrangementState(tx, page.key)).version };
   });
-  await revalidate(page.path);
-  return { path: page.path };
 }
 
-export async function revertArrangement(staff: Staff, pageKey: string, historyId: string): Promise<void> {
+export async function publishArrangement(staff: Staff, pageKey: string, expectedVersion?: string): Promise<{ path: string; version: string }> {
   await requireReady();
-  const menu = await menuCategories();
-  const page = pageOf(pageKey, menu);
-  const db = getDb();
-  await db.transaction(async (tx) => {
+  const page = pageOf(pageKey, await menuCategories());
+  const result = await getDb().transaction(async tx => {
+    const state = await checkedState(tx, page.key, expectedVersion);
+    if (!state.draft) throw new EditorError(422, "not_ready", "Първо запазете подреждането.");
+    auditEvidence({ document: state.published?.document ?? emptyArrangement() }, { document: state.draft.document });
+    await writePublishedArrangement(tx, page.key, readDocument(state.draft.document), state.draft.note, staff.id, page.path, page.title);
+    return { path: page.path, version: (await arrangementState(tx, page.key)).version };
+  });
+  await triggerRevalidate([page.path]);
+  return result;
+}
+
+export async function revertArrangement(staff: Staff, pageKey: string, historyId: string, expectedVersion?: string): Promise<{ version: string }> {
+  await requireReady();
+  const page = pageOf(pageKey, await menuCategories());
+  const result = await getDb().transaction(async tx => {
+    const state = await checkedState(tx, page.key, expectedVersion);
     const [history] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.id, historyId), eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "history"))).limit(1);
     if (!history) throw new EditorError(404, "not_found", "Това подреждане вече го няма.");
-    const [current] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "published"))).for("update").limit(1);
-    if (current) await tx.update(pageArrangements).set({ status: "history" }).where(eq(pageArrangements.id, current.id));
-    auditEvidence({ document: current?.document ?? emptyArrangement(), note: current?.note ?? "" }, { document: history.document, note: history.note });
-    await tx.insert(pageArrangements).values({
-      pageKey: page.key,
-      status: "published",
-      document: history.document,
-      note: history.note,
-      placedBy: staff.id,
-      publishedAt: new Date(),
-    });
-    const [draft] = await tx.select().from(pageArrangements).where(and(eq(pageArrangements.pageKey, page.key), eq(pageArrangements.status, "draft"))).limit(1);
-    if (draft) await tx.update(pageArrangements).set({ document: history.document, note: history.note, placedBy: staff.id }).where(eq(pageArrangements.id, draft.id));
-    else await tx.insert(pageArrangements).values({ pageKey: page.key, status: "draft", document: history.document, note: history.note, placedBy: staff.id });
-    await tx.insert(outboxEvents).values({
-      type: "layout.updated",
-      entityId: null,
-      version: 1,
-      payload: { path: page.path, title: page.title, topics: [] },
-    });
+    auditEvidence({ document: state.published?.document ?? emptyArrangement() }, { document: history.document });
+    await writePublishedArrangement(tx, page.key, readDocument(history.document), history.note, staff.id, page.path, page.title);
+    await writeArrangementDraft(tx, page.key, readDocument(history.document), history.note, staff.id);
+    return { version: (await arrangementState(tx, page.key)).version };
   });
-  await revalidate(page.path);
+  await triggerRevalidate([page.path]);
+  return result;
 }
 
-export async function placeArticle(staff: Staff, input: { pageKey: string; slot: string; articleId: string; hours: number | null }): Promise<void> {
+export async function placeArticle(staff: Staff, input: { pageKey: string; slot: string; articleId: string; hours: number | null; publish?: boolean; expectedVersion?: string }): Promise<{ version: string; path: string }> {
   await requireReady();
-  const menu = await menuCategories();
-  const page = pageOf(input.pageKey, menu);
-  const [article] = await getDb().select({ id: articles.id, isPublic: articles.isPublic }).from(articles).where(eq(articles.id, input.articleId)).limit(1);
-  if (!article?.isPublic) throw new EditorError(422, "not_ready", "На място се слага само публикувана новина.");
-  const probe = sanitizeArrangement(page.key, {
-    slots: { [input.slot]: { items: [{ articleId: input.articleId, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] } },
-    excluded: [],
-  }, page.categories);
+  const page = pageOf(input.pageKey, await menuCategories());
+  const probe = sanitizeArrangement(page.key, { slots: { [input.slot]: { items: [{ articleId: input.articleId, startsAt: null, endsAt: null, placedBy: "", placedAt: null }] } }, excluded: [] }, page.categories);
   if (!probe.slots[input.slot]) throw new EditorError(422, "invalid_input", "Няма такова място.");
-  const current = await loadArrangement(page.key);
-  const endsAt = input.hours === null ? null : new Date(Date.now() + input.hours * 60 * 60 * 1000).toISOString();
-  const existing = current.draft.slots[input.slot]?.items.filter((item) => item.articleId !== input.articleId) ?? [];
-  const next: ArrangementDocument = {
-    ...current.draft,
-    slots: {
-      ...current.draft.slots,
-      [input.slot]: {
-        items: [{ articleId: input.articleId, startsAt: null, endsAt, placedBy: staff.name, placedAt: new Date().toISOString() }, ...existing].slice(0, 6),
-      },
-    },
-  };
-  await saveArrangement(staff, page.key, next, current.note);
+  const result = await getDb().transaction(async tx => {
+    // Lock the article first: this is also the ordering used by publish and delete.
+    const [article] = await tx.select({ id: articles.id, isPublic: articles.isPublic }).from(articles).where(eq(articles.id, input.articleId)).for("update").limit(1);
+    if (!article?.isPublic) throw new EditorError(422, "not_ready", "На място се слага само публикувана новина.");
+    const state = await checkedState(tx, page.key, input.expectedVersion);
+    const at = new Date().toISOString();
+    const endsAt = input.hours === null ? null : new Date(Date.now() + input.hours * 3600000).toISOString();
+    const patch = (base: ArrangementDocument): ArrangementDocument => ({ ...base, slots: { ...base.slots, [input.slot]: { items: [{ articleId: input.articleId, startsAt: null, endsAt, placedBy: staff.name, placedAt: at }, ...(base.slots[input.slot]?.items.filter(item => item.articleId !== input.articleId) ?? [])].slice(0, 6) } } });
+    const before = readDocument(state.draft?.document ?? state.published?.document);
+    const draft = patch(before);
+    await writeArrangementDraft(tx, page.key, draft, state.draft?.note ?? state.published?.note ?? "", staff.id);
+    if (input.publish) await writePublishedArrangement(tx, page.key, patch(readDocument(state.published?.document)), state.published?.note ?? "", staff.id, page.path, page.title);
+    auditEvidence({ document: before }, { document: draft });
+    return { version: (await arrangementState(tx, page.key)).version, path: page.path };
+  });
+  if (input.publish) await triggerRevalidate([page.path]);
+  return result;
 }
 
 export async function searchPlacementArticles(query: string): Promise<ArrangementArticle[]> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HOME_PAGE_KEY, categorySlotCatalog, homeSlotCatalog, type SlotLabel } from "@newspoint/content";
 import type { MenuCategory } from "@/lib/arrangement-types";
 import { withBase } from "@/lib/paths";
@@ -13,11 +13,25 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState<"place" | "draft" | null>(null);
   const slots: SlotLabel[] = pageKey === HOME_PAGE_KEY ? homeSlotCatalog(menu) : categorySlotCatalog();
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const controller = new AbortController();
+    setVersion(null);
+    void fetch(withBase(`/api/arrangements/?page=${encodeURIComponent(pageKey)}`), { cache: "no-store", signal: controller.signal })
+      .then(async response => {
+        const data = await response.json();
+        if (!response.ok || !data.version) throw new Error(data.error?.message ?? "Неуспешно зареждане.");
+        if (!controller.signal.aborted) setVersion(data.version);
+      }).catch(error => { if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : "Няма връзка."); });
+    return () => controller.abort();
+  }, [open, pageKey]);
   const [slot, setSlot] = useState(slots[0]?.key ?? "hero");
 
   if (!publicArticle) return null;
 
   async function submit(publish: boolean) {
+    if (!version) return;
     setBusy(publish ? "place" : "draft");
     setMessage("");
     setOk(false);
@@ -25,13 +39,14 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
       const response = await fetch(withBase("/api/arrangements/"), {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "place", pageKey, slot, articleId, hours, publish }),
+        body: JSON.stringify({ action: "place", pageKey, slot, articleId, hours, publish, expectedVersion: version }),
       });
-      const data = await response.json() as { error?: { message?: string }; published?: boolean; path?: string };
+      const data = await response.json() as { error?: { message?: string }; published?: boolean; version?: string; path?: string };
       if (!response.ok) {
         setMessage(data.error?.message ?? "Неуспешен запис.");
         return;
       }
+      setVersion(data.version ?? null);
       setOk(true);
       if (publish) {
         setMessage("Сложено е на сайта. Читателите го виждат веднага.");
@@ -55,6 +70,9 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
             <label className="mt-3 block text-[11px] text-muted">Страница
               <select disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={pageKey} onChange={(event) => {
                 const next = event.target.value;
+                setVersion(null);
+                setMessage("");
+                setOk(false);
                 setPageKey(next);
                 const nextSlots = next === HOME_PAGE_KEY ? homeSlotCatalog(menu) : categorySlotCatalog();
                 setSlot(nextSlots[0]?.key ?? "lead");
@@ -84,10 +102,10 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
             ) : null}
             <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
               <button type="button" disabled={!!busy} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => setOpen(false)}>Затвори</button>
-              <button type="button" disabled={!!busy} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => void submit(false)}>
+              <button type="button" disabled={!!busy || !version} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => void submit(false)}>
                 {busy === "draft" ? "Запис…" : "Чернова"}
               </button>
-              <button type="button" disabled={!!busy} className="np-btn np-btn-primary h-8 px-3 text-xs" onClick={() => void submit(true)}>
+              <button type="button" disabled={!!busy || !version} className="np-btn np-btn-primary h-8 px-3 text-xs" onClick={() => void submit(true)}>
                 {busy === "place" ? "Слагане…" : "Сложи"}
               </button>
             </div>

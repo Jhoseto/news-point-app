@@ -6,6 +6,19 @@ export const HOME_LEAD_SECTION = "plovdiv";
 /** Same stack as the homepage column beside България (Култура, then Лайфстайл). */
 export const HOME_ASIDE_SECTIONS = ["kultura", "lajfstajl"] as const;
 export const HOME_SUPPORT_COUNT = 3;
+export const HOME_HERO_SLOTS = ["hero", "support-0", "support-1", "support-2"] as const;
+export const homeHeroPositionSchema = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]);
+export type HomeHeroPosition = z.infer<typeof homeHeroPositionSchema>;
+
+/** Replace one entire hero queue, moving this story out of the other hero slots only. */
+export function placeHomeHero(document: ArrangementDocument, articleId: string, position: HomeHeroPosition, name: string, at: string): ArrangementDocument {
+  const slots = { ...document.slots };
+  for (const key of HOME_HERO_SLOTS) {
+    if (slots[key]) slots[key] = { items: slots[key].items.filter(item => item.articleId !== articleId) };
+  }
+  slots[HOME_HERO_SLOTS[position - 1]!] = { items: [{ articleId, startsAt: null, endsAt: null, placedBy: name, placedAt: at }] };
+  return { slots, excluded: document.excluded };
+}
 export const HOME_CAROUSEL_COUNT = 10;
 /** Slot keys `carousel-0` … for the „На Фокус“ row (legacy prefix). */
 export const HOME_FOCUS_CAROUSEL_PREFIX = "carousel";

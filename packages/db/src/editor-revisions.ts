@@ -1,7 +1,20 @@
 import { sql } from "drizzle-orm";
 import type { ScriptDb } from "./node";
+import type { HomeHeroPosition } from "@newspoint/content";
 
 type Executor = Pick<ScriptDb, "execute">;
+export async function hasRevisionHomeHero(db: Executor): Promise<boolean> {
+  const rows = await db.execute<{ ready: boolean }>(sql`select exists(select 1 from information_schema.columns where table_schema='public' and table_name='article_revisions' and column_name='home_hero_position') as ready`);
+  return rows[0]?.ready === true;
+}
+export async function revisionHomeHero(db: Executor, articleId: string, number: number): Promise<HomeHeroPosition | null> {
+  if (!await hasRevisionHomeHero(db)) return null;
+  const rows = await db.execute<{ position: HomeHeroPosition | null }>(sql`select home_hero_position as position from article_revisions where article_id=${articleId}::uuid and number=${number}`);
+  return rows[0]?.position ?? null;
+}
+export async function writeRevisionHomeHero(db: Executor, articleId: string, number: number, position: HomeHeroPosition | null): Promise<void> {
+  await db.execute(sql`update article_revisions set home_hero_position=${position} where article_id=${articleId}::uuid and number=${number}`);
+}
 /** Raw optional columns keep the old database readable until Koce applies migration 30. */
 export async function hasRevisionListen(db: Executor): Promise<boolean> {
   const rows = await db.execute<{ ready: boolean }>(sql`select exists(select 1 from information_schema.columns where table_schema='public' and table_name='article_revisions' and column_name='listen_enabled') as ready`);

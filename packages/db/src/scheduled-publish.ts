@@ -1,8 +1,10 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { ScriptDb } from "./node";
-import { articleCategories, articleRevisions, articles, categories, mediaAssets, outboxEvents } from "./schema";
-import { articleBody, publicationProblems } from "@newspoint/content";
-import { revisionListen, qaPublicationAllowed } from "./editor-revisions";
+import { articleCategories, articleRevisions, articles, categories, mediaAssets, outboxEvents, staffUsers } from "./schema";
+import { articleBody, publicationProblems, triggerRevalidate } from "@newspoint/content";
+import { revisionHomeHero, revisionListen, qaPublicationAllowed } from "./editor-revisions";
+import { publishHomeHero } from "./arrangement-writes";
+import { hasPageArrangements } from "./page-arrangements";
 import { applyArticlePublishViews } from "./view-boosts";
 
 const readiness = new WeakMap<object, { until: number; pending: Promise<boolean> }>();
@@ -30,6 +32,7 @@ export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string):
     .where(and(sql`${articles.scheduledPublishAt} is not null`, sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false), onlyArticleId ? eq(articles.id, onlyArticleId) : undefined))
     .limit(20);
   let published = 0;
+  let heroChanged = false;
   for (const row of due) {
     const ok = await db.transaction(async (tx) => {
       const [article] = await tx.select().from(articles).where(and(eq(articles.id, row.id), sql`${articles.scheduledPublishAt} <= now()`, eq(articles.isPublic, false), onlyArticleId ? eq(articles.id, onlyArticleId) : undefined)).for("update").limit(1);
@@ -48,6 +51,8 @@ export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string):
       if (taken || takenCategory) return false;
       const [category] = await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, revision.primaryCategoryId!)).limit(1);
       if (!category) return false;
+      const homeHeroPosition = revision.number > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, article.id, revision.number) : null;
+      if (homeHeroPosition !== null && !await hasPageArrangements(tx)) return false;
       const version = article.version + 1;
       await tx.update(articles).set({
         title: revision.title,
@@ -72,6 +77,12 @@ export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string):
       await tx.delete(articleCategories).where(eq(articleCategories.articleId, article.id));
       await tx.insert(articleCategories).values({ articleId: article.id, categoryId: revision.primaryCategoryId! });
       await applyArticlePublishViews(tx, article.id);
+      if (homeHeroPosition !== null) {
+        const actorId = revision.createdBy ?? article.createdBy;
+        const [actor] = actorId ? await tx.select({ name: staffUsers.name }).from(staffUsers).where(eq(staffUsers.id, actorId)).limit(1) : [];
+        await publishHomeHero(tx, article.id, homeHeroPosition, actorId, actor?.name ?? "Редакция");
+        heroChanged = true;
+      }
       await tx.insert(outboxEvents).values({
         type: article.publishedAt ? "article.updated" : "article.published",
         entityId: article.id,
@@ -82,5 +93,6 @@ export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string):
     });
     if (ok) published += 1;
   }
+  if (heroChanged) await triggerRevalidate(["/"]);
   return published;
 }

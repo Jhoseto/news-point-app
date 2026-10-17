@@ -9,6 +9,8 @@ export { hasMediaPresentations } from "./media-presentation";
 export { hasArticleReadCounts } from "./article-reads";
 export { applyDueViewBoosts, hasArticleViewBoosts, applyArticlePublishViews } from "./view-boosts";
 export { hasPageArrangements } from "./page-arrangements";
+export * from "./arrangement-writes";
+export { hasRevisionHomeHero, revisionHomeHero, writeRevisionHomeHero } from "./editor-revisions";
 export { hasScheduledPublish, publishDueScheduled } from "./scheduled-publish";
 export { hasStoryThemeSlugHistory } from "./story-theme-slugs";
 export { hasRevisionListen, revisionListen, writeRevisionListen, qaPublicationAllowed } from "./editor-revisions";
