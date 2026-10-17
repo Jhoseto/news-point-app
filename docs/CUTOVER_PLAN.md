@@ -4,7 +4,11 @@
 
 Primary technical references:
 
+- [docs/CUTOVER_AUDIT.md](./CUTOVER_AUDIT.md) — latest read-only audit (2026-10-17)
 - [deploy/np2/CLOUDFLARE.md](../deploy/np2/CLOUDFLARE.md) — ingress, SSL, cache, indexing, verification
+- [deploy/np2/APACHE_FLIP.md](../deploy/np2/APACHE_FLIP.md) — vhost switch + rollback
+- [deploy/np2/cloudflare-cache-rules.md](../deploy/np2/cloudflare-cache-rules.md) — NP2 cache expressions
+- [deploy/np2/cloudflare-proxies.txt.example](../deploy/np2/cloudflare-proxies.txt.example) — trusted CF IPs
 - [deploy/np2/cloudflare-origin.conf.example](../deploy/np2/cloudflare-origin.conf.example) — `mod_remoteip` template
 - [docs/SEO_PLAN.md](./SEO_PLAN.md) — indexing and discovery alignment
 

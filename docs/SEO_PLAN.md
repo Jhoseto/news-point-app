@@ -120,8 +120,9 @@ S1 е реализирана. Тук остават външните стъпк�
 
 1. Изрично решение на Коце да се махне `noindex` / `X-Robots-Tag` (layout + next.config).
 2. Доменът `newspoint.bg` е потвърден от Коце. При реалното преминаване трябва проверка на HTTPS/host redirects и един `WEB_URL` върху финалния хост; това още не е изпълнено на production.
-3. Подаване на sitemap в Google Search Console (само след стъпка 1–2).
-4. Google News: няма задължителна ръчна регистрация/конфигурация на publication page в Publisher Center — Google премина към автоматично генерирани страници през март 2025. Отделен news sitemap остава опция, не условие за основния SEO код. [Официални указания](https://support.google.com/news/publisher-center/answer/15898024?hl=en).
+3. **Google Analytics:** същият GA4 property като WordPress — `NEXT_PUBLIC_GTM_ID` или `NEXT_PUBLIC_GA_MEASUREMENT_ID` в production `.env.local`; tag се зарежда с `NP_PUBLIC_INDEXING=1` (или `NP_PUBLIC_ANALYTICS=1` за контролиран preview тест). Виж `.env.example` и [CUTOVER_AUDIT.md](./CUTOVER_AUDIT.md).
+4. Подаване на sitemap в Google Search Console (само след стъпка 1–2).
+5. Google News: няма задължителна ръчна регистрация/конфигурация на publication page в Publisher Center — Google премина към автоматично генерирани страници през март 2025. Отделен news sitemap остава опция, не условие за основния SEO код. [Официални указания](https://support.google.com/news/publisher-center/answer/15898024?hl=en).
 
 ### 4.2 Теми с продължение (`/temi/`)
 
