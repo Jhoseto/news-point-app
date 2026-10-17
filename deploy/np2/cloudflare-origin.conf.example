@@ -1,0 +1,12 @@
+# Preparation only. A server administrator must review this for the np2 virtual host.
+# Do not add these directives to shared/global Apache or the old WordPress virtual host.
+# Requires mod_remoteip and a NONEMPTY, administrator-maintained list of the current
+# Cloudflare IPv4/IPv6 networks from https://www.cloudflare.com/ips/ .
+# Never enable RemoteIPHeader without the trusted proxy list.
+RemoteIPTrustedProxyList /etc/apache2/newspoint-cloudflare-proxies.txt
+RemoteIPHeader CF-Connecting-IP
+
+# Keep the application listeners bound to 127.0.0.1:3100 and :3101.
+# Restrict external origin access to Cloudflare networks/authorized administrators.
+# Cloudflare SSL/TLS mode: Full (strict), valid origin certificate for WEB_URL host.
+# The generated .htaccess checks Apache TLS, not untrusted forwarded headers.

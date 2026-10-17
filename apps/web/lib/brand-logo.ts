@@ -17,10 +17,10 @@ export const BRAND_LOGO = {
 
 /** Dark-mode wordmark. Same slots as `BRAND_LOGO`; light mode keeps the original. */
 export const BRAND_LOGO_DARK = {
-  width: 974,
-  height: 339,
+  width: BRAND_LOGO.width,
+  height: BRAND_LOGO.height,
   src: brandAssetUrl("/brand/newspoint-logo-dark.webp"),
-  srcSet: `${brandAssetUrl("/brand/newspoint-logo-dark-512w.webp")} 512w, ${brandAssetUrl("/brand/newspoint-logo-dark.webp")} 974w`,
+  srcSet: `${brandAssetUrl("/brand/newspoint-logo-dark-512w.webp")} 512w, ${brandAssetUrl("/brand/newspoint-logo-dark.webp")} ${BRAND_LOGO.width}w`,
 } as const;
 
 export const BRAND_MARK_EMBLEM = brandAssetUrl("/brand/mark-emblem.webp");

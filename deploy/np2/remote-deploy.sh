@@ -60,8 +60,11 @@ case "$TTS_CACHE_DIR/" in
 esac
 
 cd "$SOURCE"
+# Validate the future ingress before installing/building or replacing the live copy.
+# This command renders to stdout only and never applies server configuration.
+node "$SOURCE/deploy/np2/render-ingress.mjs" "$SOURCE/.env.local" > /dev/null
 echo "Installing dependencies..."
-if ! pnpm install; then
+if ! pnpm install --frozen-lockfile; then
   echo "Install failed. The live site was not replaced." >&2
   exit 1
 fi

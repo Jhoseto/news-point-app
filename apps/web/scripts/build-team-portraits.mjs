@@ -9,7 +9,7 @@ if (!sourceDir) throw new Error("Usage: node build-team-portraits.mjs <cutout-di
 const outputDir = resolve(import.meta.dirname, "../public/brand");
 await mkdir(outputDir, { recursive: true });
 
-for (const name of ["atanas", "stanimir", "petar", "nikolai"]) {
+for (const name of ["atanas", "stanimir", "petar", "nikolai", "vilina", "maria"]) {
   const input = await readFile(resolve(sourceDir, `${name}.png`));
   const metadata = await sharp(input).metadata();
   if (!metadata.hasAlpha) throw new Error(`${name}: portrait must have transparency`);

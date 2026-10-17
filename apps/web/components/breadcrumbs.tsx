@@ -7,7 +7,7 @@ export function Breadcrumbs({ items, dense = false }: { items: { name: string; p
     <nav aria-label="Навигационна пътека" className={`font-medium text-muted ${dense ? "text-[0.6875rem]" : "text-xs"}`}>
       <ol className="flex flex-wrap items-center gap-0.5">
         <li>
-          <Link href="/" className={`inline-flex ${touch} items-center gap-1 hover:text-ink`}>
+          <Link href="/" prefetch={false} className={`inline-flex ${touch} items-center gap-1 hover:text-ink`}>
             <HomeIcon width={14} height={14} />
             Начало
           </Link>
@@ -18,7 +18,7 @@ export function Breadcrumbs({ items, dense = false }: { items: { name: string; p
             <li key={`${item.name}-${index}`} className="inline-flex min-w-0 items-center gap-1">
               <ChevronRightIcon width={13} height={13} className="shrink-0" />
               {item.path && !last ? (
-                <Link href={item.path} className={`inline-flex ${touch} ${dense ? "min-w-0 px-0.5" : "min-w-11 px-1"} items-center hover:text-ink`}>
+                <Link href={item.path} prefetch={false} className={`inline-flex ${touch} ${dense ? "min-w-0 px-0.5" : "min-w-11 px-1"} items-center hover:text-ink`}>
                   {item.name}
                 </Link>
               ) : (

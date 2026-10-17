@@ -43,13 +43,27 @@ const cutout = await knockOutBlack(trimmed);
 const meta = await cutout.metadata();
 const displayWidth = Math.min(1024, meta.width);
 const displayHeight = Math.round((meta.height / meta.width) * displayWidth);
+const thumbWidth = 512;
+const thumbHeight = Math.round((meta.height / meta.width) * thumbWidth);
+
+/** Same canvas as the light wordmark so header/footer slots match in both themes. */
+function fitDarkToLightCanvas(image, width, height) {
+  return image.resize(width, height, {
+    fit: "contain",
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+  });
+}
 
 const webpOpts = { quality: 92, alphaQuality: 100, effort: 6, smartSubsample: false, nearLossless: false };
 
 await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo.webp"));
 
 if (meta.width >= 512) {
-  await cutout.clone().resize({ width: 512, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-512w.webp"));
+  await cutout
+    .clone()
+    .resize({ width: thumbWidth, height: thumbHeight, withoutEnlargement: true })
+    .webp(webpOpts)
+    .toFile(join(outDir, "newspoint-logo-512w.webp"));
 }
 
 const darkSource = join(brandDir, "newspoint-logo-dark-source.png");
@@ -59,13 +73,20 @@ try {
   const darkTrimmed = sharp(darkSource).rotate().trim({ threshold: 12 });
   const darkCutout = await knockOutBlack(darkTrimmed);
   const darkMeta = await darkCutout.metadata();
-  const darkWidth = Math.min(1024, darkMeta.width);
-  const darkHeight = Math.round((darkMeta.height / darkMeta.width) * darkWidth);
-  await darkCutout.clone().resize({ width: darkWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark.webp"));
+  await fitDarkToLightCanvas(darkCutout.clone(), displayWidth, displayHeight)
+    .webp(webpOpts)
+    .toFile(join(outDir, "newspoint-logo-dark.webp"));
   if (darkMeta.width >= 512) {
-    await darkCutout.clone().resize({ width: 512, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark-512w.webp"));
+    await fitDarkToLightCanvas(darkCutout.clone(), thumbWidth, thumbHeight)
+      .webp(webpOpts)
+      .toFile(join(outDir, "newspoint-logo-dark-512w.webp"));
   }
-  darkManifest = { intrinsicWidth: darkWidth, intrinsicHeight: darkHeight, sourceWidth: darkMeta.width, sourceHeight: darkMeta.height };
+  darkManifest = {
+    intrinsicWidth: displayWidth,
+    intrinsicHeight: displayHeight,
+    sourceWidth: darkMeta.width,
+    sourceHeight: darkMeta.height,
+  };
 } catch {
   await cutout.clone().resize({ width: displayWidth, withoutEnlargement: true }).webp(webpOpts).toFile(join(outDir, "newspoint-logo-dark.webp"));
 }

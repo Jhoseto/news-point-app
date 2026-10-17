@@ -6,6 +6,7 @@ import { DESKTOP_QUERY } from "../lib/viewport-shell";
 import { useReducedMotion } from "./reader-preferences";
 
 const TITLE_TIP_QUERY = `${DESKTOP_QUERY} and (hover: hover) and (pointer: fine)`;
+const SHOW_DELAY_MS = 3000;
 
 function isPageScroll(event: Event) {
   const target = event.target;
@@ -47,43 +48,79 @@ export function ClampedTitleTip({
 }) {
   const anchor = useRef<HTMLHeadingElement | null>(null);
   const hideTimer = useRef(0);
+  const showTimer = useRef(0);
   const [portalReady, setPortalReady] = useState(false);
-  const [tip, setTip] = useState<{ x: number; y: number; open: boolean } | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; open: boolean; closing?: boolean } | null>(null);
   const reducedMotion = useReducedMotion();
+
+  const clearShowTimer = useCallback(() => {
+    if (showTimer.current) {
+      window.clearTimeout(showTimer.current);
+      showTimer.current = 0;
+    }
+  }, []);
 
   useEffect(() => {
     setPortalReady(true);
     return () => {
+      clearShowTimer();
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
     };
-  }, []);
+  }, [clearShowTimer]);
 
-  const hide = useCallback(() => {
-    if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    hideTimer.current = window.setTimeout(() => setTip(null), 140);
-  }, []);
-
-  const dismiss = useCallback(() => {
-    if (hideTimer.current) window.clearTimeout(hideTimer.current);
-    setTip(null);
-  }, []);
-
-  const show = useCallback((event: PointerEvent<HTMLHeadingElement>) => {
-    // Touch also emits pointerenter, even on a laptop with a fine primary pointer.
-    if (event.pointerType !== "mouse" || !window.matchMedia(TITLE_TIP_QUERY).matches) {
-      dismiss();
-      return;
-    }
-    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+  const revealTip = useCallback(() => {
     const element = anchor.current;
     if (!element || !isClamped(element)) return;
     const { x, y } = tipPosition(element);
     setTip({ x, y, open: reducedMotion });
     if (reducedMotion) return;
     requestAnimationFrame(() => {
-      setTip((current) => (current ? { ...current, open: true } : null));
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setTip((current) => (current ? { ...current, open: true, closing: false } : null));
+        });
+      });
     });
-  }, [dismiss, reducedMotion]);
+  }, [reducedMotion]);
+
+  const hide = useCallback(() => {
+    clearShowTimer();
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    hideTimer.current = window.setTimeout(() => {
+      setTip((current) => {
+        if (!current) return null;
+        if (!current.open || current.closing) return null;
+        return { ...current, open: false, closing: true };
+      });
+      hideTimer.current = window.setTimeout(() => setTip(null), reducedMotion ? 0 : 560);
+    }, 60);
+  }, [clearShowTimer, reducedMotion]);
+
+  const dismiss = useCallback(() => {
+    clearShowTimer();
+    if (hideTimer.current) window.clearTimeout(hideTimer.current);
+    setTip(null);
+  }, [clearShowTimer]);
+
+  const show = useCallback(
+    (event: PointerEvent<HTMLHeadingElement>) => {
+      // Touch also emits pointerenter, even on a laptop with a fine primary pointer.
+      if (event.pointerType !== "mouse" || !window.matchMedia(TITLE_TIP_QUERY).matches) {
+        dismiss();
+        return;
+      }
+      clearShowTimer();
+      if (hideTimer.current) window.clearTimeout(hideTimer.current);
+      const element = anchor.current;
+      if (!element || !isClamped(element)) return;
+      const delay = reducedMotion ? 0 : SHOW_DELAY_MS;
+      showTimer.current = window.setTimeout(() => {
+        showTimer.current = 0;
+        revealTip();
+      }, delay);
+    },
+    [clearShowTimer, dismiss, revealTip, reducedMotion],
+  );
 
   useEffect(() => {
     if (!tip) return;
@@ -132,6 +169,7 @@ export function ClampedTitleTip({
             <div
               role="tooltip"
               data-open={tip.open || undefined}
+              data-closing={tip.closing || undefined}
               className={tipClassName}
               style={{ left: tip.x, top: tip.y }}
             >

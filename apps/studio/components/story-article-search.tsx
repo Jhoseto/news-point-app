@@ -39,6 +39,7 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -64,7 +65,13 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
         `/api/stories/search-articles?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${offset}`,
       );
       const res = await fetch(url, { cache: "no-store" });
+      if (res.status === 401) {
+        setSessionExpired(true);
+        setError("Сесията изтече. Избраното е запазено тук; влезте отново в отделния прозорец и повторете търсенето.");
+        return;
+      }
       if (!res.ok) throw new Error(`Грешка ${res.status}`);
+      setSessionExpired(false);
       const data = (await res.json()) as { articles: Selection[]; hasMore?: boolean };
       setResults((current) => (append ? [...current, ...data.articles] : data.articles));
       setCatalog((current) => mergeCatalog(current, data.articles));
@@ -137,7 +144,11 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
               ? "Търсене..."
               : `Избрани: ${selected.size} · показани ${results.length}${hasMore ? "+" : ""}`}
           </p>
-          {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
+          {error ? <p role="alert" className="mt-1 text-xs text-danger">{error}</p> : null}
+          {sessionExpired ? <div className="mt-2 flex gap-3 text-sm">
+            <a href={withBase("/login/")} target="_blank" rel="noopener noreferrer" className="font-bold text-link underline">Вход в Studio</a>
+            <button type="button" onClick={() => void loadPage(search, 0, false)} disabled={loading} className="font-bold text-link underline">Опитай отново</button>
+          </div> : null}
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-3">
           {selectedArticles.length > 0 ? (

@@ -4,12 +4,31 @@ import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
 import { processOneAiPodcastJob } from "./ai-podcast-worker";
 import { startPushWorker } from "./push-worker";
+import { processOneMediaUpload, cleanExpiredUploads } from "./media-upload-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
 
 loadRootEnv();
 installSupervision();
-if (process.env.DEV_REMOTE === "1") {
+if (process.env.NP_UPLOAD_WORKER_ONLY === "1") {
+  // Isolated QA and dedicated upload service: never sync WP, publish, send push or call AI.
+  const { db, close } = createScriptDb("dev");
+  let running = false;
+  const tickUploads = async () => {
+    if (running) return;
+    running = true;
+    try { await cleanExpiredUploads(db); await processOneMediaUpload(db); }
+    catch (error) { console.error("[upload-worker]", error instanceof Error ? error.message : "unknown"); }
+    finally { running = false; }
+  };
+  await tickUploads();
+  if (args.once) await close();
+  else {
+    const timer = setInterval(() => void tickUploads(), 2000);
+    const stop = () => { clearInterval(timer); void close().then(() => process.exit(0)); };
+    process.on("SIGINT", stop); process.on("SIGTERM", stop);
+  }
+} else if (process.env.DEV_REMOTE === "1") {
   console.log("[worker] DEV_REMOTE=1: sync stays on the server.");
   setInterval(() => {}, 60 * 60 * 1000);
 } else {
@@ -64,7 +83,7 @@ async function runWorker() {
   const aiTimer = setInterval(() => {
     if (aiBusy) return;
     aiBusy = true;
-    void processOneAiPodcastJob(db)
+    void cleanExpiredUploads(db).then(() => processOneMediaUpload(db)).then(processed => processed ? undefined : processOneAiPodcastJob(db))
       .catch((error) => log(`AI Studio queue failed: ${(error as Error).message}`))
       .finally(() => { aiBusy = false; });
   }, 5_000);

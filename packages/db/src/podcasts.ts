@@ -25,6 +25,7 @@ const columns = {
   title: podcasts.title,
   slug: podcasts.slug,
   summary: podcasts.summary,
+  revision: podcasts.revision,
   coverKey: podcasts.coverKey,
   audioKey: podcasts.audioKey,
   durationSec: podcasts.durationSec,
@@ -91,7 +92,7 @@ export async function podcastAudioSizeReady(): Promise<boolean> {
 }
 
 export async function updatePodcastFiles(id: string, input: { title: string; summary: string; categoryId: string | null; coverKey?: string; audioKey?: string; durationSec?: number; bytes?: number }) {
-  const [row] = await getDb().update(podcasts).set({ ...input, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning();
+  const [row] = await getDb().update(podcasts).set({ ...input, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning();
   return row ?? null;
 }
 
@@ -112,20 +113,23 @@ export async function insertPodcast(input: {
   return row!;
 }
 
-export async function updatePodcastCopy(id: string, input: { title: string; summary: string; categoryId: string | null }) {
-  const [row] = await getDb().update(podcasts).set({ ...input, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning({ id: podcasts.id, slug: podcasts.slug, status: podcasts.status });
+export async function updatePodcastCopy(id: string, input: { title: string; summary: string; categoryId: string | null }, expectedRevision?: number) {
+  const [row] = await getDb().update(podcasts).set({ ...input, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() }).where(and(eq(podcasts.id, id), ...(expectedRevision ? [eq(podcasts.revision, expectedRevision)] : []))).returning({ id: podcasts.id, slug: podcasts.slug, status: podcasts.status, revision: podcasts.revision });
+  if (!row && expectedRevision) throw new PodcastError(409, "revision_conflict", "Епизодът е променен от друг редактор. Презаредете преди нов запис.");
   return row ?? null;
 }
 
-export async function setPodcastStatus(id: string, status: "draft" | "published", actor?: { id: string; name: string }) {
+export async function setPodcastStatus(id: string, status: "draft" | "published", actor?: { id: string; name: string }, expectedRevision?: number) {
   const [current] = await getDb().select({ publishedAt: podcasts.publishedAt }).from(podcasts).where(eq(podcasts.id, id)).limit(1);
   if (!current) return null;
   const publishedAt = status === "published" ? current.publishedAt ?? new Date() : current.publishedAt;
-  const [row] = await getDb().update(podcasts).set({ status, publishedAt, updatedAt: new Date() }).where(eq(podcasts.id, id)).returning({
+  const [row] = await getDb().update(podcasts).set({ status, publishedAt, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() }).where(and(eq(podcasts.id, id), ...(expectedRevision ? [eq(podcasts.revision, expectedRevision)] : []))).returning({
     id: podcasts.id,
     slug: podcasts.slug,
     status: podcasts.status,
+    revision: podcasts.revision,
   });
+  if (!row && expectedRevision) throw new PodcastError(409, "revision_conflict", "Епизодът е променен от друг редактор. Презаредете преди нов запис.");
   // Audit trail for status changes. Until a dedicated podcast_revisions table
   // exists (deferred until the third revision surface needs it), the actor and
   // the transition are surfaced on stdout — same stream the rest of the editor

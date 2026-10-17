@@ -12,7 +12,7 @@ import {
 import type { StudioEpisode } from "./podcast-desk-types";
 
 const EP_A: StudioEpisode = {
-  id: "a",
+  id: "a", revision: 1,
   title: "Убийството на Илиян Филипов",
   slug: "ubiyistvoto-na-iliyan-filipov-43719f",
   summary: "Анализ и коментар от студиото.",

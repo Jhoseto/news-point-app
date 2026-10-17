@@ -1,7 +1,7 @@
 import { withStaffAudit } from "../../../../../lib/audit";
 import { auditEvidence, auditFacts } from "../../../../../lib/audit-context";
 import { randomUUID } from "node:crypto";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { aiPodcastAudit, aiPodcastJobs, aiPodcastProjects, getDb, podcasts } from "@newspoint/db";
 import { studioOrigins } from "@/lib/auth";
@@ -38,8 +38,8 @@ async function handlePOST(request: Request) {
     auditFacts({ entityId: id, entityLabel: project.title ?? "", fileName: file.name, bytes: bytes.length });
     auditEvidence({ coverKey: project.coverKey }, { coverKey: key });
     await getDb().transaction(async (tx) => {
-      await tx.update(aiPodcastProjects).set({ coverKey: key, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, id));
-      if (project.episodeId) await tx.update(podcasts).set({ coverKey: key, updatedAt: new Date() }).where(eq(podcasts.id, project.episodeId));
+      await tx.update(aiPodcastProjects).set({ coverKey: key, revision: sql`${aiPodcastProjects.revision} + 1`, updatedAt: new Date() }).where(eq(aiPodcastProjects.id, id));
+      if (project.episodeId) await tx.update(podcasts).set({ coverKey: key, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() }).where(eq(podcasts.id, project.episodeId));
       await tx.insert(aiPodcastAudit).values({ projectId: id, actorId: staff.id, action: "cover_uploaded", details: { key } });
     });
     return json({ key });

@@ -10,13 +10,13 @@ export const dynamic = "force-dynamic";
 const body = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("save"),
-    id: z.uuid(),
+    id: z.uuid(), revision: z.number().int().positive(),
     title: z.string().trim().min(2).max(180),
     summary: z.string().trim().min(1).max(600),
     categoryId: z.uuid().nullable(),
   }).strict(),
-  z.object({ action: z.literal("publish"), id: z.uuid() }).strict(),
-  z.object({ action: z.literal("hide"), id: z.uuid() }).strict(),
+  z.object({ action: z.literal("publish"), id: z.uuid(), revision: z.number().int().positive() }).strict(),
+  z.object({ action: z.literal("hide"), id: z.uuid(), revision: z.number().int().positive() }).strict(),
 ]);
 
 function json(data: unknown, status = 200) {
@@ -33,16 +33,16 @@ async function handlePOST(request: Request) {
   try {
     if (parsed.data.action === "save") {
       const { title, summary, categoryId } = parsed.data;
-      const row = await updatePodcastCopy(parsed.data.id, { title, summary, categoryId });
+      const row = await updatePodcastCopy(parsed.data.id, { title, summary, categoryId }, parsed.data.revision);
       if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
       const refreshed = row.status === "published" ? await refreshPodcastPages(row.slug) : false;
-      return json({ ok: true, refreshed });
+      return json({ ok: true, refreshed, revision: row.revision });
     }
     const status = parsed.data.action === "publish" ? "published" : "draft";
-    const row = await setPodcastStatus(parsed.data.id, status, { id: staff.id, name: staff.name ?? staff.email });
+    const row = await setPodcastStatus(parsed.data.id, status, { id: staff.id, name: staff.name ?? staff.email }, parsed.data.revision);
     if (!row) return json({ error: { message: "Епизодът не е намерен." } }, 404);
     const refreshed = status === "published" || row.status === "draft" ? await refreshPodcastPages(row.slug) : false;
-    return json({ ok: true, refreshed });
+    return json({ ok: true, refreshed, revision: row.revision });
   } catch (error) {
     if (error instanceof PodcastError) return json({ error: { message: error.message } }, error.status);
     console.error("[studio-podcasts]", error instanceof Error ? error.message : "unknown");

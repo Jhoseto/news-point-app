@@ -9,8 +9,8 @@ export const BRAND_LOGO = {
 } as const;
 
 export const BRAND_LOGO_DARK = {
-  width: 974,
-  height: 339,
+  width: BRAND_LOGO.width,
+  height: BRAND_LOGO.height,
   src: "/brand/newspoint-logo-dark.webp",
-  srcSet: "/brand/newspoint-logo-dark-512w.webp 512w, /brand/newspoint-logo-dark.webp 974w",
+  srcSet: `/brand/newspoint-logo-dark-512w.webp 512w, /brand/newspoint-logo-dark.webp ${BRAND_LOGO.width}w`,
 } as const;

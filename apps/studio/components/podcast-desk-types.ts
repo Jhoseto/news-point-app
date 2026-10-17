@@ -2,6 +2,7 @@
 
 export type StudioEpisode = {
   id: string;
+  revision: number;
   title: string;
   slug: string;
   summary: string;

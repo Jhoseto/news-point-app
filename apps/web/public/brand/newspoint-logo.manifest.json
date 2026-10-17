@@ -1,5 +1,5 @@
 {
-  "assetVersion": "26bcab58f2",
+  "assetVersion": "9b12b3cb8e",
   "emblemBytes": 32168,
   "intrinsicWidth": 981,
   "intrinsicHeight": 278,
@@ -7,9 +7,9 @@
   "sourceWidth": 981,
   "sourceHeight": 278,
   "dark": {
-    "intrinsicWidth": 974,
-    "intrinsicHeight": 339,
-    "sourceWidth": 974,
-    "sourceHeight": 339
+    "intrinsicWidth": 981,
+    "intrinsicHeight": 278,
+    "sourceWidth": 992,
+    "sourceHeight": 287
   }
 }

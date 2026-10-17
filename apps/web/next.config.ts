@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
+import { indexingHeaderRules } from "./lib/indexing-policy.mjs";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
@@ -22,9 +23,10 @@ function mediaOrigin(): string {
 const nextConfig: NextConfig = {
   transpilePackages: ["@newspoint/db", "@newspoint/content"],
   turbopack: { root: repoRoot },
-  // /admin uploads are externally rewritten to Studio. Allow the full 100 MiB
-  // podcast plus 25 MiB cover and multipart overhead; handlers keep file limits.
-  experimental: { proxyClientMaxBodySize: "130mb" },
+  // Resumable video/podcast requests are <=4 MiB. Keep enough room for the
+  // remaining 30 MiB music /25 MiB image forms, including multipart overhead.
+  // This also bounds rewrite buffering below Cloudflare's smallest upload cap.
+  experimental: { proxyClientMaxBodySize: "32mb" },
   // Preserve the pinned Next list (social previews included) and put metadata
   // in <head> for AI readers that do not execute streamed client scripts.
   // Recheck this Next internal export when upgrading the pinned version.
@@ -54,11 +56,9 @@ const nextConfig: NextConfig = {
     };
   },
   async headers() {
-    // Local preview must never be indexed (DEC-111).
-    const noindex = {
+    const viewportHints = {
       source: "/:path*",
       headers: [
-        { key: "X-Robots-Tag", value: "noindex, nofollow" },
         // Viewport Client Hints so SSR can emit only the mobile or desktop shell (not both).
         { key: "Accept-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
         { key: "Critical-CH", value: "Sec-CH-UA-Mobile, Sec-CH-Viewport-Width" },
@@ -99,7 +99,7 @@ const nextConfig: NextConfig = {
     };
     const workerCache = { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] };
     // Catch-all first; explicit PWA/wordmark paths below override Cache-Control.
-    return [noindex, brandHashed, ...brandRevalidate, workerCache];
+    return [viewportHints, ...indexingHeaderRules(), brandHashed, ...brandRevalidate, workerCache];
   },
 };
 

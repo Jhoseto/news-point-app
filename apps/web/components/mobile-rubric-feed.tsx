@@ -16,6 +16,7 @@ import { SectionTitle } from "./ui";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Logo } from "./logo";
 import { LATEST_CAROUSEL_SPEED } from "@/lib/carousel-autoplay";
+import { carouselArticle } from "@/lib/carousel-article";
 
 const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
 const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
@@ -48,7 +49,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean; speed?: number }, id: string) => {
     const position = window?.[id]?.carousel;
     const rotated = position ? [...articles.slice(position.index), ...articles.slice(0, position.index)] : articles;
-    return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(reviveFeedArticle)} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
+    return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(article => carouselArticle(reviveFeedArticle(article)))} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
   };
   const renderMainSection = (section: MobileHomeMainSection) => {
     if (section.category.slug !== "balgariya" && !section.wide) return null;

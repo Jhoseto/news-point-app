@@ -21,6 +21,8 @@ const portraitByName: Record<string, TeamPhoto> = {
   "станимир дикелов": { small: "/brand/team-stanimir-cutout-800-b23223c9.webp", large: "/brand/team-stanimir-cutout-1120-b23223c9.webp", alt: "Станимир Дикелов" },
   "атанас доминов": { small: "/brand/team-atanas-cutout-800-d3aa0ef8.webp", large: "/brand/team-atanas-cutout-1120-d3aa0ef8.webp", alt: "Атанас Доминов" },
   "николай мутавски": { small: "/brand/team-nikolai-cutout-800-018f69d2.webp", large: "/brand/team-nikolai-cutout-1120-018f69d2.webp", alt: "Николай Мутавски" },
+  "вилина дишева": { small: "/brand/team-vilina-cutout-800-9e90f1a3.webp", large: "/brand/team-vilina-cutout-1120-9e90f1a3.webp", alt: "Вилина Дишева" },
+  "мария стефанова": { small: "/brand/team-maria-cutout-800-0681e8d8.webp", large: "/brand/team-maria-cutout-1120-0681e8d8.webp", alt: "Мария Стефанова" },
 };
 
 function Photo({ photo, preview = false }: { photo: TeamPhoto; preview?: boolean }) {
@@ -76,7 +78,7 @@ export default async function TeamPage() {
         <div className="np-team-collage" aria-label="Хората зад NewsPoint.bg">
           <span className="np-team-collage-caption">Хората зад новините</span>
           <div className="np-team-fan">
-            {featuredPeople.map((member) => {
+            {featuredPeople.slice(0, 4).map((member) => {
               const portrait = portraitByName[member.name.toLocaleLowerCase("bg")];
               return portrait ? (
               <a className="np-team-fan-card" href={"#" + member.id} key={member.id} aria-label={"Към представянето на " + member.name}>
@@ -117,7 +119,7 @@ export default async function TeamPage() {
             const portrait = portraitByName[member.name.trim().toLocaleLowerCase("bg")];
             return (
               <article key={member.id} id={member.id} className={"np-team-member " + (portrait ? "" : "np-team-member-no-photo")} aria-labelledby={"np-team-person-" + index} data-team-reveal>
-                {portrait ? <div className="np-team-member-image"><span className="np-team-person-tag" aria-hidden="true">NewsPoint / редакция</span><Photo photo={portrait} /></div> : null}
+                {portrait ? <div className="np-team-member-image"><Photo photo={portrait} /></div> : null}
                 <div className="np-team-member-copy"><h3 id={"np-team-person-" + index}>{member.name}</h3>{member.role ? <p className="np-team-role">{member.role}</p> : null}</div>
                 {member.bio ? <p className="np-team-bio">{member.bio}</p> : <p className="np-team-bio">Част от редакцията на NewsPoint.bg.</p>}
               </article>

@@ -1,4 +1,5 @@
-import { BRAND_LOGO, BRAND_LOGO_DARK } from "@/lib/brand-logo";
+import { BRAND_LOGO, BRAND_LOGO_DARK, brandAssetUrl } from "../lib/brand-logo";
+import type { CSSProperties } from "react";
 
 type Props = {
   className?: string;
@@ -6,10 +7,18 @@ type Props = {
   fetchPriority?: "high" | "low" | "auto";
   /** Fixed artwork on dark photo banners (ignores site theme). */
   appearance?: "theme" | "dark" | "light";
+  /** Header is only 113/141 CSS px wide; CSS selects the pre-paint theme asset. */
+  header?: boolean;
 };
 
 /** Light wordmark by default; the dark artwork shows only under `[data-theme="dark"]`. */
-export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority, appearance = "theme" }: Props) {
+export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriority, appearance = "theme", header = false }: Props) {
+  if (header) return <span role="img" aria-label={BRAND_LOGO.alt} className={className} style={{
+    "--np-header-logo-light-ratio": BRAND_LOGO.width / BRAND_LOGO.height,
+    "--np-header-logo-dark-ratio": BRAND_LOGO.width / BRAND_LOGO.height,
+    "--np-header-logo-light": `url("${brandAssetUrl("/brand/newspoint-logo-512w.webp")}")`,
+    "--np-header-logo-dark": `url("${brandAssetUrl("/brand/newspoint-logo-dark-512w.webp")}")`,
+  } as CSSProperties} />;
   if (appearance === "dark") {
     return (
       <img
@@ -20,6 +29,7 @@ export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriorit
         width={BRAND_LOGO_DARK.width}
         height={BRAND_LOGO_DARK.height}
         decoding="async"
+        loading="lazy"
         fetchPriority={fetchPriority}
         className={className}
       />
@@ -35,6 +45,7 @@ export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriorit
         width={BRAND_LOGO.width}
         height={BRAND_LOGO.height}
         decoding="async"
+        loading="lazy"
         fetchPriority={fetchPriority}
         className={className}
       />
@@ -52,6 +63,7 @@ export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriorit
         width={BRAND_LOGO.width}
         height={BRAND_LOGO.height}
         decoding="async"
+        loading="lazy"
         fetchPriority={fetchPriority}
         className={`${className ?? ""} np-brand-logo-mark--light`}
       />
@@ -64,6 +76,7 @@ export function BrandLogoImg({ className, sizes = BRAND_LOGO.sizes, fetchPriorit
         width={BRAND_LOGO_DARK.width}
         height={BRAND_LOGO_DARK.height}
         decoding="async"
+        loading="lazy"
         fetchPriority={darkPriority}
         className={`${className ?? ""} np-brand-logo-mark--dark`}
       />

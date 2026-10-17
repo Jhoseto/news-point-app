@@ -9,6 +9,7 @@ import { HomeShineRoot } from "@/components/home-shine-root";
 import { Fragment } from "react";
 import dynamic from "next/dynamic";
 import { LeadingCarousel } from "@/components/leading-carousel";
+import { carouselArticle } from "@/lib/carousel-article";
 
 const HomePoll = dynamic(() => import("@/components/home-poll").then((module) => module.HomePoll));
 import { LatestNews24h } from "@/components/latest-news-24h";
@@ -127,7 +128,7 @@ export default async function HomePage() {
         {focusCarousel.length ? (
           <div className="-mt-6 3xl:-mt-8">
             <LeadingCarousel
-              articles={focusCarousel}
+              articles={focusCarousel.map(carouselArticle)}
               shineDelays={focusShineDelays}
               href={FOCUS_ARCHIVE_PATH}
               accentSlug={HOME_FOCUS_RUBRIC_SLUG}
@@ -136,7 +137,7 @@ export default async function HomePage() {
         ) : null}
         {topicsCarousel.length ? (
           <LeadingCarousel
-            articles={topicsCarousel}
+            articles={topicsCarousel.map(carouselArticle)}
             shineDelays={analysesShineDelays}
             title="Анализи и коментари"
             headingId="sec-analizi-komentari"

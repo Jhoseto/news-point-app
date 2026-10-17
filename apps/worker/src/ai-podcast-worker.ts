@@ -149,7 +149,7 @@ async function cover(db: ScriptDb, job: Job, project: Project): Promise<unknown>
   await saveMedia(key, bytes);
   await requireRunning(db, job.id);
   await db.update(aiPodcastProjects).set({ coverKey: key, status: project.episodeId ? "ready" : "review", updatedAt: new Date() }).where(eq(aiPodcastProjects.id, project.id));
-  if (project.episodeId) await db.update(podcasts).set({ coverKey: key, updatedAt: new Date() }).where(and(eq(podcasts.id, project.episodeId), eq(podcasts.status, "draft")));
+  if (project.episodeId) await db.update(podcasts).set({ coverKey: key, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() }).where(and(eq(podcasts.id, project.episodeId), eq(podcasts.status, "draft")));
   return result.usage;
 }
 
@@ -231,7 +231,7 @@ async function produce(db: ScriptDb, job: Job, project: Project): Promise<unknow
   await saveMedia(audioKey, mastered.bytes);
   await requireRunning(db, job.id);
   if (project.episodeId) {
-    const [updated] = await db.update(podcasts).set({ title: project.title!, summary: project.summary!, coverKey, audioKey, durationSec: mastered.durationSec, bytes: mastered.bytes.length, updatedAt: new Date() })
+    const [updated] = await db.update(podcasts).set({ title: project.title!, summary: project.summary!, coverKey, audioKey, durationSec: mastered.durationSec, bytes: mastered.bytes.length, revision: sql`${podcasts.revision} + 1`, updatedAt: new Date() })
       .where(and(eq(podcasts.id, project.episodeId), eq(podcasts.status, "draft"))).returning({ id: podcasts.id });
     if (!updated) throw new Error("Published episode cannot be replaced; hide it first");
   } else {

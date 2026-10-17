@@ -1,6 +1,6 @@
-import "server-only";
+
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -33,9 +33,9 @@ async function inspectAudio(file: string): Promise<AudioInfo> {
 }
 
 /** Store one podcast delivery file; temp originals never enter media storage. */
-export async function preparePodcastAudio(bytes: Buffer, name: string): Promise<{ buffer: Buffer; extension: PodcastAudioExtension; durationSec: number; originalBytes: number; optimized: boolean }> {
+export async function preparePodcastAudio(bytes: Buffer, name: string, workingDirectory: { tempRoot?: string } = {}): Promise<{ buffer: Buffer; extension: PodcastAudioExtension; durationSec: number; originalBytes: number; optimized: boolean }> {
   if (!bytes.length || bytes.length > PODCAST_AUDIO_MAX_BYTES || !/\.(mp3|m4a|wav|flac)$/i.test(name)) throw new Error("Качете MP3, M4A, WAV или FLAC до 100 MB.");
-  const directory = await mkdtemp(path.join(tmpdir(), "np-podcast-audio-"));
+  const directory = await mkdtemp(path.join(/* turbopackIgnore: true */ workingDirectory.tempRoot || tmpdir(), "np-podcast-audio-"));
   try {
     const input = path.join(/* turbopackIgnore: true */ directory, "input.audio");
     await writeFile(input, bytes, { mode: 0o600 });
@@ -51,10 +51,11 @@ export async function preparePodcastAudio(bytes: Buffer, name: string): Promise<
       "-hide_banner", "-loglevel", "error", "-nostdin", "-y", ...podcastInputOptions, "-i", input,
       "-map", "0:a:0", "-map_metadata", "0", "-map_chapters", "0", "-vn",
       ...(copy ? ["-c:a", "copy"] : ["-ac", String(source.channels), "-ar", String(rate), "-c:a", "aac", "-profile:a", "aac_low", "-b:a", `${bitrate}k`]),
-      ...(extension === "m4a" ? ["-movflags", "+faststart"] : []), output,
+      ...(extension === "m4a" ? ["-movflags", "+faststart"] : []), "-fs", String(PODCAST_AUDIO_MAX_BYTES), output,
     ], options);
-    const result = await readFile(/* turbopackIgnore: true */ output);
+    if ((await stat(/* turbopackIgnore: true */ output)).size > PODCAST_AUDIO_MAX_BYTES) throw new Error("Оптимизирането на звука не мина проверката.");
     const inspected = await inspectAudio(output);
+    const result = await readFile(/* turbopackIgnore: true */ output);
     if (!result.length || result.length > PODCAST_AUDIO_MAX_BYTES || Math.abs(inspected.duration - source.duration) > 0.25 || inspected.channels !== source.channels) throw new Error("Оптимизирането на звука не мина проверката.");
     // Avoid lossy recoding for negligible savings, or any larger delivery file.
     if (originalExtension && result.length >= bytes.length * (copy ? 1 : 0.90)) {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { authFormRequest, authOperationalError, AUTH_CONNECTION_ERROR, AUTH_SERVICE_ERROR } from "../lib/auth-form-request";
 import { absoluteStudioUrl } from "@/lib/paths";
 
 const SUCCESS =
@@ -25,14 +26,22 @@ export function ForgotPasswordForm() {
     const email = String(form.get("email") ?? "").trim();
     setPending(true);
     setError(null);
-    const redirectTo = absoluteStudioUrl("/login/reset");
-    const { error: failure } = await authClient.requestPasswordReset({ email, redirectTo });
-    setPending(false);
-    if (failure?.status === 429) {
-      setError("Твърде много опити. Изчакайте минута и опитайте отново.");
-      return;
+    try {
+      const redirectTo = absoluteStudioUrl("/login/reset");
+      const { error: failure } = await authFormRequest((signal) => authClient.requestPasswordReset({ email, redirectTo }, { signal, retry: 0 }));
+      if (failure) {
+        setError(failure.status === 429
+          ? "Твърде много опити. Изчакайте минута и опитайте отново."
+          : authOperationalError(failure.status) ?? AUTH_SERVICE_ERROR);
+        return;
+      }
+      // The server returns the same success for existing and unknown accounts.
+      setDone(true);
+    } catch {
+      setError(AUTH_CONNECTION_ERROR);
+    } finally {
+      setPending(false);
     }
-    setDone(true);
   }
 
   if (done) {

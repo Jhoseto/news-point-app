@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { SpotlightField } from "./spotlight-field";
+import { afterCriticalPageLoad } from "@/lib/deferred-page-work";
 
 const LiveUpdates = dynamic(() => import("./live-updates").then((module) => module.LiveUpdates), { ssr: false });
 const PwaInstall = dynamic(() => import("./pwa-install").then((module) => module.PwaInstall), { ssr: false });
@@ -23,17 +24,12 @@ export function DeferredChrome() {
       void import("../app/literata-bg.css");
       setReady(true);
     };
-    if (typeof window.requestIdleCallback === "function") {
-      const idleId = window.requestIdleCallback(arm, { timeout: 2500 });
-      return () => {
-        cancelled = true;
-        window.cancelIdleCallback(idleId);
-      };
-    }
-    const timeoutId = window.setTimeout(arm, 1);
+    // Network idle before load is not the critical path finishing: the hero may
+    // still be downloading. Fonts/optional chrome must not race that image.
+    const cancel = afterCriticalPageLoad(arm, 0, { skipConstrained: false });
     return () => {
       cancelled = true;
-      window.clearTimeout(timeoutId);
+      cancel();
     };
   }, []);
 

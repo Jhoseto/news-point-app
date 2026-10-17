@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { authFormRequest, authOperationalError, AUTH_CONNECTION_ERROR } from "../lib/auth-form-request";
 
 function messageFor(status: number, message: string | undefined): string {
   if (status === 429 && message?.startsWith("locked:")) {
@@ -11,7 +12,8 @@ function messageFor(status: number, message: string | undefined): string {
     return `Профилът е временно заключен след няколко грешни опита. Опитайте отново след ${minutes} мин.`;
   }
   if (status === 429) return "Твърде много опити от това устройство. Изчакайте минута.";
-  if (status === 403) return "Заявката беше блокирана. Отворете входа отново.";
+  const operational = authOperationalError(status);
+  if (operational) return operational;
   return "Грешен имейл или парола.";
 }
 
@@ -35,17 +37,22 @@ export function LoginForm() {
       setError(messageFor(401, undefined));
       return;
     }
-    const { error: failure } = await authClient.signIn.email({
-      email: String(form.get("email") ?? "").trim(),
-      password: String(form.get("password") ?? ""),
-    });
-    if (failure) {
+    try {
+      const { error: failure } = await authFormRequest((signal) => authClient.signIn.email({
+        email: String(form.get("email") ?? "").trim(),
+        password: String(form.get("password") ?? ""),
+      }, { signal, retry: 0 }));
+      if (failure) {
+        setError(messageFor(failure.status, failure.message));
+        return;
+      }
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setError(AUTH_CONNECTION_ERROR);
+    } finally {
       setPending(false);
-      setError(messageFor(failure.status, failure.message));
-      return;
     }
-    router.replace("/");
-    router.refresh();
   }
 
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => setCapsLock(event.getModifierState("CapsLock"));

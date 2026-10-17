@@ -21,6 +21,7 @@ import { getLatest, getMenuCategories } from "@/lib/queries";
 import { newsMediaOrganization, webSite } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
+import { publicRobotsMetadata } from "@/lib/indexing-policy.mjs";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
 export const revalidate = 60;
@@ -35,7 +36,7 @@ export const metadata: Metadata = {
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   appleWebApp: { title: "NewsPoint" },
   description: "Новини от Пловдив, България и света.",
-  robots: { index: false, follow: false, "max-image-preview": "large" },
+  robots: publicRobotsMetadata(),
   alternates: { types: { "application/rss+xml": "/feed/" } },
   manifest: "/manifest.webmanifest",
   icons: {

@@ -21,7 +21,7 @@ export default async function PodcastsPage() {
   const bySlug = new Map(PUBLIC_MENU.map((entry) => [entry.slug, entry.name]));
   const rows = await listStudioPodcasts();
   const episodes: StudioEpisode[] = rows.map((row) => ({
-    id: row.id,
+    id: row.id, revision: row.revision,
     title: row.title,
     slug: row.slug,
     summary: row.summary,

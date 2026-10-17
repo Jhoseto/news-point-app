@@ -1,13 +1,14 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { MobileFeed, type PreviewWindow } from "./mobile-rubric-feed";
+import type { PreviewWindow } from "./mobile-rubric-feed";
 import { useReducedMotion } from "./reader-preferences";
 import { mobileRubricFeedSchema, type MobileRubricFeed } from "@/lib/mobile-rubric-feed";
 import { MobileRubricCache } from "@/lib/mobile-rubric-cache";
 import { MobileFeedPositions, type FeedPosition } from "@/lib/mobile-rubric-scroll";
 import { MOBILE_OVERLAY_REQUEST } from "@/lib/mobile-overlays";
+import { afterCriticalPageLoad } from "@/lib/deferred-page-work";
 import { MOBILE_RUBRIC_NAVIGATE, MOBILE_RUBRIC_STATUS, commitSwipe, idlePager, mobileRoutePath, pagerTransition, rubricMenuVersion, rubricNeighbour, rubricRoute, swipeIntent, type MobileRubric, type PagerEvent } from "@/lib/mobile-rubric-nav";
 
 type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFeed | null; targetPath: string | null;
@@ -16,6 +17,14 @@ type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFee
 type Gesture = { id: number; x: number; y: number; time: number; width: number; dx: number;
   samples: Array<{ x: number; at: number }>; origin: MobileRubricFeed; captured: boolean };
 const IGNORE = "[data-mobile-pager-ignore],button,input,textarea,select,option,video,audio,iframe,canvas,[contenteditable],[role='slider'],[role='button'],[role='dialog'],.np-carousel-viewport";
+type PreviewRenderer = typeof import("./mobile-rubric-feed").MobileFeed;
+let previewImport: Promise<PreviewRenderer> | undefined;
+function loadPreviewRenderer() {
+  return previewImport ??= import("./mobile-rubric-feed").then(module => module.MobileFeed).catch(error => {
+    previewImport = undefined;
+    throw error;
+  });
+}
 
 /** This chunk mounts exclusively in MobileChromeIsland. The page remains server rendered and vertically native. */
 export function MobileRubricPager() {
@@ -27,6 +36,27 @@ export function MobileRubricPager() {
   const visualRef = useRef<Visual | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
+  const [MobileFeed, setMobileFeed] = useState<PreviewRenderer | null>(null);
+  const renderer = useRef<PreviewRenderer | null>(null);
+  const mounted = useRef(false);
+  const preparePreview = useCallback(() => {
+    void loadPreviewRenderer().then(component => {
+      if (!mounted.current) return;
+      renderer.current = component;
+      setMobileFeed(() => component);
+    }).catch(() => { /* Native navigation remains usable when an optional chunk fails. */ });
+  }, []);
+  useEffect(() => {
+    mounted.current = true;
+    const cancel = afterCriticalPageLoad(preparePreview, 0, { skipConstrained: false });
+    window.addEventListener("pointerdown", preparePreview, { once: true, passive: true });
+    window.addEventListener("keydown", preparePreview, { once: true });
+    return () => {
+      mounted.current = false; cancel();
+      window.removeEventListener("pointerdown", preparePreview);
+      window.removeEventListener("keydown", preparePreview);
+    };
+  }, [preparePreview]);
   const runtime = useRef<{ finishMotion: () => void; retry: () => void } | null>(null);
   useEffect(() => { if (reduced) runtime.current?.finishMotion(); }, [reduced]);
 
@@ -39,7 +69,8 @@ export function MobileRubricPager() {
     const geometry = new Map<string, { version: string; width: number; blocks: Record<string, PreviewWindow[string] & { height: number }> }>();
     let operation = idlePager, token = 0, gesture: Gesture | null = null;
     let model: MobileRubricFeed | null = null, items: MobileRubric[] = [], sourceKey = "", signature = "";
-    let queuedTap: string | null = null, routeTimer = 0, animationTimer = 0, paintFrame = 0, readFrame = 0, restoreFrame = 0, idleTimer = 0;
+    let queuedTap: string | null = null, routeTimer = 0, animationTimer = 0, paintFrame = 0, readFrame = 0, restoreFrame = 0;
+    let cancelWarmup: (() => void) | undefined;
     let pendingRestore: { key: string; fromTop: boolean } | null = location.hash ? { key: location.pathname + location.search + location.hash, fromTop: false } : null;
     let disposed = false, lastDx = 0, clickSuppressedUntil = 0;
     let navigationInput: "swipe" | "tap" = "tap";
@@ -133,14 +164,12 @@ export function MobileRubricPager() {
       for (const path of geometry.keys()) if (!paths.slice(0, 3).includes(path)) geometry.delete(path);
     };
     const warmNeighbours = () => {
-      clearTimeout(idleTimer);
-      const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-      if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) return;
-      idleTimer = window.setTimeout(() => {
+      cancelWarmup?.();
+      cancelWarmup = afterCriticalPageLoad(() => {
         if (operation.phase !== "idle" || blocked() || !currentRoute().swipe) return;
         configure(); const index = currentRoute().index;
         for (const side of [-1, 1] as const) { const path = rubricNeighbour(items, index, side)?.path; if (path) void cache.load(path).catch(() => {}); }
-      }, 1200);
+      });
     };
     const finish = () => {
       if (!operation.committed || !operation.motionDone || !operation.routeReady) return;
@@ -205,6 +234,9 @@ export function MobileRubricPager() {
       });
     };
     const showVisual = (origin: MobileRubricFeed, targetPath: string | null, direction: -1 | 1, distant = false) => {
+      // An early gesture may precede the optional renderer download. Keep the
+      // canonical page visible and allow navigation, never cover it with blank UI.
+      if (!renderer.current) { preparePreview(); return; }
       const top = headerBottom(), bottom = document.querySelector<HTMLElement>("[data-np-bottom-nav]")?.getBoundingClientRect().top ?? document.querySelector<HTMLElement>(".np-bottom-nav")?.getBoundingClientRect().top ?? innerHeight;
       const width = main.getBoundingClientRect().width;
       const mainBox = main.getBoundingClientRect();
@@ -239,7 +271,11 @@ export function MobileRubricPager() {
     };
     const animate = (commit: boolean) => {
       const current = visualRef.current;
-      if (!current) { if (commit) finishMotion(); return; }
+      if (!current) {
+        if (commit) finishMotion();
+        else { clearVisual(); update({ type: "reset", token: operation.token }); configure(); warmNeighbours(); }
+        return;
+      }
       cancelAnimationFrame(paintFrame); paintFrame = 0;
       const ms = motion.current ? 0 : current.distant ? 150 : commit ? 250 : 200;
       const from = originFrame.current, to = targetFrame.current;
@@ -274,7 +310,7 @@ export function MobileRubricPager() {
       if (!items.some(item => item.path === path) || path === routePath() || blocked()) return;
       if (operation.committed) { queuedTap = path; return; }
       if (operation.phase !== "idle") cancel();
-      if (!model || !currentRoute().swipe) { savePosition(); pendingRestore = { key: path, fromTop: true }; router.push(path, { scroll: false }); return; }
+      if (!model || !currentRoute().swipe || !renderer.current) { preparePreview(); savePosition(); pendingRestore = { key: path, fromTop: true }; router.push(path, { scroll: false }); return; }
       savePosition(); update({ type: "track", token: ++token }); configure(path);
       const from = currentRoute().index, index = items.findIndex(item => item.path === path);
       const direction = index > from ? 1 : -1;
@@ -391,7 +427,7 @@ export function MobileRubricPager() {
     return () => {
       disposed = true; releaseGesture(); clearVisual(); cache.clear(); observer.disconnect();
       for (const frame of [readFrame, restoreFrame, paintFrame]) cancelAnimationFrame(frame);
-      clearTimeout(idleTimer); history.scrollRestoration = oldRestoration;
+      cancelWarmup?.(); history.scrollRestoration = oldRestoration;
       main.removeEventListener("pointerdown", down); window.removeEventListener("pointerdown", eventSecondPointer, true);
       main.removeEventListener("pointermove", move); main.removeEventListener("pointerup", up); main.removeEventListener("pointercancel", cancelled); main.removeEventListener("lostpointercapture", cancelled);
       document.removeEventListener("click", click, true); document.removeEventListener("contextmenu", interrupt); document.removeEventListener("selectionchange", selectionChanged);
@@ -404,10 +440,10 @@ export function MobileRubricPager() {
       window.removeEventListener("np:public-content-updated", refresh); runtime.current = null;
       window.dispatchEvent(new CustomEvent(MOBILE_RUBRIC_STATUS, { detail: { pending: null, phase: "idle" } }));
     };
-  }, [router]);
+  }, [router, preparePreview]);
 
   return createPortal(<>
-    {visual ? <div className="np-mobile-pager-layer" data-mobile-rubric-pager aria-hidden="true" inert style={{ top: visual.top, height: visual.height }}>
+    {visual && MobileFeed ? <div className="np-mobile-pager-layer" data-mobile-rubric-pager aria-hidden="true" inert style={{ top: visual.top, height: visual.height }}>
       <div ref={originFrame} className="np-mobile-pager-frame" style={{ transform: "translate3d(0,0,0)", willChange: "transform" }}>
         <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.originOffset}px)` }}><MobileFeed model={visual.origin} preview namespace={`preview-origin-${visual.token}`} window={visual.originWindow} /></div>
       </div>

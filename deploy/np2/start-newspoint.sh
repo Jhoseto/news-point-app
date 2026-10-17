@@ -27,6 +27,10 @@ ensure_poll_env() {
 
 ensure_poll_env
 
+# Validate/render before any running process is stopped. Do not trust forwarded
+# headers for TLS: the origin must have HTTPS and Cloudflare must use Full (strict).
+node "$APP/deploy/np2/render-ingress.mjs" "$APP/.env.local" > "$APP/logs/ingress.htaccess.next"
+
 stop_pid() {
   local file="$1"
   if [[ -f "$file" ]]; then
@@ -74,16 +78,6 @@ for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do
 done
 
 # Only this account's public folder. The old site has its own document root.
-cat > "$HOME/public_html/.htaccess" << 'HT'
-RewriteEngine On
-
-# Single client IP for poll rate limits (overwrites any browser spoof).
-SetEnvIf Remote_Addr "(.+)" NP_CLIENT_IP=$1
-RequestHeader set X-Real-IP %{NP_CLIENT_IP}e env=NP_CLIENT_IP
-
-RewriteRule ^index\.html$ http://127.0.0.1:3100/ [P,L]
-RewriteCond %{REQUEST_URI} !^/\.well-known/
-RewriteRule ^ http://127.0.0.1:3100%{REQUEST_URI} [P,L,QSA]
-HT
+mv "$APP/logs/ingress.htaccess.next" "$HOME/public_html/.htaccess"
 
 echo "NewsPoint 2.0 restarted (web :3100, studio :3101, sync worker)."

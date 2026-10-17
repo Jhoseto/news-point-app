@@ -7,7 +7,7 @@ import { verifyDeployArchive } from "./verify-deploy-archive.mjs";
 import { packDeployArchive } from "./pack-deploy-archive.mjs";
 
 let directory: string;
-const files = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/studio/app/api/logs/route.ts", "apps/studio/app/(studio)/logs/page.tsx", "apps/web/app/page.tsx"];
+const files = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/web/lib/indexing-policy.mjs", "deploy/np2/render-ingress.mjs", "apps/studio/app/api/logs/route.ts", "apps/studio/app/(studio)/logs/page.tsx", "apps/web/app/page.tsx"];
 beforeAll(() => {
   directory = mkdtempSync(join(tmpdir(), "np-deploy-archive-qa-"));
   for (const file of [...files, "logs/web.pid", "logs/private.log", "AGENTS.md", "apps/web/AGENTS.md", "docs/PLAN.md"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
@@ -35,6 +35,10 @@ describe("Actual deployment tar exclusions", () => {
     const report = verifyDeployArchive(pack("logs"), directory);
     expect(report.missing).toContain("apps/studio/app/api/logs/route.ts");
     expect(report.missing).toContain("apps/studio/app/(studio)/logs/page.tsx");
+  });
+  it("refuses an archive missing the ingress or indexing policy required at startup", () => {
+    const report = verifyDeployArchive(files.filter(path => !path.endsWith("render-ingress.mjs") && !path.endsWith("indexing-policy.mjs")), directory);
+    expect(report.missing).toEqual(expect.arrayContaining(["deploy/np2/render-ingress.mjs", "apps/web/lib/indexing-policy.mjs"]));
   });
   it("refuses private environment files, runtime output and unsafe paths", () => {
     const report = verifyDeployArchive([...files, "./.env.local", "./logs/web.pid", "../escape", "./apps/web/.next/server/private.js"], directory);

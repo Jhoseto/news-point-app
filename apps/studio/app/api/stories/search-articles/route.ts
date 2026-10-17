@@ -1,7 +1,7 @@
 import { withStaffAudit } from "../../../../lib/audit";
 import { NextResponse } from "next/server";
 import { searchPublicArticlesForTheme } from "@/lib/story-themes";
-import { requireStaff } from "@/lib/session";
+import { staffFromRequest } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,11 @@ async function handleGET(request: Request) {
   const q = url.searchParams.get("q") ?? "";
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get("limit") ?? 50) || 50));
   const offset = Math.max(0, Number(url.searchParams.get("offset") ?? 0) || 0);
-  const staff = await requireStaff();
+  const staff = await staffFromRequest(request);
+  if (!staff) return NextResponse.json(
+    { error: { code: "session_expired", message: "Сесията изтече. Влезте отново в Studio." } },
+    { status: 401, headers: { "cache-control": "private, no-store" } },
+  );
   const { articles, hasMore } = await searchPublicArticlesForTheme(staff, q, limit, offset);
   return NextResponse.json(
     { articles, hasMore },

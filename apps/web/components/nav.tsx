@@ -130,6 +130,7 @@ function RubricRow({
   return (
     <Link
       href={item.path}
+      prefetch={false}
       onClick={(event) => {
         if (item.path === "/") scrollHomeIfCurrent(event, item.path, pathname, reducedMotion);
         else handleRubricMenuClick(event, item.path, pathname, reducedMotion);
@@ -823,7 +824,7 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
       className="np-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md">
-        <Link href="/" onClick={(event) => { if (!requestMobileOverlay("home")) event.preventDefault(); else onNavigate?.(); }} aria-current={onHome ? "page" : undefined} className={itemClass}>
+        <Link href="/" prefetch={false} onClick={(event) => { if (!requestMobileOverlay("home")) event.preventDefault(); else onNavigate?.(); }} aria-current={onHome ? "page" : undefined} className={itemClass}>
           <span aria-hidden="true" className="np-bottom-nav-mark" />
           <HomeIcon width={21} height={21} />
           Начало

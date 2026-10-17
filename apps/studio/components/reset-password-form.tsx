@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { authClient } from "@/lib/auth-client";
+import { authFormRequest, authOperationalError, AUTH_CONNECTION_ERROR } from "../lib/auth-form-request";
 import { passwordProblems } from "@/lib/password-policy";
 import { PasswordRulesList } from "./password-rules-list";
 
@@ -34,17 +35,22 @@ export function ResetPasswordForm() {
     }
     setPending(true);
     setError(null);
-    const { error: failure } = await authClient.resetPassword({ newPassword: password, token });
-    setPending(false);
-    if (failure) {
-      setError(failure.status === 429 ? "Твърде много опити. Изчакайте минута." : "Връзката е изтекла или вече е използвана. Заявете нова.");
-      return;
+    try {
+      const { error: failure } = await authFormRequest((signal) => authClient.resetPassword({ newPassword: password, token }, { signal, retry: 0 }));
+      if (failure) {
+        setError(authOperationalError(failure.status) ?? (failure.status === 429 ? "Твърде много опити. Изчакайте минута." : "Връзката е изтекла или вече е използвана. Заявете нова."));
+        return;
+      }
+      setDone(true);
+      setTimeout(() => {
+        router.replace("/login/");
+        router.refresh();
+      }, 2400);
+    } catch {
+      setError(AUTH_CONNECTION_ERROR);
+    } finally {
+      setPending(false);
     }
-    setDone(true);
-    setTimeout(() => {
-      router.replace("/login/");
-      router.refresh();
-    }, 2400);
   }
 
   if (invalid) {

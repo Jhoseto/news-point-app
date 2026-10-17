@@ -488,6 +488,7 @@ export const podcasts = pgTable(
     title: text("title").notNull(),
     slug: text("slug").notNull(),
     summary: text("summary").notNull(),
+    revision: integer("revision").notNull().default(1),
     coverKey: text("cover_key").notNull(),
     audioKey: text("audio_key").notNull(),
     durationSec: integer("duration_sec").notNull(),
@@ -500,6 +501,24 @@ export const podcasts = pgTable(
   },
   (table) => [unique("podcasts_slug_key").on(table.slug), index("podcasts_public_idx").on(table.publishedAt.desc())],
 );
+
+/** Private resumable upload intent, durable across Studio/worker restarts. */
+export const mediaUploadSessions = pgTable("media_upload_sessions", {
+  id: uuid("id").primaryKey(), ownerId: text("owner_id").references(() => staffUsers.id, { onDelete: "set null" }),
+  kind: text("kind", { enum: ["video", "podcast"] }).notNull(),
+  state: text("state", { enum: ["uploading", "queued", "processing", "ready", "failed", "cancelled", "expired"] }).notNull().default("uploading"),
+  manifest: jsonb("manifest").$type<Array<{ key: "video" | "audio" | "cover"; name: string; bytes: number; type: string; sha256: string }>>().notNull(),
+  metadata: jsonb("metadata").$type<{ id?: string; revision?: number; title?: string; summary?: string; categoryId?: string | null; publish?: boolean }>().notNull(),
+  reservedBytes: bigint("reserved_bytes", { mode: "number" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  leaseToken: uuid("lease_token"), leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  artifacts: jsonb("artifacts").$type<Array<{ key: string; leaseToken: string }>>().notNull().default([]), cleanedAt: timestamp("cleaned_at", { withTimezone: true }), attempts: integer("attempts").notNull().default(0), result: jsonb("result").$type<Record<string, unknown>>(), error: text("error"),
+  ...timestamps,
+}, table => [index("media_upload_owner_idx").on(table.ownerId, table.state), index("media_upload_queue_idx").on(table.state, table.createdAt)]);
+export const mediaUploadChunks = pgTable("media_upload_chunks", {
+  sessionId: uuid("session_id").notNull().references(() => mediaUploadSessions.id, { onDelete: "cascade" }),
+  fileKey: text("file_key").notNull(), chunkIndex: integer("chunk_index").notNull(), bytes: integer("bytes").notNull(), sha256: text("sha256").notNull(),
+}, table => [primaryKey({ columns: [table.sessionId, table.fileKey, table.chunkIndex] })]);
 
 /** AI Studio keeps source and script snapshots independent of public episodes. */
 export const aiPodcastProjects = pgTable("ai_podcast_projects", {

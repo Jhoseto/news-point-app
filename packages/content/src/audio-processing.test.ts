@@ -47,3 +47,11 @@ it("rejects a video disguised as M4A",async()=>{
     await expect(preparePodcastAudio(await readFile(input),"fixture.m4a")).rejects.toThrow("валиден моно или стерео звуков файл");
   } finally {await rm(directory,{recursive:true,force:true});}
 },30_000);
+it("uses the supplied private attempt directory and cleans codec originals and outputs",async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),"np-podcast-private-test-"));
+ try {
+  const input=path.join(directory,"fixture.wav");await run(process.env.FFMPEG_PATH||"ffmpeg",["-v","error","-f","lavfi","-i","sine=frequency=440:sample_rate=48000","-t","1","-ac","1",input],{windowsHide:true});
+  const source=await readFile(input);const audio=await preparePodcastAudio(source,"fixture.wav",{tempRoot:directory});expect(audio.durationSec).toBe(1);expect(audio.buffer.length).toBeGreaterThan(0);expect(await readdir(directory)).toEqual(["fixture.wav"]);
+  await expect(preparePodcastAudio(Buffer.from("invalid fixture"),"bad.mp3",{tempRoot:directory})).rejects.toThrow();expect(await readdir(directory)).toEqual(["fixture.wav"]);
+ }finally{await rm(directory,{recursive:true,force:true});}
+},30_000);

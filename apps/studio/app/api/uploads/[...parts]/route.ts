@@ -1,0 +1,10 @@
+import { mediaUploadAPI } from "@/lib/media-upload-api";
+import { withStaffAudit } from "@/lib/audit";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+type Context = { params: Promise<{ parts: string[] }> };
+const handle = async (request: Request, context: Context) => mediaUploadAPI(request, (await context.params).parts);
+export const GET = withStaffAudit(handle);
+export const PUT = withStaffAudit(handle);
+export const POST = withStaffAudit(handle);
+export const DELETE = withStaffAudit(handle);

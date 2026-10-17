@@ -5,6 +5,7 @@ import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
 import { CAROUSEL_SPEED, startCarouselAutoplay } from "@/lib/carousel-autoplay";
+import { whenNearViewport } from "@/lib/deferred-page-work";
 import { ArticleCard } from "./article-card";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { useReducedMotion } from "./reader-preferences";
@@ -51,10 +52,14 @@ export function LeadingCarousel({
   const drag = useRef({ active: false, startX: 0, startScroll: 0, moved: false });
   const suppressClick = useRef(false);
   const reduceMotion = useReducedMotion();
-  // Clone set is client-only so SSR HTML is half the carousel weight.
+  // Originals remain SSR/accessible. Materialize copies only near the strip,
+  // rather than doubling every offscreen carousel during initial hydration.
   const [loopReady, setLoopReady] = useState(false);
   useEffect(() => {
-    setLoopReady(!preview && articles.length >= 2);
+    if (preview || articles.length < 2) { setLoopReady(false); return; }
+    const element = viewport.current;
+    if (!element) return;
+    return whenNearViewport(element, () => setLoopReady(true));
   }, [articles.length, preview]);
   const assignViewport = useCallback((element: HTMLDivElement | null) => {
     viewport.current = element;
@@ -111,6 +116,8 @@ export function LeadingCarousel({
     <section
       aria-labelledby={headingId}
       data-mobile-pager-ignore
+      onFocusCapture={() => { if (!preview && articles.length >= 2) setLoopReady(true); }}
+      onPointerDownCapture={() => { if (!preview && articles.length >= 2) setLoopReady(true); }}
       className={`group/carousel min-w-0${compactCards ? " np-carousel-compact" : ""}`}
     >
       <div className={`np-section-heading flex items-center justify-between gap-4 ${compactCards ? "mb-3" : "mb-5"}`} style={categoryAccentStyle(accentSlug)}>

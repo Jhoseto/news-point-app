@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { withBase } from "@/lib/paths";
+import { uploadResumable, cancelResumableUpload } from "@/lib/resumable-upload";
 import { PODCAST_AUDIO_ACCEPT } from "@newspoint/content";
 import {
   bytesText,
@@ -257,16 +258,7 @@ function NewEpisodeForm({
     setError(null);
     setNotice(null);
     try {
-      const form = new FormData();
-      form.set("title", title.trim());
-      form.set("summary", summary.trim());
-      form.set("categoryId", categoryId);
-      form.set("publish", publish ? "1" : "0");
-      form.set("cover", coverFile);
-      form.set("audio", audioFile);
-      const response = await fetch(withBase("/api/podcasts/upload/"), { method: "POST", body: form });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error?.message ?? (response.status === 413 ? "Качете звук до 100 MB и корица до 25 MB." : "Сървърът не потвърди качването. Проверете списъка с епизоди преди нов опит."));
+      const data = await uploadResumable("podcast", [{ key: "cover", file: coverFile }, { key: "audio", file: audioFile }], { title: title.trim(), summary: summary.trim(), categoryId: categoryId || null, publish }, setNotice);
       if (data.episode) {
         onCreated({
           ...data.episode,
@@ -310,6 +302,8 @@ function NewEpisodeForm({
       {submitting ? <p role="status" className="np-podcast-alert">Качване и оптимизиране на звука. Изчакайте потвърждението, преди да затворите страницата.</p> : null}
       {error ? <p role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</p> : null}
       {notice ? <p role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</p> : null}
+      <p className="np-podcast-field-hint">Качване на части. При прекъсване изберете същите файлове и данни и продължете до 24 часа.</p>
+      <button type="button" onClick={() => void cancelResumableUpload("podcast").then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
 
       <div className="np-podcast-form-grid">
         <DropZone
@@ -461,7 +455,7 @@ function EpisodeEditor({
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error?.message ?? "Записът не мина.");
-    return data as { ok?: true; refreshed?: boolean };
+    return data as { ok?: true; refreshed?: boolean; revision: number };
   }
 
   async function save() {
@@ -470,17 +464,10 @@ function EpisodeEditor({
     setNotice(null);
     try {
       if (filesDirty) {
-        const form = new FormData();
-        form.set("id", episode.id);
-        form.set("title", title.trim());
-        form.set("summary", summary.trim());
-        form.set("categoryId", categoryId);
-        form.set("publish", isPublished ? "1" : "0");
-        if (coverFile) form.set("cover", coverFile);
-        if (audioFile) form.set("audio", audioFile);
-        const response = await fetch(withBase("/api/podcasts/upload/"), { method: "POST", body: form });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error?.message ?? "Качването не мина.");
+        const files: Array<{ key: "cover" | "audio"; file: File }> = [];
+        if (coverFile) files.push({ key: "cover", file: coverFile });
+        if (audioFile) files.push({ key: "audio", file: audioFile });
+        const data = await uploadResumable("podcast", files, { id: episode.id, revision: episode.revision, title: title.trim(), summary: summary.trim(), categoryId: categoryId || null, publish: isPublished }, setNotice);
         if (data.episode) {
           onPatch({ ...data.episode, categoryName: categories.find(category => category.id === data.episode.categoryId)?.name ?? null });
           setCoverFile(null);
@@ -491,8 +478,8 @@ function EpisodeEditor({
           return;
         }
       } else if (fieldsDirty) {
-        await send({ action: "save", id: episode.id, title: title.trim(), summary: summary.trim(), categoryId: categoryId || null });
-        onPatch({ title: title.trim(), summary: summary.trim(), categoryId: categoryId || null, categoryName: categories.find((category) => category.id === (categoryId || null))?.name ?? null });
+        const saved = await send({ action: "save", revision: episode.revision, id: episode.id, title: title.trim(), summary: summary.trim(), categoryId: categoryId || null });
+        onPatch({ revision: saved.revision, title: title.trim(), summary: summary.trim(), categoryId: categoryId || null, categoryName: categories.find((category) => category.id === (categoryId || null))?.name ?? null });
         setLastSavedAt(new Date().toISOString());
         setDirty(false);
         setNotice("Записано е.");
@@ -509,9 +496,9 @@ function EpisodeEditor({
     setPending(true);
     setError(null);
     try {
-      await send({ action: status === "published" ? "publish" : "hide", id: episode.id });
+      const changed = await send({ action: status === "published" ? "publish" : "hide", id: episode.id, revision: episode.revision });
       onPatch({
-        status,
+        status, revision: changed.revision,
         publishedAt: status === "published" ? episode.publishedAt ?? new Date().toISOString() : episode.publishedAt,
       });
       setNotice(status === "published" ? "Епизодът е на сайта." : "Епизодът е скрит.");
@@ -649,6 +636,7 @@ function EpisodeEditor({
       <div className="np-podcast-editor-foot">
         {error ? <span role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</span> : null}
         {notice ? <span role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</span> : null}
+        <button type="button" onClick={() => void cancelResumableUpload("podcast", episode.id).then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
         <div className="np-podcast-editor-foot-actions">
           {isPublished ? (
             <button type="button" disabled={pending} onClick={() => void setStatus("draft")} className="np-podcast-ghost-btn">Скрий от сайта</button>
