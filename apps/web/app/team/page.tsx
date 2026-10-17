@@ -78,7 +78,7 @@ export default async function TeamPage() {
         <div className="np-team-collage" aria-label="Хората зад NewsPoint.bg">
           <span className="np-team-collage-caption">Хората зад новините</span>
           <div className="np-team-fan">
-            {featuredPeople.slice(0, 4).map((member) => {
+            {featuredPeople.map((member) => {
               const portrait = portraitByName[member.name.toLocaleLowerCase("bg")];
               return portrait ? (
               <a className="np-team-fan-card" href={"#" + member.id} key={member.id} aria-label={"Към представянето на " + member.name}>
@@ -107,7 +107,8 @@ export default async function TeamPage() {
       </section>
 
       <section className="np-team-analysis np-team-section" aria-labelledby="np-team-analysis-title">
-        <div className="np-team-analysis-copy" data-team-reveal><span className="np-team-eyebrow">Отвъд заглавията</span><h2 id="np-team-analysis-title">Анализи <em>и коментари</em></h2><p>Анализите и коментарите са сред водещите направления на NewsPoint.bg. Разглеждаме важните обществени, политически, икономически и регионални теми в дълбочина, проверяваме обещанията на институциите и проследяваме последствията от техните решения.</p><p>Показваме различните гледни точки, поставяме проблемите открито и търсим възможните решения. В коментарните материали ясно разграничаваме фактите от авторската позиция, като се стремим всяко мнение да бъде аргументирано и основано на проверена информация.</p></div>
+        <div className="np-team-analysis-copy" data-team-reveal><span className="np-team-eyebrow">Отвъд заглавията</span><h2 id="np-team-analysis-title">Анализи <em>и коментари</em></h2><p>Анализите и коментарите са сред водещите направления на NewsPoint.bg. Разглеждаме важните обществени, политически, икономически и регионални теми в дълбочина, проверяваме обещанията на институциите и проследяваме последствията от техните решения. Не се пестим в изразяването на критични погледи и коментари, и винаги се стремим да покажем по-голям обхват на темите, които ние разглеждаме.</p><p>
+          Показваме различните гледни точки, поставяме проблемите открито и търсим възможните решения. В коментарните материали ясно разграничаваме фактите от авторската позиция, като се стремим всяко мнение да бъде аргументирано и основано на проверена информация.</p></div>
         <blockquote className="np-team-editorial-note" data-team-reveal><span className="np-team-note-label">Нашата цел</span><p>Нашата цел е да развиваме интелигентна, обективна и отговорна журналистика, която не само информира, но и помага на читателите да разбират по-добре процесите около тях.</p><span className="np-team-note-signature" aria-hidden="true">NewsPoint.bg <span>↗</span></span></blockquote>
       </section>
 
