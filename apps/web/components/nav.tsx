@@ -48,6 +48,7 @@ import { handleRubricMenuClick } from "./category-archive-pagination";
 import { openRubrics, RUBRICS_EVENT } from "./rubrics-trigger";
 import { SiteSearch } from "./site-search";
 import { createRubricsMotion } from "@/lib/rubrics-motion";
+import { mobileRubricsMenuOrder } from "@/lib/menu";
 
 type NavItem = Pick<CategoryRef, "slug" | "name" | "path">;
 
@@ -305,7 +306,7 @@ function RubricLinks({ items, current, onNavigate, autoFocusActive }: { items: N
           <RubricRow item={home} current={current} onNavigate={onNavigate} />
         </li>
       </ul>
-      {groupRubrics(items).map((group) => (
+      {groupRubrics(mobileRubricsMenuOrder(items)).map((group) => (
         <div key={group.label} className="mt-3">
           <p className="np-rubrics-group flex items-center gap-2 px-3 pb-2 text-[0.6875rem] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</p>
           <ul className="flex flex-col gap-1">
