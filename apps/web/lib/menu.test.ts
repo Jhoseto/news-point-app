@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_MENU, menuName } from "./menu";
+import { PUBLIC_MENU, menuName, mobileRubricsMenuOrder } from "./menu";
 
 describe("public menu", () => {
   it("lists the rubrics in the agreed order, each once", () => {
@@ -22,6 +22,25 @@ describe("public menu", () => {
       "izbori",
     ]);
     expect(new Set(PUBLIC_MENU.map((entry) => entry.slug)).size).toBe(PUBLIC_MENU.length);
+  });
+
+  it("puts analyses directly above Bulgaria in the mobile/PWA drawer only", () => {
+    const source = PUBLIC_MENU.map((entry) => ({ ...entry, path: `/${entry.slug}/` }));
+    const unchanged = source.map((entry) => entry.slug);
+    const ordered = mobileRubricsMenuOrder(source);
+    expect(ordered.map((entry) => entry.slug).slice(0, 6)).toEqual([
+      "plovdiv",
+      "regionalni-novini",
+      "na-fokus",
+      "glasat-na-istinata",
+      "ot-soczialnite-mrezhi",
+      "balgariya",
+    ]);
+    expect(ordered).toHaveLength(source.length);
+    expect(new Set(ordered.map((entry) => entry.slug)).size).toBe(source.length);
+    expect(source.map((entry) => entry.slug)).toEqual(unchanged);
+    expect(mobileRubricsMenuOrder([{ slug: "balgariya" }])).toEqual([{ slug: "balgariya" }]);
+    expect(mobileRubricsMenuOrder(ordered)).toEqual(ordered);
   });
 
   it("renames imported labels and leaves the rest", () => {
