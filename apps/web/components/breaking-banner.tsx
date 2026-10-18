@@ -10,6 +10,12 @@ function setCss(target: HTMLElement, name: string, value: string) {
   if (target.style.getPropertyValue(name) !== value) target.style.setProperty(name, value);
 }
 
+function layoutLeft(element: HTMLElement | null | undefined) {
+  let left = 0;
+  for (let node = element; node; node = node.offsetParent as HTMLElement | null) left += node.offsetLeft;
+  return left;
+}
+
 export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBreaking | null; categoryPaths: string[] }) {
   const pathname = usePathname();
   const eligible = breakingVisibleAt(pathname, categoryPaths);
@@ -74,15 +80,19 @@ export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBrea
     const root = document.documentElement;
     const header = element.closest<HTMLElement>("[data-np-header]");
     const strip = header?.querySelector<HTMLElement>(".np-lp-strip");
+    const brand = header?.querySelector<HTMLElement>(".np-lp-brand");
     let disposed = false;
     const measure = () => {
       if (disposed) return;
       const desktop = window.matchMedia("(min-width: 64rem)").matches;
       const latest = header?.querySelector<HTMLElement>(".np-headline-capsule");
       // Read layout offsets, not the temporary FLIP transforms of the rubrics strip.
-      let left = 0;
-      for (let node: HTMLElement | null = latest ?? null; node; node = node.offsetParent as HTMLElement | null) left += node.offsetLeft;
+      const left = layoutLeft(latest);
       const offset = desktop && latest?.offsetWidth ? Math.max(0, element.clientWidth - left) : 0;
+      if (desktop && brand) {
+        setCss(element, "--np-breaking-inset", `${layoutLeft(brand) - layoutLeft(strip)}px`);
+        setCss(element, "--np-breaking-heading-w", `${brand.getBoundingClientRect().width}px`);
+      }
       setCss(element, "--np-breaking-right", `${offset}px`);
       setCss(element, "--np-breaking-window-w", `${element.querySelector<HTMLElement>(".np-breaking-window")?.clientWidth ?? 0}px`);
       setCss(root, "--np-breaking-h", `${content.offsetHeight}px`);
@@ -92,6 +102,7 @@ export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBrea
     const observer = new ResizeObserver(measure);
     observer.observe(content);
     if (strip) observer.observe(strip);
+    if (brand) observer.observe(brand);
     const latest = header?.querySelector<HTMLElement>(".np-lp-latest");
     if (latest) observer.observe(latest);
     if (segment.current) observer.observe(segment.current);
