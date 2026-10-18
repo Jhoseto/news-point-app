@@ -276,7 +276,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="np-label gap-1">
             <span className="text-xs font-bold tracking-wide text-muted uppercase">Заглавие</span>
-            <input
+            <input data-help="Името на темата с продължение, видимо на публичната ѝ страница."
               type="text"
               value={title}
               onChange={(event) => setTitle(event.target.value.slice(0, TITLE_LIMIT))}
@@ -287,7 +287,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
           </label>
           <label className="np-label gap-1">
             <span className="text-xs font-bold tracking-wide text-muted uppercase">URL адрес</span>
-            <input
+            <input data-help="Кратката част на адреса след /temi/. Използвайте латински букви, цифри и тирета."
               type="text"
               value={slug}
               onChange={(event) => {
@@ -302,7 +302,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         </div>
         <label className="np-label gap-1">
           <span className="text-xs font-bold tracking-wide text-muted uppercase">Кратко описание (за картата)</span>
-          <textarea
+          <textarea data-help="Краткият текст в картата на темата в списъка с теми."
             value={summary}
             onChange={(event) => setSummary(event.target.value.slice(0, SUMMARY_LIMIT))}
             rows={2}
@@ -313,7 +313,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         </label>
         <label className="np-label gap-1">
           <span className="text-xs font-bold tracking-wide text-muted uppercase">Въведение (за страницата с хронология)</span>
-          <textarea
+          <textarea data-help="Въведение над хронологията. Обяснете накратко защо темата е важна."
             value={intro}
             onChange={(event) => setIntro(event.target.value.slice(0, INTRO_LIMIT))}
             rows={6}
@@ -340,7 +340,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             )}
           </div>
           <div className="flex flex-col gap-2">
-            <button
+            <button data-help="Избира снимка за корица на публичната страница на темата."
               type="button"
               onClick={() => setCoverPickerOpen(true)}
               className="np-btn np-btn-secondary !w-fit"
@@ -348,7 +348,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
               {cover.url ? "Смени корицата" : "Избери корица"}
             </button>
             {cover.url ? (
-              <button
+              <button data-help="Маха корицата от темата. Файлът остава в библиотеката."
                 type="button"
                 onClick={() => setCover({ id: null, url: null })}
                 className="np-btn np-btn-secondary !w-fit text-danger"
@@ -358,7 +358,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             ) : null}
             <label className="np-label gap-1">
               <span className="text-xs font-bold tracking-wide text-muted uppercase">Надпис</span>
-              <input
+              <input data-help="Надписът под корицата, например източникът на снимката."
                 type="text"
                 value={coverCaption}
                 onChange={(event) => setCoverCaption(event.target.value.slice(0, CAPTION_LIMIT))}
@@ -382,7 +382,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <button
+            <button data-help="Подрежда включените статии от най-старата към най-новата."
               type="button"
               onClick={onSortChronologically}
               disabled={pending || alreadyChronological}
@@ -390,7 +390,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             >
               Подреди хронологично
             </button>
-            <button
+            <button data-help="Избира кои публикувани статии да влязат в хронологията на темата."
               type="button"
               onClick={() => openPicker(articles)}
               className="np-btn np-btn-secondary"
@@ -421,7 +421,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                  <button
+                  <button data-help="Премества статията едно място нагоре в хронологията."
                     type="button"
                     onClick={() => onMoveUp(index)}
                     disabled={index === 0 || pending}
@@ -430,7 +430,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                   >
                     ↑
                   </button>
-                  <button
+                  <button data-help="Премества статията едно място надолу в хронологията."
                     type="button"
                     onClick={() => onMoveDown(index)}
                     disabled={index === articles.length - 1 || pending}
@@ -439,7 +439,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                   >
                     ↓
                   </button>
-                  <button
+                  <button data-help="Маха статията само от тази тема. Самата статия остава в сайта."
                     type="button"
                     onClick={() => void removeArticle(article.id)}
                     disabled={pending}
@@ -464,7 +464,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
           </p>
         ) : null}
         {mode === "create" ? (
-          <button
+          <button data-help="Създава нова тема от попълнените данни."
             type="button"
             onClick={() => void send("create")}
             disabled={pending || created}
@@ -475,7 +475,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         ) : (
           <>
             {theme?.isPublished ? (
-              <button
+              <button data-help="Скрива публичната страница на темата. Включените статии остават отделни материали."
                 type="button"
                 onClick={() => void send("unpublish")}
                 disabled={pending}
@@ -484,7 +484,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                 Свали от публикация
               </button>
             ) : (
-              <button
+              <button data-help="Публикува темата и нейната хронология за читателите."
                 type="button"
                 onClick={() => void send("publish")}
                 disabled={pending}
@@ -493,7 +493,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
                 Публикувай
               </button>
             )}
-            <button
+            <button data-help="Записва промените по темата. Ако е публикувана, те се отразяват и на сайта."
               type="button"
               onClick={() => void send("save")}
               disabled={pending || !dirty}

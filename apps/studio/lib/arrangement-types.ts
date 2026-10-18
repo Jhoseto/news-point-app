@@ -3,6 +3,7 @@ export interface ArrangementArticle {
   title: string;
   categoryName: string | null;
   isPublic: boolean;
+  imageUrl?: string | null;
 }
 
 export interface MenuCategory {

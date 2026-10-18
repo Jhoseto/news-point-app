@@ -35,7 +35,7 @@ export function DeleteArticleButton({ id, title }: { id: string; title: string }
 
   return (
     <>
-      <button
+      <button data-help="Изтрива материала след потвърждение. Проверете внимателно коя новина сте избрали."
         type="button"
         onClick={() => { setError(null); setOpen(true); }}
         className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px] text-danger"
@@ -63,10 +63,10 @@ export function DeleteArticleButton({ id, title }: { id: string; title: string }
             </div>
             {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
             <div className="flex justify-end gap-2">
-              <button type="button" disabled={busy} onClick={() => setOpen(false)} className="np-btn np-btn-secondary">
+              <button data-help="Затваря потвърждението. Материалът остава непроменен." type="button" disabled={busy} onClick={() => setOpen(false)} className="np-btn np-btn-secondary">
                 Отказ
               </button>
-              <button type="button" disabled={busy} onClick={() => void confirmDelete()} className="np-btn bg-danger text-on-accent">
+              <button data-help="Изтрива материала окончателно от сайта и подрежданията. Възстановяване няма." type="button" disabled={busy} onClick={() => void confirmDelete()} className="np-btn bg-danger text-on-accent">
                 {busy ? "Изтриване…" : "Изтрий окончателно"}
               </button>
             </div>

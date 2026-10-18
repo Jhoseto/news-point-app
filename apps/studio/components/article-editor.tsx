@@ -59,7 +59,7 @@ const sameDraft = (a: Draft, b: Draft) => JSON.stringify(a) === JSON.stringify(b
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (value: T) => void; label: string }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex rounded-xl border border-line bg-surface p-0.5">
+    <div data-help={label === "Устройство" ? "Сменя само размера на предварителния изглед: компютър или телефон." : "Показва текущата новина в светла или тъмна тема. Не променя настройките на сайта."} role="group" aria-label={label} className="inline-flex rounded-xl border border-line bg-surface p-0.5">
       {options.map((option) => (
         <button
           key={option.value}
@@ -84,7 +84,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const [saved, setSaved] = useState<Draft>(initial);
   const [revision, setRevision] = useState(article.revision);
   const [savedAt, setSavedAt] = useState(article.revisionSavedAt);
-  const [slugTouched, setSlugTouched] = useState(Boolean(initialDraft.slug));
+  const [slugTouched] = useState(Boolean(initialDraft.slug));
   const [phase, setPhase] = useState<"idle" | "saving" | "publishing">("idle");
   const [conflict, setConflict] = useState<Conflict | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -404,17 +404,17 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           ) : null}
           {hasUnpublished ? <span className="hidden text-xs font-bold text-warning xl:inline">Има промени, които не са на сайта</span> : null}
 
-          {articleId ? <button type="button" disabled={busy || historyLoading} className="np-btn np-btn-secondary px-3 py-1.5 text-xs" onClick={() => void openHistory()}>{historyLoading ? "Зареждане…" : "Версии"}</button> : null}
+          {articleId ? <button data-help="Показва запазените версии. Можете да заредите стара версия за редакция." type="button" disabled={busy || historyLoading} className="np-btn np-btn-secondary px-3 py-1.5 text-xs" onClick={() => void openHistory()}>{historyLoading ? "Зареждане…" : "Версии"}</button> : null}
           {!readOnly ? (
             <div className="ml-auto flex items-center gap-1.5">
               <label className="inline-flex items-center gap-2 pr-1 text-xs font-bold text-ink">
-                <input type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={(event) => update("listenEnabled", event.target.checked)} />
+                <input data-help="Разрешава на читателите да слушат тази новина чрез функцията за прочитане." type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={(event) => update("listenEnabled", event.target.checked)} />
                 Позволи слушане
               </label>
-              <button type="button" disabled={busy || !editorValid || Boolean(conflict) || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
+              <button data-help="Записва черновата. Промените няма да се появят на сайта, докато не ги публикувате." type="button" disabled={busy || !editorValid || Boolean(conflict) || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
                 {phase === "saving" ? "Записване…" : "Запиши"}
               </button>
-              <button type="button" disabled={busy || !editorValid || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
+              <button data-help="Публикува текущата редакция или я насрочва за избрания час. Проверете съдържанието преди натискане." type="button" disabled={busy || !editorValid || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
                 {phase === "publishing" ? "Публикуване…" : published.isPublic ? "Обнови публикацията" : "Публикувай"}
               </button>
             </div>
@@ -458,10 +458,10 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               </p>
               <p className="mt-1 text-sm text-body">Вашият текст не е загубен. Той е тук, в полетата отдолу. Изберете как да продължите:</p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <button type="button" disabled={busy} onClick={() => void save(conflict.revision)} className="np-btn np-btn-primary">
+                <button data-help="Записва вашата редакция върху последната версия, показана в съобщението за конфликт." type="button" disabled={busy} onClick={() => void save(conflict.revision)} className="np-btn np-btn-primary">
                   Запиши моята версия
                 </button>
-                <button
+                <button data-help="Зарежда последната чужда редакция вместо вашите незаписани промени."
                   type="button"
                   disabled={busy}
                   onClick={() => {
@@ -508,7 +508,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
             <div className="studio-meta-fields">
               <label htmlFor="category" className="studio-meta-field">
                 <span>Рубрика</span>
-                <select
+                <select data-help="Основната рубрика, в която ще излезе новината. Изберете най-подходящата за съдържанието."
                   id="category"
                   value={draft.primaryCategoryId ?? ""}
                   disabled={readOnly}
@@ -525,7 +525,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               </label>
               <label htmlFor="story-theme" className="studio-meta-field">
                 <span>Тема с продължение</span>
-                <select
+                <select data-help="Свързва новината с избрана тема с продължение. Без тема оставя новината самостоятелна."
                   id="story-theme"
                   aria-label="Тема с продължение"
                   value={storyThemeId ?? ""}
@@ -554,14 +554,14 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                   ) : null}
                   {!readOnly ? (
                     <>
-                      <button type="button" onClick={() => openMediaPicker("hero")} className="np-btn np-btn-secondary">
+                      <button data-help="Избира основната снимка за новината и картите ѝ в сайта." type="button" onClick={() => openMediaPicker("hero")} className="np-btn np-btn-secondary">
                         {hero ? "Смени" : "Избери"}
                       </button>
-                      <button type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary">Embed</button>
-                      <button type="button" onClick={() => setVideoTarget("hero")} className="np-btn np-btn-secondary">Качи видео</button>
+                      <button data-help="Поставя външно видео или публикация вместо основна снимка." type="button" onClick={setHeroEmbed} className="np-btn np-btn-secondary">Embed</button>
+                      <button data-help="Качва видео за водещата част на новината." type="button" onClick={() => setVideoTarget("hero")} className="np-btn np-btn-secondary">Качи видео</button>
                       {draft.heroEmbedUrl ? <button type="button" onClick={() => update("heroEmbedUrl", null)} className="np-btn np-btn-secondary">Махни embed</button> : null}
                       {hero ? (
-                        <button type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary">
+                        <button data-help="Маха снимката от тази новина. Файлът остава в медийната библиотека." type="button" onClick={() => update("heroMediaId", null)} className="np-btn np-btn-secondary">
                           Махни
                         </button>
                       ) : null}
@@ -575,7 +575,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               <div className="studio-meta-field">
                 <span>Прегледи</span>
                 <div className="studio-meta-views">
-                  <input
+                  <input data-help="Желан начален общ брой прегледи при публикуване. Системата допълва броя; реалните посещения се пазят отделно."
                     aria-label="Прегледи при публикуване"
                     inputMode="numeric"
                     disabled={readOnly || seedLocked}
@@ -584,7 +584,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                     placeholder="старт"
                     className="np-input np-views-input tabular-nums"
                   />
-                  <input
+                  <input data-help="През колко избрани единици време да се добавя преглед."
                     aria-label="Интервал"
                     inputMode="numeric"
                     disabled={readOnly}
@@ -593,7 +593,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                     placeholder="всеки"
                     className="np-input np-views-input tabular-nums"
                   />
-                  <select
+                  <select data-help="Единицата за интервала: секунди, минути или часове."
                     aria-label="Мярка за времето"
                     disabled={readOnly}
                     value={draft.viewUnit}
@@ -604,7 +604,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                     <option value="minutes">мин</option>
                     <option value="hours">ч</option>
                   </select>
-                  <input
+                  <input data-help="Общият брой, при който автоматичното добавяне спира. Реалните посещения продължават да се броят."
                     aria-label="Краен брой прегледи"
                     inputMode="numeric"
                     disabled={readOnly}
@@ -619,10 +619,23 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           </div>
 
           <div className="np-card p-3">
+            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+              <label htmlFor="home-hero-position" className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-muted">
+                Позиция в топ новини
+                <select data-help="Избира място 1–4 в топ новините при публикуване. Без срок; заменя новините и опашката на това място." id="home-hero-position" aria-describedby="home-hero-hint" className="np-home-hero-position h-8 min-w-0 max-w-full rounded-md border border-line bg-surface px-2 text-xs text-ink" disabled={readOnly || busy || !homeHeroReady} value={draft.homeHeroPosition ?? ""} onChange={event => update("homeHeroPosition", event.target.value ? Number(event.target.value) as 1 | 2 | 3 | 4 : null)}>
+                  <option value="">Без позиция</option>
+                  <option value="1">Позиция 1 — водеща</option>
+                  <option value="2">Позиция 2 — втора голяма</option>
+                  <option value="3">Позиция 3 — лява малка</option>
+                  <option value="4">Позиция 4 — дясна малка</option>
+                </select>
+              </label>
+              <span id="home-hero-hint" className="text-faint">{!homeHeroReady ? "Изборът изисква миграция 38 и готово подреждане." : draft.homeHeroPosition ? "Без срок. Заменя съдържанието и опашката на тази позиция при публикуване." : "При публикуване или в насрочения час."}</span>
+            </div>
             <label htmlFor="title" className="np-label">
               Заглавие
             </label>
-            <textarea
+            <textarea data-help="Основното заглавие на новината. Показва се в сайта, при споделяне и в търсачките."
               id="title"
               aria-describedby="title-seo-hint"
               rows={1}
@@ -631,30 +644,13 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               disabled={readOnly}
               onChange={(event) => update("title", event.target.value.replace(/\n/g, " "))}
               placeholder="Заглавие на материала"
-              className="w-full resize-none bg-transparent text-[0.95rem] leading-snug font-bold tracking-tight text-ink outline-none [field-sizing:content] placeholder:text-faint"
+              className="np-input min-h-11 resize-none text-[0.95rem] leading-snug font-bold tracking-tight [field-sizing:content]"
             />
             <p id="title-seo-hint" className="mt-1 text-[11px] text-muted">{draft.title.trim().length}/{TITLE_MAX} знака. Заглавието се използва и при търсене и споделяне; Google може да го съкрати или преформулира.</p>
-            <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
-              <span className="font-semibold">Адрес:</span>
-              <span className="text-faint">{new URL(webUrl).host}/</span>
-              <input
-                aria-label="Адрес на статията"
-                value={draft.slug}
-                disabled={readOnly || Boolean(published.at)}
-                onChange={(event) => {
-                  setSlugTouched(true);
-                  update("slug", event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
-                }}
-                placeholder="adres-na-statiyata"
-                className="min-w-40 flex-1 rounded-md bg-transparent px-1 py-0 font-semibold text-ink outline-none focus:bg-surface-2 disabled:text-muted"
-              />
-              {published.isPublic ? <span className="text-[11px] text-faint">(не се сменя след публикуване)</span> : null}
-            </div>
-
             <label htmlFor="excerpt" className="np-label mt-3">
               Кратко резюме
             </label>
-            <textarea
+            <textarea data-help="Кратко обяснение на новината под заглавието и в картите. Използва се и при споделяне."
               id="excerpt"
               aria-describedby="excerpt-seo-hint"
               rows={2}
@@ -667,26 +663,10 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
             />
             <p id="excerpt-seo-hint" className="mt-1 text-[11px] text-muted">{draft.excerpt.trim().length}/{EXCERPT_MAX} знака. Резюмето е описанието при споделяне и предложението към търсачките; описвайте конкретната новина.</p>
 
-            <div className="mt-4 flex items-end justify-between gap-3 border-t border-line pt-4">
-              <label htmlFor="body" className="np-label mb-0">
-                Текст
-              </label>
+            <div className="mt-4 flex items-end justify-end gap-3 border-t border-line pt-4">
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <div className="mt-2 mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-              <label htmlFor="home-hero-position" className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-muted">
-                Начална страница
-                <select id="home-hero-position" aria-describedby="home-hero-hint" className="np-home-hero-position h-8 min-w-0 max-w-full rounded-md border border-line bg-surface px-2 text-xs text-ink" disabled={readOnly || busy || !homeHeroReady} value={draft.homeHeroPosition ?? ""} onChange={event => update("homeHeroPosition", event.target.value ? Number(event.target.value) as 1 | 2 | 3 | 4 : null)}>
-                  <option value="">Без промяна</option>
-                  <option value="1">Позиция 1 — водеща</option>
-                  <option value="2">Позиция 2 — втора голяма</option>
-                  <option value="3">Позиция 3 — лява малка</option>
-                  <option value="4">Позиция 4 — дясна малка</option>
-                </select>
-              </label>
-              <span id="home-hero-hint" className="text-faint">{!homeHeroReady ? "Изборът изисква миграция 38 и готово подреждане." : draft.homeHeroPosition ? "Без срок. Заменя съдържанието и опашката на тази позиция при публикуване." : "При публикуване или в насрочения час."}</span>
-            </div>
             <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
             <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
@@ -694,7 +674,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               <div className="flex flex-wrap items-end gap-3">
                 <label htmlFor="author-kind" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
                   Автор
-                  <select
+                  <select data-help="Избира кой ще е посочен като автор: вашият профил, NewsPoint.bg или друго име."
                     id="author-kind"
                     aria-label="Публичен автор"
                     value={draft.authorKind}
@@ -709,7 +689,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                 {draft.authorKind === "manual" ? (
                   <label htmlFor="manual-author" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
                     Име
-                    <input
+                    <input data-help="Публичното име на автора, което читателите ще виждат."
                       id="manual-author"
                       value={draft.authorName}
                       maxLength={AUTHOR_NAME_MAX}
@@ -725,13 +705,13 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                 <p className="text-[0.6875rem] text-muted">Публикуване по час (българско време). Празни полета не пускат новината сами.</p>
                 <div className="mt-2 flex flex-wrap items-end gap-2">
                   <label className="text-[11px] font-semibold text-muted">Дата
-                    <input type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                    <input data-help="Датата за първото публикуване на новината. Потвърдете насрочването с бутона за публикуване." type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
                       const time = draft.publishAtSofia?.slice(11, 16) || "08:00";
                       update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
                     }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
                   </label>
                   <label className="text-[11px] font-semibold text-muted">Час
-                    <input type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                    <input data-help="Часът за първото публикуване по софийско време. Използва се заедно с избраната дата." type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
                       const date = draft.publishAtSofia?.slice(0, 10);
                       update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
                     }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
@@ -755,12 +735,11 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           className={`min-w-0 flex-col border-line bg-surface-2/70 lg:sticky lg:top-[3.75rem] lg:flex lg:h-[calc(100dvh-3.75rem)] lg:border-l ${mobileTab === "preview" ? "flex" : "hidden"} ${previewCollapsed ? "is-preview-collapsed" : ""}`}
         >
           <div className={`flex items-center gap-1.5 border-b border-line bg-surface/80 ${previewCollapsed ? "flex-col px-1 py-2" : "flex-wrap px-2 py-2 sm:px-3"}`}>
-            <button
+            <button data-help="Прибира или показва предварителния изглед, за да имате повече място за писане."
               type="button"
               onClick={togglePreview}
               aria-pressed={previewCollapsed}
               aria-label={previewCollapsed ? "Покажи прегледа" : "Прибери прегледа"}
-              title={previewCollapsed ? "Покажи прегледа" : "Прибери прегледа"}
               className="hidden size-11 shrink-0 items-center justify-center rounded-lg text-ink transition hover:bg-surface-2 lg:inline-flex"
             >
               <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -788,11 +767,10 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                 { value: "dark", label: "Тъмна" },
               ]}
             />
-            <button
+            <button data-help="Записва текущата чернова и я отваря за преглед в нов раздел. Не публикува новината."
               type="button"
               disabled={busy || (!articleId && !dirty)}
               onClick={() => void openPreviewTab()}
-              title="Записва и отваря прегледа в нов раздел"
               className="np-btn np-btn-secondary px-3 py-1.5 text-xs"
             >
               Цял екран ↗
@@ -841,14 +819,14 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
       {leaveDestination ? <EditorDialog label="Незаписани промени" onClose={() => setLeaveDestination(null)}>
         <h3>Има незаписани промени</h3><p>Запишете материала преди да напуснете или останете в редактора.</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="np-btn np-btn-primary" disabled={busy || !editorValid || !!conflict} onClick={() => { const destination = leaveDestination; void save().then(result => { if (result !== null) { allowLeave.current = true; window.location.assign(destination); } }); }}>Запиши и напусни</button>
+          <button data-help="Записва текущата чернова, после отваря избраната страница. Не публикува новината." type="button" className="np-btn np-btn-primary" disabled={busy || !editorValid || !!conflict} onClick={() => { const destination = leaveDestination; void save().then(result => { if (result !== null) { allowLeave.current = true; window.location.assign(destination); } }); }}>Запиши и напусни</button>
           <button type="button" className="np-btn np-btn-secondary" onClick={() => setLeaveDestination(null)}>Остани в редактора</button>
-          <button type="button" className="np-btn np-btn-secondary" disabled={busy} onClick={() => { allowLeave.current = true; window.location.assign(leaveDestination); }}>Напусни без запис</button>
+          <button data-help="Напуска редактора и губи незаписаните промени." type="button" className="np-btn np-btn-secondary" disabled={busy} onClick={() => { allowLeave.current = true; window.location.assign(leaveDestination); }}>Напусни без запис</button>
         </div>
       </EditorDialog> : null}
       {history ? <EditorDialog label="История на версиите" onClose={() => setHistory(null)}>
         <h3>Версии на материала</h3><p>Зареждането заменя текущите полета. Запишете ръчно, за да създадете нова версия. Публикуването е отделно действие.</p>
-        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, social: normalizeSocial(item.draft.social, item.draft.title), slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, homeHeroPosition: item.draft.homeHeroPosition ?? null, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
+        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button data-help="Поставя старата версия в редактора. Запишете или публикувайте, за да приложите зареденото съдържание." type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, social: normalizeSocial(item.draft.social, item.draft.title), slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, homeHeroPosition: item.draft.homeHeroPosition ?? null, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или embed код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>

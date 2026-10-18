@@ -3,6 +3,7 @@ import { loadEnvConfig } from "@next/env";
 import type { NextConfig } from "next";
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 import { indexingHeaderRules } from "./lib/indexing-policy.mjs";
+import { developmentSlashRedirects } from "./lib/dev-trailing-slash";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
@@ -35,10 +36,14 @@ const nextConfig: NextConfig = {
   ...(process.env.NODE_ENV === "development"
     ? {
         allowedDevOrigins: ["localhost", "127.0.0.1", ".trycloudflare.com"],
+        skipTrailingSlashRedirect: true,
       }
     : {}),
   // WordPress URLs end with a slash; imported paths are kept exactly (DEC-105).
   trailingSlash: true,
+  async redirects() {
+    return process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [];
+  },
   // Studio (apps/studio, basePath /admin) is served through this host at /admin.
   // Pages keep the trailing slash; static files have none.
   async rewrites() {

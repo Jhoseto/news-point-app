@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { withBase } from "@/lib/paths";
 import "@fontsource-variable/manrope";
 import "./globals.css";
+import { StudioHelp } from "@/components/studio-help";
 
 /** Same geometric face as the NewsPoint wordmark (Montserrat ExtraBold). */
 const wordmark = localFont({
@@ -31,7 +32,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="bg" className={wordmark.variable}>
-      <body>{children}</body>
+      <body>{children}<StudioHelp /></body>
     </html>
   );
 }

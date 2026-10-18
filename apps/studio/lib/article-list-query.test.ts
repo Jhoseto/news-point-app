@@ -1,9 +1,9 @@
 import { expect, it } from "vitest";
-import { articleListHref, likePattern, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaDayStart, sofiaToday } from "./article-list-query";
+import { ARTICLE_SORTS, articleListHref, articleSortHref, likePattern, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaDayStart, sofiaToday } from "./article-list-query";
 
 it("keeps a safe default desk query", () => {
   const query = parseArticleListQuery({});
-  expect(query).toMatchObject({ q: "", status: "all", source: "all", hero: "all", sort: "updated", dir: "desc", page: 1, pageSize: 50, category: "" });
+  expect(query).toMatchObject({ q: "", status: "all", sort: "updated", dir: "desc", page: 1, pageSize: 50, category: "" });
 });
 
 it("rejects junk and clamps the list query", () => {
@@ -21,8 +21,8 @@ it("rejects junk and clamps the list query", () => {
   });
   expect(query.q).toBe("акциз");
   expect(query.status).toBe("all");
-  expect(query.source).toBe("studio");
-  expect(query.hero).toBe("without");
+  expect(query).not.toHaveProperty("source");
+  expect(query).not.toHaveProperty("hero");
   expect(query.category).toBe("");
   expect(query.sort).toBe("title");
   expect(query.dir).toBe("asc");
@@ -30,6 +30,26 @@ it("rejects junk and clamps the list query", () => {
   expect(query.pageSize).toBe(50);
   expect(query.from).toBe("2026-01-02");
   expect(query.to).toBe("2026-09-28");
+});
+
+for (const sort of ARTICLE_SORTS) {
+  it(`toggles ${sort} in both directions, preserving filters and resetting pagination`, () => {
+    const initial = parseArticleListQuery({ q: "QA", author: "newsroom", status: "scheduled", from: "2026-10-01", page: "4", size: "25" });
+    const parseHref = (href: string) => parseArticleListQuery(Object.fromEntries(new URL(href, "http://qa.invalid").searchParams));
+    const first = parseHref(articleSortHref(initial, sort));
+    const second = parseHref(articleSortHref(first, sort));
+    const third = parseHref(articleSortHref(second, sort));
+    expect(first).toMatchObject({ q: "QA", author: "newsroom", status: "scheduled", from: "2026-10-01", pageSize: 25, sort, page: 1 });
+    expect(second.dir).not.toBe(first.dir);
+    expect(third).toEqual(first);
+  });
+}
+
+it("ignores removed filters from old URLs and rejects impossible calendar days", () => {
+  const query = parseArticleListQuery({ source: "wordpress", hero: "without", date: "published", from: "2026-02-31", to: "2026-13-01" });
+  expect(query.from).toBe("");
+  expect(query.to).toBe("");
+  expect(articleListHref(query)).toBe("/");
 });
 
 it("builds a shareable href and drops defaults", () => {

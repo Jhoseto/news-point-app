@@ -116,11 +116,11 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                           Виж
                         </a>
                       ) : null}
-                      <Link href={`/stories/${theme.id}/preview/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
+                      <Link data-help="Отваря предварителен изглед на темата. Не я публикува." href={`/stories/${theme.id}/preview/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Preview
                       </Link>
                       {theme.isPublished ? (
-                        <button
+                        <button data-help="Скрива темата от сайта след потвърждение. Статиите не се изтриват."
                           type="button"
                           onClick={() => confirm("unpublish", theme.id, theme.title)}
                           disabled={isBusy}
@@ -129,7 +129,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                           Свали
                         </button>
                       ) : (
-                        <button
+                        <button data-help="Публикува темата и хронологията ѝ на сайта след потвърждение."
                           type="button"
                           onClick={() => confirm("publish", theme.id, theme.title)}
                           disabled={isBusy}
@@ -141,7 +141,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                       <Link href={`/stories/${theme.id}/`} className="np-btn np-btn-secondary !h-8 !px-3 !text-xs">
                         Редакция
                       </Link>
-                      <button
+                      <button data-help="Изтрива темата след потвърждение. Проверете избраната тема внимателно."
                         type="button"
                         onClick={() => confirm("delete", theme.id, theme.title)}
                         disabled={isBusy}

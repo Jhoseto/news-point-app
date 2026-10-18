@@ -16,8 +16,8 @@ export function VideoUploadDialog({ onUploaded, onClose }: { onUploaded: (url: s
  return <EditorDialog label="Качване на видео" onClose={busy ? () => undefined : onClose}>
   <h3>Качи собствено видео</h3><p>До 5 минути и 200 MiB. MP4, MOV, WebM или MKV. Качването е на части, после видеото се оптимизира.</p>
   <p className="mt-2 text-sm">При прекъсване изберете същия файл и натиснете отново. Получените части се пазят 24 часа.</p>
-  <label className="mt-4 block">Видео файл<input type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv,.mov" disabled={busy} onChange={event => { setFile(event.target.files?.[0] ?? null); setError(""); }} className="np-input mt-2 w-full" /></label>
+  <label className="mt-4 block">Видео файл<input data-help="Избира видео файл от компютъра. Изчакайте качването, преди да го добавите." type="file" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,.mkv,.mov" disabled={busy} onChange={event => { setFile(event.target.files?.[0] ?? null); setError(""); }} className="np-input mt-2 w-full" /></label>
   {progress ? <p role="status" className="mt-3 text-sm">{progress}</p> : null}{error ? <p role="alert" className="mt-3 text-sm text-red-600">{error}</p> : null}
-  <div className="mt-4 flex gap-2"><button type="button" className="np-btn np-btn-primary" disabled={!file || busy} onClick={() => void upload()}>Качи и добави</button><button type="button" className="np-btn np-btn-secondary" onClick={() => void cancel()}>Отмени качването</button></div>
+  <div className="mt-4 flex gap-2"><button data-help="Качва избраното видео и го добавя на избраното място в материала." type="button" className="np-btn np-btn-primary" disabled={!file || busy} onClick={() => void upload()}>Качи и добави</button><button data-help="Отменя текущото качване на видео." type="button" className="np-btn np-btn-secondary" onClick={() => void cancel()}>Отмени качването</button></div>
  </EditorDialog>;
 }

@@ -321,6 +321,11 @@ export function ArrangeDesk({
     return item ? known[item.articleId]?.title ?? "Новина" : null;
   }
 
+  function imageFor(key: string) {
+    const item = activePlacement(document.slots[key], now, visible);
+    return item ? known[item.articleId]?.imageUrl ?? null : null;
+  }
+
   function metaFor(key: string) {
     const item = activePlacement(document.slots[key], now, visible);
     if (!item) return "Автоматично";
@@ -365,6 +370,7 @@ export function ArrangeDesk({
             onEditCarousel={(prefix) => openSlot(homeCarouselSlotKey(prefix, 0))}
             titleFor={titleFor}
             metaFor={metaFor}
+            imageFor={imageFor}
           />
         ) : (
           <CategoryMap
@@ -380,11 +386,11 @@ export function ArrangeDesk({
 
       <div className="np-card flex flex-col gap-3 p-4">
         <label className="text-xs font-semibold text-muted">Бележка към смяната
-          <textarea value={deskNote} onChange={(event) => setDeskNote(event.target.value)} maxLength={400} rows={2} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" />
+          <textarea data-help="Бележка към подреждането за редакционния екип. Не се показва на сайта." value={deskNote} onChange={(event) => setDeskNote(event.target.value)} maxLength={400} rows={2} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={busy} className="h-10 rounded-full bg-surface-2 px-5 text-sm font-bold text-ink" onClick={async () => { if (await send({ action: "save", pageKey, note: deskNote, document })) setMessage("Черновата е запазена."); }}>Запази чернова</button>
-          <button type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-white" onClick={async () => {
+          <button data-help="Записва подреждането като чернова. За показване на сайта натиснете Публикувай." type="button" disabled={busy} className="h-10 rounded-full bg-surface-2 px-5 text-sm font-bold text-ink" onClick={async () => { if (await send({ action: "save", pageKey, note: deskNote, document })) setMessage("Черновата е запазена."); }}>Запази чернова</button>
+          <button data-help="Записва и публикува текущото подреждане. Промяната се изпраща към отворените страници на читателите." type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-white" onClick={async () => {
             if (!await send({ action: "save", pageKey, note: deskNote, document })) return;
             if (await send({ action: "publish", pageKey })) setMessage("Подреждането е на сайта.");
           }}>Публикувай</button>
@@ -398,7 +404,7 @@ export function ArrangeDesk({
               {history.map((item) => (
                 <li key={item.id} className="flex items-center justify-between gap-2 text-sm">
                   <span className="text-muted">{item.publishedAt ? new Date(item.publishedAt).toLocaleString("bg-BG") : "Без час"}</span>
-                  <button type="button" className="font-bold text-link" disabled={busy} onClick={async () => { if (await send({ action: "revert", pageKey, historyId: item.id })) router.refresh(); }}>Върни</button>
+                  <button data-help="Връща избраното старо подреждане и го публикува на сайта." type="button" className="font-bold text-link" disabled={busy} onClick={async () => { if (await send({ action: "revert", pageKey, historyId: item.id })) router.refresh(); }}>Върни</button>
                 </li>
               ))}
             </ul>
@@ -442,7 +448,7 @@ export function ArrangeDesk({
               ) : null}
 
               <form onSubmit={search} className="mt-3 flex min-w-0 gap-1.5">
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсете новина" className={`${field} flex-1`} />
+                <input data-help="Търси публикувана новина по заглавие, за да я сложите на това място." value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсете новина" className={`${field} flex-1`} />
                 <button type="submit" className="h-8 shrink-0 rounded-md bg-white px-3 text-xs font-bold text-[#101735]">Търси</button>
               </form>
               {results.length ? (
@@ -450,8 +456,8 @@ export function ArrangeDesk({
                   {results.map((article) => (
                     <li key={article.id} className="flex items-center gap-2 py-1.5">
                       <span className="min-w-0 flex-1 truncate text-xs">{article.title}</span>
-                      <button type="button" className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-[#101735]" onClick={() => pickArticle(article, false)}>Сложи</button>
-                      <button type="button" className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold" onClick={() => pickArticle(article, true)}>Време</button>
+                      <button data-help="Добавя новината към избраното място без краен срок. Приложете с бутона Запази на сайта." type="button" className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-[#101735]" onClick={() => pickArticle(article, false)}>Сложи</button>
+                      <button data-help="Добавя новината след текущата в опашката на мястото. Задайте периода и приложете с Запази на сайта." type="button" className="rounded-full bg-white/10 px-2 py-1 text-[11px] font-semibold" onClick={() => pickArticle(article, true)}>Време</button>
                     </li>
                   ))}
                 </ul>
@@ -463,7 +469,7 @@ export function ArrangeDesk({
                   <div className="min-w-0">
                     <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                       <span className="text-[11px] text-white/55">От</span>
-                      <button
+                      <button data-help="Попълва текущия час като начало за тази новина."
                         type="button"
                         className="rounded-full bg-white/10 px-2.5 py-0.5 text-[11px] font-bold text-white hover:bg-white/20"
                         onClick={() => updateEditItem(0, { startsAt: nowIsoForSlot() })}
@@ -471,7 +477,7 @@ export function ArrangeDesk({
                         От сега
                       </button>
                     </div>
-                    <input
+                    <input data-help="Начало на показване на това място. Празно поле означава веднага след публикуване на подреждането."
                       type="datetime-local"
                       value={toLocalInput(headEdit.startsAt)}
                       className={field}
@@ -483,7 +489,7 @@ export function ArrangeDesk({
                     <label className="mb-1 flex min-w-0 items-center gap-2 text-[11px] text-white/55">
                       <span>До</span>
                       <label className="ml-auto flex shrink-0 items-center gap-1.5 text-xs font-semibold text-white/80">
-                        <input
+                        <input data-help="Оставя новината на мястото без краен час. Важи след публикуване на подреждането."
                           type="checkbox"
                           checked={headEdit.endsAt === null}
                           onChange={(event) => updateEditItem(0, {
@@ -493,7 +499,7 @@ export function ArrangeDesk({
                         Без краен срок
                       </label>
                     </label>
-                    <input
+                    <input data-help="Край на показване на това място. След него се използва следващата допустима новина."
                       type="datetime-local"
                       disabled={headEdit.endsAt === null}
                       value={toLocalInput(headEdit.endsAt)}
@@ -521,7 +527,7 @@ export function ArrangeDesk({
               {inspectorError ? <p className="mt-2 text-xs font-semibold text-amber-300">{inspectorError}</p> : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
-              <button
+              <button data-help="Премахва ръчно избраните новини от това място. Приложете с бутона Запази на сайта."
                 type="button"
                 className="text-xs font-semibold text-white/60 underline-offset-2 hover:text-white hover:underline"
                 onClick={() => {
@@ -532,7 +538,7 @@ export function ArrangeDesk({
                 Автоматично
               </button>
               <button type="button" className="ml-auto rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white" onClick={closeInspector}>Отказ</button>
-              <button type="button" disabled={busy} className="rounded-full bg-white px-5 py-2 text-xs font-bold text-[#101735] disabled:opacity-50" onClick={() => void saveInspector()}>{busy ? "Запис…" : "Запази на сайта"}</button>
+              <button data-help="Записва редакцията на това място и публикува текущото подреждане на сайта." type="button" disabled={busy} className="rounded-full bg-white px-5 py-2 text-xs font-bold text-[#101735] disabled:opacity-50" onClick={() => void saveInspector()}>{busy ? "Запис…" : "Запази на сайта"}</button>
             </div>
           </div>
         </div>
@@ -568,11 +574,11 @@ function CarouselOrderPanel({
           return (
             <li key={key} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${activeKey === key ? "bg-white/10" : ""}`}>
               <span className="w-5 shrink-0 text-[11px] font-bold text-white/50">{index + 1}</span>
-              <button type="button" className="min-w-0 flex-1 truncate text-left text-xs font-semibold hover:underline" onClick={() => onPick(key)}>
+              <button data-help="Отваря настройките за избраното място в карусела." type="button" className="min-w-0 flex-1 truncate text-left text-xs font-semibold hover:underline" onClick={() => onPick(key)}>
                 {titleFor(key) ?? "Автоматично"}
               </button>
-              <button type="button" disabled={index === 0} className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-bold disabled:opacity-30" onClick={() => onMove(index, -1)} aria-label="Нагоре">↑</button>
-              <button type="button" disabled={index >= count - 1} className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-bold disabled:opacity-30" onClick={() => onMove(index, 1)} aria-label="Надолу">↓</button>
+              <button data-help="Разменя това място с предишното в карусела. За показване на сайта публикувайте подреждането." type="button" disabled={index === 0} className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-bold disabled:opacity-30" onClick={() => onMove(index, -1)} aria-label="Нагоре">↑</button>
+              <button data-help="Разменя това място със следващото в карусела. За показване на сайта публикувайте подреждането." type="button" disabled={index >= count - 1} className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-bold disabled:opacity-30" onClick={() => onMove(index, 1)} aria-label="Надолу">↓</button>
             </li>
           );
         })}
@@ -601,20 +607,20 @@ function ExcludeBox({
     : field;
   return (
     <details className={light ? "border-t border-line pt-3" : "border-t border-white/10 pt-3"}>
-      <summary className={`cursor-pointer text-[11px] font-semibold tracking-[0.14em] uppercase ${light ? "text-muted" : "text-white/45"}`}>Без автоматично място</summary>
+      <summary data-help="Новините в този списък няма да се избират автоматично за тази страница. Ръчното поставяне е отделно." className={`cursor-pointer text-[11px] font-semibold tracking-[0.14em] uppercase ${light ? "text-muted" : "text-white/45"}`}>Без автоматично място</summary>
       <form className="mt-2 flex gap-1.5" onSubmit={async (event) => {
         event.preventDefault();
         const response = await fetch(withBase(`/api/arrangements/search/?q=${encodeURIComponent(query)}`), { cache: "no-store" });
         const data = await response.json() as { articles?: ArrangementArticle[] };
         setResults(data.articles ?? []);
       }}>
-        <input value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="Заглавие" />
+        <input data-help="Търси новина за изключване от автоматичния избор на тази страница." value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="Заглавие" />
         <button className={`h-8 shrink-0 rounded-md px-2 text-xs font-bold ${light ? "bg-surface-2 text-ink" : "bg-white/10 text-white"}`} type="submit">Търси</button>
       </form>
       <ul className="mt-2 space-y-1 text-xs">
         {results.map((article) => (
           <li key={article.id}>
-            <button type="button" className="text-left font-semibold" onClick={() => {
+            <button data-help="Изключва новината от автоматичния избор за тази страница след публикуване на подреждането." type="button" className="text-left font-semibold" onClick={() => {
               onKnow(article);
               if (!document.excluded.includes(article.id)) onChange({ ...document, excluded: [...document.excluded, article.id] });
               setResults([]);
@@ -624,7 +630,7 @@ function ExcludeBox({
         {document.excluded.map((id) => (
           <li key={id} className={`flex items-center justify-between gap-2 ${light ? "text-muted" : "text-white/70"}`}>
             <span className="truncate">{known[id]?.title ?? "Новина"}</span>
-            <button type="button" className={`font-semibold ${light ? "text-link" : "text-white"}`} onClick={() => onChange({ ...document, excluded: document.excluded.filter((item) => item !== id) })}>Махни</button>
+            <button data-help="Връща новината сред допустимите за автоматичен избор след публикуване на подреждането." type="button" className={`font-semibold ${light ? "text-link" : "text-white"}`} onClick={() => onChange({ ...document, excluded: document.excluded.filter((item) => item !== id) })}>Махни</button>
           </li>
         ))}
       </ul>
@@ -641,6 +647,8 @@ function Tile({
   color,
   className = "",
   onSelect,
+  position,
+  imageUrl,
 }: {
   slotKey: string;
   label: string;
@@ -650,19 +658,27 @@ function Tile({
   color: string;
   className?: string;
   onSelect: (key: string) => void;
+  position?: number;
+  imageUrl?: string | null;
 }) {
   return (
-    <button
+    <button data-help="Отваря настройките за това място. Закачете новина или оставете автоматичен избор."
       type="button"
       onClick={() => onSelect(slotKey)}
+      aria-label={position ? `Топ ${position} · ${title ?? label}` : undefined}
+      data-home-position={position}
       className={`relative flex min-h-16 flex-col justify-end overflow-hidden rounded-2xl p-3 text-left transition ${selected ? "z-10 ring-2 ring-white ring-offset-2 ring-offset-[#070b22]" : "ring-1 ring-white/10 hover:-translate-y-0.5 hover:ring-white/40"} ${className}`}
       style={title
         ? { backgroundImage: `linear-gradient(180deg, rgb(7 11 34 / 0.05), rgb(7 11 34 / 0.82)), linear-gradient(145deg, ${color}, #12183a)` }
         : { background: "rgb(255 255 255 / 0.05)", boxShadow: `inset 0 0 0 1px ${color}55` }}
     >
-      <span className="absolute top-2.5 left-3 h-1 w-8 rounded-full" style={{ background: color }} />
-      <span className="mt-3 line-clamp-3 text-[13px] leading-snug font-extrabold tracking-tight">{title ?? label}</span>
-      <span className="mt-1 truncate text-[10px] font-semibold tracking-wide text-white/65 uppercase">{title ? meta : "Автоматично"}</span>
+      {imageUrl ? <>
+        <img src={imageUrl} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" onLoad={event => { event.currentTarget.style.visibility = "visible"; }} onError={event => { event.currentTarget.style.visibility = "hidden"; }} />
+        <span className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#070b22] via-[#070b22]/40 to-transparent" />
+      </> : null}
+      {position ? <span className="absolute top-2.5 left-3 z-10 flex size-7 items-center justify-center rounded-lg bg-[#070b22]/80 text-sm font-extrabold text-white ring-1 ring-white/30">{position}</span> : <span className="absolute top-2.5 left-3 h-1 w-8 rounded-full" style={{ background: color }} />}
+      <span className={`relative ${position ? "mt-9" : "mt-3"} line-clamp-3 text-[13px] leading-snug font-extrabold tracking-tight`}>{title ?? label}</span>
+      <span className="relative mt-1 truncate text-[10px] font-semibold tracking-wide text-white/65 uppercase">{title ? meta : "Автоматично"}</span>
     </button>
   );
 }
@@ -696,7 +712,7 @@ function CarouselRow({
         <p className="text-[10px] font-bold tracking-[0.14em] text-white/50 uppercase">{title}</p>
         {hint ? <p className="text-[10px] text-white/35">{hint}</p> : null}
         {onEditCarousel ? (
-          <button type="button" className="ml-auto rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-white/20" onClick={onEditCarousel}>
+          <button data-help="Отваря подредбата на местата в карусела. Разместването се вижда на сайта след публикуване." type="button" className="ml-auto rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-white hover:bg-white/20" onClick={onEditCarousel}>
             Подреди карусела
           </button>
         ) : null}
@@ -739,6 +755,7 @@ function HomeMap({
   onEditCarousel,
   titleFor,
   metaFor,
+  imageFor,
 }: {
   planned: { main: HomeSectionPlan[]; aside: HomeSectionPlan[] };
   selected: string | null;
@@ -746,6 +763,7 @@ function HomeMap({
   onEditCarousel: (prefix: HomeCarouselSlotPrefix) => void;
   titleFor: (key: string) => string | null;
   metaFor: (key: string) => string;
+  imageFor: (key: string) => string | null;
 }) {
   const balIndex = planned.main.findIndex((section) => section.slug === "balgariya");
   const beforeSplit = planned.main.filter((section, index) => section.wide && index < balIndex);
@@ -755,12 +773,12 @@ function HomeMap({
   return (
     <div className="flex flex-col gap-4">
       <div className="grid h-[22rem] grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_13rem] gap-3">
-        <Tile slotKey="hero" label="Водеща" title={titleFor("hero")} meta={metaFor("hero")} selected={selected === "hero"} color="#5b6cff" className="h-full min-h-0" onSelect={onSelect} />
+        <Tile slotKey="hero" position={1} imageUrl={imageFor("hero")} label="Водеща" title={titleFor("hero")} meta={metaFor("hero")} selected={selected === "hero"} color="#5b6cff" className="h-full min-h-0" onSelect={onSelect} />
         <div className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-3">
-          <Tile slotKey="support-0" label="До водещата" title={titleFor("support-0")} meta={metaFor("support-0")} selected={selected === "support-0"} color="#7c5cff" className="min-h-0" onSelect={onSelect} />
+          <Tile slotKey="support-0" position={2} imageUrl={imageFor("support-0")} label="До водещата" title={titleFor("support-0")} meta={metaFor("support-0")} selected={selected === "support-0"} color="#7c5cff" className="min-h-0" onSelect={onSelect} />
           <div className="grid min-h-0 grid-cols-2 gap-3">
-            <Tile slotKey="support-1" label="Малка" title={titleFor("support-1")} meta={metaFor("support-1")} selected={selected === "support-1"} color="#9b6bff" className="min-h-0" onSelect={onSelect} />
-            <Tile slotKey="support-2" label="Малка" title={titleFor("support-2")} meta={metaFor("support-2")} selected={selected === "support-2"} color="#c46bff" className="min-h-0" onSelect={onSelect} />
+            <Tile slotKey="support-1" position={3} imageUrl={imageFor("support-1")} label="Малка" title={titleFor("support-1")} meta={metaFor("support-1")} selected={selected === "support-1"} color="#9b6bff" className="min-h-0" onSelect={onSelect} />
+            <Tile slotKey="support-2" position={4} imageUrl={imageFor("support-2")} label="Малка" title={titleFor("support-2")} meta={metaFor("support-2")} selected={selected === "support-2"} color="#c46bff" className="min-h-0" onSelect={onSelect} />
           </div>
         </div>
         <div className="flex min-h-0 flex-col gap-2 rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">

@@ -67,14 +67,14 @@ export function ForgotPasswordForm() {
         <label htmlFor="email" className="np-label">
           Имейл
         </label>
-        <input id="email" name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={254} className="np-input py-3" />
+        <input data-help="Служебният имейл, с който е създаден вашият профил в Studio." id="email" name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={254} className="np-input py-3" />
       </div>
       {error ? (
         <p role="alert" className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm font-semibold text-danger">
           {error}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
+      <button data-help="Заявява имейл с връзка за задаване на нова парола." type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
         {pending ? "Изпращане…" : "Изпрати връзка"}
       </button>
       <p className="text-center text-sm">

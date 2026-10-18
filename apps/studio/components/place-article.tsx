@@ -62,13 +62,13 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
 
   return (
     <>
-      <button type="button" className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]" onClick={() => { setOpen(true); setMessage(""); setOk(false); }}>На място</button>
+      <button data-help="Поставя тази публикувана новина на избрано място в началната страница или рубрика." type="button" className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]" onClick={() => { setOpen(true); setMessage(""); setOk(false); }}>На място</button>
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => !busy && setOpen(false)}>
           <div className="np-card w-full max-w-md p-4 text-left" role="dialog" aria-labelledby="place-title" onClick={(event) => event.stopPropagation()}>
             <h2 id="place-title" className="text-sm font-bold text-ink">На място</h2>
             <label className="mt-3 block text-[11px] text-muted">Страница
-              <select disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={pageKey} onChange={(event) => {
+              <select data-help="Страницата, на която искате да закрепите новината." disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={pageKey} onChange={(event) => {
                 const next = event.target.value;
                 setVersion(null);
                 setMessage("");
@@ -82,12 +82,12 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
               </select>
             </label>
             <label className="mt-2 block text-[11px] text-muted">Място
-              <select disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={slot} onChange={(event) => setSlot(event.target.value)}>
+              <select data-help="Конкретното място в избраната страница." disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={slot} onChange={(event) => setSlot(event.target.value)}>
                 {slots.map((item) => <option key={item.key} value={item.key}>{item.group}: {item.label}</option>)}
               </select>
             </label>
             <label className="mt-2 block text-[11px] text-muted">Срок
-              <select disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={hours === null ? "permanent" : String(hours)} onChange={(event) => setHours(event.target.value === "permanent" ? null : Number(event.target.value))}>
+              <select data-help="Колко време новината да е закрепена. Постоянно означава без краен срок." disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={hours === null ? "permanent" : String(hours)} onChange={(event) => setHours(event.target.value === "permanent" ? null : Number(event.target.value))}>
                 <option value="2">2 часа</option>
                 <option value="6">6 часа</option>
                 <option value="12">12 часа</option>
@@ -102,10 +102,10 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
             ) : null}
             <div className="mt-3 flex flex-wrap items-center justify-end gap-2">
               <button type="button" disabled={!!busy} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => setOpen(false)}>Затвори</button>
-              <button type="button" disabled={!!busy || !version} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => void submit(false)}>
+              <button data-help="Записва мястото само в черновата на подреждането. Читателите още не виждат промяната." type="button" disabled={!!busy || !version} className="np-btn np-btn-secondary h-8 px-3 text-xs" onClick={() => void submit(false)}>
                 {busy === "draft" ? "Запис…" : "Чернова"}
               </button>
-              <button type="button" disabled={!!busy || !version} className="np-btn np-btn-primary h-8 px-3 text-xs" onClick={() => void submit(true)}>
+              <button data-help="Закрепя новината на избраното място и веднага публикува промяната." type="button" disabled={!!busy || !version} className="np-btn np-btn-primary h-8 px-3 text-xs" onClick={() => void submit(true)}>
                 {busy === "place" ? "Слагане…" : "Сложи"}
               </button>
             </div>

@@ -82,7 +82,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
             <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} />
             <path d="m20 20-4.2-4.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
-          <input
+          <input data-help="Търси получени читателски сигнали в списъка."
             type="search"
             placeholder="Търсене…"
             value={query}
@@ -104,7 +104,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
               type="button"
               role="tab"
               aria-selected={filterStatus === value}
-              onClick={() => setFilterStatus(value)}
+              data-help="Показва само сигналите с избрания статус. Не променя статуса им." onClick={() => setFilterStatus(value)}
               className="np-submissions-chip"
             >
               {label}
@@ -124,7 +124,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
               type="button"
               role="tab"
               aria-selected={filterKind === value}
-              onClick={() => setFilterKind(value)}
+              data-help="Показва само сигнали или материали от Моята новина." onClick={() => setFilterKind(value)}
               className="np-submissions-chip"
             >
               {label}
@@ -169,7 +169,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
 
       <div className="np-submissions-main">
         {selected ? (
-          <article className="np-submissions-detail">
+          <article data-help="Данните и прикачените файлове от читателския сигнал. Прегледайте ги преди редакционно решение." className="np-submissions-detail">
             <header className="np-submissions-detail-head">
               <div className="np-submissions-detail-head-left">
                 <span className={`np-submissions-status np-submissions-status--${statusTone(selected.status)}`}>
@@ -254,7 +254,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
               ) : <span />}
               <div className="np-submissions-status-actions">
                 {STATUSES.map((value) => (
-                  <button
+                  <button data-help="Променя вътрешния статус на сигнала. Това не публикува новина на сайта."
                     key={value}
                     type="button"
                     disabled={pending || selected.status === value}

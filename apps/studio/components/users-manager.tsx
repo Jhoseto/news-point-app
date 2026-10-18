@@ -93,15 +93,15 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
 
         <label className="np-users-field">
           <span>Име</span>
-          <input name="name" required minLength={2} maxLength={80} className="np-users-input" />
+          <input data-help="Името на служителя в Studio. Използва се и при избор на автор." name="name" required minLength={2} maxLength={80} className="np-users-input" />
         </label>
         <label className="np-users-field">
           <span>Имейл</span>
-          <input name="email" type="email" required maxLength={254} autoCapitalize="none" spellCheck={false} className="np-users-input" />
+          <input data-help="Имейлът за вход и възстановяване на достъпа на този служител." name="email" type="email" required maxLength={254} autoCapitalize="none" spellCheck={false} className="np-users-input" />
         </label>
         <label className="np-users-field">
           <span>Роля</span>
-          <select name="role" defaultValue="editor" className="np-users-input">
+          <select data-help="Правата на новия профил. Редакторът работи със съдържание; администраторът има допълнителни права за управление." name="role" defaultValue="editor" className="np-users-input">
             {roles.map((role) => (
               <option key={role} value={role}>
                 {ROLE_LABELS[role]}
@@ -112,7 +112,7 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
         <div className="np-users-field">
           <div className="np-users-field-row">
             <span>Парола</span>
-            <button
+            <button data-help="Създава случайна парола за новия служител. Предайте я по защитен начин."
               type="button"
               onClick={() => {
                 setPassword(generatePassword());
@@ -124,7 +124,7 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
             </button>
           </div>
           <div className="np-users-password-wrap">
-            <input
+            <input data-help="Началната парола на новия служител. Използвайте показаните изисквания или генерирайте сигурна парола."
               type={show ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -158,7 +158,7 @@ function CreateUserDialog({ roles, onClose, onCreated }: { roles: StaffRole[]; o
 
         <div className="np-users-dialog-foot">
           <button type="button" onClick={onClose} className="np-users-btn np-users-btn--secondary">Отказ</button>
-          <button type="submit" disabled={pending} className="np-users-btn np-users-btn--primary">
+          <button data-help="Създава новия служебен профил с попълнените данни." type="submit" disabled={pending} className="np-users-btn np-users-btn--primary">
             {pending ? "Създаване…" : "Създай профил"}
           </button>
         </div>
@@ -214,7 +214,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
           </p>
         </div>
         {canManageAccounts ? (
-          <button type="button" onClick={() => setCreating(true)} className="np-users-btn np-users-btn--primary">
+          <button data-help="Отваря създаването на нов служебен профил с име, имейл, парола и роля." type="button" onClick={() => setCreating(true)} className="np-users-btn np-users-btn--primary">
             <span aria-hidden="true">＋</span> Нов профил
           </button>
         ) : null}
@@ -226,7 +226,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
             <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} />
             <path d="m20 20-4.2-4.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
-          <input
+          <input data-help="Търси служители в списъка."
             type="search"
             placeholder="Търсене по име, имейл или био…"
             value={query}
@@ -242,7 +242,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
             ["admin", ROLE_LABELS.admin, counts.admin ?? 0],
             ["master_admin", ROLE_LABELS.master_admin, counts.master_admin ?? 0],
           ] as const).map(([value, label, count]) => (
-            <button
+            <button data-help="Показва профилите с избраната роля. Не променя правата им."
               key={value}
               type="button"
               role="tab"
@@ -304,7 +304,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
                     <td className="np-users-email">{user.email}</td>
                     <td>
                       {editableRole ? (
-                        <select
+                        <select data-help="Променя правата на този служител. Промяната се записва веднага."
                           aria-label={`Роля на ${user.name}`}
                           value={user.role}
                           disabled={busyId === user.id}
@@ -331,12 +331,11 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
                     </td>
                     <td className="np-users-actions">
                       {canManageAccounts ? (
-                        <button
+                        <button data-help="Изтрива служебния профил след потвърждение. Не можете да изтриете собствения си профил."
                           type="button"
                           disabled={!deletable || busyId === user.id}
                           onClick={() => void remove(user)}
                           aria-label={`Изтрий ${user.name}`}
-                          title={deletable ? "Изтрий профила" : "Не можете да изтриете собствения си профил"}
                           className="np-users-icon-btn"
                         >
                           <svg viewBox="0 0 24 24" width={18} height={18} fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">

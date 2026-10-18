@@ -121,6 +121,7 @@ export interface ArticleListItem {
   isPublic: boolean;
   path: string;
   publishedAt: Date | null;
+  scheduledPublishAt?: Date | null;
   updatedAt: Date;
   categoryName: string | null;
   authorName: string | null;

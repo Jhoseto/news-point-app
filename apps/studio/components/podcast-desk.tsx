@@ -59,7 +59,7 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
             <span className="np-podcast-counter-num">{counts.all}</span>
             <span className="np-podcast-counter-label">{counts.all === 1 ? "епизод" : "епизода"}</span>
           </div>
-          <button type="button" onClick={openNew} className="np-podcast-new-btn" aria-label="Нов епизод">
+          <button data-help="Започва нов епизод с аудио, заглавие, резюме и обложка." type="button" onClick={openNew} className="np-podcast-new-btn" aria-label="Нов епизод">
             <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" /></svg>
             Нов епизод
           </button>
@@ -67,7 +67,7 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
 
         <div className="np-podcast-search">
           <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} /><path d="m20 20-4.2-4.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" /></svg>
-          <input
+          <input data-help="Търси подкаст епизоди в списъка."
             type="search"
             placeholder="Търсене…"
             value={query}
@@ -294,8 +294,8 @@ function NewEpisodeForm({
           {onCancel ? (
             <button type="button" onClick={onCancel} disabled={submitting} className="np-podcast-ghost-btn">Откажи</button>
           ) : null}
-          <button type="submit" value="0" disabled={!valid} className="np-podcast-secondary-btn">Запиши чернова</button>
-          <button type="submit" value="1" disabled={!valid} className="np-podcast-primary-btn">{submitting ? "Качва се…" : "Публикувай"}</button>
+          <button data-help="Качва епизода като чернова. Читателите още няма да го виждат." type="submit" value="0" disabled={!valid} className="np-podcast-secondary-btn">Запиши чернова</button>
+          <button data-help="Качва и публикува епизода за слушане на сайта." type="submit" value="1" disabled={!valid} className="np-podcast-primary-btn">{submitting ? "Качва се…" : "Публикувай"}</button>
         </div>
       </header>
 
@@ -303,7 +303,7 @@ function NewEpisodeForm({
       {error ? <p role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</p> : null}
       {notice ? <p role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</p> : null}
       <p className="np-podcast-field-hint">Качване на части. При прекъсване изберете същите файлове и данни и продължете до 24 часа.</p>
-      <button type="button" onClick={() => void cancelResumableUpload("podcast").then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
+      <button data-help="Отменя незавършеното качване. Избраният локален файл не се изтрива." type="button" onClick={() => void cancelResumableUpload("podcast").then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
 
       <div className="np-podcast-form-grid">
         <DropZone
@@ -330,7 +330,7 @@ function NewEpisodeForm({
       <div className="np-podcast-fields">
         <label className="np-podcast-field">
           <span className="np-podcast-field-label">Заглавие</span>
-          <input
+          <input data-help="Публичното заглавие на подкаст епизода."
             value={title}
             onChange={(event) => setTitle(event.target.value)}
             required
@@ -344,7 +344,7 @@ function NewEpisodeForm({
 
         <label className="np-podcast-field">
           <span className="np-podcast-field-label">Резюме</span>
-          <textarea
+          <textarea data-help="Кратко описание на съдържанието на епизода за читателите."
             value={summary}
             onChange={(event) => setSummary(event.target.value)}
             required
@@ -358,7 +358,7 @@ function NewEpisodeForm({
 
         <label className="np-podcast-field">
           <span className="np-podcast-field-label">Рубрика</span>
-          <select value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="np-podcast-select">
+          <select data-help="Рубриката, с която да е свързан подкаст епизодът." value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="np-podcast-select">
             <option value="">Без рубрика</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>{category.name}</option>
@@ -580,7 +580,7 @@ function EpisodeEditor({
         <div className="np-podcast-editor-fields">
           <label className="np-podcast-field">
             <span className="np-podcast-field-label">Заглавие</span>
-            <input
+            <input data-help="Публичното заглавие на подкаст епизода."
               value={title}
               onChange={(event) => {
                 setTitle(event.target.value);
@@ -594,7 +594,7 @@ function EpisodeEditor({
 
           <label className="np-podcast-field">
             <span className="np-podcast-field-label">Резюме</span>
-            <textarea
+            <textarea data-help="Кратко описание на съдържанието на епизода за читателите."
               value={summary}
               onChange={(event) => {
                 setSummary(event.target.value);
@@ -609,7 +609,7 @@ function EpisodeEditor({
 
           <label className="np-podcast-field">
             <span className="np-podcast-field-label">Рубрика</span>
-            <select
+            <select data-help="Рубриката, с която да е свързан подкаст епизодът."
               value={categoryId}
               onChange={(event) => {
                 setCategoryId(event.target.value);
@@ -636,14 +636,14 @@ function EpisodeEditor({
       <div className="np-podcast-editor-foot">
         {error ? <span role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</span> : null}
         {notice ? <span role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</span> : null}
-        <button type="button" onClick={() => void cancelResumableUpload("podcast", episode.id).then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
+        <button data-help="Отменя незавършеното качване. Избраният локален файл не се изтрива." type="button" onClick={() => void cancelResumableUpload("podcast", episode.id).then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
         <div className="np-podcast-editor-foot-actions">
           {isPublished ? (
-            <button type="button" disabled={pending} onClick={() => void setStatus("draft")} className="np-podcast-ghost-btn">Скрий от сайта</button>
+            <button data-help="Скрива епизода от сайта и го запазва като чернова." type="button" disabled={pending} onClick={() => void setStatus("draft")} className="np-podcast-ghost-btn">Скрий от сайта</button>
           ) : (
-            <button type="button" disabled={pending} onClick={() => void setStatus("published")} className="np-podcast-secondary-btn">Публикувай</button>
+            <button data-help="Прави готовия епизод видим за слушателите на сайта." type="button" disabled={pending} onClick={() => void setStatus("published")} className="np-podcast-secondary-btn">Публикувай</button>
           )}
-          <button type="button" disabled={!canSave} onClick={() => void save()} className="np-podcast-primary-btn" title="⌘/Ctrl+S">
+          <button data-help="Записва редакциите на епизода. Ако е публикуван, промените се виждат и на сайта." type="button" disabled={!canSave} onClick={() => void save()} className="np-podcast-primary-btn">
             Запиши
           </button>
         </div>
@@ -690,7 +690,7 @@ function DropZone({
         <span>{label}</span>
         {file || existingLabel ? <span className="np-podcast-drop-tag">{file ? "Нов файл" : existingLabel}</span> : null}
       </div>
-      <button type="button" onClick={() => inputRef.current?.click()} className="np-podcast-drop-target">
+      <button data-help="Избира обложка за епизода. Можете и да пуснете снимка с влачене." type="button" onClick={() => inputRef.current?.click()} className="np-podcast-drop-target">
         {preview ? (
           <img src={preview} alt="" className="np-podcast-drop-preview" />
         ) : (
@@ -750,7 +750,7 @@ function AudioDropZone({
         <span>{label}</span>
         {file || existingLabel ? <span className="np-podcast-drop-tag">{file ? "Нов файл" : existingLabel}</span> : null}
       </div>
-      <button type="button" onClick={() => inputRef.current?.click()} className="np-podcast-drop-target np-podcast-drop-target--audio">
+      <button data-help="Избира аудио файл за епизода. Можете и да го пуснете с влачене в полето." type="button" onClick={() => inputRef.current?.click()} className="np-podcast-drop-target np-podcast-drop-target--audio">
         <span className="np-podcast-audio-icon">
           <svg viewBox="0 0 24 24" width={28} height={28} aria-hidden="true">
             <path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />

@@ -134,12 +134,12 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
               <span className="np-profile-role">{ROLE_LABELS[staff.role]}</span>
             </div>
             <div className="np-profile-photo-actions">
-              <label className="np-profile-btn np-profile-btn--secondary">
+              <label data-help="Избира нова профилна снимка от устройството и отваря изрязването ѝ." className="np-profile-btn np-profile-btn--secondary">
                 {photoPending ? "Обработка…" : hasPhoto ? "Смени снимката" : "Качи снимка"}
-                <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={photoPending} onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" />
+                <input data-help="Качва снимка за вашия профил. След избора можете да изрежете подходящата част." type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" disabled={photoPending} onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} className="sr-only" />
               </label>
               {hasPhoto ? (
-                <button type="button" disabled={photoPending} onClick={() => void removePhoto()} className="np-profile-text-danger">
+                <button data-help="Маха снимката от вашия профил." type="button" disabled={photoPending} onClick={() => void removePhoto()} className="np-profile-text-danger">
                   Премахни
                 </button>
               ) : null}
@@ -150,7 +150,7 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
             <div className="np-profile-fields">
               <label className="np-profile-field">
                 <span>Име</span>
-                <input
+                <input data-help="Вашето име в Studio и при избор на автор на материал."
                   id="profile-name"
                   value={profile.name}
                   onChange={(event) => setProfile((value) => ({ ...value, name: event.target.value }))}
@@ -172,7 +172,7 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
                 <span>Вътрешна информация</span>
                 <span className="np-profile-counter">{profile.bio.length}/1500</span>
               </div>
-              <textarea
+              <textarea data-help="Служебна информация за вас, ресори и бележки. Видима е само за вас и администраторите."
                 id="profile-bio"
                 rows={5}
                 maxLength={1500}
@@ -193,8 +193,8 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
                 {dirty ? "Незаписани промени" : "Всички промени са запазени"}
               </span>
               <div className="np-profile-foot-actions">
-                <button type="button" disabled={pending || !dirty} onClick={() => setProfile(saved)} className="np-profile-btn np-profile-btn--secondary">Отмени</button>
-                <button type="submit" disabled={pending || !dirty} className="np-profile-btn np-profile-btn--primary">
+                <button data-help="Връща последно записаните име и вътрешна информация. Незапазените промени се губят." type="button" disabled={pending || !dirty} onClick={() => setProfile(saved)} className="np-profile-btn np-profile-btn--secondary">Отмени</button>
+                <button data-help="Записва името и вътрешната информация за вашия профил." type="submit" disabled={pending || !dirty} className="np-profile-btn np-profile-btn--primary">
                   {pending ? "Записване…" : "Запиши профила"}
                 </button>
               </div>
@@ -215,16 +215,16 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
             <div className="np-profile-password-fields">
               <label className="np-profile-field">
                 <span>Текуща парола</span>
-                <input id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+                <input data-help="Въведете сегашната си парола, за да потвърдите смяната." id="current-password" type={showPasswords ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
               </label>
               <div className="np-profile-password-new">
                 <label className="np-profile-field">
                   <span>Нова парола</span>
-                  <input id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+                  <input data-help="Новата ви парола за вход. Спазете показаните изисквания." id="new-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
                 </label>
                 <label className="np-profile-field">
                   <span>Потвърди паролата</span>
-                  <input id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
+                  <input data-help="Повторете новата парола точно, за да избегнете грешка при смяната." id="confirm-password" type={showPasswords ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} maxLength={PASSWORD_MAX} required className="np-profile-input" />
                 </label>
               </div>
             </div>
@@ -246,7 +246,7 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
             ) : null}
             <div className="np-profile-foot">
               <span />
-              <button type="submit" disabled={passwordPending} className="np-profile-btn np-profile-btn--primary">
+              <button data-help="Записва новата парола след проверка на текущата." type="submit" disabled={passwordPending} className="np-profile-btn np-profile-btn--primary">
                 {passwordPending ? "Смяна…" : "Смени паролата"}
               </button>
             </div>

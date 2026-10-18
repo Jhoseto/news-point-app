@@ -7,7 +7,7 @@ import { PlaceArticle } from "@/components/place-article";
 import { ArticleFilterForm } from "@/components/article-filter-form";
 import { ArticleVisibility } from "@/components/article-visibility";
 import { queryArticleDesk } from "@/lib/article-desk";
-import { articleListActive, articleListHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
+import { articleListActive, articleListHref, articleSortHref, pageWindow, parseArticleListQuery, shiftIsoDate, sofiaToday, type ArticleListQuery, type ArticleSort } from "@/lib/article-list-query";
 import { listSections, type ArticleListItem } from "@/lib/articles";
 import { menuCategories } from "@/lib/arrangements";
 import { listStaffProfiles } from "@/lib/users";
@@ -24,7 +24,7 @@ const caption = "mb-0.5 block text-[10px] font-semibold tracking-wide text-faint
 
 function StatusBadge({ article }: { article: ArticleListItem }) {
   if (article.hasUnpublishedChanges) {
-    return <span className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-bold text-warning">Промени</span>;
+    return <span className="rounded-full bg-warning/10 px-1.5 py-px text-[10px] font-bold text-warning">С промени</span>;
   }
   if (article.isPublic) {
     return (
@@ -34,21 +34,19 @@ function StatusBadge({ article }: { article: ArticleListItem }) {
       </span>
     );
   }
+  if (article.scheduledPublishAt) {
+    return <span data-help={`Ще се публикува на ${formatStamp(article.scheduledPublishAt)}.`} className="rounded-full bg-accent/10 px-1.5 py-px text-[10px] font-bold text-accent">Насрочена</span>;
+  }
   return <span className="rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-bold text-muted">Чернова</span>;
-}
-
-function sortHref(query: ArticleListQuery, sort: ArticleSort): string {
-  const dir = query.sort === sort ? (query.dir === "asc" ? "desc" : "asc") : sort === "title" || sort === "author" ? "asc" : "desc";
-  return articleListHref(query, { sort, dir, page: 1 });
 }
 
 function SortHeader({ query, sort, label, className = "" }: { query: ArticleListQuery; sort: ArticleSort; label: string; className?: string }) {
   const active = query.sort === sort;
   return (
     <th scope="col" aria-sort={active ? (query.dir === "asc" ? "ascending" : "descending") : "none"} className={className}>
-      <Link href={sortHref(query, sort)} className={`inline-flex items-center gap-1 ${active ? "text-ink" : "hover:text-ink"}`}>
+      <Link data-help="Подрежда списъка по тази колона. Натиснете отново, за да обърнете посоката." href={articleSortHref(query, sort)} className={`flex min-h-8 w-full items-center gap-1 ${active ? "text-ink" : "hover:text-ink"}`}>
         {label}
-        <span aria-hidden="true" className="text-[0.65rem]">{active ? (query.dir === "asc" ? "↑" : "↓") : ""}</span>
+        <span aria-hidden="true" className="text-[0.65rem]">{active ? (query.dir === "asc" ? "↑" : "↓") : "↕"}</span>
       </Link>
     </th>
   );
@@ -63,24 +61,25 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
   const today = sofiaToday();
   const presets = [
     { label: "Днес", from: today, to: today },
+    { label: "Вчера", from: shiftIsoDate(today, -1), to: shiftIsoDate(today, -1) },
     { label: "7 дни", from: shiftIsoDate(today, -6), to: today },
     { label: "30 дни", from: shiftIsoDate(today, -29), to: today },
-    { label: "Тази година", from: `${today.slice(0, 4)}-01-01`, to: today },
   ];
   const start = desk.shown === 0 ? 0 : (desk.page - 1) * query.pageSize + 1;
   const end = Math.min(desk.page * query.pageSize, desk.shown);
   const chips = [
-    { status: "all" as const, label: "Всички", count: desk.matched },
-    { status: "published" as const, label: "Публикувани", count: desk.published },
-    { status: "draft" as const, label: "Чернови", count: desk.drafts },
-    { status: "changed" as const, label: "С промени", count: desk.changed },
+    { status: "all" as const, label: "Всички", help: "Всички материали, които отговарят на избраните филтри.", count: desk.matched },
+    { status: "published" as const, label: "Публикувани", help: "Материали, видими на сайта, включително тези с непубликувани редакции.", count: desk.published },
+    { status: "draft" as const, label: "Чернови", help: "Скрити материали без зададен час за публикуване.", count: desk.drafts },
+    { status: "scheduled" as const, label: "Насрочени", help: "Скрити материали със зададен час за автоматично публикуване.", count: desk.scheduled },
+    { status: "changed" as const, label: "С промени", help: "Публикувани материали със запазени редакции, които още не са на сайта.", count: desk.changed },
   ];
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-base font-bold leading-none text-ink">Материали</h1>
+          <h1 data-help="Всички материали: чернови, публикувани новини и редакции, които още не са на сайта." className="text-base font-bold leading-none text-ink">Материали</h1>
           <p className="mt-0.5 truncate text-[11px] text-muted">
             {number.format(desk.total)} в базата · {number.format(start)}–{number.format(end)} от {number.format(desk.shown)}
           </p>
@@ -91,26 +90,20 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
       </div>
 
       <ArticleFilterForm>
+        <input type="hidden" name="sort" value={query.sort} />
+        <input type="hidden" name="dir" value={query.dir} />
         {query.status !== "all" ? <input type="hidden" name="status" value={query.status} /> : null}
         <div className="flex gap-1.5">
           <label className="min-w-0 flex-1">
             <span className="sr-only">Търсене</span>
-            <input name="q" type="search" defaultValue={query.q} placeholder="Заглавие, адрес, резюме или автор" className={control} />
+            <input data-help="Търси в заглавие, адрес, резюме и автор. Натиснете Търси, за да приложите думите." name="q" type="search" defaultValue={query.q} placeholder="Заглавие, адрес, резюме или автор" className={control} />
           </label>
           <button type="submit" className="np-btn np-btn-primary h-8 shrink-0 px-2.5 py-0 text-xs">Търси</button>
         </div>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-10">
-          <label className="min-w-0">
-            <span className={caption}>Източник</span>
-            <select name="source" defaultValue={query.source} className={control}>
-              <option value="all">Всички</option>
-              <option value="wordpress">Импорт от WordPress</option>
-              <option value="studio">Създадени в Studio</option>
-            </select>
-          </label>
+        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
           <label className="min-w-0">
             <span className={caption}>Рубрика</span>
-            <select name="category" defaultValue={query.category} className={control}>
+            <select data-help="Показва само материалите от избраната рубрика." name="category" defaultValue={query.category} className={control}>
               <option value="">Всички</option>
               {sections.map((section) => (
                 <option key={section.id} value={section.id}>{section.name}</option>
@@ -119,7 +112,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
           </label>
           <label className="min-w-0">
             <span className={caption}>Автор</span>
-            <select name="author" defaultValue={query.author} className={control}>
+            <select data-help="Показва само материалите на избрания публичен автор." name="author" defaultValue={query.author} className={control}>
               <option value="">Всички</option>
               <option value="newsroom">NewsPoint.bg</option>
               <option value="anonymous">Анонимни</option>
@@ -129,55 +122,24 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
             </select>
           </label>
           <label className="min-w-0">
-            <span className={caption}>Снимка</span>
-            <select name="hero" defaultValue={query.hero} className={control}>
-              <option value="all">С и без</option>
-              <option value="with">Има</option>
-              <option value="without">Липсва</option>
-            </select>
-          </label>
-          <label className="min-w-0">
-            <span className={caption}>Подредба</span>
-            <select name="sort" defaultValue={query.sort} className={control}>
-              <option value="updated">Последна промяна</option>
-              <option value="published">Публикуване</option>
-              <option value="title">Заглавие</option>
-              <option value="author">Автор</option>
-              <option value="views">Прегледи</option>
-            </select>
-          </label>
-          <label className="min-w-0">
-            <span className={caption}>Посока</span>
-            <select name="dir" defaultValue={query.dir} className={control}>
-              <option value="desc">Низходящо</option>
-              <option value="asc">Възходящо</option>
-            </select>
-          </label>
-          <label className="min-w-0">
-            <span className={caption}>Дата</span>
-            <select name="date" defaultValue={query.dateField} className={control}>
-              <option value="updated">Промяна</option>
-              <option value="published">Публикуване</option>
-            </select>
-          </label>
-          <label className="min-w-0">
-            <span className={caption}>Брой</span>
-            <select name="size" defaultValue={String(query.pageSize)} className={control}>
+            <span className={caption}>На страница</span>
+            <select data-help="Броят материали на една страница от списъка." name="size" defaultValue={String(query.pageSize)} className={control}>
               <option value="25">25</option>
               <option value="50">50</option>
               <option value="100">100</option>
             </select>
           </label>
           <label className="min-w-0">
-            <span className={caption}>От</span>
-            <input name="from" type="date" defaultValue={query.from} className={control} />
+            <span className={caption}>Променяни от</span>
+            <input data-help="Филтрира по последна промяна, включително черновите. Датите са по българско време." name="from" type="date" defaultValue={query.from} className={control} />
           </label>
           <label className="min-w-0">
-            <span className={caption}>До</span>
-            <input name="to" type="date" defaultValue={query.to} className={control} />
+            <span className={caption}>Променяни до</span>
+            <input data-help="Филтрира по последна промяна, включително черновите. Датите са по българско време." name="to" type="date" defaultValue={query.to} className={control} />
           </label>
         </div>
         <div className="flex flex-wrap items-center gap-1 text-[11px]">
+          <span className="mr-1 text-faint">Последна промяна:</span>
           {presets.map((preset) => {
             const active = query.from === preset.from && query.to === preset.to;
             return (
@@ -186,6 +148,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               </Link>
             );
           })}
+          {query.from || query.to ? <Link data-help="Премахва само периода. Останалите филтри се запазват." href={articleListHref(query, { from: "", to: "", page: 1 })} className="rounded-full bg-surface-2 px-2 py-px font-semibold text-muted hover:text-ink">Всички дати</Link> : null}
           {articleListActive(query) ? <Link href="/" className="font-semibold text-link">Изчисти</Link> : null}
         </div>
       </ArticleFilterForm>
@@ -194,7 +157,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
         {chips.map((chip) => {
           const active = query.status === chip.status;
           return (
-            <Link key={chip.status} href={articleListHref(query, { status: chip.status, page: 1 })} className={`rounded-full border px-2 py-px text-[11px] font-semibold ${active ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted hover:text-ink"}`} aria-current={active ? "true" : undefined}>
+            <Link key={chip.status} data-help={chip.help} href={articleListHref(query, { status: chip.status, page: 1 })} className={`rounded-full border px-2 py-px text-[11px] font-semibold ${active ? "border-accent bg-accent/10 text-accent" : "border-line bg-surface text-muted hover:text-ink"}`} aria-current={active ? "true" : undefined}>
               {chip.label} <span className="tabular-nums">{number.format(chip.count)}</span>
             </Link>
           );
@@ -202,7 +165,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
       </nav>
 
       <div className="np-card np-articles-desk overflow-x-auto">
-        <table className="w-full table-fixed text-left text-[13px] leading-snug">
+        <table className="w-full min-w-[42rem] table-fixed text-left text-[13px] leading-snug">
             <colgroup>
               <col className="w-10" />
               <col className="w-9" />
@@ -220,9 +183,9 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                 <th scope="col" className="px-2 py-2 text-right">№</th>
                 <th scope="col" className="px-1 py-2"><span className="sr-only">На сайта</span></th>
                 <SortHeader query={query} sort="title" label="Заглавие" className="px-2 py-2" />
-                <th scope="col" className="np-articles-col-secondary px-2 py-2">Рубрика</th>
+                <SortHeader query={query} sort="category" label="Рубрика" className="np-articles-col-secondary px-2 py-2" />
                 <SortHeader query={query} sort="author" label="Автор" className="np-articles-col-secondary px-2 py-2" />
-                <th scope="col" className="px-2 py-2">Статус</th>
+                <SortHeader query={query} sort="status" label="Статус" className="px-2 py-2" />
                 <SortHeader query={query} sort="views" label="Прегледи" className="np-articles-col-secondary px-2 py-2 text-right" />
                 <SortHeader query={query} sort="published" label="Публикуване" className="np-articles-col-secondary px-2 py-2" />
                 <SortHeader query={query} sort="updated" label="Промяна" className="np-articles-col-secondary px-2 py-2 text-right" />
@@ -253,7 +216,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="np-articles-col-secondary truncate px-2 py-2 text-xs text-muted">{item.categoryName ?? "—"}</td>
                   <td className="np-articles-col-secondary truncate px-2 py-2 text-xs text-muted">{item.authorName ?? "—"}</td>
                   <td className="px-2 py-2"><StatusBadge article={item} /></td>
-                  <td className="np-articles-col-secondary px-2 py-2 text-right text-xs text-ink tabular-nums" title="Реални / добавени от редакцията">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
+                  <td className="np-articles-col-secondary px-2 py-2 text-right text-xs text-ink tabular-nums" data-help="Реални / добавени от редакцията. Сортирането е по общия им брой.">{item.readCount === null ? "—" : `${number.format(item.readCount)}/${number.format(item.addedCount ?? 0)}`}</td>
                   <td className="np-articles-col-secondary px-2 py-2 text-xs text-muted tabular-nums">
                     {item.publishedAt ? formatStamp(item.publishedAt) : "—"}
                     {item.isPublic ? (

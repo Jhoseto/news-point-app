@@ -74,7 +74,7 @@ export function LoginForm() {
             <rect x="3" y="5" width="18" height="14" rx="2" />
             <path d="m3 7 9 6 9-6" />
           </svg>
-          <input id="email" name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={254} className="np-input py-3 pl-11" />
+          <input data-help="Служебният имейл, с който е създаден вашият профил в Studio." id="email" name="email" type="email" inputMode="email" autoComplete="username" autoCapitalize="none" spellCheck={false} required maxLength={254} className="np-input py-3 pl-11" />
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export function LoginForm() {
             <rect x="4" y="10" width="16" height="11" rx="2" />
             <path d="M8 10V7a4 4 0 0 1 8 0v3" />
           </svg>
-          <input
+          <input data-help="Паролата за вашия служебен профил."
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
@@ -130,7 +130,7 @@ export function LoginForm() {
         </p>
       ) : null}
 
-      <button type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
+      <button data-help="Влиза в Studio с посочения имейл и парола." type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
         {pending ? (
           <>
             <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />

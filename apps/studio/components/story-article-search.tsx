@@ -132,7 +132,7 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
           </button>
         </header>
         <div className="border-b border-line px-5 py-3">
-          <input
+          <input data-help="Търси публикувани статии, които да добавите към темата с продължение."
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -212,7 +212,7 @@ function ArticleRow({
   return (
     <li>
       <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2 transition hover:border-accent/40">
-        <input type="checkbox" checked={checked} onChange={onToggle} className="size-4" />
+        <input data-help="Включва или изключва тази статия от текущия избор за темата." type="checkbox" checked={checked} onChange={onToggle} className="size-4" />
         {article.heroUrl ? (
           <img src={browserMediaSrc(article.heroUrl)} alt="" className="size-12 rounded-md object-cover" />
         ) : (

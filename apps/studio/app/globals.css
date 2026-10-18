@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+.np-studio-help {
+  position: fixed;
+  z-index: 10000;
+  width: max-content;
+  max-width: min(19rem, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 1px solid rgb(255 255 255 / .18);
+  border-radius: 10px;
+  background: #101735;
+  color: #fff;
+  box-shadow: 0 8px 24px rgb(7 11 34 / .18);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  pointer-events: auto;
+}
+
 /* Same tokens as the public site (apps/web, docs/DESIGN_SYSTEM.md), light mode. */
 :root {
   --np-page: #f4f7fd;
@@ -234,6 +252,9 @@
   @container articles-desk (max-width: 70rem) {
     .np-articles-col-secondary { display: none; }
     .np-articles-desk-extra { display: block; }
+  }
+  @container articles-desk (max-width: 40rem) {
+    .np-articles-desk .np-articles-actions { position: static; }
   }
   .np-articles-desk input[type="date"] {
     min-width: 0;

@@ -8,7 +8,7 @@ import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
-function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string }) {
+function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; "data-help"?: string | undefined }) {
   return href.startsWith("/articles/") ? <a href={withBase(href)} {...props} /> : <Link href={href} {...props} />;
 }
 
@@ -24,6 +24,20 @@ const NAV = [
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 const LOGS_LINK = { href: "/logs", label: "Logs", icon: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01" };
+
+const NAV_HELP: Record<string, string> = {
+  "/arrange": "Подрежда новините по местата в сайта и управлява извънредната лента.",
+  "/": "Списък с материали. Търсете, филтрирайте и отваряйте новини за редакция.",
+  "/articles/new": "Отваря нова чернова за написване на новина.",
+  "/polls": "Създава анкети и управлява въпросите, гласуването и резултатите.",
+  "/submissions": "Получени читателски сигнали и техният редакционен статус.",
+  "/my-news": "Материали, изпратени от читатели. Проверете ги и ги свържете със статия.",
+  "/podcasts": "Качване и публикуване на епизоди и работа по AI сценарии и аудио.",
+  "/stories": "Обединява свързани статии в тема с продължение и хронология.",
+  "/users": "Управлява служебни профили и права за достъп до Studio.",
+  "/logs": "История на действията в Studio: служител, промяна, час и резултат.",
+  "/settings/social/": "Свързва Facebook страница и показва проблеми при изпращане на новини.",
+};
 
 function Icon({ d, size = 18 }: { d: string; size?: number }) {
   return (
@@ -106,7 +120,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
           onClick={toggleNav}
           aria-pressed={collapsed}
           aria-label={collapsed ? "Покажи менюто" : "Прибери менюто"}
-          title={collapsed ? "Покажи менюто" : "Прибери менюто"}
+          data-help="Прибира или разгъва страничното меню. Страницата остава отворена."
           className={`flex h-9 w-full shrink-0 items-center border-b border-white/10 text-[11px] font-semibold text-white/80 transition hover:bg-white/8 hover:text-white ${collapsed ? "justify-center px-1.5" : "gap-1.5 px-3"}`}
         >
           <Icon d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} size={16} />
@@ -117,7 +131,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
             <StudioNavLink
               key={item.href}
               href={item.href}
-              title={item.label}
+              data-help={NAV_HELP[item.href]}
               aria-label={item.label}
               aria-current={isActive(item.href) ? "page" : undefined}
               className={navClass(collapsed)}
@@ -129,12 +143,12 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
           ))}
         </nav>
         <div className={`border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
-          {canManageSocial && <Link href="/settings/social/" title="Facebook" className={`${navClass(collapsed)} mb-1`}><span aria-hidden="true">f</span>{!collapsed && "Facebook"}</Link>}
+          {canManageSocial && <Link href="/settings/social/" data-help={NAV_HELP["/settings/social/"]} className={`${navClass(collapsed)} mb-1`}><span aria-hidden="true">f</span>{!collapsed && "Facebook"}</Link>}
           {canManageUsers ? (
             <>
               <Link
                 href={USERS_LINK.href}
-                title={USERS_LINK.label}
+                data-help={NAV_HELP[USERS_LINK.href]}
                 aria-label={USERS_LINK.label}
                 aria-current={isActive(USERS_LINK.href) ? "page" : undefined}
                 className={`${navClass(collapsed)} mb-0.5 w-full`}
@@ -145,7 +159,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               </Link>
               <Link
                 href={LOGS_LINK.href}
-                title={LOGS_LINK.label}
+                data-help={NAV_HELP[LOGS_LINK.href]}
                 aria-label={LOGS_LINK.label}
                 aria-current={isActive(LOGS_LINK.href) ? "page" : undefined}
                 className={`${navClass(collapsed)} mb-2 w-full`}
@@ -158,7 +172,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
           ) : null}
           <Link
             href="/profile"
-            title={user.name}
+            data-help="Вашето име, профилна снимка, вътрешна информация и смяна на паролата."
             aria-current={isActive("/profile") ? "page" : undefined}
             className={`group flex w-full min-w-0 items-center rounded-2xl bg-white/[0.06] ring-1 ring-white/10 transition hover:bg-white/[0.1] aria-[current=page]:bg-white/[0.12] ${collapsed ? "justify-center p-1.5" : "gap-3 p-2.5"}`}
           >
@@ -180,7 +194,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               href={webUrl}
               target="_blank"
               rel="noreferrer"
-              title="Към сайта"
+              data-help="Отваря публичния сайт в нов раздел."
               aria-label="Към сайта"
               className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
             >
@@ -190,7 +204,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
             <button
               type="button"
               onClick={signOut}
-              title="Изход"
+              data-help="Прекратява текущата сесия в Studio."
               aria-label="Изход"
               className="inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1.5 text-[11px] font-semibold text-white/70 transition hover:bg-white/8 hover:text-white"
             >
@@ -210,18 +224,18 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               href={item.href}
               aria-current={isActive(item.href) ? "page" : undefined}
               aria-label={item.label}
-              title={item.label}
+              data-help={NAV_HELP[item.href]}
               className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
             >
               <Icon d={item.icon} />
               <span className="sr-only sm:not-sr-only">{item.label}</span>
             </StudioNavLink>
           ))}
-          <a href={webUrl} target="_blank" rel="noreferrer" aria-label="Към сайта" title="Към сайта" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+          <a href={webUrl} target="_blank" rel="noreferrer" aria-label="Към сайта" data-help="Отваря публичния сайт в нов раздел." className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
             <Icon d={SITE_ICON} />
             <span className="sr-only sm:not-sr-only text-sm font-bold">Към сайта</span>
           </a>
-          <button type="button" onClick={signOut} aria-label="Изход" title="Изход" className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
+          <button type="button" onClick={signOut} aria-label="Изход" data-help="Прекратява текущата сесия в Studio." className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5">
             <Icon d={EXIT_ICON} />
             <span className="sr-only sm:not-sr-only">Изход</span>
           </button>

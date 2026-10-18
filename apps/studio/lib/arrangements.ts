@@ -7,6 +7,7 @@ import {
   emptyArrangement,
   referencedArticleIds,
   sanitizeArrangement,
+  resolveMediaUrl,
   triggerRevalidate,
   type ArrangementDocument,
 } from "@newspoint/content";
@@ -14,6 +15,19 @@ import { arrangementState, lockArrangements, writeArrangementDraft, writePublish
 import { EditorError } from "./articles";
 import type { ArrangementArticle, ArrangementHistoryItem, MenuCategory } from "./arrangement-types";
 import type { Staff } from "./session";
+import { mediaAssets } from "@newspoint/db";
+import { libraryImageUrl } from "./media-library";
+
+const placementFields = {
+  id: articles.id, title: articles.title, categoryName: categories.name, isPublic: articles.isPublic,
+  media: { provider: mediaAssets.provider, storageKey: mediaAssets.storageKey, sourceUrl: mediaAssets.sourceUrl },
+};
+
+function withPlacementImage({ media, ...article }: Omit<ArrangementArticle, "imageUrl"> & {
+  media: Pick<typeof mediaAssets.$inferSelect, "provider" | "storageKey" | "sourceUrl"> | null;
+}): ArrangementArticle {
+  return { ...article, imageUrl: media ? (media.storageKey ? libraryImageUrl(media.storageKey, media.sourceUrl) : resolveMediaUrl(media)) : null };
+}
 
 export type { ArrangementArticle, ArrangementHistoryItem, MenuCategory };
 
@@ -61,11 +75,12 @@ function stamp(next: ArrangementDocument, previous: ArrangementDocument, name: s
 async function articleMap(ids: string[]): Promise<Record<string, ArrangementArticle>> {
   if (!ids.length) return {};
   const rows = await getDb()
-    .select({ id: articles.id, title: articles.title, categoryName: categories.name, isPublic: articles.isPublic })
+    .select(placementFields)
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
     .where(inArray(articles.id, ids));
-  return Object.fromEntries(rows.map((row) => [row.id, row]));
+  return Object.fromEntries(rows.map((row) => [row.id, withPlacementImage(row)]));
 }
 
 async function requireReady() {
@@ -193,11 +208,13 @@ export async function placeArticle(staff: Staff, input: { pageKey: string; slot:
 export async function searchPlacementArticles(query: string): Promise<ArrangementArticle[]> {
   const term = query.trim().slice(0, 80);
   if (term.length < 2) return [];
-  return getDb()
-    .select({ id: articles.id, title: articles.title, categoryName: categories.name, isPublic: articles.isPublic })
+  const rows = await getDb()
+    .select(placementFields)
     .from(articles)
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
     .where(and(eq(articles.isPublic, true), sql`${articles.publishedAt} <= now()`, ilike(articles.title, `%${term.replace(/[%_]/g, "")}%`)))
     .orderBy(desc(articles.publishedAt))
     .limit(12);
+  return rows.map(withPlacementImage);
 }

@@ -233,6 +233,7 @@ describe("article hero placement", () => {
     const key = randomUUID();
     await publishRevision(staff, created.id, 1, key, true);
     const after = await state();
+    expect(after.articles[created.id]).toMatchObject({ title: input.title, imageUrl: "/media/news/2026/10/qa.webp" });
     const target = keys[position - 1]!;
     expect(after.published.slots[target]?.items).toEqual([{ articleId: created.id, startsAt: null, endsAt: null, placedBy: staff.name, placedAt: expect.any(String) }]);
     expect(after.draft.slots[target]).toEqual(after.published.slots[target]);

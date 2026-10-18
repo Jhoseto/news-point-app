@@ -121,7 +121,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
             <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth={2} />
             <path d="m20 20-4.2-4.2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
           </svg>
-          <input
+          <input data-help="Търси материали, изпратени от читатели чрез Моята новина."
             type="search"
             placeholder="Търсене в материалите…"
             value={query}
@@ -140,7 +140,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
             ["published", "Публикувани", counts.published ?? 0],
             ["rejected", "Отхвърлени", counts.rejected ?? 0],
           ] as const).map(([value, label, count]) => (
-            <button
+            <button data-help="Показва материалите с избрания статус. Не променя статуса им."
               key={value}
               type="button"
               role="tab"
@@ -340,7 +340,7 @@ function SubmissionDetail({
               const isCurrent = submission.status === value;
               const isAllowed = allowed.includes(value) || isCurrent;
               return (
-                <button
+                <button data-help="Променя етапа на редакционната проверка. Статусът сам по себе си не създава и не публикува статия."
                   key={value}
                   type="button"
                   disabled={pending || isCurrent || !isAllowed}
@@ -370,7 +370,7 @@ function SubmissionDetail({
             }}
             className="np-mynews-link-form"
           >
-            <input
+            <input data-help="Вътрешният идентификатор на публикуваната статия, която използва този читателски материал."
               type="text"
               placeholder="UUID на статията"
               value={linkInput}
@@ -378,11 +378,11 @@ function SubmissionDetail({
               className="np-mynews-input np-mynews-input--mono"
               aria-label="ID на свързаната статия"
             />
-            <button type="submit" disabled={pending} className="np-mynews-btn np-mynews-btn--secondary">
+            <button data-help="Записва връзката между читателския материал и посочената статия." type="submit" disabled={pending} className="np-mynews-btn np-mynews-btn--secondary">
               Запиши
             </button>
             {isPublished && !submission.articleId ? (
-              <a className="np-mynews-btn np-mynews-btn--primary" href={newArticleHref}>
+              <a data-help="Отваря нов материал от изпратеното съдържание. Проверете фактите и редактирайте преди публикуване." className="np-mynews-btn np-mynews-btn--primary" href={newArticleHref}>
                 Създай статия от този материал
               </a>
             ) : null}

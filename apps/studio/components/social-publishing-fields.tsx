@@ -39,18 +39,18 @@ export function SocialPublishingFields({ value, title, onChange, disabled, initi
   const fixed = Boolean(status.job && !(status.job.status === "failed" && ["prepare", "photo"].includes(status.job.step)));
   return <section aria-labelledby="social-publishing-label" className="mt-3 border-t border-line pt-3 text-xs">
     <h3 id="social-publishing-label" className="mb-2 text-xs font-semibold text-muted">Публикувай в социални мрежи</h3>
-    <label className="inline-flex items-center gap-2 text-ink">
+    <label data-help="Изпраща тази новина към свързаната Facebook страница след публикуването ѝ в сайта." className="inline-flex items-center gap-2 text-ink">
       <input type="checkbox" checked={fixed ? true : social.facebook.enabled} disabled={disabled || !status.ready || fixed}
         onChange={event => onChange({ facebook: { ...social.facebook, enabled: event.target.checked } })} /> Facebook
     </label>
-    {(fixed || social.facebook.enabled) && <textarea aria-label="Текст за Facebook" rows={3} maxLength={FACEBOOK_TEXT_MAX}
+    {(fixed || social.facebook.enabled) && <textarea data-help="Текстът за Facebook поста. След първа ръчна промяна той вече не следва автоматично заглавието." aria-label="Текст за Facebook" rows={3} maxLength={FACEBOOK_TEXT_MAX}
       className="np-input mt-2 block w-full resize-y text-sm" disabled={disabled || fixed}
       value={fixed ? status.job!.text : social.facebook.text}
       onChange={event => onChange({ facebook: { ...social.facebook, text: event.target.value, textMode: "custom" } })} />}
     <div aria-live="polite" className="mt-1 text-[11px] text-muted">
       {!status.ready ? "Facebook ще е достъпен след настройване от администратора." : status.job ? <>
         {status.job.message} {status.job.url && <a href={status.job.url} target="_blank" rel="noopener noreferrer" className="underline">Виж поста ↗</a>}
-        {status.job.canRetry && <button type="button" className="ml-2 underline" disabled={disabled || retrying} onClick={() => void retry()}>{retrying ? "Изчакайте…" : "Опитай отново"}</button>}
+        {status.job.canRetry && <button data-help="Повтаря неуспешната стъпка на изпращането. Следете показания резултат." type="button" className="ml-2 underline" disabled={disabled || retrying} onClick={() => void retry()}>{retrying ? "Изчакайте…" : "Опитай отново"}</button>}
       </> : social.facebook.enabled ? !status.connected ? "Новината ще се публикува в сайта. Facebook очаква свързване от администратора." : !status.enabled ? "Facebook е временно спрян от администратора." : "Ще се изпрати автоматично след публикуването на новината." : null}
       {error && <p role="alert">{error}</p>}
     </div>

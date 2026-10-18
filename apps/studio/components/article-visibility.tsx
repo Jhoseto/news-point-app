@@ -31,12 +31,11 @@ export function ArticleVisibility({ id, visible }: { id: string; visible: boolea
   }
 
   return (
-    <button
+    <button data-help="Сменя видимостта на вече публикувана новина. Скриването я маха от публичния сайт."
       type="button"
       onClick={() => void toggle()}
       disabled={pending}
       aria-pressed={on}
-      title={on ? "Вижда се на сайта" : "Скрита е от сайта"}
       aria-label={on ? "Скрий от сайта" : "Покажи на сайта"}
       className={`grid size-7 place-items-center rounded-md border border-transparent ${on ? "text-ink hover:border-line hover:bg-surface-2" : "text-faint hover:border-line hover:bg-surface-2 hover:text-muted"} disabled:opacity-50`}
     >

@@ -230,7 +230,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
             <span className="np-polls-counter-num">{counts.all}</span>
             <span className="np-polls-counter-label">{counts.all === 1 ? "анкета" : "анкети"}</span>
           </div>
-          <button disabled={busy} onClick={() => create()} className="np-polls-new-btn" aria-label="Нова анкета">
+          <button data-help="Започва нова анкета. Попълнете въпрос, отговори и състояние, после запазете." disabled={busy} onClick={() => create()} className="np-polls-new-btn" aria-label="Нова анкета">
             <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
               <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
             </svg>
@@ -315,7 +315,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
             </div>
             <h2>Дайте думата на читателите</h2>
             <p>Създайте кратка анкета или изберете съществуваща отляво, за да видите участието.</p>
-            <button onClick={() => create()} className="np-polls-primary-btn">Създай анкета</button>
+            <button data-help="Започва нова анкета. Попълнете въпрос, отговори и състояние, после запазете." onClick={() => create()} className="np-polls-primary-btn">Създай анкета</button>
           </div>
         ) : (
           <>
@@ -340,7 +340,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
               </div>
               <div className="np-polls-tools">
                 {draft.id ? (
-                  <button type="button" disabled={busy} onClick={() => create(true)}>
+                  <button data-help="Създава копие на анкетата за нов въпрос или отговори, без да променя старите гласове." type="button" disabled={busy} onClick={() => create(true)}>
                     Дублирай
                   </button>
                 ) : null}
@@ -365,7 +365,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                     <span>
                       Въпрос <small>{draft.question.length}/220</small>
                     </span>
-                    <textarea
+                    <textarea data-help="Въпросът, на който читателят отговаря. След първите гласове въпросът се заключва."
                       rows={2}
                       value={draft.question}
                       minLength={5}
@@ -378,7 +378,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                   </label>
                   <label className="np-polls-label">
                     <span>Кратко пояснение <small>по желание</small></span>
-                    <input
+                    <input data-help="Кратко пояснение под въпроса. Не е задължително."
                       value={draft.description}
                       maxLength={300}
                       disabled={locked}
@@ -395,7 +395,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                       {draft.options.map((o, index) => (
                         <div key={o.id} className="np-polls-option">
                           <span className="np-polls-option-index">{String(index + 1).padStart(2, "0")}</span>
-                          <input
+                          <input data-help="Един от възможните отговори. Читателят може да избере само един."
                             aria-label={`Отговор ${index + 1}`}
                             required
                             maxLength={120}
@@ -403,9 +403,8 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                             value={o.label}
                             onChange={(e) => patch({ options: draft.options.map((x) => (x.id === o.id ? { ...x, label: e.target.value } : x)) })}
                           />
-                          <button
+                          <button data-help="Маха този отговор. Трябва да останат поне два; след гласуване отговорите са заключени."
                             type="button"
-                            title="Премахни отговора"
                             aria-label={`Премахни отговор ${index + 1}`}
                             disabled={locked || draft.options.length <= 2}
                             onClick={() => patch({ options: draft.options.filter((x) => x.id !== o.id) })}
@@ -415,7 +414,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                         </div>
                       ))}
                     </div>
-                    <button
+                    <button data-help="Добавя още един възможен отговор, до общо шест."
                       type="button"
                       className="np-polls-text-button"
                       disabled={locked || draft.options.length >= 6}
@@ -434,7 +433,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                   <div className="np-polls-settings">
                     <label className="np-polls-label">
                       <span>Състояние</span>
-                      <select
+                      <select data-help="Определя дали анкетата е чернова, отворена, приключила или архивирана. Промяната важи след запис."
                         value={draft.status}
                         onChange={(e) => {
                           const status = e.target.value as PollInput["status"];
@@ -450,7 +449,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                     </label>
                     <label className="np-polls-label">
                       <span>Начало</span>
-                      <input
+                      <input data-help="Началото на периода за гласуване."
                         type="datetime-local"
                         value={localTime(draft.startsAt)}
                         onChange={(e) => patch({ startsAt: iso(e.target.value) })}
@@ -458,7 +457,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                     </label>
                     <label className="np-polls-label">
                       <span>Край</span>
-                      <input
+                      <input data-help="Краят на периода за гласуване. След него не се приемат нови гласове."
                         type="datetime-local"
                         value={localTime(draft.endsAt)}
                         onChange={(e) => patch({ endsAt: iso(e.target.value) })}
@@ -471,7 +470,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                   </p>
 
                   <label className="np-polls-toggle">
-                    <input
+                    <input data-help="Избира тази анкета за секцията с анкета на началната страница."
                       type="checkbox"
                       disabled={draft.status === "draft" || draft.status === "archived"}
                       checked={draft.featured}
@@ -493,7 +492,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                     <span className="np-polls-save-state">
                       {dirty ? "Незаписани промени" : draft.id ? "Всички промени са запазени" : "Нова чернова"}
                     </span>
-                    <button type="submit" disabled={busy} className="np-polls-primary-btn">
+                    <button data-help="Записва въпроса, отговорите, периода и състоянието на анкетата." type="submit" disabled={busy} className="np-polls-primary-btn">
                       {busy ? "Записване…" : "Запази анкетата"}
                     </button>
                   </div>
@@ -534,7 +533,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                           <td>{details.counts[o.id] ?? 0}</td>
                           <td>
                             {canCorrect ? (
-                              <input
+                              <input data-help="Редакционна корекция към резултата за този отговор. Реалните гласове се пазят отделно."
                                 aria-label={`Корекция за ${o.label}`}
                                 disabled={busy}
                                 type="number"
@@ -559,14 +558,14 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
                     <p className="np-polls-hint">
                       ± е отклонението от реалния брой, не новият брой. Реалните гласове остават непроменени. Промяната се обозначава публично и автоматично се записва с вашето име, дата и точните стойности.
                     </p>
-                    <button disabled={busy || dirty || !correctionsDirty} onClick={() => void save(true)}>
+                    <button data-help="Записва редакционните корекции към резултатите. Не променя регистъра на реалните гласове." disabled={busy || dirty || !correctionsDirty} onClick={() => void save(true)}>
                       Запиши корекциите
                     </button>
                   </div>
                 ) : null}
 
                 <div className="np-polls-section-head">
-                  <h3>Регистър на реалните гласове</h3>
+                  <h3 data-help="Показва действително подадените гласове, отделно от редакционните корекции.">Регистър на реалните гласове</h3>
                   <span>Без имена и сурови IP адреси</span>
                 </div>
                 {details.votes.length === 0 ? (

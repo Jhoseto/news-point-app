@@ -88,7 +88,7 @@ export function ResetPasswordForm() {
           Нова парола
         </label>
         <div className="relative">
-          <input
+          <input data-help="Въведете новата парола според показаните изисквания."
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
@@ -117,7 +117,7 @@ export function ResetPasswordForm() {
         <label htmlFor="confirm" className="np-label">
           Повтори паролата
         </label>
-        <input
+        <input data-help="Въведете новата парола според показаните изисквания."
           id="confirm"
           name="confirm"
           type={showPassword ? "text" : "password"}
@@ -135,7 +135,7 @@ export function ResetPasswordForm() {
           {error}
         </p>
       ) : null}
-      <button type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
+      <button data-help="Записва новата парола чрез връзката за възстановяване." type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
         {pending ? "Запис…" : "Запази новата парола"}
       </button>
       <p className="text-center text-sm">

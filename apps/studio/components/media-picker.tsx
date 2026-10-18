@@ -260,7 +260,7 @@ export function MediaPicker({
         <h2 id="media-heading" className="text-lg font-extrabold text-ink">
           Медии
         </h2>
-        <input
+        <input data-help="Търси снимки по име в избраната папка или целия архив. Въведете поне два знака."
           value={query}
           onChange={(event) => { libraryTouched.current = true; setQuery(event.target.value); }}
           placeholder={folder ? "Търсене в папката (мин. 2 знака)" : "Търсене в целия архив (мин. 2 знака)"}
@@ -272,8 +272,8 @@ export function MediaPicker({
         </button>
       </div>
       <div className="flex shrink-0 gap-1 border-b border-line px-5 pt-3">
-        <button type="button" disabled={uploading} onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
-        <button type="button" disabled={uploading} onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
+        <button data-help="Отваря съществуващите снимки в библиотеката." type="button" disabled={uploading} onClick={() => setMode("library")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "library" ? "bg-surface-2 text-ink" : "text-muted"}`}>Медия библиотека</button>
+        <button data-help="Отваря качването на нови снимки от вашето устройство." type="button" disabled={uploading} onClick={() => setMode("upload")} className={`rounded-t-lg px-3 py-2 text-xs font-bold ${mode === "upload" ? "bg-surface-2 text-ink" : "text-muted"}`}>Качи от устройството</button>
       </div>
       {error || (mode === "library" && libraryError) ? <p role="alert" className="shrink-0 px-5 py-3 text-sm text-danger">{error || libraryError}</p> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -288,7 +288,7 @@ export function MediaPicker({
           }}
         >
         <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
-          <input id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFileList(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
+          <input data-help="Качва нов файл в медийната библиотека. След качване можете да го изберете за материала." id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFileList(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
           {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
           {uploadPreviews.length ? (
             <div className="mt-4 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
@@ -310,7 +310,7 @@ export function MediaPicker({
                   <div className="space-y-1 p-2">
                     <label className="block text-[10px] font-semibold tracking-wide text-faint uppercase">
                       Име в архива
-                      <input
+                      <input data-help="Името, с което снимката ще се записва и намира в библиотеката."
                         value={uploadNames[index] ?? ""}
                         disabled={uploading}
                         maxLength={240}
@@ -326,8 +326,8 @@ export function MediaPicker({
             </div>
           ) : null}
           <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека с това име (търсене в архива).</p>
-          {uploadedItems.current.length && !uploading ? <button type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
-          <button type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
+          {uploadedItems.current.length && !uploading ? <button data-help="Добавя избраната снимка или снимки в материала." type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
+          <button data-help="Качва и оптимизира избраните снимки, след което ги добавя към материала." type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
         </div>
         </div>
       ) : null}
@@ -335,7 +335,7 @@ export function MediaPicker({
         <div className="flex min-h-0 flex-1">
           <nav aria-label="Папки в хранилището" className="w-44 shrink-0 overflow-y-auto border-r border-line bg-surface-2/50 p-2 text-xs">
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
-            <button
+            <button data-help="Показва снимките от всички години и месеци."
               type="button"
               onClick={() => selectFolder("")}
               aria-current={!folder ? "true" : undefined}
@@ -356,7 +356,7 @@ export function MediaPicker({
                       const active = folder === path;
                       return (
                         <li key={path}>
-                          <button type="button" onClick={() => selectFolder(path)} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
+                          <button data-help="Показва снимките само от този месец." type="button" onClick={() => selectFolder(path)} aria-current={active ? "true" : undefined} className={`block w-full rounded-md px-2 py-1 text-left tabular-nums ${active ? "bg-accent/10 font-bold text-accent" : "text-muted hover:bg-surface hover:text-ink"}`}>
                             {month}
                           </button>
                         </li>
@@ -379,14 +379,13 @@ export function MediaPicker({
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {library.map((item) => (
                 <li key={item.id} className="overflow-hidden rounded-xl border-2 border-transparent transition has-[[aria-pressed=true]]:border-accent hover:border-accent/50">
-                  <button
+                  <button data-help="Избира снимката за материала. При избор на няколко снимки потвърдете с бутона за вмъкване."
                     type="button"
                     onClick={() => pick(item)}
                     onDoubleClick={(event) => {
                       event.preventDefault();
                       pickOne(item);
                     }}
-                    title="Двоен клик добавя снимката (с оптимизация)"
                     disabled={optimizing || libraryLoading || queryPending || renameBusy}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full text-left"
@@ -395,7 +394,7 @@ export function MediaPicker({
                   </button>
                   {renamingId === item.id ? (
                     <div className="flex flex-col gap-1 p-1.5" onClick={(event) => event.stopPropagation()}>
-                      <input
+                      <input data-help="Името за намиране на тази снимка в библиотеката."
                         value={renameDraft}
                         disabled={renameBusy}
                         maxLength={240}
@@ -409,17 +408,16 @@ export function MediaPicker({
                         className="np-input w-full py-1 text-xs"
                       />
                       <div className="flex gap-1">
-                        <button type="button" disabled={renameBusy} onClick={() => void saveRename(item)} className="np-btn np-btn-primary h-6 flex-1 px-1 text-[10px]">{renameBusy ? "…" : "Запази"}</button>
+                        <button data-help="Записва новото име на тази снимка в библиотеката." type="button" disabled={renameBusy} onClick={() => void saveRename(item)} className="np-btn np-btn-primary h-6 flex-1 px-1 text-[10px]">{renameBusy ? "…" : "Запази"}</button>
                         <button type="button" disabled={renameBusy} onClick={() => setRenamingId(null)} className="np-btn np-btn-secondary h-6 px-1 text-[10px]">Отказ</button>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-start gap-1 px-1 py-1.5">
                       <span className="line-clamp-2 min-w-0 flex-1 text-xs text-muted">{item.alt || item.name}</span>
-                      <button
+                      <button data-help="Сменя името на снимката за търсене в библиотеката."
                         type="button"
                         disabled={optimizing || renameBusy}
-                        title="Преименувай"
                         aria-label={`Преименувай ${item.alt || item.name}`}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -450,7 +448,7 @@ export function MediaPicker({
       {multiple ? (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-3">
           <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
-          <button
+          <button data-help="Вмъква избраните снимки заедно в материала."
             type="button"
             disabled={!selectedMany.length || optimizing || uploading || libraryLoading || queryPending || mode !== "library"}
             onClick={() => insertMany()}

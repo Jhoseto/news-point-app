@@ -1,27 +1,18 @@
-export const ARTICLE_SORTS = ["updated", "published", "title", "author", "views"] as const;
-export const ARTICLE_STATUSES = ["all", "published", "draft", "changed"] as const;
-export const ARTICLE_SOURCES = ["all", "wordpress", "studio"] as const;
-export const ARTICLE_HERO = ["all", "with", "without"] as const;
-export const DATE_FIELDS = ["updated", "published"] as const;
+export const ARTICLE_SORTS = ["updated", "published", "title", "category", "author", "status", "views"] as const;
+export const ARTICLE_STATUSES = ["all", "published", "draft", "scheduled", "changed"] as const;
 export const PAGE_SIZES = [25, 50, 100] as const;
 
 export type ArticleSort = (typeof ARTICLE_SORTS)[number];
 export type ArticleStatus = (typeof ARTICLE_STATUSES)[number];
-export type ArticleSource = (typeof ARTICLE_SOURCES)[number];
-export type ArticleHero = (typeof ARTICLE_HERO)[number];
-export type DateField = (typeof DATE_FIELDS)[number];
 export type PageSize = (typeof PAGE_SIZES)[number];
 
 export type ArticleListQuery = {
   q: string;
   author: string;
   status: ArticleStatus;
-  source: ArticleSource;
-  hero: ArticleHero;
   category: string;
   sort: ArticleSort;
   dir: "asc" | "desc";
-  dateField: DateField;
   from: string;
   to: string;
   page: number;
@@ -41,13 +32,22 @@ function pick<T extends string>(value: string, allowed: readonly T[], fallback: 
 }
 
 function day(value: string): string {
-  return DAY.test(value) ? value : "";
+  return sofiaDayStart(value) ? value : "";
+}
+
+export function defaultArticleSortDirection(sort: ArticleSort): "asc" | "desc" {
+  return sort === "title" || sort === "author" || sort === "category" || sort === "status" ? "asc" : "desc";
+}
+
+export function articleSortHref(query: ArticleListQuery, sort: ArticleSort): string {
+  const dir = query.sort === sort ? (query.dir === "asc" ? "desc" : "asc") : defaultArticleSortDirection(sort);
+  return articleListHref(query, { sort, dir, page: 1 });
 }
 
 export function parseArticleListQuery(params: Record<string, string | string[] | undefined>): ArticleListQuery {
   const sort = pick(one(params.sort), ARTICLE_SORTS, "updated");
   const explicitDir = one(params.dir);
-  const dir = explicitDir === "asc" || explicitDir === "desc" ? explicitDir : sort === "title" || sort === "author" ? "asc" : "desc";
+  const dir = explicitDir === "asc" || explicitDir === "desc" ? explicitDir : defaultArticleSortDirection(sort);
   const page = Math.min(100_000, Math.max(1, Number.parseInt(one(params.page), 10) || 1));
   const size = Number.parseInt(one(params.size), 10);
   const pageSize = (PAGE_SIZES as readonly number[]).includes(size) ? (size as PageSize) : 50;
@@ -59,12 +59,9 @@ export function parseArticleListQuery(params: Record<string, string | string[] |
     q: one(params.q).slice(0, 120),
     author: one(params.author).slice(0, 80),
     status: pick(one(params.status), ARTICLE_STATUSES, "all"),
-    source: pick(one(params.source), ARTICLE_SOURCES, "all"),
-    hero: pick(one(params.hero), ARTICLE_HERO, "all"),
     category: UUID.test(category) ? category : "",
     sort,
     dir,
-    dateField: pick(one(params.date), DATE_FIELDS, "updated"),
     from,
     to,
     page,
@@ -73,7 +70,7 @@ export function parseArticleListQuery(params: Record<string, string | string[] |
 }
 
 export function articleListActive(query: ArticleListQuery): boolean {
-  return Boolean(query.q || query.author || query.status !== "all" || query.source !== "all" || query.hero !== "all" || query.category || query.from || query.to || query.sort !== "updated" || query.dir !== "desc" || query.dateField !== "updated" || query.pageSize !== 50);
+  return Boolean(query.q || query.author || query.status !== "all" || query.category || query.from || query.to || query.sort !== "updated" || query.dir !== "desc" || query.pageSize !== 50);
 }
 
 export function articleListHref(query: ArticleListQuery, patch: Partial<ArticleListQuery> = {}): string {
@@ -82,12 +79,9 @@ export function articleListHref(query: ArticleListQuery, patch: Partial<ArticleL
   if (next.q) params.set("q", next.q);
   if (next.author) params.set("author", next.author);
   if (next.status !== "all") params.set("status", next.status);
-  if (next.source !== "all") params.set("source", next.source);
-  if (next.hero !== "all") params.set("hero", next.hero);
   if (next.category) params.set("category", next.category);
   if (next.sort !== "updated") params.set("sort", next.sort);
-  if (next.dir !== "desc") params.set("dir", next.dir);
-  if (next.dateField !== "updated") params.set("date", next.dateField);
+  if (next.dir !== defaultArticleSortDirection(next.sort)) params.set("dir", next.dir);
   if (next.from) params.set("from", next.from);
   if (next.to) params.set("to", next.to);
   if (next.pageSize !== 50) params.set("size", String(next.pageSize));
