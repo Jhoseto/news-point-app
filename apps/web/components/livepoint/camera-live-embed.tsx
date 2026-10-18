@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { cameraEmbedPlayUrl } from "@/lib/livepoint/cameras/embed-play-url";
+import { useCookieConsent } from "../cookie-consent-store";
+import { ExternalContentConsent } from "../external-content-consent";
 
 function isRefreshingSnapUrl(url: string): boolean {
   return /\.jpe?g(\?|$)/i.test(url) || url.includes("/snap.jpg");
@@ -29,8 +31,10 @@ export function CameraLiveEmbed({ title, embedUrl, sourceUrl, eager = false }: {
   sourceUrl: string;
   eager?: boolean;
 }) {
+  const allowed = useCookieConsent().record?.external === true;
   const [failed, setFailed] = useState(false);
   const src = cameraEmbedPlayUrl(embedUrl);
+  if (!allowed) return <ExternalContentConsent title={title} sourceUrl={sourceUrl} />;
 
   if (isRefreshingSnapUrl(embedUrl)) {
     return <CameraSnapImage title={title} src={embedUrl} />;

@@ -4,6 +4,7 @@ import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { BrandLogoImg } from "./brand-logo-img";
 import { MobileFooterControls } from "./mobile-footer-controls";
 import { LegalFooterLinks } from "./legal-links";
+import { FooterSocialLinks } from "./footer-social-links";
 import "./mobile-footer.css";
 
 /** Decorative line illustration inspired by Plovdiv's hills, clock tower and theatre. */
@@ -46,6 +47,7 @@ export function MobileFooter() {
           <a href={PUBLIC_CONTACT.emailHref}><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></svg><span>{PUBLIC_CONTACT.email}</span></a>
         </address>
 
+        <FooterSocialLinks />
         <LegalFooterLinks />
         <div className="np-mobile-footer-bottom">
           <p>© {new Date().getFullYear()} NewsPoint.bg</p>

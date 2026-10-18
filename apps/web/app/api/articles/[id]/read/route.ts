@@ -3,10 +3,11 @@ import { and, eq, lte, sql } from "drizzle-orm";
 import { articleReadCounts, articleViewBoosts, articles, getDb, hasArticleReadCounts, hasArticleViewBoosts } from "@newspoint/db";
 import { isArticleReadSameOrigin } from "@/lib/article-read";
 import { z } from "zod";
+import { CONSENT_COOKIE, parseConsent } from "@/lib/cookie-consent";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
+const headers = { "Cache-Control": "private, no-store", Vary: "Cookie", "X-Content-Type-Options": "nosniff" };
 const buckets = new Map<string, { count: number; expires: number }>();
 const bodySchema = z.object({ revisit: z.boolean().optional() });
 const READ_COOKIE_PREFIX = "np_rd_";
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   })) {
     return NextResponse.json({ error: "Заявката трябва да е от сайта." }, { status: 403, headers });
   }
+  // Check before IP buckets, parsing or database access; the client flag alone is insufficient.
+  if (!parseConsent(request.cookies.get(CONSENT_COOKIE)?.value)?.statistics) return new NextResponse(null, { status: 204, headers });
   const parsed = z.uuid().safeParse((await context.params).id);
   if (!parsed.success) return NextResponse.json({ error: "Невалидна статия." }, { status: 400, headers });
   const ip = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() || "local";

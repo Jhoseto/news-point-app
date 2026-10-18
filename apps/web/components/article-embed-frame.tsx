@@ -1,6 +1,8 @@
 "use client";
 
 import { embedFrameUrl, embedAspectRatio, videoSourceUrl, observeEmbedFrame } from "@newspoint/content";
+import { useCookieConsent } from "./cookie-consent-store";
+import { ExternalContentConsent } from "./external-content-consent";
 
 export function ArticleEmbedFrame({
   src,
@@ -15,8 +17,10 @@ export function ArticleEmbedFrame({
   id?: string;
   className?: string;
 }) {
+  const allowed = useCookieConsent().record?.external === true;
   const playSrc = embedFrameUrl(src);
   const videoSrc = videoSourceUrl(src);
+  if ((playSrc || (videoSrc && !videoSrc.startsWith("/"))) && !allowed) return <ExternalContentConsent id={id} title={title} sourceUrl={src} className={className} />;
   if (videoSrc) return <div id={id} className={`${className} np-embed-canvas`} style={{ aspectRatio: "16/9" }}><video src={videoSrc} controls preload="metadata" playsInline className="h-full w-full bg-black object-contain" aria-label={title} /></div>;
   if (!playSrc) return <a id={id} className={className} href={src} target="_blank" rel="noopener noreferrer">Виж публикацията в {provider}</a>;
   return (

@@ -11,6 +11,7 @@ import {
   shouldSendArticleRead,
 } from "@/lib/article-read";
 import { EyeIcon } from "./icons";
+import { currentCookieConsent, useCookieConsent } from "./cookie-consent-store";
 
 const formatter = new Intl.NumberFormat("bg-BG");
 
@@ -20,38 +21,40 @@ async function sendArticleRead(articleId: string, revisit: boolean): Promise<num
     headers: { "Content-Type": "application/json" },
     body: articleReadRequestBody(revisit),
   });
-  if (!response.ok) return null;
+  if (!response.ok || response.status === 204) return null;
   const result = await response.json() as { count?: unknown };
   const count = typeof result.count === "number" ? result.count : Number(result.count);
   return Number.isSafeInteger(count) && count >= 0 ? count : null;
 }
 
 export function ArticleReadCount({ articleId, initialCount }: { articleId: string; initialCount: number | null }) {
+  const allowed = useCookieConsent().record?.statistics === true;
   const [count, setCount] = useState(initialCount);
   const pathname = usePathname();
   const previousPath = useRef(pathname);
 
   useEffect(() => {
     if (previousPath.current === pathname) return;
-    markArticleReadsEligibleAfterNavigation(sessionStorage);
+    if (allowed) try { markArticleReadsEligibleAfterNavigation(sessionStorage); } catch { /* Storage may be blocked. */ }
     previousPath.current = pathname;
-  }, [pathname]);
+  }, [pathname, allowed]);
 
   useEffect(() => {
-    if (initialCount === null) return;
-    const storage = sessionStorage;
+    if (!allowed || initialCount === null) return;
+    let storage: Storage;
+    try { storage = sessionStorage; storage.getItem("np-read:v1:probe"); } catch { return; }
     const revisit = isArticleReadRevisit(articleId, storage);
     if (!shouldSendArticleRead(articleId, storage)) return;
 
     let ignore = false;
     void shareArticleRead(articleId, () => sendArticleRead(articleId, revisit).catch(() => null)).then((next) => {
-      if (ignore || next === null) return;
-      markArticleReadCounted(articleId, storage);
+      if (ignore || next === null || !currentCookieConsent()?.statistics) return;
+      try { markArticleReadCounted(articleId, storage); } catch { /* No local persistence. */ }
       setCount(next);
     });
 
     return () => { ignore = true; };
-  }, [articleId, initialCount]);
+  }, [articleId, initialCount, allowed]);
 
   const unavailable = count === null;
   return (

@@ -9,8 +9,9 @@
 .np-breaking-segment { display: block; flex: none; box-sizing: border-box; min-width: var(--np-breaking-window-w, 0px); padding-right: 64px; white-space: nowrap; }
 .np-breaking-static { display: block; padding: 4px 12px; overflow-wrap: anywhere; }
 .np-breaking-toggle { display: flex; min-height: 29px; align-items: center; justify-content: center; padding: 0 12px 0 4px; color: inherit; background: transparent; cursor: pointer; }
-.np-breaking-toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
-.np-breaking-toggle:focus-visible, .np-breaking-label:focus-visible { outline: 2px solid white; outline-offset: -4px; }
+.np-breaking-heading { padding: 0; text-align: left; cursor: pointer; }
+.np-breaking-heading[aria-expanded="true"] svg { transform: rotate(90deg); }
+.np-breaking-heading:focus-visible { outline: 2px solid white; outline-offset: -4px; }
 .np-breaking-content:focus-visible { outline-offset: -2px; }
 .np-breaking-host[data-paused] .np-breaking-window { align-items: flex-start; }
 .np-breaking-host[data-ready]:not([data-paused]) .np-breaking-track { display: flex; will-change: transform; }

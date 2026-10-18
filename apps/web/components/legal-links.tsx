@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { LEGAL_NAV_LINKS, LEGAL_PATHS } from "@/lib/legal/types";
 import "./legal-links.css";
+import { CookieSettingsButton } from "./cookie-settings-button";
 
 export function LegalFooterLinks() {
-  return <nav className="np-legal-footer-links" aria-label="Правна информация">{LEGAL_NAV_LINKS.map(link => <Link key={link.href} href={link.href} prefetch={false}>{link.label}</Link>)}</nav>;
+  return <nav className="np-legal-footer-links" aria-label="Правна информация">{LEGAL_NAV_LINKS.map(link => <Link key={link.href} href={link.href} prefetch={false}>{link.label}</Link>)}<CookieSettingsButton className="np-cookie-settings-link" /></nav>;
 }
 
 /** Informational notice, never an added blanket GDPR/marketing consent. Safe to include in client forms. */

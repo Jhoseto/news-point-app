@@ -46,8 +46,7 @@
 .np-legal-table td { padding: 1rem .8rem; vertical-align: top; border-bottom: 1px solid var(--np-line); white-space: pre-line; }
 .np-legal-table td:first-child { font-weight: 700; color: var(--np-ink); }
 .np-legal-document-end { padding: 1.2rem 0 0; }
-.np-legal-document-end ul { list-style: none; padding: 0; margin: .8rem 0 1.4rem; }
-.np-legal-document-end li a { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; min-height: 44px; padding: .55rem 0; color: var(--np-link); font-size: .76rem; line-height: 1.6; border-bottom: 1px solid var(--np-line); }
+.np-legal-document-end > a:not(.np-legal-back) { display: inline-flex; align-items: center; min-height: 44px; color: var(--np-link); font-size: .8rem; text-decoration: underline; text-underline-offset: 3px; }
 .np-legal-document-end > p:not(.np-legal-caption) { font-size: .71rem; line-height: 1.8; color: var(--np-muted); }
 .np-legal-back { display: inline-flex; align-items: center; min-height: 44px; margin-top: 1rem; font-size: .76rem; font-weight: 700; color: var(--np-link); }
 .np-legal-page a:focus-visible { outline: 2px solid var(--np-link); outline-offset: 4px; border-radius: .3rem; }
@@ -106,6 +105,4 @@
   .np-legal-summary > div, .np-legal-table tr { break-inside: avoid; }
   .np-legal-table { font-size: 8pt; }
   .np-legal-links a { padding: 0; border: 0; min-height: 0; }
-  .np-legal-document-end a[href^="https://"]::after { content: " (" attr(href) ")"; font-size: 7pt; overflow-wrap: anywhere; }
-  .np-legal-document-end li a { display: block; min-height: 0; }
 }

@@ -1,5 +1,6 @@
 .np-legal-footer-links { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; padding-block: .75rem; border-top: 1px solid var(--np-line); }
 .np-legal-footer-links a { display: inline-flex; align-items: center; min-height: 44px; color: var(--np-muted); font-size: .72rem; font-weight: 650; }
+.np-legal-footer-links button { display: inline-flex; align-items: center; min-height: 44px; font-size: .72rem; font-weight: 650; }
 .np-legal-footer-links a:hover { color: var(--np-link); text-decoration: underline; text-underline-offset: .2em; }
 .np-legal-footer-links a:focus-visible, .np-submission-legal a:focus-visible { outline: 2px solid var(--np-link); outline-offset: 3px; border-radius: .3rem; }
 .np-submission-legal { padding: 1rem; border: 1px solid var(--np-line); border-radius: .9rem; background: var(--np-surface-2); font-size: .75rem; line-height: 1.75; color: var(--np-muted); }

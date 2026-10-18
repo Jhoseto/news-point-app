@@ -1,10 +1,20 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { parseEmbedInput } from "@newspoint/content";
 import { ArticleEmbedFrame } from "../components/article-embed-frame";
+const consent = vi.hoisted(() => ({ external: true }));
+vi.mock("../components/cookie-consent-store", () => ({ useCookieConsent: () => ({ record: consent }), openCookieSettings: vi.fn() }));
+beforeEach(() => { consent.external = true; });
 
 describe("published Reddit embed rendering", () => {
+  it("shows an inert source link and settings instead of loading Reddit without external consent", () => {
+    consent.external = false;
+    const html = renderToStaticMarkup(createElement(ArticleEmbedFrame, { src: "https://www.reddit.com/r/news/comments/abcdef/example/", provider: "reddit", title: "Reddit consent fixture" }));
+    expect(html).not.toMatch(/<iframe|<script/);
+    expect(html).toContain("Настройки за бисквитки");
+    expect(html).toContain('target="_blank"');
+  });
   it("renders the official pasted snippet as a player without including its script", () => {
     const parsed = parseEmbedInput('<blockquote class="reddit-embed-bq"><a href="https://www.reddit.com/r/interestingasfuck/comments/1x2dlf6/men_saving_liquor_bottles_from_falling_off_the/">Post</a></blockquote><script async="" src="https://embed.reddit.com/widgets.js" charset="UTF-8"></script>');
     expect(parsed).not.toBeNull();

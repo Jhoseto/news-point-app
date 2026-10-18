@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { BREAKING_CHANGED, BREAKING_SYNC, breakingVisibleAt, type PublicBreaking } from "@newspoint/content";
 import "./breaking-banner.css";
 
@@ -17,6 +17,7 @@ function layoutLeft(element: HTMLElement | null | undefined) {
 }
 
 export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBreaking | null; categoryPaths: string[] }) {
+  const contentId = useId();
   const pathname = usePathname();
   const eligible = breakingVisibleAt(pathname, categoryPaths);
   const [bulletin, setBulletin] = useState(initial);
@@ -87,8 +88,8 @@ export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBrea
       const desktop = window.matchMedia("(min-width: 64rem)").matches;
       const latest = header?.querySelector<HTMLElement>(".np-headline-capsule");
       // Read layout offsets, not the temporary FLIP transforms of the rubrics strip.
-      const left = layoutLeft(latest);
-      const offset = desktop && latest?.offsetWidth ? Math.max(0, element.clientWidth - left) : 0;
+      const latestRight = layoutLeft(latest) + (latest?.offsetWidth ?? 0) - layoutLeft(element);
+      const offset = desktop && latest?.offsetWidth ? Math.max(0, element.clientWidth - latestRight) : 0;
       if (desktop && brand) {
         setCss(element, "--np-breaking-inset", `${layoutLeft(brand) - layoutLeft(strip)}px`);
         setCss(element, "--np-breaking-heading-w", `${brand.getBoundingClientRect().width}px`);
@@ -115,7 +116,7 @@ export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBrea
 
   if (!eligible || !bulletin) return null;
   const text = <>
-    <span className="np-breaking-window">
+    <span id={contentId} className="np-breaking-window">
       <span className="sr-only">{bulletin.text}</span>
       <span className="np-breaking-track" aria-hidden="true" style={{ "--np-breaking-duration": `${duration}s` } as CSSProperties}>
         <span ref={segment} className="np-breaking-segment">{bulletin.text}</span>
@@ -126,12 +127,12 @@ export function BreakingBanner({ initial, categoryPaths }: { initial: PublicBrea
   </>;
   return <div ref={banner} className="np-breaking-host" data-ready={ready || undefined} data-paused={paused || undefined} data-hidden={hidden || undefined}>
     <div ref={row} className="np-breaking" data-rubrics-motion role="region" aria-label="Извънредно съобщение">
-      <div className="np-breaking-heading">
-        {bulletin.path ? <Link href={bulletin.path} prefetch={false} className="np-breaking-label">ИЗВЪНРЕДНО</Link> : <span className="np-breaking-label">ИЗВЪНРЕДНО</span>}
-        <button type="button" className="np-breaking-toggle" onClick={() => setPaused(value => !value)} aria-label={paused ? "Прибери съобщението" : "Разгъни съобщението"} aria-expanded={paused}>
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-        </button>
-      </div>
+      <button type="button" className="np-breaking-heading" onClick={() => setPaused(value => !value)} aria-label={paused ? "Прибери съобщението" : "Разгъни съобщението"} aria-expanded={paused} aria-controls={contentId}>
+        <span className="np-breaking-label">ИЗВЪНРЕДНО</span>
+        <span className="np-breaking-toggle" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 4 4 4-4 4" /></svg>
+        </span>
+      </button>
       {bulletin.path ? <Link href={bulletin.path} prefetch={false} className="np-breaking-content">{text}</Link> : <div className="np-breaking-content">{text}</div>}
     </div>
   </div>;

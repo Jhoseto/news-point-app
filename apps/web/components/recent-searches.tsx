@@ -4,13 +4,16 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { addRecentSearch, readRecentSearches, RECENT_SEARCH_KEY, type RecentSearch } from "@/lib/recent-searches";
 import { searchPageUrl } from "@/lib/search";
+import { useCookieConsent } from "./cookie-consent-store";
 
 export function RecentSearches({ query, record }: { query: string; record: boolean }) {
+  const allowed = useCookieConsent().record?.preferences === true;
   const [items, setItems] = useState<RecentSearch[]>([]);
   const [ready, setReady] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const [cleared, setCleared] = useState(false);
   useEffect(() => {
+    if (!allowed) { setItems([]); setReady(false); return; }
     try {
       const stored = readRecentSearches(localStorage);
       const next = record ? addRecentSearch(stored, query) : stored;
@@ -18,9 +21,9 @@ export function RecentSearches({ query, record }: { query: string; record: boole
       setItems(next); setUnavailable(false); setCleared(false);
     } catch { setUnavailable(true); }
     setReady(true);
-  }, [query, record]);
+  }, [query, record, allowed]);
 
-  if (!ready) return null;
+  if (!ready || !allowed) return null;
   if (unavailable) return <p className="text-sm text-muted">Скорошните търсения не са достъпни в този браузър.</p>;
   if (!items.length && !cleared) return null;
   return (

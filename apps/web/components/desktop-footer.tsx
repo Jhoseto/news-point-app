@@ -5,6 +5,7 @@ import { BrandLogoImg } from "./brand-logo-img";
 import { PlovdivFooterSkyline } from "./mobile-footer";
 import { DesktopFooterControls } from "./desktop-footer-controls";
 import { LegalFooterLinks } from "./legal-links";
+import { FooterSocialLinks } from "./footer-social-links";
 import "./desktop-footer.css";
 
 /** Wide-screen editorial signature. The mobile composition is independent. */
@@ -24,19 +25,26 @@ export function DesktopFooter() {
           </div>
 
           <nav className="np-desktop-footer-links" aria-label="За NewsPoint">
+            <h2 className="np-desktop-footer-heading">За NewsPoint</h2>
             <ul>{FOOTER_NAV_LINKS.map((link) => <li key={link.path}><Link href={link.path} prefetch={false}>{link.name}</Link></li>)}</ul>
           </nav>
 
-          <address className="np-desktop-footer-contact">
+          <section className="np-desktop-footer-contact" aria-label="Контакти с редакцията">
+            <h2 className="np-desktop-footer-heading">Редакцията</h2>
+            <address>
             <a href={PUBLIC_CONTACT.phoneHref}><span className="np-desktop-footer-contact-caption">Телефон</span><span>{PUBLIC_CONTACT.phone}</span></a>
             <a href={PUBLIC_CONTACT.emailHref}><span className="np-desktop-footer-contact-caption">Имейл</span><span>{PUBLIC_CONTACT.email}</span></a>
-          </address>
+            </address>
+          </section>
+          <FooterSocialLinks />
         </div>
 
-        <LegalFooterLinks />
         <div className="np-desktop-footer-bottom">
           <p>© {new Date().getFullYear()} NewsPoint.bg</p>
-          <DesktopFooterControls />
+          <div>
+            <LegalFooterLinks />
+            <DesktopFooterControls />
+          </div>
         </div>
       </div>
     </div>

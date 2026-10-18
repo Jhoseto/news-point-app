@@ -21,7 +21,9 @@ for (const document of LEGAL_DOCUMENTS) it(`${document.key}: renders the entire 
   expect(html.match(/<h1[ >]/g)).toHaveLength(1);
   expect(html).toContain(document.title);
   expect(html).toMatch(/datetime="2026-10-18"/i);
-  expect(html).toContain("Версия за преглед");
+  expect(html).toContain("Последна актуализация:");
+  expect(html).toContain("В сила от");
+  expect(html).not.toMatch(/Версия за преглед|Подготвена на|Подготовка:|преди публикуване на политиката|подлежи на проверка|подлежат на потвърждение|сверен с кода|този проект|Официални източници за правната рамка/i);
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
   expect(new Set(ids).size).toBe(ids.length);
   for (const section of document.sections) {
@@ -35,7 +37,8 @@ for (const document of LEGAL_DOCUMENTS) it(`${document.key}: renders the entire 
       expect(target?.sections.some(other => other.id === id)).toBe(true);
     }
   }
-  expect(html).not.toMatch(/<script|<iframe|<button|lorem ipsum|\[ЕИК\]|\[име на/i);
+  expect(html).not.toMatch(/<script|<iframe|lorem ipsum|\[ЕИК\]|\[име на/i);
+  expect((html.match(/<button/g) ?? []).length).toBe(document.key === "cookies" ? 1 : 0);
   if (process.env.LEGAL_QA_REPORT === "1") {
     mkdirSync("tests/reports/legal-pages-20261018", { recursive: true });
     writeFileSync(`tests/reports/legal-pages-20261018/${document.key}.html`, html);
@@ -50,7 +53,8 @@ it("preserves legacy URL meanings and gives each document its own canonical/OG m
     const metadata = legalMetadata(document);
     expect(metadata.alternates?.canonical).toBe(`https://newspoint.bg${document.path}`);
     expect(metadata.openGraph?.title).toBe(document.title);
-    expect(metadata.robots).toMatchObject({ index: false });
+    // Approved documents inherit the global deployment gate; local/preview still remains noindex.
+    expect(metadata.robots).toBeUndefined();
   }
 });
 
@@ -62,6 +66,9 @@ it("keeps review policies out of public discovery until both publication and an 
       expect(llmsText("https://newspoint.bg", [], [])).not.toContain(path);
     }
   };
+  expect(legalReviewPending()).toBe(false);
+  LEGAL_EDITION.status = "review";
+  LEGAL_EDITION.effectiveAt = null;
   assertExcluded();
   LEGAL_EDITION.status = "published";
   assertExcluded();

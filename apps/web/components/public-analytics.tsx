@@ -1,45 +1,34 @@
 "use client";
 
-import Script from "next/script";
+import { useEffect } from "react";
 import type { PublicAnalyticsConfig } from "@/lib/public-analytics";
+import type { AnalyticsWindow } from "@/lib/cookie-consent-effects";
+import { currentCookieConsent, useCookieConsent } from "./cookie-consent-store";
 
-type Props = { config: PublicAnalyticsConfig };
-
-/** Deferred third-party analytics; IDs are public measurement/container values only. */
-export function PublicAnalytics({ config }: Props) {
-  if (config.kind === "gtm") {
-    const id = config.containerId;
-    return (
-      <>
-        <Script id="np-gtm" strategy="afterInteractive">{`
-          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
-          var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
-          j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
-          f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${id}');
-        `}</Script>
-        <noscript>
-          <iframe
-            title="Google Tag Manager"
-            src={`https://www.googletagmanager.com/ns.html?id=${id}`}
-            height="0"
-            width="0"
-            style={{ display: "none", visibility: "hidden" }}
-          />
-        </noscript>
-      </>
-    );
-  }
-
-  const id = config.measurementId;
-  return (
-    <>
-      <Script src={`https://www.googletagmanager.com/gtag/js?id=${id}`} strategy="afterInteractive" />
-      <Script id="np-ga4" strategy="afterInteractive">{`
-        window.dataLayer=window.dataLayer||[];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '${id}', { anonymize_ip: true });
-      `}</Script>
-    </>
-  );
+/** Basic consent mode: no Google script, iframe or cookieless ping before an affirmative choice. */
+export function PublicAnalytics({ config }: { config: PublicAnalyticsConfig }) {
+  const allowed = useCookieConsent().record?.statistics === true;
+  useEffect(() => {
+    if (!allowed || !currentCookieConsent()?.statistics) return;
+    const tracking = window as AnalyticsWindow;
+    if (tracking.__npAnalyticsLoaded) return;
+    tracking.__npAnalyticsLoaded = config;
+    const layer = tracking.dataLayer ??= [];
+    tracking.gtag ??= function () { layer.push(arguments); };
+    tracking.gtag("consent", "default", { analytics_storage: "granted", ad_storage: "denied", ad_user_data: "denied", ad_personalization: "denied" });
+    const script = document.createElement("script");
+    script.id = "np-consented-analytics"; script.async = true;
+    if (config.kind === "gtm") {
+      // Container contents must independently respect these settings; see release checks in PLAN.
+      layer.push({ "gtm.start": Date.now(), event: "gtm.js" });
+      script.src = `https://www.googletagmanager.com/gtm.js?id=${config.containerId}`;
+    } else {
+      tracking.gtag("js", new Date());
+      tracking.gtag("config", config.measurementId, { allow_google_signals: false, allow_ad_personalization_signals: false });
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${config.measurementId}`;
+    }
+    document.head.appendChild(script);
+    // StrictMode must not reinitialize the runtime. The root controller handles revocation.
+  }, [allowed, config]);
+  return null;
 }

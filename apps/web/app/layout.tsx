@@ -22,6 +22,7 @@ import { newsMediaOrganization, webSite } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { PublicAnalyticsGate } from "@/components/public-analytics-gate";
+import { CookieConsent } from "@/components/cookie-consent";
 import { publicRobotsMetadata } from "@/lib/indexing-policy.mjs";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
@@ -117,6 +118,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </PodcastProvider>
         <DeferredChrome />
         <PublicAnalyticsGate />
+        <CookieConsent />
       </body>
     </html>
   );

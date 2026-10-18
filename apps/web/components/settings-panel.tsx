@@ -4,6 +4,7 @@ import { chooseReaderPreferences, useReaderPreferences } from "./reader-preferen
 import { DEFAULT_PREFERENCES, type ReaderPreferences } from "@/lib/reader-preferences";
 import { PushSettings } from "./push-settings";
 import { useId } from "react";
+import { CookieSettingsButton } from "./cookie-settings-button";
 
 const groups = [
   { key: "theme", title: "Цветова тема", hint: "Следвайте устройството или изберете тема.", options: [
@@ -39,6 +40,7 @@ export function SettingsPanel({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`grid min-w-0 ${gap}`}>
       <PushSettings compact={tight} />
+      <section className={card}><CookieSettingsButton className="np-cookie-settings-link" /><p className="mt-1 text-xs text-muted">Статистика, история на търсенията и външно съдържание.</p></section>
       {groups.map((group) => (
         <fieldset key={group.key} className={card} aria-describedby={`${id}-${group.key}-hint`}>
           <legend className={legend}>{group.title}</legend>
