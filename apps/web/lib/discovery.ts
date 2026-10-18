@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { PUBLIC_SEO_PAGES } from "./public-metadata";
+import { LEGAL_NAV_LINKS, legalReviewPending } from "./legal/types";
 
 export function discoveryRobots(origin: string): MetadataRoute.Robots {
   // Crawlers must be able to read noindex on public pages. Do not hide archive URLs here.
@@ -21,6 +22,7 @@ export function llmsText(origin: string, articles: { path: string; title: string
     "Статиите съдържат заглавие, автор, дата и текст в публичния HTML. Каноничният адрес е посочен на всяка публикация. Темите с продължение обединяват свързани новини в редактирана хронология.", "",
     "## За медията", "",
     ...(["home", "team", "contacts", "advertising"] as const).map((key) => link(origin, PUBLIC_SEO_PAGES[key].path, PUBLIC_SEO_PAGES[key].title)), "",
+    ...(!legalReviewPending() ? ["## Правни документи", "", ...LEGAL_NAV_LINKS.map(item => link(origin, item.href, item.label)), ""] : []),
     "## Откриване на публикации", "",
     link(origin, "/sitemap.xml", "Sitemap индекс — всички публични канонични адреси"),
     link(origin, "/feed/", "RSS — последни новини с дата и резюме"),

@@ -2,7 +2,7 @@ import "server-only";
 import { and, asc, eq, lte, sql } from "drizzle-orm";
 import { articles, categories, getDb, podcasts, storyThemes } from "@newspoint/db";
 import { PUBLIC_MENU } from "@newspoint/content";
-import { PUBLIC_SEO_PAGES } from "./public-metadata";
+import { discoverablePublicPages } from "./public-metadata";
 import { CAMERA_CATALOG } from "./livepoint/cameras/catalog";
 import { NEWS_SITEMAP_PAGE_SIZE, SITEMAP_PAGE_SIZE, type SitemapEntry, type SitemapKind } from "./sitemap-xml";
 
@@ -35,7 +35,7 @@ export async function sitemapCounts(): Promise<Record<SitemapKind, number>> {
 export async function sitemapPages(): Promise<SitemapEntry[]> {
   const sections = await getDb().select({ path: categories.path, slug: categories.slug }).from(categories).where(eq(categories.kind, "section"));
   const menu = new Set(PUBLIC_MENU.map((entry) => entry.slug));
-  const paths = [...Object.values(PUBLIC_SEO_PAGES).map((page) => page.path), ...CAMERA_CATALOG.map((camera) => `/livepoint/cameras/${camera.slug}/`), ...sections.filter((section) => menu.has(section.slug)).map((section) => section.path)];
+  const paths = [...discoverablePublicPages().map((page) => page.path), ...CAMERA_CATALOG.map((camera) => `/livepoint/cameras/${camera.slug}/`), ...sections.filter((section) => menu.has(section.slug)).map((section) => section.path)];
   return [...new Set(paths)].map((path) => ({ path }));
 }
 

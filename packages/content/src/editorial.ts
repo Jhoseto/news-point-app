@@ -155,6 +155,7 @@ export function parseEmbedInput(raw: string): { url: string; provider: EmbedProv
 }
 
 export const RESERVED_ARTICLE_SLUGS = new Set([
+  "privacy-policy", "personal-data-policy", "cookies-policy",
   "api", "_next", "brand", "draft", "login", "search", "tag", "author", "page", "feed", "share",
   "admin", "media", "team", "temi", "contacts", "advertising", "settings", "offline", "livepoint",
   "podcast", "podcast-audio", "news-podcast", "sitemaps", "llms.txt", "sitemap.xml", "robots.txt", "wp-admin", "wp-content", "wp-json",

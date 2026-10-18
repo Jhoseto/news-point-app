@@ -4,6 +4,7 @@ import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { BrandLogoImg } from "./brand-logo-img";
 import { PlovdivFooterSkyline } from "./mobile-footer";
 import { DesktopFooterControls } from "./desktop-footer-controls";
+import { LegalFooterLinks } from "./legal-links";
 import "./desktop-footer.css";
 
 /** Wide-screen editorial signature. The mobile composition is independent. */
@@ -32,6 +33,7 @@ export function DesktopFooter() {
           </address>
         </div>
 
+        <LegalFooterLinks />
         <div className="np-desktop-footer-bottom">
           <p>© {new Date().getFullYear()} NewsPoint.bg</p>
           <DesktopFooterControls />

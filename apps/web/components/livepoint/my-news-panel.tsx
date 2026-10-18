@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { submissionFormData } from "@/lib/livepoint/forms/photos";
 import { PhotoPicker } from "./photo-picker";
+import { SubmissionLegalNotice } from "../legal-links";
 import { FeatherIcon } from "../icons";
 import { ConsentRow, Field, SubmissionIntro, SubmissionSuccess, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
@@ -100,8 +101,9 @@ export function MyNewsPanel({ onDirtyChange = noopDirtyChange }: { onDirtyChange
         <PhotoPicker photos={photos} onChange={setPhotos} disabled={pending} />
         <div className="space-y-2">
           <ConsentRow checked={factsAck} onChange={setFactsAck}>Описвам факти, които съм видял/а или мога да потвърдя.</ConsentRow>
-          <ConsentRow checked={rightsAck} onChange={setRightsAck}>Имам право да споделя материала и приемам редакционен преглед преди публикация.</ConsentRow>
+          <ConsentRow checked={rightsAck} onChange={setRightsAck}>Имам необходимите права и приемам правилата за изпращане, включително ограниченото разрешение за редакционна употреба.</ConsentRow>
         </div>
+        <SubmissionLegalNotice kind="my-news" />
         {error ? <p role="alert" className="rounded-xl border border-accent/25 bg-accent/5 px-3.5 py-3 text-sm font-semibold text-ink">{error}</p> : null}
         <div className="np-lp-form-actions flex flex-wrap items-center justify-between gap-3 border-t border-line py-3">
           <p className="text-xs leading-relaxed text-muted">Не се публикува автоматично.</p>

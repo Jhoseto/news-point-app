@@ -6,6 +6,7 @@ import { CONTACT_ERROR, isValidReportContact } from "@/lib/livepoint/forms/conta
 import type { ReportLocation } from "@/lib/livepoint/forms/location";
 import { submissionFormData } from "@/lib/livepoint/forms/photos";
 import { PhotoPicker } from "./photo-picker";
+import { SubmissionLegalNotice } from "../legal-links";
 import { MapIcon, MegaphoneIcon, PinIcon } from "../icons";
 import { Choice, ConsentRow, Field, npField, SubmissionIntro, SubmissionSuccess, SubmitButton, TextArea, TextField } from "./livepoint-field";
 
@@ -143,8 +144,9 @@ export function ReportPanel({ onDirtyChange = noopDirtyChange }: { onDirtyChange
         </Field>
         <PhotoPicker photos={photos} onChange={setPhotos} disabled={pending} />
         <ConsentRow checked={consent} onChange={setConsent}>
-          Разбирам, че редакцията преглежда сигнала и личните ми данни не се публикуват.
+          Разбирам, че сигналът се изпраща за редакционен преглед и контактът ми не е за публикуване.
         </ConsentRow>
+        <SubmissionLegalNotice kind="report" />
         {error ? <p role="alert" className="rounded-xl border border-accent/25 bg-accent/5 px-3.5 py-3 text-sm font-semibold text-ink">{error}</p> : null}
         <div className="np-lp-form-actions flex flex-wrap items-center justify-between gap-3 border-t border-line py-3">
           <p className="text-xs leading-relaxed text-muted">Изпраща се само до редакцията.</p>

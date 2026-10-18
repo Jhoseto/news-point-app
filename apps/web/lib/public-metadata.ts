@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { absoluteMedia, shareOrigin } from "./share-card";
+import { LEGAL_PATHS, legalReviewPending } from "./legal/types";
 
 export const PUBLIC_SEO_PAGES = {
   home: { path: "/", title: "NewsPoint.bg – Гласът на истината", description: "Новини от Пловдив, България и света." },
@@ -13,7 +14,16 @@ export const PUBLIC_SEO_PAGES = {
   team: { path: "/team/", title: "За нас", description: "NewsPoint.bg е независим новинарски портал за Пловдив, региона и страната.", image: "/brand/team-office-1-1600-f2f61151.webp" },
   contacts: { path: "/contacts/", title: "Контакти", description: "Свържете се с редакцията на NewsPoint.bg — телефон и имейл." },
   advertising: { path: "/advertising/", title: "Реклама", description: "Контакт за рекламни запитвания към NewsPoint.bg." },
+  terms: { path: LEGAL_PATHS.terms, title: "Общи условия и правила за ползване", description: "Издател, авторски права и правила за изпращане и използване на материали в NewsPoint.bg." },
+  personalData: { path: LEGAL_PATHS.personalData, title: "Политика за личните данни", description: "Обработване на лични данни, срокове, получатели и права на посетителите на NewsPoint.bg." },
+  cookies: { path: LEGAL_PATHS.cookies, title: "Политика за бисквитките и сходните технологии", description: "Бисквитки, локални записи, цели, срокове и избор на посетителите на NewsPoint.bg." },
 } as const;
+
+/** Register review pages for metadata/share cards, but don't submit unfinished policies for indexing. */
+export function discoverablePublicPages() {
+  const reviewPaths = new Set<string>(legalReviewPending() ? Object.values(LEGAL_PATHS) : []);
+  return Object.values(PUBLIC_SEO_PAGES).filter(page => !reviewPaths.has(page.path));
+}
 
 /** Every public page owns its OG object: Next replaces nested metadata rather than merging it. */
 export function publicMetadata(input: { path: string; title: string; description: string; imagePath: string; type?: "website" | "article"; publishedTime?: string; modifiedTime?: string }): Metadata {
