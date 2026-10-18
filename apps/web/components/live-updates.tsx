@@ -7,6 +7,7 @@ import { formatClock } from "@/lib/format";
 import { LIVE_EVENT_NAME, type LiveEvent } from "@/lib/live/events";
 import { createLiveRefreshScheduler } from "@/lib/live/refresh";
 import { NewArticleToast } from "./live-toast";
+import { BREAKING_CHANGED, BREAKING_SYNC } from "@newspoint/content";
 
 const REFRESH_DEBOUNCE_MS = 700;
 const BANNER_MS = 9000;
@@ -58,6 +59,10 @@ export function LiveUpdates() {
         } catch {
           return;
         }
+        if (event.type === "breaking.updated") {
+          window.dispatchEvent(new Event(BREAKING_CHANGED));
+          return;
+        }
         if (event.type === "layout.updated") {
           window.dispatchEvent(new Event("np:public-content-updated"));
           const here = window.location.pathname;
@@ -101,6 +106,7 @@ export function LiveUpdates() {
       };
 
       source.addEventListener(LIVE_EVENT_NAME, onEvent as EventListener);
+      source.addEventListener("open", () => window.dispatchEvent(new Event(BREAKING_SYNC)));
       source.addEventListener("error", onError);
       return () => {
         refresh.cancel();

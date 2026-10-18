@@ -3,6 +3,8 @@ import { ArticleEditor } from "@/components/article-editor";
 import { homeHeroReady, listRecentMedia, listSections } from "@/lib/articles";
 import { listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
+import { getDb } from "@newspoint/db";
+import { readSocialStatus } from "@newspoint/db/social-publishing";
 
 export const metadata: Metadata = { title: "Нов материал" };
 export const dynamic = "force-dynamic";
@@ -12,6 +14,7 @@ export default async function NewArticlePage() {
   const [sections, media, storyThemes] = await Promise.all([listSections(), listRecentMedia(), listStoryThemeOptions()]);
   return (
     <ArticleEditor
+      socialStatus={await readSocialStatus(getDb())}
       homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}
       article={{

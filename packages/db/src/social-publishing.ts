@@ -1,0 +1,91 @@
+import { and, desc, eq, sql } from "drizzle-orm";
+import { defaultSocial, normalizeSocial, socialArticleUrl, socialMessage, type SocialInput, type SocialStatus } from "@newspoint/content";
+import type { ScriptDb } from "./node";
+import { articles, articleRevisions, mediaAssets, socialConnections, socialPublications } from "./schema";
+
+type Executor = Pick<ScriptDb, "execute">;
+export async function hasSocialPublishing(db: Executor): Promise<boolean> {
+  const rows = await db.execute<{ ready: boolean }>(sql`select to_regclass('public.article_revision_social') is not null
+    and to_regclass('public.social_connections') is not null and to_regclass('public.social_publications') is not null
+    and to_regclass('public.social_oauth_states') is not null and to_regclass('public.social_deletion_receipts') is not null as ready`);
+  return rows[0]?.ready === true;
+}
+export async function readRevisionSocial(db: Executor, id: string, revision: number, title: string): Promise<SocialInput> {
+  if (!await hasSocialPublishing(db)) return defaultSocial(title);
+  const rows = await db.execute<{ enabled: boolean; text: string; text_mode: "auto" | "custom" }>(sql`
+    select enabled,text,text_mode from article_revision_social where article_id=${id}::uuid and revision=${revision} and provider='facebook'`);
+  const row = rows[0];
+  return row ? normalizeSocial({ facebook: { enabled: row.enabled, text: row.text, textMode: row.text_mode } }, title) : defaultSocial(title);
+}
+export async function writeRevisionSocial(db: Executor, id: string, revision: number, title: string, input: SocialInput | undefined, previousRevision = 0): Promise<void> {
+  if (!await hasSocialPublishing(db)) {
+    if (input?.facebook.enabled || input?.facebook.textMode === "custom") throw new Error("Социалното публикуване изисква миграция 39.");
+    return;
+  }
+  const previous = input ?? (previousRevision ? await readRevisionSocial(db, id, previousRevision, title) : undefined);
+  const { facebook: value } = normalizeSocial(previous, title);
+  await db.execute(sql`insert into article_revision_social(article_id,revision,provider,enabled,text,text_mode)
+    values(${id}::uuid,${revision},'facebook',${value.enabled},${value.text},${value.textMode})`);
+}
+
+/** Caller holds the article lock. Explicit Studio revision intent only; never WP/outbox fan-out. */
+export async function enqueueSocialPublication(db: Pick<ScriptDb, "execute" | "select" | "insert">, id: string, revision: number): Promise<void> {
+  if (!await hasSocialPublishing(db)) return;
+  const [article] = await db.select().from(articles).where(eq(articles.id, id));
+  if (!article?.isPublic || !article.publishedAt || article.publishedAt > new Date() || article.publishedRevision !== revision
+    || article.title.startsWith("[QA editor]") || article.slug.startsWith("qa-editor-") || process.env.EDITOR_QA_RUN_ID) return;
+  const qa = await db.execute<{ ready: boolean }>(sql`select to_regclass('public.editor_qa_articles') is not null as ready`);
+  if (qa[0]?.ready) {
+    const excluded = await db.execute(sql`select 1 from editor_qa_articles where article_id=${id}::uuid`);
+    if (excluded.length) return;
+  }
+  const { facebook } = await readRevisionSocial(db, id, revision, article.title);
+  if (!facebook.enabled) return;
+  const [existing] = await db.select({ id: socialPublications.id }).from(socialPublications).where(eq(socialPublications.articleId, id)).limit(1);
+  if (existing) return; // Includes a task created before the Page was connected.
+  const [connection] = await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+  const [media] = article.heroMediaId ? await db.select().from(mediaAssets).where(eq(mediaAssets.id, article.heroMediaId)) : [];
+  const url = socialArticleUrl(process.env.WEB_URL, article.path);
+  const error = !url ? "origin" : !facebook.text.trim() ? "text" : !media?.storageKey || article.heroEmbedUrl ? "image" : !connection || connection.status !== "connected" ? "connection" : null;
+  await db.insert(socialPublications).values({ articleId: id, revision, pageId: connection?.pageId ?? "unconnected",
+    text: facebook.text, articleUrl: url ?? "", mediaId: article.heroMediaId, storageKey: media?.storageKey,
+    status: error ? "failed" : "pending", errorCode: error,
+  }).onConflictDoNothing();
+}
+
+export async function readSocialStatus(db: ScriptDb, id?: string): Promise<SocialStatus> {
+  const ready = await hasSocialPublishing(db);
+  if (!ready) return { ready: false, connected: false, enabled: false, job: null };
+  const [connection] = await db.select({ status: socialConnections.status }).from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+  const [job] = id ? await db.select().from(socialPublications).where(eq(socialPublications.articleId, id)).orderBy(desc(socialPublications.createdAt)).limit(1) : [];
+  return { ready, connected: connection?.status === "connected", enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", job: job ? {
+    id: job.id, status: job.status, step: job.step, text: job.text, url: job.permalink,
+    message: socialMessage(job.status, job.step, job.errorCode), canRetry: job.status === "failed" && job.errorCode !== "connection",
+  } : null };
+}
+
+/** Same task, same external IDs. Refresh input only when no external call could have happened. */
+export async function retrySocialPublication(db: ScriptDb, id: string): Promise<boolean> {
+  if (!await hasSocialPublishing(db)) return false;
+  return db.transaction(async tx => {
+    const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update");
+    if (!article?.isPublic) return false;
+    const [job] = await tx.select().from(socialPublications).where(eq(socialPublications.articleId, id)).for("update");
+    if (!job || job.status !== "failed") return false;
+    const [connection] = await tx.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+    if (!connection || connection.status !== "connected" || (job.pageId !== "unconnected" && job.pageId !== connection.pageId)) return false;
+    const values: Partial<typeof socialPublications.$inferInsert> = { status: "pending", attempts: 0, nextAttemptAt: new Date(), errorCode: null, leaseToken: null, leaseUntil: null, updatedAt: new Date() };
+    if (!job.photoId && !job.operationStartedAt && ["prepare", "photo"].includes(job.step)) {
+      const [rev] = await tx.select().from(articleRevisions).where(and(eq(articleRevisions.articleId, id), eq(articleRevisions.number, article.publishedRevision!)));
+      if (!rev) return false;
+      const social = await readRevisionSocial(tx, id, rev.number, rev.title);
+      const [media] = rev.heroMediaId ? await tx.select().from(mediaAssets).where(eq(mediaAssets.id, rev.heroMediaId)) : [];
+      const url = socialArticleUrl(process.env.WEB_URL, article.path);
+      if (!url || !social.facebook.text.trim() || !media?.storageKey || rev.heroEmbedUrl) return false;
+      Object.assign(values, { revision: rev.number, text: social.facebook.text, mediaId: rev.heroMediaId, storageKey: media.storageKey,
+        articleUrl: url, pageId: connection.pageId, step: "prepare", preparedFile: null, preparedHash: null });
+    }
+    await tx.update(socialPublications).set(values).where(eq(socialPublications.id, job.id));
+    return true;
+  });
+}

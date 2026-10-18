@@ -59,6 +59,10 @@ describe("parseLastEventId", () => {
 });
 
 describe("affectedPaths", () => {
+  it("does not refresh page content for a breaking-message change", () => {
+    expect(affectedPaths({ path: "/", type: "breaking.updated" })).toEqual([]);
+    expect(toLiveEvent({ ...row, type: "breaking.updated", entityId: null }).card).toBeNull();
+  });
   it("always includes the homepage and the article", () => {
     expect(affectedPaths({ path: "/nova-statiya/" })).toEqual(["/", "/nova-statiya/", "/feed/", "/sitemap.xml", "/llms.txt"]);
   });

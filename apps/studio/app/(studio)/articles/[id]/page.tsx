@@ -6,6 +6,8 @@ import { homeHeroReady, getEditorArticle, listRecentMedia, listSections } from "
 import { bodyImageIds } from "@/lib/editor/body";
 import { getArticleStoryThemeId, listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
+import { getDb } from "@newspoint/db";
+import { readSocialStatus } from "@newspoint/db/social-publishing";
 
 export const metadata: Metadata = { title: "Редакция" };
 export const dynamic = "force-dynamic";
@@ -26,6 +28,7 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
   const { draft, revisionSavedAt, publishedAt, ...rest } = article;
   return (
     <ArticleEditor
+      socialStatus={await readSocialStatus(getDb(), id)}
       key={id}
       homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}

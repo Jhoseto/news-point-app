@@ -4,6 +4,7 @@ import { WordPressSync, type SyncResult } from "@newspoint/wp-import/sync";
 import { assertOutboxReady } from "./outbox-ready";
 import { processOneAiPodcastJob } from "./ai-podcast-worker";
 import { startPushWorker } from "./push-worker";
+import { startSocialPublishingWorker } from "./social-publishing-worker";
 import { processOneMediaUpload, cleanExpiredUploads } from "./media-upload-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
@@ -69,6 +70,7 @@ async function runWorker() {
   }
 
   const stopPush = startPushWorker(db, log);
+  const stopSocial = startSocialPublishingWorker(db, log);
   let stopping = false;
   let timer: NodeJS.Timeout | undefined;
   const boostTimer = setInterval(() => {
@@ -105,6 +107,7 @@ async function runWorker() {
     clearInterval(boostTimer);
     clearInterval(aiTimer);
     await stopPush();
+    await stopSocial();
     await close();
   }
 

@@ -16,6 +16,8 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   const isRead = method === "GET" || method === "HEAD";
   let area: AuditArea = "navigation";
   if (clean.includes("/articles")) area = "articles";
+  else if (clean.includes("/breaking")) area = "breaking";
+  else if (clean.includes("/social")) area = "social";
   else if (clean.includes("/arrangements") || clean === "/arrange") area = "arrangements";
   else if (clean.includes("/media")) area = "media";
   else if (clean.includes("/stories")) area = "stories";

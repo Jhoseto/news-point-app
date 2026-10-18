@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { normalizeSocial, type SocialStatus } from "@newspoint/content";
+import { SocialPublishingFields } from "./social-publishing-fields";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/articles";
 import { callApi } from "@/lib/client-api";
@@ -20,6 +22,7 @@ import { MediaPicker } from "./media-picker";
 import { VideoUploadDialog } from "./video-upload-dialog";
 
 export interface EditorProps {
+  socialStatus?: SocialStatus;
   homeHeroReady?: boolean;
   staff: { id: string; name: string };
   article: {
@@ -72,10 +75,10 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
   );
 }
 
-export function ArticleEditor({ homeHeroReady = false, article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
+export function ArticleEditor({ socialStatus = { ready: false, connected: false, enabled: false, job: null }, homeHeroReady = false, article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
   const [articleId, setArticleId] = useState(article.id);
   const idRef = useRef(article.id);
-  const initial = { ...initialDraft, homeHeroPosition: initialDraft.homeHeroPosition ?? null, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
+  const initial = { ...initialDraft, social: normalizeSocial(initialDraft.social, initialDraft.title), homeHeroPosition: initialDraft.homeHeroPosition ?? null, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
   const [draft, setDraft] = useState<Draft>(initial);
   const manualAuthorName = useRef(initial.authorKind === "manual" ? initial.authorName : "");
   const [saved, setSaved] = useState<Draft>(initial);
@@ -149,6 +152,7 @@ export function ArticleEditor({ homeHeroReady = false, article, draft: initialDr
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => {
       const next = { ...current, [key]: value };
+      if (key === "title") next.social = normalizeSocial(current.social, String(value));
       if (key === "title" && !slugTouched && !published.at) next.slug = slugify(String(value));
       return next;
     });
@@ -742,6 +746,7 @@ export function ArticleEditor({ homeHeroReady = false, article, draft: initialDr
                 </p>
               ) : null}
             </fieldset>
+            <SocialPublishingFields value={draft.social} title={draft.title} onChange={value => update("social", value)} disabled={readOnly || busy || Boolean(conflict)} initialStatus={socialStatus} articleId={articleId} publishedRevision={published.revision} />
           </div>
         </div>
 
@@ -843,7 +848,7 @@ export function ArticleEditor({ homeHeroReady = false, article, draft: initialDr
       </EditorDialog> : null}
       {history ? <EditorDialog label="История на версиите" onClose={() => setHistory(null)}>
         <h3>Версии на материала</h3><p>Зареждането заменя текущите полета. Запишете ръчно, за да създадете нова версия. Публикуването е отделно действие.</p>
-        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, homeHeroPosition: item.draft.homeHeroPosition ?? null, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
+        <ol>{history.map(item => <li key={item.number} className="my-3 rounded-xl border border-line p-3"><strong>Версия {item.number}</strong> · {formatWhen(item.savedAt)}<p>{item.savedBy ?? "Редактор"} · {item.draft.title}{item.number === published.revision ? " · На сайта" : ""}</p><button type="button" disabled={readOnly || !item.editableBody} className="np-btn np-btn-secondary" onClick={() => { setDraft(current => ({ ...current, title: item.draft.title, social: normalizeSocial(item.draft.social, item.draft.title), slug: published.at ? current.slug : item.draft.slug, excerpt: item.draft.excerpt, ...(item.draft.body ? { body: item.draft.body } : {}), bodyText: item.draft.bodyText, heroMediaId: item.draft.heroMediaId, heroEmbedUrl: item.draft.heroEmbedUrl, authorKind: item.draft.authorKind, authorUserId: item.draft.authorUserId, authorName: item.draft.authorName, primaryCategoryId: item.draft.primaryCategoryId, homeHeroPosition: item.draft.homeHeroPosition ?? null, listenEnabled: item.listenEnabled })); setHistory(null); }}>Зареди версия {item.number}</button></li>)}</ol>
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или embed код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>

@@ -5,6 +5,7 @@ import { loadRootEnv, readDatabaseEnv } from "./env";
 import * as schema from "./schema";
 
 export * from "./schema";
+export * from "./breaking";
 export { hasMediaPresentations } from "./media-presentation";
 export { hasArticleReadCounts } from "./article-reads";
 export { applyDueViewBoosts, hasArticleViewBoosts, applyArticlePublishViews } from "./view-boosts";

@@ -242,7 +242,7 @@ export const articleCategories = pgTable(
   ],
 );
 
-export const outboxEventTypes = ["article.published", "article.updated", "layout.updated", "story.published", "story.updated"] as const;
+export const outboxEventTypes = ["article.published", "article.updated", "layout.updated", "story.published", "story.updated", "breaking.updated"] as const;
 export type OutboxEventType = (typeof outboxEventTypes)[number];
 
 export interface OutboxPayload {
@@ -266,6 +266,16 @@ export const outboxEvents = pgTable(
 );
 
 export const OUTBOX_CHANNEL = "np_outbox";
+
+/** Append-only editorial breaking-message versions; latest id is the current state. */
+export const breakingBulletins = pgTable("breaking_bulletins", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  enabled: boolean("enabled").notNull().default(false),
+  text: text("text").notNull().default(""),
+  articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
+  actorId: text("actor_id").references(() => staffUsers.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [index("breaking_bulletins_article_idx").on(table.articleId), index("breaking_bulletins_actor_idx").on(table.actorId)]);
 
 export const articleRevisions = pgTable(
   "article_revisions",
@@ -311,6 +321,41 @@ export const publishRequests = pgTable("publish_requests", {
   requestedBy: text("requested_by").references(() => staffUsers.id, { onDelete: "set null" }),
   outcome: jsonb("outcome").notNull().default(sql`'{}'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const articleRevisionSocial = pgTable("article_revision_social", {
+  articleId: uuid("article_id").notNull(), revision: integer("revision").notNull(),
+  provider: text("provider").notNull().default("facebook"), enabled: boolean("enabled").notNull().default(false),
+  text: text("text").notNull().default(""), textMode: text("text_mode", { enum: ["auto", "custom"] }).notNull(),
+}, t => [primaryKey({ columns: [t.articleId, t.revision, t.provider] })]);
+export const socialConnections = pgTable("social_connections", {
+  provider: text("provider").primaryKey(), pageId: text("page_id").notNull(), name: text("name").notNull(),
+  encryptedToken: text("encrypted_token").notNull(), metaUserId: text("meta_user_id"), status: text("status").notNull(),
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
+  connectedBy: text("connected_by").references(() => staffUsers.id, { onDelete: "set null" }),
+  generation: integer("generation").notNull().default(1), checkedAt: timestamp("checked_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export const socialPublications = pgTable("social_publications", {
+  id: uuid("id").primaryKey().defaultRandom(), articleId: uuid("article_id").references(() => articles.id, { onDelete: "set null" }),
+  revision: integer("revision").notNull(), provider: text("provider").notNull().default("facebook"), pageId: text("page_id").notNull(),
+  text: text("text").notNull(), articleUrl: text("article_url").notNull(), mediaId: uuid("media_id"), storageKey: text("storage_key"),
+  status: text("status").notNull().default("pending"), step: text("step").notNull().default("prepare"),
+  photoId: text("photo_id"), postId: text("post_id"), commentId: text("comment_id"), permalink: text("permalink"),
+  preparedFile: text("prepared_file"), preparedHash: text("prepared_hash"), attempts: integer("attempts").notNull().default(0),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  leaseToken: uuid("lease_token"), leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  operationStartedAt: timestamp("operation_started_at", { withTimezone: true }), errorCode: text("error_code"), traceId: text("trace_id"),
+  history: jsonb("history").$type<{ at: string; status: string; step: string; code?: string }[]>().notNull().default([]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(), updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, t => [unique().on(t.articleId, t.provider, t.pageId), index("social_publications_due").on(t.status, t.nextAttemptAt)]);
+export const socialOauthStates = pgTable("social_oauth_states", {
+  id: text("id").primaryKey(), actorId: text("actor_id").notNull().references(() => staffUsers.id, { onDelete: "cascade" }),
+  redirectUri: text("redirect_uri").notNull(), phase: text("phase").notNull(), encryptedPages: text("encrypted_pages"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+export const socialDeletionReceipts = pgTable("social_deletion_receipts", {
+  id: uuid("id").primaryKey(), expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
 export const livepointSubmissionKinds = ["report", "my_news"] as const;
@@ -590,6 +635,8 @@ export const storyThemeSlugs = pgTable("story_theme_slugs", {
 }, (table) => [index("story_theme_slugs_theme_idx").on(table.themeId)]);
 
 export const schemaTables = {
+  breakingBulletins,
+  articleRevisionSocial, socialConnections, socialPublications, socialOauthStates, socialDeletionReceipts,
   studioAuditLogs,
   polls, pollVotes, pollRevisions,
   podcasts,

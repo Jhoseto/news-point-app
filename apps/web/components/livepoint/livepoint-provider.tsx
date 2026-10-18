@@ -70,11 +70,12 @@ function placePanel(module: LivePointModule): PanelPlace | null {
   if (!button) return null;
   const viewportWidth = window.innerWidth;
   const rect = button.getBoundingClientRect();
-  if (module === "podcast") return { top: rect.bottom + 10, ...podcastPanelPlace(viewportWidth, rect.left, rect.width) };
+  const top = Math.max(rect.bottom, document.querySelector("[data-np-header]")?.getBoundingClientRect().bottom ?? rect.bottom) + 10;
+  if (module === "podcast") return { top, ...podcastPanelPlace(viewportWidth, rect.left, rect.width) };
   const margin = 12;
   const left = rect.left;
   const width = Math.min(PANEL_MAX[module], Math.max(160, viewportWidth - left - margin));
-  return { top: rect.bottom + 10, left, width, arrow: Math.min(width - 18, Math.max(18, rect.width / 2)) };
+  return { top, left, width, arrow: Math.min(width - 18, Math.max(18, rect.width / 2)) };
 }
 
 const DETAIL_LABELS: Record<LivePointModule, string> = {
@@ -246,7 +247,11 @@ export function LivePointProvider({
     };
     measure();
     window.addEventListener("resize", schedule);
+    const header = document.querySelector("[data-np-header]");
+    const headerResize = new ResizeObserver(schedule);
+    if (header) headerResize.observe(header);
     return () => {
+      headerResize.disconnect();
       window.removeEventListener("resize", schedule);
       if (frame) cancelAnimationFrame(frame);
     };

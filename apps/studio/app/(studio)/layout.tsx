@@ -10,6 +10,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
       user={{ name: staff.name, role: ROLE_LABELS[staff.role] }}
       webUrl={process.env.WEB_URL ?? "http://localhost:3000"}
       canManageUsers={canManageRoles(staff.role)}
+      canManageSocial={staff.role === "master_admin"}
     >
       {children}
     </StudioShell>

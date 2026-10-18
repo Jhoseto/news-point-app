@@ -108,6 +108,7 @@ let warnedNoSecret = false;
 
 async function revalidate(events: LiveEvent[]) {
   const paths = [...new Set(events.flatMap(affectedPaths))].slice(0, 20);
+  if (!paths.length) return;
   const result = await triggerRevalidate(paths);
   if (result.reason === "no_secret") {
     if (!warnedNoSecret) console.warn("[live] REVALIDATE_SECRET is not set; cached pages refresh on their own schedule");

@@ -11,6 +11,8 @@ import { SiteSearch } from "./site-search";
 import { HeaderUtilities } from "./header-utilities";
 import { MobileFooter } from "./mobile-footer";
 import { DesktopFooter } from "./desktop-footer";
+import { BreakingBanner } from "./breaking-banner";
+import { getDb, readPublicBreaking } from "@newspoint/db";
 
 /**
  * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
@@ -19,7 +21,7 @@ import { DesktopFooter } from "./desktop-footer";
  * Mobile vs desktop chrome is exclusive by Client Hints — do not ship both trees.
  */
 export async function SiteHeader() {
-  const desktop = await ssrDesktopViewport();
+  const [desktop, menu, breaking] = await Promise.all([ssrDesktopViewport(), getMenuCategories(), readPublicBreaking(getDb())]);
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
       <div className="np-masthead relative flex h-[3.25rem] items-center gap-1 border-b border-line px-2 sm:px-4 lg:grid lg:h-[4.75rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)] lg:gap-6 lg:px-0 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,40rem)_minmax(0,1fr)]">
@@ -56,6 +58,7 @@ export async function SiteHeader() {
         ) : null}
       </div>
       <LivePointStrip />
+      <BreakingBanner initial={breaking} categoryPaths={menu.map(item => item.path)} />
     </header>
   );
 }
@@ -64,7 +67,7 @@ export async function SiteHeader() {
 export async function SiteBody({ children }: { children: React.ReactNode }) {
   const [menu, desktop] = await Promise.all([getMenuCategories(), ssrDesktopViewport()]);
   return (
-    <div className="lg:flex">
+    <div className="np-site-body lg:flex">
       {desktop ? <RubricsNav items={menu.map(({ slug, name, path }) => ({ slug, name, path }))} /> : null}
       <div data-rubrics-motion className="np-page-content min-w-0 flex-1">
         <main id="main">{children}</main>
@@ -121,26 +124,6 @@ export function PlovdivBanner() {
       >
         Защото истината има значение!
       </p>
-    </section>
-  );
-}
-
-export function BrandBanner() {
-  return (
-    <section
-      aria-label="NewsPoint.bg"
-      className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface px-6 py-8 shadow-card sm:px-10"
-    >
-      <div
-        className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40"
-        aria-hidden="true"
-      />
-      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <Logo className="h-12 sm:h-14" />
-        <p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
-          Защото истината <span className="np-gradient-text">има значение.</span>
-        </p>
-      </div>
     </section>
   );
 }

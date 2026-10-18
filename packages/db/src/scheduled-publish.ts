@@ -5,6 +5,7 @@ import { articleBody, publicationProblems, triggerRevalidate } from "@newspoint/
 import { revisionHomeHero, revisionListen, qaPublicationAllowed } from "./editor-revisions";
 import { publishHomeHero } from "./arrangement-writes";
 import { hasPageArrangements } from "./page-arrangements";
+import { enqueueSocialPublication } from "./social-publishing";
 import { applyArticlePublishViews } from "./view-boosts";
 
 const readiness = new WeakMap<object, { until: number; pending: Promise<boolean> }>();
@@ -89,6 +90,7 @@ export async function publishDueScheduled(db: ScriptDb, onlyArticleId?: string):
         version,
         payload: { path, title: revision.title, topics: [category.slug] },
       });
+      await enqueueSocialPublication(tx, article.id, revision.number);
       return true;
     });
     if (ok) published += 1;

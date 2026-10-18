@@ -1,4 +1,6 @@
 export const AUDIT_AREAS = {
+  breaking: "Извънредно",
+  social: "Социални мрежи",
   articles: "Материали", arrangements: "Подреждане", media: "Медия", stories: "Теми",
   polls: "Анкети", podcasts: "Подкасти", users: "Служители", profile: "Профил",
   submissions: "Читателски материали", auth: "Вход и сигурност", navigation: "Екрани", logs: "Logs",

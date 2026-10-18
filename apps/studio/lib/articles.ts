@@ -1,4 +1,6 @@
 import "server-only";
+import { enqueueSocialPublication, readRevisionSocial, writeRevisionSocial } from "@newspoint/db/social-publishing";
+import { normalizeSocial, type SocialInput } from "@newspoint/content";
 import { auditActive, auditEvidence } from "./audit-context";
 import { isDeepStrictEqual } from "node:util";
 import { and, desc, eq, inArray, ne, sql } from "@newspoint/db/orm";
@@ -70,6 +72,7 @@ function publicAuditState(row: typeof articles.$inferSelect) {
 }
 
 export interface Draft {
+  social?: SocialInput;
   title: string;
   slug: string;
   excerpt: string;
@@ -226,6 +229,7 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
   const { draft, editableBody } = toDraft(source);
   draft.homeHeroPosition = latest && latest.revision.number > (article.publishedRevision ?? 0) ? await revisionHomeHero(db, id, latest.revision.number) : null;
   draft.listenEnabled = latest ? (await revisionListen(db, id, latest.revision.number)) ?? article.listenEnabled : article.listenEnabled;
+  draft.social = await readRevisionSocial(db, id, latest?.revision.number ?? 0, draft.title);
   const boostsReady = await hasArticleViewBoosts(db);
   const [boost] = boostsReady
     ? await db.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, id)).limit(1)
@@ -393,6 +397,9 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
       }
       const requestedViews = { viewSeed: draft.viewSeed ?? null, viewEvery: draft.viewEvery ?? null, viewUnit: draft.viewUnit ?? "minutes", viewTarget: draft.viewTarget ?? null };
       const storedViews = await viewDraft(tx, id);
+      if (draft.social && !isDeepStrictEqual(await readRevisionSocial(tx, id, 1, draft.title), normalizeSocial(draft.social, draft.title))) {
+        throw new EditorError(409, "creation_id_reused", "Черновата е създадена с други социални настройки.");
+      }
       // A key cannot silently accept different options after a lost response.
       if ((await revisionHomeHero(tx, id, 1)) !== (draft.homeHeroPosition ?? null) || requestedViews.viewSeed !== storedViews.viewSeed || requestedViews.viewTarget !== storedViews.viewTarget || intervalToSeconds(requestedViews.viewEvery, requestedViews.viewUnit) !== intervalToSeconds(storedViews.viewEvery, storedViews.viewUnit) || (await revisionListen(tx, id, 1) ?? existing.listenEnabled) !== (draft.listenEnabled ?? true) || (!existing.publishedAt && existing.scheduledPublishAt?.getTime() !== scheduleInstant(draft.publishAtSofia)?.getTime())) {
         throw new EditorError(409, "creation_id_reused", "Черновата е създадена с други настройки. Отворете записания материал.");
@@ -404,6 +411,7 @@ export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ 
     await tx.insert(articleRevisions).values({ articleId: id, number: 1, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveHomeHero(tx, id, 1, draft.homeHeroPosition);
     await saveListening(tx, id, 1, draft.listenEnabled, true);
+    await writeRevisionSocial(tx, id, 1, draft.title, draft.social);
     const qaRun = process.env.EDITOR_QA_RUN_ID;
     if (qaRun) {
       if (!/^[a-zA-Z0-9_-]{1,64}$/.test(qaRun) || !draft.title.startsWith("[QA editor]") || !draft.slug.startsWith(`qa-editor-${qaRun}-`)) throw new EditorError(422, "qa_label_required", "QA режимът допуска само обозначени QA материали.");
@@ -452,7 +460,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
         media: await listMediaByIds([...new Set([latest!.revision.heroMediaId, ...(articleBody.safeParse(latest!.revision.body).data ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((mediaId): mediaId is string => !!mediaId))], tx),
-        draft: { ...toDraft(latest!.revision).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
+        draft: { ...toDraft(latest!.revision).draft, social: await readRevisionSocial(tx, id, current, latest!.revision.title), homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
@@ -463,10 +471,11 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
     await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
     const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
-    const auditBefore = auditActive() ? { draft: { ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
+    const auditBefore = auditActive() ? { draft: { social: await readRevisionSocial(tx, id, current, latest?.revision.title ?? article.title), ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveHomeHero(tx, id, number, draft.homeHeroPosition);
     await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
+    await writeRevisionSocial(tx, id, number, draft.title, draft.social, current);
     // Unpublished articles mirror the draft so lists show it; public ones keep the published text.
     await tx
       .update(articles)
@@ -488,7 +497,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       .where(eq(articles.id, id));
     await saveViewSettings(tx, id, draft);
     if (article.isPublic) await refreshViewSchedule(tx, id);
-    if (auditBefore) auditEvidence(auditBefore, { draft: { ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, homeHeroPosition: draft.homeHeroPosition ?? null, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
+    if (auditBefore) auditEvidence(auditBefore, { draft: { social: await readRevisionSocial(tx, id, number, draft.title), ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, homeHeroPosition: draft.homeHeroPosition ?? null, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
     return { revision: number };
   }).then(async (saved) => {
     await publishDueScheduled(getDb(), id);
@@ -514,6 +523,10 @@ export interface PublishOutcome {
  */
 export async function publishRevision(staff: Staff, id: string, revision: number, idempotencyKey: string, listenEnabled: boolean): Promise<PublishOutcome> {
   return getDb().transaction(async (tx) => {
+    // Lock before inserting the FK-backed request. Two inserts otherwise both acquire
+    // KEY SHARE on the article and can deadlock while upgrading to FOR UPDATE.
+    const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
+    if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
     const [claimed] = await tx
       .insert(publishRequests)
       .values({ idempotencyKey, articleId: id, revision, requestedBy: staff.id })
@@ -529,8 +542,6 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       return { ...(previous.outcome as PublishOutcome), duplicate: true };
     }
 
-    const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
-    if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
     const [rev] = await tx
       .select()
       .from(articleRevisions)
@@ -610,6 +621,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     await applyArticlePublishViews(tx, id);
 
     const type = article.publishedAt ? "article.updated" : "article.published";
+    await enqueueSocialPublication(tx, id, revision);
     const [event] = await tx
       .insert(outboxEvents)
       .values({ type, entityId: id, version, payload: { path: updated!.path, title: rev.title, topics } })
@@ -744,6 +756,7 @@ export async function listRevisionHistory(id: string) {
   const revisions = await Promise.all(rows.map(async ({ revision, savedBy }) => {
     const parsed = toDraft(revision);
     parsed.draft.homeHeroPosition = await revisionHomeHero(db, id, revision.number);
+    parsed.draft.social = await readRevisionSocial(db, id, revision.number, revision.title);
     return {
     number: revision.number, savedAt: revision.createdAt, savedBy,
     ...parsed,

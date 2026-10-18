@@ -1,4 +1,5 @@
 import "server-only";
+import { readRevisionSocial } from "@newspoint/db/social-publishing";
 import { getDb, articles, articleRevisions, articleViewBoosts, pageArrangements, storyThemes, storyThemeArticles, polls, podcasts, aiPodcastProjects, aiPodcastJobs, aiPodcastAssets, aiPodcastVoiceSettings, staffUsers, authorProfiles, livepointSubmissions, mediaAssets, mediaPresentations } from "@newspoint/db";
 import { and, asc, desc, eq, inArray } from "@newspoint/db/orm";
 import type { AuditArea, AuditDetails, AuditValue } from "./audit-types";
@@ -20,6 +21,7 @@ export async function auditSnapshot(area: AuditArea, id: string, input: AuditInp
     const [views] = await db.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, id)).limit(1);
     return { article: pick(article, ["id", "title", "slug", "path", "isPublic", "publishedRevision", "publishedAt", "scheduledPublishAt", "listenEnabled"]),
       revision: pick(revision ?? article, ["id", "number", "title", "slug", "excerpt", "body", "primaryCategoryId", "heroMediaId", "heroEmbedUrl", "authorKind", "authorUserId", "authorName", "listenEnabled"]),
+      social: await readRevisionSocial(db, id, revision?.number ?? 0, revision?.title ?? article?.title ?? ""),
       views: pick(views, ["seedCount", "targetCount", "intervalSeconds"]) };
   }
   if (area === "arrangements" && id) {

@@ -45,10 +45,10 @@ function navClass(collapsed: boolean) {
 }
 
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
-export function StudioShell({ user, webUrl, canManageUsers, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; children: ReactNode }) {
+export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = false, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; canManageSocial?: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
   const nav = NAV;
-  const mobileNav = canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV;
+  const mobileNav = [...(canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV), ...(canManageSocial ? [{ href: "/settings/social/", label: "Facebook", icon: "M14 4h-2a3 3 0 0 0-3 3v13M6 11h9" }] : [])];
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
   const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs";
@@ -129,6 +129,7 @@ export function StudioShell({ user, webUrl, canManageUsers, children }: { user: 
           ))}
         </nav>
         <div className={`border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
+          {canManageSocial && <Link href="/settings/social/" title="Facebook" className={`${navClass(collapsed)} mb-1`}><span aria-hidden="true">f</span>{!collapsed && "Facebook"}</Link>}
           {canManageUsers ? (
             <>
               <Link

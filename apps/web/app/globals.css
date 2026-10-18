@@ -93,7 +93,7 @@
 @layer base {
   html {
     /* Height of the sticky header. Mobile bar is 3.25rem + 2.75rem LivePoint row = 6rem. */
-    --np-header-h: 6rem;
+    --np-header-h: calc(6rem + var(--np-breaking-h, 0px));
     --np-bar-h: 3.25rem;
     /* Phone bottom-nav reservation: 3.5rem content + safe-area-inset-bottom. Used by sheets to stop above it. */
     --np-bottom-nav-h: calc(3.5rem + env(safe-area-inset-bottom));
@@ -140,7 +140,7 @@
     html {
       --np-bar-h: 4.75rem;
       --np-lp-row-h: 48px;
-      --np-header-h: calc(var(--np-bar-h) + var(--np-lp-row-h));
+      --np-header-h: calc(var(--np-bar-h) + var(--np-lp-row-h) + var(--np-breaking-h, 0px));
       --np-bottom-nav-h: 0px;
       --np-livepoint-sticky-top: 9rem;
       --np-rail-w: 16.5rem;
@@ -148,7 +148,7 @@
       --np-rail-w-logo: 16.5rem;
       --np-logo-h: 2.5rem;
     }
-    html[data-rubrics-closed] :is(.np-rubrics-rail, .np-lp-row, .np-reading-progress, .np-lp-scrim) {
+    html[data-rubrics-closed] :is(.np-rubrics-rail, .np-lp-row, .np-breaking-host, .np-reading-progress, .np-lp-scrim) {
       --np-rail-w: 3.625rem;
     }
   }
@@ -278,6 +278,10 @@
   .np-card {
     @apply rounded-2xl border border-line bg-surface shadow-card;
   }
+
+  /* Establish this before a live ticker arrives. Otherwise scroll anchoring
+     cancels its layout push and moves the news underneath the sticky header. */
+  .np-site-body { overflow-anchor: none; }
 
   .np-home-shine {
     background:
@@ -1658,7 +1662,7 @@ html[data-reduced-motion="true"] .np-home-shine .np-shine-image::after { content
 
   /* Only the narrow menu canvas is clipped. Page layout changes once and uses FLIP translation. */
   .np-rubrics-rail {
-    margin-top: calc(-1 * var(--np-lp-row-h) - 1px);
+    margin-top: calc(-1 * (var(--np-lp-row-h) + var(--np-breaking-h, 0px)) - 1px);
     overflow: visible;
   }
   .np-rubrics-nav {
@@ -3208,7 +3212,7 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
 
 /* Phone-only LivePoint: full-width utility rail and a single, calm sheet language. */
 @media (max-width: 63.999rem) {
-  html { --np-header-h: calc(var(--np-bar-h) + 3.5rem + env(safe-area-inset-top)); }
+  html { --np-header-h: calc(var(--np-bar-h) + 3.5rem + env(safe-area-inset-top) + var(--np-breaking-h, 0px)); }
   .np-lp-row { height: 3.5rem; }
   .np-lp-strip { height: 100%; padding-inline: 0; }
   .np-lp-scroll-wrap { height: 100%; width: 100%; }

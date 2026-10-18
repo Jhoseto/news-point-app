@@ -76,6 +76,7 @@ export function parseLastEventId(value: string | null): number | null {
 
 /** Paths whose cached HTML changes when an article or a published arrangement changes. */
 export function affectedPaths(event: { path: string; type?: LiveEvent["type"]; topics?: string[] }): string[] {
+  if (event.type === "breaking.updated") return [];
   if (event.type === "layout.updated") return event.path ? [event.path] : [];
   if (event.type === "story.published" || event.type === "story.updated") {
     const slug = event.path.replace(/^\/?temi\//, "").replace(/\/$/, "");

@@ -14,7 +14,7 @@ import { carouselArticle } from "@/lib/carousel-article";
 const HomePoll = dynamic(() => import("@/components/home-poll").then((module) => module.HomePoll));
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
-import { BrandBanner, PlovdivBanner } from "@/components/site-chrome";
+import { PlovdivBanner } from "@/components/site-chrome";
 import { createHomeShine, type HomeShineAllocator } from "@/lib/home-shine";
 import { estimateHomeShineCycleSec } from "@/lib/home-shine-plan";
 import { shineDelayProp } from "@/lib/shine-style";
@@ -187,7 +187,6 @@ export default async function HomePage() {
 
         <HomeAsideLists sections={asideSections} className="flex flex-col gap-6 lg:hidden" />
 
-        <BrandBanner />
       </div>
     </HomeShineRoot>
     </DesktopFeed>

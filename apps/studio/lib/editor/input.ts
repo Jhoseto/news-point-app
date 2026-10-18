@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { articleBody, homeHeroPositionSchema, embedFrameUrl, videoSourceUrl, publicationProblems } from "@newspoint/content";
+import { articleBody, homeHeroPositionSchema, embedFrameUrl, videoSourceUrl, publicationProblems, socialInput } from "@newspoint/content";
 import { SLUG_PATTERN, SLUG_STORED_MAX } from "./slug";
 
 // Shared by the editor form and the API; the API always re-validates.
@@ -29,6 +29,7 @@ export const draftInput = z
     body: articleBody.refine(value => JSON.stringify(value).length <= BODY_TEXT_MAX, "Материалът е твърде голям").optional(),
     creationId: z.uuid().optional(),
     listenEnabled: z.boolean().optional(),
+    social: socialInput.optional(),
     homeHeroPosition: homeHeroPositionSchema.nullable().optional(),
     homeHeroExpectedPublishedRevision: z.int().nonnegative().nullable().optional(),
     primaryCategoryId: z.uuid().nullable(),
