@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { PreviewWindow } from "./mobile-rubric-feed";
@@ -15,9 +15,16 @@ type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFee
   label: string; direction: -1 | 1; top: number; height: number; width: number; originOffset: number; targetOffset: number; distant: boolean;
   originWindow: PreviewWindow };
 type Gesture = { id: number; x: number; y: number; time: number; width: number; dx: number;
-  samples: Array<{ x: number; at: number }>; origin: MobileRubricFeed; captured: boolean };
+  samples: Array<{ x: number; at: number }>; origin: MobileRubricFeed; captured: boolean; index: number; prepared: Visual | null };
+type PreviewTarget = { path: string; direction: -1 | 1; label: string; model: MobileRubricFeed | null };
 const IGNORE = "[data-mobile-pager-ignore],button,input,textarea,select,option,video,audio,iframe,canvas,[contenteditable],[role='slider'],[role='button'],[role='dialog'],.np-carousel-viewport";
 type PreviewRenderer = typeof import("./mobile-rubric-feed").MobileFeed;
+// The feed tree stays mounted while only the surrounding frames move or change direction.
+const PreviewFeed = memo(function PreviewFeed({ component: Feed, model, namespace, window: viewport }: {
+  component: PreviewRenderer; model: MobileRubricFeed; namespace: string; window?: PreviewWindow;
+}) {
+  return <Feed model={viewport ? model : firstScreen(model)} preview namespace={namespace} {...(viewport ? { window: viewport } : {})} />;
+});
 let previewImport: Promise<PreviewRenderer> | undefined;
 function loadPreviewRenderer() {
   return previewImport ??= import("./mobile-rubric-feed").then(module => module.MobileFeed).catch(error => {
@@ -31,7 +38,9 @@ export function MobileRubricPager() {
   const router = useRouter();
   const reduced = useReducedMotion();
   const motion = useRef(reduced); motion.current = reduced;
-  const originFrame = useRef<HTMLDivElement>(null), targetFrame = useRef<HTMLDivElement>(null);
+  const originFrame = useRef<HTMLDivElement>(null);
+  const targetFrames = useRef(new Map<string, HTMLDivElement>());
+  const [targets, setTargets] = useState<PreviewTarget[]>([]);
   const [visual, setVisual] = useState<Visual | null>(null);
   const visualRef = useRef<Visual | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -39,11 +48,14 @@ export function MobileRubricPager() {
   const [MobileFeed, setMobileFeed] = useState<PreviewRenderer | null>(null);
   const renderer = useRef<PreviewRenderer | null>(null);
   const mounted = useRef(false);
+  const runtime = useRef<{ finishMotion: () => void; retry: () => void; prepare: () => void } | null>(null);
   const preparePreview = useCallback(() => {
     void loadPreviewRenderer().then(component => {
       if (!mounted.current) return;
+      if (renderer.current === component) return;
       renderer.current = component;
       setMobileFeed(() => component);
+      runtime.current?.prepare();
     }).catch(() => { /* Native navigation remains usable when an optional chunk fails. */ });
   }, []);
   useEffect(() => {
@@ -57,7 +69,6 @@ export function MobileRubricPager() {
       window.removeEventListener("keydown", preparePreview);
     };
   }, [preparePreview]);
-  const runtime = useRef<{ finishMotion: () => void; retry: () => void } | null>(null);
   useEffect(() => { if (reduced) runtime.current?.finishMotion(); }, [reduced]);
 
   useEffect(() => {
@@ -71,6 +82,12 @@ export function MobileRubricPager() {
     let model: MobileRubricFeed | null = null, items: MobileRubric[] = [], sourceKey = "", signature = "";
     let queuedTap: string | null = null, routeTimer = 0, animationTimer = 0, paintFrame = 0, readFrame = 0, restoreFrame = 0;
     let cancelWarmup: (() => void) | undefined;
+    let restTimer = 0, restIdle = 0;
+    let lastScrollAt = -Infinity;
+    let prepared: { origin: MobileRubricFeed; y: number; viewportWidth: number; viewportHeight: number; visual: Visual; carousels: Array<{ element: HTMLElement; x: number }> } | null = null;
+    const preparedVisual = (origin: MobileRubricFeed) => prepared?.origin === origin && prepared.y === scrollY &&
+      prepared.viewportWidth === innerWidth && prepared.viewportHeight === innerHeight &&
+      prepared.carousels.every(({ element, x }) => element.scrollLeft === x) ? prepared.visual : null;
     let pendingRestore: { key: string; fromTop: boolean } | null = location.hash ? { key: location.pathname + location.search + location.hash, fromTop: false } : null;
     let disposed = false, lastDx = 0, clickSuppressedUntil = 0;
     let navigationInput: "swipe" | "tap" = "tap";
@@ -89,6 +106,7 @@ export function MobileRubricPager() {
     const routePath = () => mobileRoutePath(location.pathname);
     const headerBottom = () => document.querySelector<HTMLElement>("[data-np-header]")?.getBoundingClientRect().bottom ?? 0;
     const currentRoute = () => rubricRoute(location.pathname, items);
+    const targetFrame = () => targetFrames.current.get(visualRef.current?.targetPath ?? "");
     const blocked = () => {
       if (!matchMedia("(max-width: 63.999rem)").matches || document.hidden) return true;
       if (document.querySelector('dialog[open], [role="dialog"]:not([aria-hidden="true"]):not([inert]):not([inert] *)')) return true;
@@ -148,6 +166,11 @@ export function MobileRubricPager() {
       clearTimeout(animationTimer); clearTimeout(routeTimer); cancelAnimationFrame(paintFrame);
       animationTimer = 0; routeTimer = 0; paintFrame = 0;
       document.documentElement.removeAttribute("data-mobile-pager-visual");
+      for (const element of targetFrames.current.values()) {
+        element.style.transition = "none";
+        element.style.transform = `translate3d(${Number(element.dataset.direction) * 100}%,0,0)`;
+        element.style.opacity = motion.current ? "0" : "1";
+      }
       if (savedA11y) {
         main.inert = savedA11y.inert;
         if (savedA11y.hidden === null) main.removeAttribute("aria-hidden"); else main.setAttribute("aria-hidden", savedA11y.hidden);
@@ -167,9 +190,43 @@ export function MobileRubricPager() {
       cancelWarmup?.();
       cancelWarmup = afterCriticalPageLoad(() => {
         if (operation.phase !== "idle" || blocked() || !currentRoute().swipe) return;
-        configure(); const index = currentRoute().index;
-        for (const side of [-1, 1] as const) { const path = rubricNeighbour(items, index, side)?.path; if (path) void cache.load(path).catch(() => {}); }
+        if (performance.now() - lastScrollAt < 200) { warmNeighbours(); return; }
+        configure(); const index = currentRoute().index, owner = model;
+        const neighbours = ([-1, 1] as const).flatMap(direction => {
+          const item = rubricNeighbour(items, index, direction);
+          return item ? [{ path: item.path, label: item.name, direction, model: cache.get(item.path) ?? null }] : [];
+        });
+        setTargets(neighbours);
+        for (const neighbour of neighbours) void cache.load(neighbour.path).then(() => {
+          // Never mount or replace a preview while a finger owns the page.
+          if (disposed || model !== owner || operation.phase !== "idle") return;
+          scheduleRest();
+        }).catch(() => {});
       });
+    };
+    const cancelRest = () => {
+      clearTimeout(restTimer); restTimer = 0;
+      if (restIdle) window.cancelIdleCallback(restIdle);
+      restIdle = 0;
+    };
+    const scheduleRest = () => {
+      cancelRest();
+      restTimer = window.setTimeout(() => {
+        restTimer = 0;
+        const run = () => {
+          restIdle = 0;
+          if (disposed || operation.phase !== "idle" || blocked() || !model || !currentRoute().swipe) return;
+          savePosition();
+          const index = currentRoute().index;
+          setTargets(([-1, 1] as const).flatMap(direction => {
+            const item = rubricNeighbour(items, index, direction);
+            return item ? [{ path: item.path, label: item.name, direction, model: cache.get(item.path) ?? null }] : [];
+          }));
+          showVisual(model, null, 1, false, true);
+        };
+        if (typeof window.requestIdleCallback === "function") restIdle = window.requestIdleCallback(run, { timeout: 1000 });
+        else run();
+      }, 200);
     };
     const finish = () => {
       if (!operation.committed || !operation.motionDone || !operation.routeReady) return;
@@ -179,6 +236,7 @@ export function MobileRubricPager() {
       if (wasSwipe) main.querySelector<HTMLElement>("[data-mobile-feed-heading]")?.focus({ preventScroll: true });
       if (target) setAnnouncement(`${items.find(item => item.path === target)?.name ?? "Новини"} — заредено`);
       configure(); warmNeighbours();
+      scheduleRest();
       const queued = queuedTap; queuedTap = null;
       if (queued && queued !== routePath()) requestAnimationFrame(() => navigate(queued, "tap"));
     };
@@ -186,7 +244,8 @@ export function MobileRubricPager() {
       if (!operation.committed) return;
       update({ type: "motion", token: operation.token });
       if (originFrame.current) { originFrame.current.style.transition = "none"; originFrame.current.style.opacity = "0"; }
-      if (targetFrame.current) { targetFrame.current.style.transition = "none"; targetFrame.current.style.transform = "translate3d(0,0,0)"; targetFrame.current.style.opacity = "1"; }
+      const to = targetFrame();
+      if (to) { to.style.transition = "none"; to.style.transform = "translate3d(0,0,0)"; to.style.opacity = "1"; }
       finish();
     };
     const cancel = (reason = "") => {
@@ -198,6 +257,7 @@ export function MobileRubricPager() {
         // The navigation belongs to Next now. Cancellation never adds a compensating Back entry.
         setNotice("Зареждане на избраната рубрика…");
       } else setNotice(null);
+      scheduleRest();
     };
     const readCanonical = () => {
       const script = main.querySelector<HTMLScriptElement>("[data-mobile-rubric-model]");
@@ -217,7 +277,7 @@ export function MobileRubricPager() {
       const changed = !model || model.canonicalPath !== next.canonicalPath || model.contentVersion !== next.contentVersion || model.menuVersion !== next.menuVersion;
       signature = nextSignature; items = nextItems; model = next; sourceKey = key();
       if (changed) scanImages();
-      if (changed && operation.phase === "idle") { configure(); warmNeighbours(); setNotice(null); }
+      if (changed && operation.phase === "idle") { prepared = null; configure(); warmNeighbours(); scheduleRest(); setNotice(null); }
       if (operation.committed && operation.target === next.canonicalPath) {
         // Mounted public model is the readiness gate; a pathname change alone is insufficient.
         update({ type: "ready", token: operation.token }); finish();
@@ -230,13 +290,19 @@ export function MobileRubricPager() {
         paintFrame = 0;
         if (!visualRef.current || operation.committed || motion.current) return;
         if (originFrame.current) originFrame.current.style.transform = `translate3d(${lastDx}px,0,0)`;
-        if (targetFrame.current) targetFrame.current.style.transform = `translate3d(${lastDx + visualRef.current.direction * visualRef.current.width}px,0,0)`;
+        for (const element of targetFrames.current.values()) element.style.transform = `translate3d(${lastDx + Number(element.dataset.direction) * visualRef.current.width}px,0,0)`;
       });
     };
-    const showVisual = (origin: MobileRubricFeed, targetPath: string | null, direction: -1 | 1, distant = false) => {
+    const showVisual = (origin: MobileRubricFeed, targetPath: string | null, direction: -1 | 1, distant = false, warm = false) => {
       // An early gesture may precede the optional renderer download. Keep the
       // canonical page visible and allow navigation, never cover it with blank UI.
       if (!renderer.current) { preparePreview(); return; }
+      const ready = gesture?.captured ? gesture.prepared : preparedVisual(origin);
+      if (!warm && ready) {
+        activateVisual({ ...ready, token: operation.token, target: targetPath ? cache.get(targetPath) ?? null : null, targetPath,
+          label: items.find(item => item.path === targetPath)?.name ?? "Новини", direction, distant });
+        return;
+      }
       const top = headerBottom(), bottom = document.querySelector<HTMLElement>("[data-np-bottom-nav]")?.getBoundingClientRect().top ?? document.querySelector<HTMLElement>(".np-bottom-nav")?.getBoundingClientRect().top ?? innerHeight;
       const width = main.getBoundingClientRect().width;
       const mainBox = main.getBoundingClientRect();
@@ -260,13 +326,33 @@ export function MobileRubricPager() {
       const windowAt = (value: typeof blocks, y: number) => Object.fromEntries(Object.entries(value).filter(([, box]) => box.top + box.height > y && box.top < y + (bottom - top)));
       // The opaque viewport compositor covers the original page. Keeping its
       // subtree untouched during tracking avoids restyling thousands of nodes.
-      document.documentElement.setAttribute("data-mobile-pager-visual", "");
-      setView({ token: operation.token, origin, target: targetPath ? cache.get(targetPath) ?? null : null, targetPath,
+      const value: Visual = { token: operation.token, origin, target: targetPath ? cache.get(targetPath) ?? null : null, targetPath,
         label: items.find(item => item.path === targetPath)?.name ?? "Новини", direction, top, height: Math.max(0, bottom - top), width,
-        originOffset: mainBox.top - top, targetOffset: 0, distant, originWindow: windowAt(blocks, top - mainBox.top) });
+        originOffset: mainBox.top - top, targetOffset: 0, distant, originWindow: windowAt(blocks, top - mainBox.top) };
+      prepared = { origin, y: scrollY, viewportWidth: innerWidth, viewportHeight: innerHeight, visual: value,
+        carousels: [...main.querySelectorAll<HTMLElement>(".np-carousel-viewport")].slice(0, 8).map(element => ({ element, x: element.scrollLeft })) };
+      if (warm) { setVisual(value); return; }
+      activateVisual(value);
+    };
+    const activateVisual = (value: Visual) => {
+      const { targetPath, direction, distant } = value;
+      document.documentElement.setAttribute("data-mobile-pager-visual", "");
+      setView(value);
+      // Keep both neighbours mounted for reversals. Distant tab selections use one fade frame.
+      setTargets(values => {
+        if (!distant && (!targetPath || values.some(value => value.path === targetPath && value.direction === direction))) {
+          const cached = targetPath ? cache.get(targetPath) ?? null : null;
+          return values.some(value => value.path === targetPath && value.model !== cached)
+            ? values.map(value => value.path === targetPath ? { ...value, model: cached } : value) : values;
+        }
+        return targetPath ? [{ path: targetPath, direction, label: items.find(item => item.path === targetPath)?.name ?? "Новини", model: cache.get(targetPath) ?? null }] : [];
+      });
       if (targetPath) void cache.load(targetPath).then(target => {
         const current = visualRef.current;
-        if (current && current.token === operation.token && current.targetPath === targetPath && !gesture?.captured) setView({ ...current, target });
+        if (current && current.token === operation.token && current.targetPath === targetPath && !gesture?.captured) {
+          setView({ ...current, target });
+          setTargets(values => values.map(value => value.path === targetPath ? { ...value, model: target } : value));
+        }
       }).catch(() => { /* RSC navigation remains authoritative; skeleton needs no private fallback. */ });
     };
     const animate = (commit: boolean) => {
@@ -278,7 +364,7 @@ export function MobileRubricPager() {
       }
       cancelAnimationFrame(paintFrame); paintFrame = 0;
       const ms = motion.current ? 0 : current.distant ? 150 : commit ? 250 : 200;
-      const from = originFrame.current, to = targetFrame.current;
+      const from = originFrame.current, to = targetFrame();
       const css = ms ? `${current.distant ? "opacity" : "transform"} ${ms}ms cubic-bezier(.22,1,.36,1)` : "none";
       if (from) { from.style.transition = css; from.style.willChange = current.distant ? "opacity" : "transform";
         if (current.distant || motion.current) from.style.opacity = commit ? "0" : "1";
@@ -286,6 +372,11 @@ export function MobileRubricPager() {
       if (to) { to.style.transition = css; to.style.willChange = current.distant ? "opacity" : "transform";
         if (current.distant || motion.current) to.style.opacity = commit ? "1" : "0";
         else to.style.transform = `translate3d(${commit ? 0 : current.direction * current.width}px,0,0)`; }
+      if (!current.distant && !motion.current) for (const element of targetFrames.current.values()) {
+        if (element === to) continue;
+        element.style.transition = css;
+        element.style.transform = `translate3d(${(Number(element.dataset.direction) - (commit ? current.direction : 0)) * current.width}px,0,0)`;
+      }
       const owned = operation.token;
       clearTimeout(animationTimer);
       animationTimer = window.setTimeout(() => {
@@ -323,27 +414,30 @@ export function MobileRubricPager() {
       if (gesture && event.pointerId !== gesture.id) { cancel(); return; }
       if (main.inert || operation.phase !== "idle" || !event.isPrimary || event.button !== 0 || !model || !currentRoute().swipe || blocked()) return;
       if (event.clientX < 22 || event.clientX > innerWidth - 10 || event.composedPath().some(element => element instanceof HTMLElement && element.matches(IGNORE))) return;
-      savePosition(); update({ type: "track", token: ++token });
-      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, width: main.getBoundingClientRect().width,
-        dx: 0, samples: [{ x: event.clientX, at: event.timeStamp }], origin: model, captured: false };
+      cancelRest(); update({ type: "track", token: ++token });
+      gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, width: 0,
+        dx: 0, samples: [{ x: event.clientX, at: event.timeStamp }], origin: model, captured: false, index: currentRoute().index, prepared: null };
     };
     const move = (event: PointerEvent) => {
       const current = gesture;
       if (!current || current.id !== event.pointerId) return;
-      if (blocked()) { cancel(); return; }
       const dx = event.clientX - current.x, dy = event.clientY - current.y;
       if (!current.captured) {
         const intent = swipeIntent(dx, dy, event.timeStamp - current.time);
         if (intent === "cancel") { cancel(); return; }
         if (intent === "wait") return;
+        if (blocked()) { cancel(); return; }
+        current.prepared = preparedVisual(current.origin);
+        if (!current.prepared) savePosition();
+        current.width = current.prepared?.width ?? main.getBoundingClientRect().width;
         current.captured = true;
         document.documentElement.setAttribute("data-mobile-pager-tracking", "");
         try { main.setPointerCapture(current.id); } catch {}
       }
       event.preventDefault(); current.dx = dx;
       current.samples.push({ x: event.clientX, at: event.timeStamp });
-      current.samples = current.samples.filter(sample => event.timeStamp - sample.at <= 80).slice(-12);
-      const direction = dx < 0 ? 1 : -1, target = rubricNeighbour(items, currentRoute().index, direction)?.path ?? null;
+      while (current.samples.length > 12 || (current.samples.length > 1 && event.timeStamp - current.samples[0]!.at > 80)) current.samples.shift();
+      const direction = dx < 0 ? 1 : -1, target = rubricNeighbour(items, current.index, direction)?.path ?? null;
       if (!visualRef.current || visualRef.current.targetPath !== target) { configure(target ?? undefined); showVisual(current.origin, target, direction); update({ type: "drag", token: operation.token, target }); }
       const distance = target ? Math.max(-current.width, Math.min(current.width, dx)) : Math.sign(dx) * Math.min(24, Math.abs(dx) * .12);
       paint(distance);
@@ -383,7 +477,12 @@ export function MobileRubricPager() {
       // Input on the outgoing page must not drop the start-at-top intent of a pending route.
       if (!pendingRestore?.fromTop || pendingRestore.key === key()) pendingRestore = null;
     };
-    const interrupt = () => { if (operation.phase !== "idle") cancel(); };
+    const scrolled = () => { lastScrollAt = performance.now(); prepared = null; scheduleRest(); };
+    const resized = new ResizeObserver(() => { prepared = null; scheduleRest(); });
+    resized.observe(main);
+    const header = document.querySelector("[data-np-header]");
+    if (header) resized.observe(header);
+    const interrupt = () => { cancelRest(); if (operation.phase !== "idle") cancel(); };
     const overlay = () => interrupt();
     const visibility = () => { if (document.hidden) interrupt(); };
     const refresh = () => { cache.clear(); if (operation.phase === "idle") warmNeighbours(); };
@@ -404,6 +503,7 @@ export function MobileRubricPager() {
     const loadedImage = (event: Event) => {
       const image = event.target;
       if (!(image instanceof HTMLImageElement) || !image.closest("[data-mobile-rubric-canonical], [data-mobile-rubric-pager]")) return;
+      if (main.contains(image)) { prepared = null; scheduleRest(); }
       failedImages.delete(image.src); failedImages.delete(image.currentSrc);
       delete image.dataset.mobileImageFailed; image.parentElement?.classList.remove("np-mobile-image-fallback");
     };
@@ -416,8 +516,11 @@ export function MobileRubricPager() {
     window.addEventListener("blur", interrupt); document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", savePosition); window.addEventListener("wheel", manualScroll, { passive: true });
     window.addEventListener("touchstart", manualScroll, { passive: true });
+    window.addEventListener("scroll", scrolled, { passive: true });
+    document.addEventListener("focusin", interrupt);
+    window.visualViewport?.addEventListener("resize", interrupt);
     window.addEventListener("np:public-content-updated", refresh);
-    runtime.current = { finishMotion: () => { if (operation.committed) finishMotion(); else if (operation.phase !== "idle") cancel(); }, retry: () => {
+    runtime.current = { prepare: scheduleRest, finishMotion: () => { if (operation.committed) finishMotion(); else if (operation.phase !== "idle") cancel(); }, retry: () => {
       setNotice(null);
       if (operation.committed && operation.target && routePath() !== operation.target) router.push(operation.target, { scroll: false });
       else router.refresh();
@@ -425,7 +528,7 @@ export function MobileRubricPager() {
     } };
     readCanonical();
     return () => {
-      disposed = true; releaseGesture(); clearVisual(); cache.clear(); observer.disconnect();
+      disposed = true; cancelRest(); releaseGesture(); clearVisual(); cache.clear(); observer.disconnect(); resized.disconnect();
       for (const frame of [readFrame, restoreFrame, paintFrame]) cancelAnimationFrame(frame);
       cancelWarmup?.(); history.scrollRestoration = oldRestoration;
       main.removeEventListener("pointerdown", down); window.removeEventListener("pointerdown", eventSecondPointer, true);
@@ -437,19 +540,21 @@ export function MobileRubricPager() {
       window.removeEventListener("popstate", pop); window.removeEventListener("resize", interrupt); window.removeEventListener("orientationchange", interrupt);
       window.removeEventListener("blur", interrupt); document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", savePosition); window.removeEventListener("wheel", manualScroll); window.removeEventListener("touchstart", manualScroll);
+      window.removeEventListener("scroll", scrolled); document.removeEventListener("focusin", interrupt);
+      window.visualViewport?.removeEventListener("resize", interrupt);
       window.removeEventListener("np:public-content-updated", refresh); runtime.current = null;
       window.dispatchEvent(new CustomEvent(MOBILE_RUBRIC_STATUS, { detail: { pending: null, phase: "idle" } }));
     };
   }, [router, preparePreview]);
 
   return createPortal(<>
-    {visual && MobileFeed ? <div className="np-mobile-pager-layer" data-mobile-rubric-pager aria-hidden="true" inert style={{ top: visual.top, height: visual.height }}>
-      <div ref={originFrame} className="np-mobile-pager-frame" style={{ transform: "translate3d(0,0,0)", willChange: "transform" }}>
-        <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.originOffset}px)` }}><MobileFeed model={visual.origin} preview namespace={`preview-origin-${visual.token}`} window={visual.originWindow} /></div>
-      </div>
-      {visual.targetPath ? <div ref={targetFrame} className="np-mobile-pager-frame" style={{ transform: motion.current || visual.distant ? "translate3d(0,0,0)" : `translate3d(${visual.direction * visual.width}px,0,0)`, opacity: motion.current || visual.distant ? 0 : 1, willChange: visual.distant ? "opacity" : "transform" }}>
-        {visual.target ? <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.targetOffset}px)` }}><MobileFeed model={firstScreen(visual.target)} preview namespace={`preview-target-${visual.token}`} /></div> : <div className="np-mobile-pager-skeleton"><span>{visual.label}</span><i /><i /><i /><i /></div>}
+    {MobileFeed && (visual || targets.length > 0) ? <div className="np-mobile-pager-layer" data-mobile-rubric-pager aria-hidden="true" inert style={{ top: visual?.top ?? 0, height: visual?.height ?? "100svh" }}>
+      {visual ? <div ref={originFrame} className="np-mobile-pager-frame" style={{ transform: "translate3d(0,0,0)", willChange: "transform" }}>
+        <div className="np-mobile-pager-content" style={{ transform: `translateY(${visual.originOffset}px)` }}><PreviewFeed component={MobileFeed} model={visual.origin} namespace="preview-origin" window={visual.originWindow} /></div>
       </div> : null}
+      {targets.map(target => <div key={target.path} ref={element => { if (element) targetFrames.current.set(target.path, element); else targetFrames.current.delete(target.path); }} data-direction={target.direction} className="np-mobile-pager-frame" style={{ transform: motion.current || visual?.distant ? "translate3d(0,0,0)" : `translate3d(${target.direction * 100}%,0,0)`, opacity: motion.current || visual?.distant ? 0 : 1, willChange: visual ? visual.distant ? "opacity" : "transform" : undefined }}>
+        {target.model ? <div className="np-mobile-pager-content"><PreviewFeed component={MobileFeed} model={target.model} namespace={`preview-target-${target.direction}`} /></div> : <div className="np-mobile-pager-skeleton"><span>{target.label}</span><i /><i /><i /><i /></div>}
+      </div>)}
     </div> : null}
     {notice ? <div className="np-mobile-pager-notice" role="status"><span>{notice}</span><button type="button" onClick={() => runtime.current?.retry()}>Опитай отново</button></div> : null}
     <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">{announcement}</span>

@@ -108,7 +108,7 @@ export function MobileCategoryFeed({ feed, preview = false, window, now = new Da
       <div className="[&_.np-section-heading]:mb-0 [&_.np-ring]:!size-4 [&_h1]:text-base [&_h1]:leading-tight" data-mobile-feed-heading tabIndex={-1}><SectionTitle as="h1" accentSlug={feed.category.slug}>{feed.category.name}</SectionTitle></div>
     </div></Block>
     {feed.anchored ? <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted"><span>Разглеждате по-ранни публикации</span><CategoryArchivePageLink href={feed.category.path} prefetch={false} className="font-bold text-accent hover:underline">Към най-новите</CategoryArchivePageLink></div> : null}
-    <div id="np-rubric-cards" className="scroll-mt-[var(--np-header-h)] flex flex-col gap-4">
+    <div id={preview ? undefined : "np-rubric-cards"} className="scroll-mt-[var(--np-header-h)] flex flex-col gap-4">
       {articles.map((article, index) => anchor(article.id, index === 0 ? <MobileLeadCard article={article} priority={!preview && !window} now={now} /> : index < 3 ? <MobileSupportingCard article={article} now={now} /> : <MobileHorizonCard article={article} now={now} />, window))}
       {!articles.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">{feed.anchored ? "На тази страница вече няма достъпни публикации. Върнете се към най-новите новини в рубриката." : "Все още няма публикувани статии в тази рубрика."}</p></Block> : null}
     </div>

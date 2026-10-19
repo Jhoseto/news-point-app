@@ -3191,12 +3191,14 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   /* Retained, closed sheets must not change native gesture arbitration.
      The mobile controller excludes active overlays; their touch surfaces sit outside main. */
   html:has([data-mobile-rubric-canonical]) #main { touch-action: pan-y pinch-zoom; }
-  html[data-mobile-pager-tracking] #main { touch-action: none; -webkit-user-select: none; user-select: none; }
+  /* Gesture policy is fixed before pointerdown. Changing inherited selection
+     across the canonical feed at capture would restyle the entire page. */
   #main [data-mobile-pager-ignore], #main .np-carousel-viewport { touch-action: pan-x pan-y pinch-zoom; }
   /* Search/rubrics sheets reserve the bottom menu; only their actual surfaces take hits. */
   .np-mobile-nav-sheet-root { pointer-events: none; }
   .np-mobile-nav-sheet-root > * { pointer-events: auto; }
-  .np-mobile-pager-layer { position: fixed; inset-inline: 0; overflow: clip; z-index: 30; pointer-events: none; background: var(--np-page); contain: layout paint; }
+  .np-mobile-pager-layer { position: fixed; inset-inline: 0; overflow: clip; z-index: 30; pointer-events: none; background: var(--np-page); contain: layout paint; visibility: hidden; }
+  html[data-mobile-pager-visual] .np-mobile-pager-layer { visibility: visible; }
   .np-mobile-pager-frame { position: absolute; inset: 0; overflow: clip; background: var(--np-page); }
   .np-mobile-pager-content { width: 100%; }
   [data-mobile-image-failed] { opacity: 0; }
