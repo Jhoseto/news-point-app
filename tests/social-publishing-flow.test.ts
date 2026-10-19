@@ -218,6 +218,25 @@ describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database fl
     expect(connection).toMatchObject({ status: "connected", metaUserId: "999" }); expect(connection!.encryptedToken).not.toContain("explicit-fixture-token");
     await expect(selectFacebookPage(admin, selection, "11")).rejects.toMatchObject({ code: "oauth_state" });
   });
+  it("requests the configured Business Login code grant without leaking secrets or mixing scopes", async () => {
+    vi.stubEnv("META_APP_SECRET", "explicit-business-login-secret");
+    vi.stubEnv("META_LOGIN_CONFIG_ID", "456");
+    vi.stubEnv("META_GRAPH_API_VERSION", "v26.0");
+    const { url: location } = await startFacebookConnection(admin);
+    const url = new URL(location);
+    expect(url.origin + url.pathname).toBe("https://www.facebook.com/v26.0/dialog/oauth");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      client_id: "123", config_id: "456", response_type: "code", override_default_response_type: "true",
+      redirect_uri: "https://site44159-izdo3c.scloudsite101.com/admin/api/social/callback/",
+    });
+    expect(url.searchParams.has("scope")).toBe(false);
+    expect(location).not.toContain("explicit-business-login-secret");
+    expect(url.searchParams.get("state")).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const [pending] = await db.select().from(schema.socialOauthStates);
+    expect(pending).toMatchObject({ id: url.searchParams.get("state"), actorId: admin.id, phase: "authorize", redirectUri: url.searchParams.get("redirect_uri") });
+    expect(pending!.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(pending!.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + 600_000);
+  });
   it("uses the configured callback, consumes OAuth state once and never returns Page tokens to settings", async () => {
     vi.stubEnv("META_APP_SECRET", "explicit-oauth-fixture"); vi.stubEnv("META_LOGIN_CONFIG_ID", "");
     const started = await startFacebookConnection(admin); const url = new URL(started.url);
