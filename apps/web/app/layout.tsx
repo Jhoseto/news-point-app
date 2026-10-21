@@ -20,6 +20,7 @@ import { getWeatherForecast } from "@/lib/livepoint/weather/met-norway";
 import { getLatest, getMenuCategories } from "@/lib/queries";
 import { newsMediaOrganization, webSite } from "@/lib/jsonld";
 import { shareOrigin } from "@/lib/share-card";
+import { SITE_OG_IMAGE, SITE_OG_IMAGE_ALT } from "@/lib/public-metadata";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { PublicAnalyticsGate } from "@/components/public-analytics-gate";
 import { CookieConsent } from "@/components/cookie-consent";
@@ -34,13 +35,23 @@ const loadPublicShell = unstable_cache(async () => {
   return { weather, latest: toLatestHeadline(latestArticles[0]) };
 }, ["public-shell"], { revalidate: 60 });
 
+const siteOrigin = shareOrigin();
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin),
   title: { default: "NewsPoint.bg – Гласът на истината", template: "%s | NewsPoint.bg" },
   appleWebApp: { title: "NewsPoint" },
   description: "Новини от Пловдив, България и света.",
   robots: publicRobotsMetadata(),
   alternates: { types: { "application/rss+xml": "/feed/" } },
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    siteName: "NewsPoint.bg",
+    locale: "bg_BG",
+    type: "website",
+    images: [{ url: SITE_OG_IMAGE, width: 1200, height: 630, alt: SITE_OG_IMAGE_ALT, type: "image/jpeg" }],
+  },
+  twitter: { card: "summary_large_image", images: [SITE_OG_IMAGE] },
   icons: {
     icon: [
       { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },

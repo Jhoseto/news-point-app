@@ -2,6 +2,11 @@ import type { Metadata } from "next";
 import { absoluteMedia, shareOrigin } from "./share-card";
 import { LEGAL_PATHS, legalReviewPending } from "./legal/types";
 
+/** Default link preview for the site root and layout fallback (1200×630, ≤300 KiB JPEG). */
+export const SITE_OG_IMAGE = "/share/og-site-1200x630.jpg";
+export const SITE_OG_IMAGE_WEBP = "/share/og-site-1200x630.webp";
+export const SITE_OG_IMAGE_ALT = "NewsPoint.bg – Гласът на истината";
+
 export const PUBLIC_SEO_PAGES = {
   home: { path: "/", title: "NewsPoint.bg – Гласът на истината", description: "Новини от Пловдив, България и света." },
   themes: { path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg." },
@@ -26,11 +31,13 @@ export function discoverablePublicPages() {
 }
 
 /** Every public page owns its OG object: Next replaces nested metadata rather than merging it. */
-export function publicMetadata(input: { path: string; title: string; description: string; imagePath: string; type?: "website" | "article"; publishedTime?: string; modifiedTime?: string }): Metadata {
+export function publicMetadata(input: { path: string; title: string; description: string; imagePath: string; imageAlt?: string; type?: "website" | "article"; publishedTime?: string; modifiedTime?: string }): Metadata {
   const origin = shareOrigin();
   const url = `${origin}${input.path}`;
   const image = absoluteMedia(input.imagePath, origin);
   const description = input.description.trim() || input.title;
+  const imageAlt = input.imageAlt?.trim() || input.title;
+  const ogMime = input.imagePath.endsWith(".webp") ? "image/webp" : input.imagePath.endsWith(".png") ? "image/png" : "image/jpeg";
   return {
     title: input.title,
     description,
@@ -39,14 +46,16 @@ export function publicMetadata(input: { path: string; title: string; description
       title: input.title, description, url, siteName: "NewsPoint.bg", locale: "bg_BG",
       type: input.type ?? "website",
       ...(input.type === "article" ? { publishedTime: input.publishedTime, modifiedTime: input.modifiedTime } : {}),
-      images: [{ url: image, width: 1200, height: 630, alt: input.title }],
+      images: [{ url: image, secureUrl: image, width: 1200, height: 630, alt: imageAlt, type: ogMime }],
     },
-    twitter: { card: "summary_large_image", title: input.title, description, images: [image] },
+    twitter: { card: "summary_large_image", title: input.title, description, images: [{ url: image, alt: imageAlt }] },
   };
 }
 
 export function publicPageMetadata(key: keyof typeof PUBLIC_SEO_PAGES): Metadata {
-  const metadata = publicMetadata({ ...PUBLIC_SEO_PAGES[key], imagePath: `/share/page/${key}/` });
+  const page = PUBLIC_SEO_PAGES[key];
+  const imagePath = key === "home" ? SITE_OG_IMAGE : `/share/page/${key}/`;
+  const metadata = publicMetadata({ ...page, imagePath, ...(key === "home" ? { imageAlt: SITE_OG_IMAGE_ALT } : {}) });
   // The homepage already contains the brand; do not append it a second time.
   return key === "home" ? { ...metadata, title: { absolute: PUBLIC_SEO_PAGES.home.title } } : metadata;
 }

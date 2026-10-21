@@ -69,7 +69,8 @@
 
 - За статия и рубрика: title, description, `openGraph` / `twitter` с картина 1200×630.
 - Картините се генерират на `/share/article/[id]/` и `/share/category/[id]/`.
-- Добавени `/share/theme/[slug]/`, `/share/podcast/[slug]/` и `/share/page/[key]/` за потвърдените публични страници. При тема се използва реалната корица или снимка на публичен член; подкастът използва реалната обложка. Липсваща/повредена снимка дава брандирана карта с истинското заглавие. Няма placeholder снимка на измислена новина.
+- Добавени `/share/theme/[slug]/`, `/share/podcast/[slug]/` и `/share/page/[key]/` за потвърдените публични страници.
+- **Начало / root share (2026-10-21):** одобрен банер → `public/share/og-site-1200x630.jpg` (+ WebP) 1200×630, ≤300 KiB; `metadataBase`, layout OG/Twitter fallback и homepage metadata с `SITE_OG_IMAGE`; `/share/page/home/` → 308 към JPEG. Регенерация: `pnpm --filter @newspoint/web exec node scripts/optimize-og-site-share.mjs` (source: `scripts/brand/og-site-share-source.jpg`). При тема се използва реалната корица или снимка на публичен член; подкастът използва реалната обложка. Липсваща/повредена снимка дава брандирана карта с истинското заглавие. Няма placeholder снимка на измислена новина.
 - Share endpoint за статия изключва чернови и публикации с бъдеща дата.
 - Съдържание на картата: заглавие, рубрика и реална снимка — без измислена новина.
 - Сайтът остава `noindex`, докато Коце не разреши индексиране.
