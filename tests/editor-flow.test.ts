@@ -167,6 +167,33 @@ describe("article editor transactions", () => {
       expect(boost?.seededAt).toBeTruthy(); expect(boost?.nextIncrementAt).toBeTruthy();
     }
   });
+  it("applies a configured starting total at first publication, accounting for existing real reads", async () => {
+    const input = draft({ viewSeed: 25, viewEvery: 4, viewUnit: "minutes", viewTarget: 50 });
+    const created = await createArticle(staff, input);
+    await db.insert(schema.articleReadCounts).values({ articleId: created.id, readCount: 3 });
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    const editor = await getEditorArticle(created.id);
+    expect(editor).toMatchObject({ viewReal: 3, viewAdded: 22, viewSeedLocked: true, draft: { viewSeed: 25, viewEvery: 4, viewUnit: "minutes", viewTarget: 50 } });
+    const [boost] = await db.select().from(schema.articleViewBoosts).where(eq(schema.articleViewBoosts.articleId, created.id));
+    expect(boost?.intervalSeconds).toBe(240);expect(boost?.nextIncrementAt).toBeTruthy();
+  });
+  it("keeps a late starting total pending until explicit update, then applies it only once", async () => {
+    const initial = draft();const created = await createArticle(staff, initial);
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    await db.insert(schema.articleReadCounts).values({ articleId: created.id, readCount: 3 });
+    const settings = { ...initial, viewSeed: 25, viewEvery: 4, viewUnit: "minutes" as const, viewTarget: 50 };
+    await saveRevision(staff, created.id, 1, settings);
+    const pending = await getEditorArticle(created.id);
+    expect(pending).toMatchObject({ publishedRevision: 1, revision: 2, viewReal: 3, viewAdded: 0, viewSeedLocked: false, draft: { viewSeed: 25, viewEvery: 4, viewTarget: 50 } });
+    const key = randomUUID();await publishRevision(staff, created.id, 2, key, true);
+    expect(await getEditorArticle(created.id)).toMatchObject({ publishedRevision: 2, viewReal: 3, viewAdded: 22, viewSeedLocked: true });
+    const [applied] = await db.select().from(schema.articleViewBoosts).where(eq(schema.articleViewBoosts.articleId, created.id));
+    expect(applied?.seededAt).toBeTruthy();expect(applied?.nextIncrementAt).toBeTruthy();
+    expect((await publishRevision(staff, created.id, 2, key, true)).duplicate).toBe(true);
+    await saveRevision(staff, created.id, 2, settings);await publishRevision(staff, created.id, 3, randomUUID(), true);
+    const [repeated] = await db.select().from(schema.articleViewBoosts).where(eq(schema.articleViewBoosts.articleId, created.id));
+    expect(repeated?.artificialCount).toBe(22);expect(repeated?.seededAt).toEqual(applied?.seededAt);
+  });
   it("keeps hidden public content intact until explicit republishing and emits an update", async () => {
     const input = draft(); const created = await createArticle(staff, input);
     await publishRevision(staff, created.id, 1, randomUUID(), true); await setArticleVisibility(created.id, false);
