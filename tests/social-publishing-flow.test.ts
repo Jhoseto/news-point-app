@@ -20,6 +20,7 @@ import { defaultSocial } from "../packages/content/src/social-publishing";
 import { FacebookError, type FacebookClient } from "../packages/content/src/facebook-api";
 import { disconnectFacebook, facebookSettings, selectFacebookPage, startFacebookConnection, finishFacebookConnection, removeFacebookAuthorization } from "../apps/studio/lib/social-facebook";
 import { encryptSocialSecret } from "../packages/content/src/social-secrets";
+import { renderFacebookPostImage } from "../apps/worker/src/facebook-post-image";
 
 const holder = vi.hoisted(() => ({ db: null as ScriptDb | null }));
 vi.mock("@newspoint/db", async () => ({ ...await vi.importActual<typeof import("@newspoint/db")>("@newspoint/db"), getDb: () => holder.db }));
@@ -146,11 +147,28 @@ describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database fl
   });
   it("prepares a real private JPEG from disk without HTTP image fetching", async () => {
     const id = await makeJob("prepare"); const job = await jobFor(id);
-    const prepared = await prepareSocialPhoto(job);
+    const original = await readFile(resolve(fixtureRoot, "media/news/2026/10/fixture.webp"));
+    const prepared = await prepareSocialPhoto(job, input().title);
     const bytes = await readFile(resolve(fixtureRoot, "private", prepared.preparedFile)); const info = await sharp(bytes).metadata();
-    expect(info).toMatchObject({ format: "jpeg", width: 64, height: 48 }); expect(bytes.length).toBeLessThan(4 * 1024 * 1024);
+    expect(info).toMatchObject({ format: "jpeg", width: 1200, height: 900 }); expect(bytes.length).toBeLessThan(4 * 1024 * 1024);
+    expect(await readFile(resolve(fixtureRoot, "media/news/2026/10/fixture.webp"))).toEqual(original);
     expect(prepared.preparedHash).toMatch(/^[a-f0-9]{64}$/);
-    await expect(prepareSocialPhoto({ ...job, storageKey: "news/../../secret" })).rejects.toMatchObject({ code: "image" });
+    await expect(prepareSocialPhoto({ ...job, storageKey: "news/../../secret" }, input().title)).rejects.toMatchObject({ code: "image" });
+  });
+  it("brands the image with the queued publication revision headline, not a newer edit or custom caption", async () => {
+    const id = await makeJob("prepare");
+    const first = await jobFor(id);
+    const [article] = await db.select().from(schema.articles).where(eq(schema.articles.id, id));
+    await saveRevision(actor, id, 1, { ...input(), slug: article!.slug, title: "A later isolated test headline", social: { facebook: { enabled: true, text: "A later custom caption", textMode: "custom" } } });
+    await publishRevision(actor, id, 2, randomUUID(), false);
+    const remote = api();
+    await processSocialJob(db, (await claimSocialJob(db))!, { client: remote as unknown as FacebookClient });
+    const prepared = await jobFor(id);
+    expect(prepared).toMatchObject({ revision: first.revision, status: "pending", step: "photo" });
+    const original = await readFile(resolve(fixtureRoot, "media/news/2026/10/fixture.webp"));
+    const expected = await renderFacebookPostImage(original, input().title);
+    expect(await readFile(resolve(fixtureRoot, "private", prepared.preparedFile!))).toEqual(expected);
+    expect(remote.uploadPhoto).not.toHaveBeenCalled();
   });
   it("checkpoints the photo, retries only a rejected comment and keeps the article public", async () => {
     const id = await makeJob(); const remote = api();

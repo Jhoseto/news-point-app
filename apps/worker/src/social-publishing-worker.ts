@@ -3,12 +3,13 @@ import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from "node:
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
-import { articles, socialConnections, socialPublications, type ScriptDb, findRepoRoot } from "@newspoint/db/node";
+import { articles, articleRevisions, socialConnections, socialPublications, type ScriptDb, findRepoRoot } from "@newspoint/db/node";
 import { hasSocialPublishing } from "@newspoint/db/social-publishing";
 import { mediaFile, readMediaFile } from "@newspoint/content/upload-media";
 import { socialArticleUrl } from "@newspoint/content";
 import { FacebookClient, FacebookError, facebookPermalink } from "@newspoint/content/facebook";
 import { decryptSocialSecret, pageSecretContext } from "@newspoint/content/social-secrets";
+import { renderFacebookPostImage } from "./facebook-post-image";
 
 type Job = typeof socialPublications.$inferSelect;
 const LEASE_MS = 120_000;
@@ -23,7 +24,7 @@ function socialTempRoot(): string {
   if (inside(resolve(media), root) || inside(resolve(findRepoRoot()), root)) throw new FacebookError("image");
   return root;
 }
-export async function prepareSocialPhoto(job: Job): Promise<{ preparedFile: string; preparedHash: string }> {
+export async function prepareSocialPhoto(job: Job, title: string): Promise<{ preparedFile: string; preparedHash: string }> {
   if (!job.storageKey || !/^news\//.test(job.storageKey)) throw new FacebookError("image");
   const path = mediaFile(job.storageKey);
   // Production is local disk; laptop SSH uses the existing direct remote-file transport.
@@ -35,9 +36,8 @@ export async function prepareSocialPhoto(job: Job): Promise<{ preparedFile: stri
   if (!source || source.length > 32 * 1024 * 1024) throw new FacebookError("image");
   let bytes: Buffer;
   try {
-    const pipeline = sharp(source, { limitInputPixels: 50_000_000, animated: false }).rotate().resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).flatten({ background: "#ffffff" });
-    bytes = await pipeline.jpeg({ quality: 88, mozjpeg: true }).toBuffer();
-    if (bytes.length > 4 * 1024 * 1024) bytes = await pipeline.jpeg({ quality: 70, mozjpeg: true }).toBuffer();
+    bytes = await renderFacebookPostImage(source, title);
+    if (bytes.length > 4 * 1024 * 1024) bytes = await sharp(bytes).jpeg({ quality: 70, mozjpeg: true }).toBuffer();
     if (bytes.length > 4 * 1024 * 1024) throw new Error();
   } catch { throw new FacebookError("image"); }
   const root = socialTempRoot(); await mkdir(root, { recursive: true, mode: 0o700 });
@@ -111,7 +111,10 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     }
     if (job.step === "prepare") {
       if (!job.text.trim()) throw new FacebookError("text");
-      const prepared = await prepareSocialPhoto(job);
+      const [revision] = await db.select({ title: articleRevisions.title }).from(articleRevisions)
+        .where(and(eq(articleRevisions.articleId, job.articleId!), eq(articleRevisions.number, job.revision)));
+      if (!revision?.title.trim()) throw new FacebookError("text");
+      const prepared = await prepareSocialPhoto(job, revision.title);
       await finish({ ...prepared, status: "pending", step: "photo", attempts: 0, errorCode: null, nextAttemptAt: new Date() }); return;
     }
     if (job.step === "resolve") {
