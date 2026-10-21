@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { renderFacebookPostImage } from "./facebook-post-image";
+import { facebookHeadline, renderFacebookPostImage } from "./facebook-post-image";
 
 describe("Facebook image artwork", () => {
+  it("keeps a normal Bulgarian headline compact and a full headline inside the reserved area", async () => {
+    const normal = await facebookHeadline("Борисов отговаря на Радев: Преди дни се чухме и нямаше лошо отношение и нещо друго");
+    expect(normal.info.height).toBeLessThan(160);
+    const long = await facebookHeadline("Тестово дълго заглавие за проверка на четимостта и компактното междуредие. ".repeat(4).slice(0, 200));
+    expect(long.info.width).toBeLessThanOrEqual(1096);
+    expect(long.info.height).toBeLessThanOrEqual(216);
+  });
   it.each([[1600, 600], [600, 1600], [64, 48]])("makes a bounded branded JPEG from a %sx%s source", async (width, height) => {
     const source = await sharp({ create: { width, height, channels: 3, background: "#e4eafa" } }).png().toBuffer();
     const copy = Buffer.from(source);

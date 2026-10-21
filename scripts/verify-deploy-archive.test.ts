@@ -8,7 +8,7 @@ import { packDeployArchive } from "./pack-deploy-archive.mjs";
 
 let directory: string;
 const files = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/web/lib/indexing-policy.mjs", "deploy/np2/render-ingress.mjs", "apps/studio/app/api/logs/route.ts", "apps/studio/app/(studio)/logs/page.tsx", "apps/web/app/page.tsx",
-  "apps/worker/src/facebook-post-image.ts", "apps/worker/assets/social/Manrope.ttf", "apps/worker/assets/social/OFL.txt", "apps/web/public/brand/newspoint-logo-dark.webp"];
+  "apps/worker/src/facebook-post-image.ts", "apps/worker/assets/social/Manrope.ttf", "apps/worker/assets/social/OFL.txt", "apps/worker/assets/social/Montserrat.ttf", "apps/worker/assets/social/Montserrat-OFL.txt", "apps/web/public/brand/newspoint-logo-dark.webp"];
 beforeAll(() => {
   directory = mkdtempSync(join(tmpdir(), "np-deploy-archive-qa-"));
   for (const file of [...files, "logs/web.pid", "logs/private.log", "AGENTS.md", "apps/web/AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
