@@ -7,6 +7,7 @@ import { studioOrigins } from "../../../../../lib/auth";
 import { staffFromRequest } from "../../../../../lib/session";
 import { writeMediaFile, removeMediaFile } from "../../../../../lib/media-disk";
 import { prepareUploadedPhotoWithVariants, UPLOADED_PHOTO_MAX_BYTES } from "../../../../../lib/uploaded-photo";
+import { downloadRemotePhoto } from "../../../../../lib/remote-photo";
 
 export const runtime = "nodejs";
 
@@ -16,7 +17,8 @@ async function handlePOST(request: Request) {
   }
   const staff = await staffFromRequest(request);
   if (!staff) return Response.json({ error: { message: "Влезте отново." } }, { status: 401, headers: { "cache-control": "no-store" } });
-  const limit = UPLOADED_PHOTO_MAX_BYTES + 256 * 1024;
+  const isRemote = request.headers.get("content-type")?.startsWith("application/json");
+  const limit = isRemote ? 8192 : UPLOADED_PHOTO_MAX_BYTES + 256 * 1024;
   const declared = Number(request.headers.get("content-length") ?? 0);
   if (declared > limit) return Response.json({ error: { message: "Снимката трябва да е до 25 MB." } }, { status: 413, headers: { "cache-control": "no-store" } });
   try {
@@ -34,7 +36,20 @@ async function handlePOST(request: Request) {
       }
       chunks.push(part.value);
     }
-    const form = await new Response(new Blob(chunks as BlobPart[]), { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData().catch(() => { throw new Error("Невалидно качване. Изберете файла отново."); });
+    let form: FormData;
+    if (request.headers.get("content-type")?.startsWith("application/json")) {
+      if (bytes > 8192) throw new Error("Невалиден адрес на снимка.");
+      try {
+        const input = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { url?: unknown; alt?: unknown };
+        if (typeof input.url !== "string") throw new Error();
+        const remote = await downloadRemotePhoto(input.url, UPLOADED_PHOTO_MAX_BYTES);
+        form = new FormData();
+        form.set("file", new File([new Uint8Array(remote.bytes)], "pasted-photo", { type: remote.type }));
+        form.set("alt", typeof input.alt === "string" ? input.alt : "");
+      } catch { throw new Error("Снимката от този сайт не може да бъде копирана. Качете я от устройството."); }
+    } else {
+      form = await new Response(new Blob(chunks as BlobPart[]), { headers: { "content-type": request.headers.get("content-type") ?? "" } }).formData().catch(() => { throw new Error("Невалидно качване. Изберете файла отново."); });
+    }
     const file = form.get("file");
     const alt = String(form.get("alt") ?? "").trim().slice(0, 240);
     if (!(file instanceof File) || !file.type.startsWith("image/")) throw new Error("Изберете валидна снимка.");
@@ -95,7 +110,7 @@ async function handlePOST(request: Request) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    const known = ["Липсва снимка.", "Изберете валидна снимка.", "Снимката трябва да е до 25 MB.", "Файлът не е валидна или поддържана снимка.", "Невалидно качване. Изберете файла отново."].includes(message);
+    const known = ["Невалиден адрес на снимка.", "Снимката от този сайт не може да бъде копирана. Качете я от устройството.", "Липсва снимка.", "Изберете валидна снимка.", "Снимката трябва да е до 25 MB.", "Файлът не е валидна или поддържана снимка.", "Невалидно качване. Изберете файла отново."].includes(message);
     return Response.json({ error: { message: known ? message : "Качването не беше успешно. Опитайте отново." } }, { status: message === "Снимката трябва да е до 25 MB." ? 413 : known ? 400 : 500, headers: { "cache-control": "no-store" } });
   }
 }

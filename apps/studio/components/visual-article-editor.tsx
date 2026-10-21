@@ -16,6 +16,9 @@ import { EditorDialog } from "./editor-dialog";
 import { EditorToolIcon } from "./editor-toolbar-icons";
 import "./visual-article-editor.css";
 import { toolbarHelp } from "@/lib/editor/toolbar-help";
+import { imageFilesFromDataTransfer } from "./media-picker-paste";
+import { hasPastedImages, preparePastedImages } from "@/lib/editor/paste-images";
+import { uploadPastedImage } from "@/lib/editor/paste-upload";
 
 export interface VisualEditorHandle { insertImages: (items: MediaOption[], gallery?: boolean) => void; insertVideo: (url: string) => void; }
 const COLORS = ["red", "orange", "green", "blue", "purple", "muted", "accent"];
@@ -131,10 +134,16 @@ function moveSelected(editor: Editor, direction: -1 | 1) {
   editor.view.dispatch(tr); editor.commands.focus();
 }
 
-export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMedia, onOpenVideo, handleRef, onValidityChange }: {
+export function VisualArticleEditor({ value, onChange, media, readOnly: externalReadOnly, onOpenMedia, onOpenVideo, handleRef, onValidityChange, onMediaImported }: {
   value: ArticleBody; onChange: (body: ArticleBody) => void; media: MediaOption[]; readOnly: boolean;
   onOpenMedia: () => void; onOpenVideo: () => void; onValidityChange: (valid: boolean) => void; handleRef: React.RefObject<VisualEditorHandle | null>;
+  onMediaImported: (items: MediaOption[]) => void;
 }) {
+  const [pasteBusy, setPasteBusy] = useState(false);
+  const pasteBusyRef = useRef(false);
+  const readOnly = externalReadOnly || pasteBusy;
+  const [pasteNotice, setPasteNotice] = useState("");
+  const importedRef = useRef(onMediaImported); importedRef.current = onMediaImported;
   const mediaRef = useRef(media); mediaRef.current = media;
   const changeRef = useRef(onChange); changeRef.current = onChange;
   const validityRef = useRef(onValidityChange); validityRef.current = onValidityChange;
@@ -157,7 +166,33 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     extensions, immediatelyRender: false, editable: !readOnly, content: bodyToEditorHtml(value),
     editorProps: {
       attributes: { class: "np-prose np-visual-document", "aria-label": "Текст на материала", role: "textbox", "aria-multiline": "true" },
-      handlePaste: (view, event) => { if (!pastePlain.current) return false; const text = event.clipboardData?.getData("text/plain"); if (text === undefined) return false; event.preventDefault(); const nodes = text.replace(/\r\n?/g, "\n").split("\n").map(line => ({ type: "paragraph", content: line ? [{ type: "text", text: line }] : [] })); editor?.chain().insertContent(nodes).run(); pastePlain.current = false; setPlainPaste(false); return true; },
+      handlePaste: (view, event) => {
+        if (!view.editable || pasteBusyRef.current) return false;
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        if (pastePlain.current) {
+          event.preventDefault();
+          const nodes = text.replace(/\r\n?/g, "\n").split("\n").map(line => ({ type: "paragraph", content: line ? [{ type: "text", text: line }] : [] }));
+          editor?.chain().insertContent(nodes).run(); pastePlain.current = false; setPlainPaste(false); return true;
+        }
+        const html=event.clipboardData?.getData("text/html") ?? "",files=imageFilesFromDataTransfer(event.clipboardData);
+        if(!hasPastedImages(html,files)) return false;
+        event.preventDefault();
+        if(!editor) return true;
+        const current=editor,documentBefore=view.state.doc,range={from:view.state.selection.from,to:view.state.selection.to};
+        pasteBusyRef.current=true;setPasteBusy(true);current.setEditable(false);validityRef.current(false);setPasteNotice("Копиране и оптимизиране на снимките…");
+        void preparePastedImages(html,text,files,async image=>{
+          const item=await uploadPastedImage(image);
+          if(!current.isDestroyed){mediaRef.current=[...mediaRef.current.filter(existing=>existing.id!==item.id),item];importedRef.current([item]);}
+          return item;
+        }).then(result=>{
+          if(current.isDestroyed)return;
+          if(!current.state.doc.eq(documentBefore)){setPasteNotice("Текстът беше променен по време на копирането. Поставете съдържанието отново.");return;}
+          current.commands.insertContentAt(range,result.html);
+          setPasteNotice(result.failed ? `${result.failed === 1 ? "Една снимка не беше добавена. Можете да я качите" : `${result.failed} снимки не бяха добавени. Можете да ги качите`} от устройството; текстът е запазен.` : "");
+        }).catch(problem=>{if(!current.isDestroyed)setPasteNotice(problem instanceof Error?problem.message:"Поставянето не успя. Опитайте отново.");})
+          .finally(()=>{pasteBusyRef.current=false;if(!current.isDestroyed){setPasteBusy(false);try{documentToBody(current.getJSON());validityRef.current(true);}catch{validityRef.current(false);}}});
+        return true;
+      },
       handleKeyDown: (view, event) => {
         if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || !view.editable) return false;
         const selection = view.state.selection;
@@ -176,7 +211,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
       },
     },
     onUpdate: ({ editor: current }) => {
-      try { const body = documentToBody(current.getJSON()); lastBody.current = JSON.stringify(body); changeRef.current(body); validityRef.current(true); setError(""); }
+      try { const body = documentToBody(current.getJSON()); lastBody.current = JSON.stringify(body); changeRef.current(body); validityRef.current(!pasteBusyRef.current); setError(""); }
       catch { validityRef.current(false); setError("Има неподдържано съдържание. Отменете последното действие преди запис."); }
     },
     onTransaction: () => redraw(current => current + 1),
@@ -306,6 +341,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly, onOpenMe
     </div> : null}
     </div>
     </div>
+    {pasteNotice ? <p role="status" aria-live="polite" className={pasteBusy ? "np-editor-loading" : "np-editor-error"}>{pasteNotice}</p> : null}
     {error && !dialog ? <p role="alert" className="np-editor-error">{error}</p> : null}
     <EditorContent editor={editor} />
     {!readOnly && value.some(item => (item.type === "image" || item.type === "embed") && item.wrap && item.wrap !== "none") ? <button data-help="Поставя курсора в абзац под обтичащата медия, за да продължите текста по цялата ширина." type="button" className="np-editor-continue" onMouseDown={event => event.preventDefault()} onClick={() => continueBelowMedia()}>Продължи под медията ↓</button> : null}
