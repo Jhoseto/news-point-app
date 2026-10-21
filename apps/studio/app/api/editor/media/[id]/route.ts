@@ -1,8 +1,8 @@
 import { withStaffAudit } from "../../../../../lib/audit";
 import { z } from "zod";
-import { editorMutation } from "@/lib/api";
-import { EditorError } from "@/lib/articles";
-import { renameMediaAsset } from "@/lib/media-library";
+import { editorMutation } from "../../../../../lib/api";
+import { EditorError } from "../../../../../lib/articles";
+import { renameMediaAsset } from "../../../../../lib/media-library";
 
 const renameRequest = z.strictObject({
   alt: z.string().min(1).max(240),
@@ -30,3 +30,4 @@ async function handlePATCH(request: Request, context: RouteContext<"/api/editor/
 }
 
 export const PATCH = withStaffAudit(handlePATCH);
+export const POST = withStaffAudit(handlePATCH);

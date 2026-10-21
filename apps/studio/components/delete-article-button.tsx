@@ -15,8 +15,8 @@ export function DeleteArticleButton({ id, title }: { id: string; title: string }
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(withBase(`/api/editor/articles/${id}/`), {
-        method: "DELETE",
+      const response = await fetch(withBase(`/api/editor/articles/${id}/delete/`), {
+        method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ confirm: true }),
       });

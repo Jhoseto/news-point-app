@@ -126,7 +126,7 @@ export function MediaPicker({
     setError("");
     try {
       const response = await fetch(withBase(`/api/editor/media/${item.id}/`), {
-        method: "PATCH",
+        method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ alt: next }),
       });

@@ -1,7 +1,7 @@
 import { withStaffAudit } from "../../../../lib/audit";
 import { z } from "zod";
-import { editorMutation } from "@/lib/api";
-import { changeRole, deleteUser, roleChangeInput } from "@/lib/users";
+import { editorMutation } from "../../../../lib/api";
+import { changeRole, deleteUser, roleChangeInput } from "../../../../lib/users";
 
 const validId = (id: string) => /^[A-Za-z0-9_-]{1,64}$/.test(id);
 const notFound = () => Response.json({ error: { code: "not_found", message: "Профилът не съществува." } }, { status: 404 });
@@ -20,3 +20,4 @@ async function handleDELETE(request: Request, context: RouteContext<"/api/staff/
 
 export const PATCH = withStaffAudit(handlePATCH);
 export const DELETE = withStaffAudit(handleDELETE);
+export const POST = withStaffAudit(handlePATCH);

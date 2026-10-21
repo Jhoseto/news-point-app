@@ -2,9 +2,9 @@ import { withStaffAudit } from "../../../../lib/audit";
 import { z } from "zod";
 import { desc, eq } from "@newspoint/db/orm";
 import { getDb, livepointSubmissions } from "@newspoint/db";
-import { editorMutation } from "@/lib/api";
-import { EditorError } from "@/lib/articles";
-import { staffFromRequest } from "@/lib/session";
+import { editorMutation } from "../../../../lib/api";
+import { EditorError } from "../../../../lib/articles";
+import { staffFromRequest } from "../../../../lib/session";
 
 const updateInput = z.strictObject({ id: z.uuid(), status: z.enum(["received", "in_review", "verified", "rejected", "published"]), articleId: z.uuid().nullable().optional() });
 
@@ -28,3 +28,4 @@ function handlePATCH(request: Request) {
 
 export const GET = withStaffAudit(handleGET);
 export const PATCH = withStaffAudit(handlePATCH);
+export const POST = withStaffAudit(handlePATCH);

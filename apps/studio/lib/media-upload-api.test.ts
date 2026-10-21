@@ -23,6 +23,23 @@ it("accepted chunk route uses stable fileId and exact SHA header and raw bytes",
  const response = await mediaUploadAPI(request("PUT", "chunk", { "x-chunk-sha256": "a".repeat(64), "content-type": "application/octet-stream" }), [id,"files","video","chunks","0"]);
  expect(response.status).toBe(200); expect(mocks.chunk).toHaveBeenCalledWith(expect.anything(), "editor", id, "video", 0, "a".repeat(64), Buffer.from("chunk"));
 });
+it("POST chunks preserve raw bytes, checksum and owner; POST cancel uses the same owner boundary", async () => {
+ const parts = [id,"files","video","chunks","0"];
+ const response = await mediaUploadAPI(request("POST", "chunk", { "x-chunk-sha256": "a".repeat(64), "content-type": "application/octet-stream" }), parts);
+ expect(response.status).toBe(200); expect(mocks.chunk).toHaveBeenCalledWith(expect.anything(), "editor", id, "video", 0, "a".repeat(64), Buffer.from("chunk"));
+ expect((await mediaUploadAPI(request("POST"), [id,"cancel"])).status).toBe(200); expect(mocks.cancel).toHaveBeenCalledWith(expect.anything(), "editor", id);
+});
+it("POST chunks and cancel reject anonymous users and foreign origins before writing", async () => {
+ for (const parts of [[id,"files","video","chunks","0"],[id,"cancel"]]) {
+  expect((await mediaUploadAPI(request("POST", "unread", { origin: "https://foreign.test" }), parts)).status).toBe(403);
+  mocks.staff.mockResolvedValue(null); expect((await mediaUploadAPI(request("POST", "unread"), parts)).status).toBe(401); mocks.staff.mockResolvedValue({ id: "editor", role: "editor" });
+ }
+ expect(mocks.chunk).not.toHaveBeenCalled(); expect(mocks.cancel).not.toHaveBeenCalled();
+});
+it("POST chunks preserve the size limit and reject invalid indexes", async () => {
+ expect((await mediaUploadAPI(request("POST", "x", { "content-length": String(4 * 1024 ** 2 + 1) }), [id,"files","video","chunks","0"])).status).toBe(413);
+ expect((await mediaUploadAPI(request("POST", "x"), [id,"files","video","chunks","NaN"])).status).toBe(400); expect(mocks.chunk).not.toHaveBeenCalled();
+});
 it("oversized declared and streamed chunks are rejected before the DB chunk writer", async () => {
  expect((await mediaUploadAPI(request("PUT", "x", { "content-length": String(4 * 1024 ** 2 + 1) }), [id,"files","video","chunks","0"])).status).toBe(413);
  expect((await mediaUploadAPI(request("PUT", "x".repeat(4 * 1024 ** 2 + 1)), [id,"files","video","chunks","0"])).status).toBe(413); expect(mocks.chunk).not.toHaveBeenCalled();

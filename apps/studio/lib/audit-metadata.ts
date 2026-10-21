@@ -31,6 +31,11 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   const routeId = clean.match(/\/(?:articles|staff)\/([^/]+)/)?.[1] ?? "";
   let verb = textValue(input.action, 80) || (isRead ? "read" : method === "DELETE" ? "delete" : method === "PATCH" ? "edit" : "save");
   if (area === "auth") verb = (clean.split("/auth/")[1] ?? verb).replace("/[redacted]", "");
+  else if (method === "POST" && /^\/api\/editor\/articles\/[^/]+\/delete$/.test(clean)) verb = "delete";
+  else if (method === "POST" && /^\/api\/uploads\/[^/]+\/cancel$/.test(clean)) verb = "cancel";
+  else if (method === "POST" && /^\/api\/staff\/[^/]+\/delete$/.test(clean)) verb = "delete";
+  else if (method === "POST" && clean === "/api/profile/photo/delete") verb = "deletePhoto";
+  else if (method === "POST" && (clean === "/api/profile" || clean === "/api/editor/submissions" || /^\/api\/staff\/[^/]+$/.test(clean))) verb = "edit";
   else if (clean.endsWith("/upload")) verb = "upload";
   else if (clean.endsWith("/optimize")) verb = "optimize";
   else if (clean.endsWith("/publish")) verb = "publish";
@@ -38,7 +43,7 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   else if (clean.endsWith("/preview")) verb = "preview";
   else if (clean.endsWith("/revisions") && !isRead) verb = "revision";
   else if (clean.endsWith("/photo") && !isRead) verb = method === "DELETE" ? "deletePhoto" : "uploadPhoto";
-  else if (area === "media" && /^\/api\/editor\/media\/[^/]+$/.test(clean) && method === "PATCH") verb = "rename";
+  else if (area === "media" && /^\/api\/editor\/media\/[^/]+$/.test(clean) && ["PATCH", "POST"].includes(method)) verb = "rename";
   else if (clean === "/api/editor/articles" && !isRead) verb = "create";
   else if (clean === "/api/staff" && !isRead) verb = "create";
   const entityId = textValue(routeId || input.id || input.creationId || (input.input as AuditInput | undefined)?.id || input.jobId || input.assetId || input.themeId || input.projectId || input.pageKey || input.articleId || (isRead && ["podcasts", "submissions"].includes(area) ? input.key || input.path : ""));

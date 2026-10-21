@@ -50,7 +50,7 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
     if (!window.confirm("Да премахна ли профилната снимка?")) return;
     setPhotoPending(true);
     try {
-      const result = await callApi("DELETE", "/api/profile/photo/");
+      const result = await callApi("POST", "/api/profile/photo/delete/");
       if (!result.ok) setNotice({ tone: "error", text: result.error.message });
       else { setHasPhoto(false); setNotice({ tone: "success", text: "Снимката е премахната." }); router.refresh(); }
     } finally { setPhotoPending(false); }
@@ -88,7 +88,7 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
     event.preventDefault();
     setPending(true);
     setNotice(null);
-    const result = await callApi<AuthorProfileInput>("PATCH", "/api/profile/", profile);
+    const result = await callApi<AuthorProfileInput>("POST", "/api/profile/", profile);
     setPending(false);
     if (!result.ok) return setNotice({ tone: "error", text: result.error.message });
     setProfile(result.data);

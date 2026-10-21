@@ -183,7 +183,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
   async function changeRole(user: UserRow, role: StaffRole) {
     setBusyId(user.id);
     setNotice(null);
-    const result = await callApi("PATCH", `/api/staff/${user.id}/`, { role });
+    const result = await callApi("POST", `/api/staff/${user.id}/`, { role });
     setBusyId(null);
     if (!result.ok) return setNotice({ tone: "error", text: result.error.message });
     setNotice({ tone: "success", text: `${user.name} вече е ${ROLE_LABELS[role].toLowerCase()}.` });
@@ -194,7 +194,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
     if (!window.confirm(`Да изтрия ли профила на ${user.name} (${user.email})? Статиите му остават.`)) return;
     setBusyId(user.id);
     setNotice(null);
-    const result = await callApi("DELETE", `/api/staff/${user.id}/`);
+    const result = await callApi("POST", `/api/staff/${user.id}/delete/`);
     setBusyId(null);
     if (!result.ok) return setNotice({ tone: "error", text: result.error.message });
     setNotice({ tone: "success", text: `Профилът на ${user.name} е изтрит.` });

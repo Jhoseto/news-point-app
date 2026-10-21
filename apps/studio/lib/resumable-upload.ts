@@ -32,7 +32,7 @@ async function fileDigest(file: File, progress: UploadProgress, signal: AbortSig
 }
 export async function cancelResumableUpload(kind: "video" | "podcast", id?: string) {
  const key = storageKey(kind, id); activeUploads.get(key)?.abort(new Error("Качването е отменено.")); const session = stored(key); if (!session) return;
- await api(`${session}/`, { method: "DELETE" }); remember(key, null);
+ await api(`${session}/cancel/`, { method: "POST" }); remember(key, null);
 }
 /** No request exceeds4MiB. Reselect identical files after reload to resume verified parts. */
 export async function uploadResumable(kind: "video" | "podcast", files: Array<{ key: FileKey; file: File }>, metadata: Metadata, progress: UploadProgress = () => undefined): Promise<Record<string, any>> {
@@ -52,7 +52,7 @@ export async function uploadResumable(kind: "video" | "podcast", files: Array<{ 
  signal.throwIfAborted();
  if (!session) { session = await api("", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, files: manifest, metadata }) }); remember(key, session.id); }
  const id = session.id;
- if (signal.aborted) { await api(`${id}/`, { method: "DELETE" }).catch(() => undefined); remember(key, null); signal.throwIfAborted(); }
+ if (signal.aborted) { await api(`${id}/cancel/`, { method: "POST" }).catch(() => undefined); remember(key, null); signal.throwIfAborted(); }
  if (session.state === "uploading") {
   let sent = 0; const total = files.reduce((sum, f) => sum + f.file.size, 0);
   for (const { key: fileKey, file } of files) for (let index = 0; index < Math.ceil(file.size / CHUNK); index++) {
@@ -61,7 +61,7 @@ export async function uploadResumable(kind: "video" | "podcast", files: Array<{ 
    if (old && old.sha256 !== digest) throw new Error("Избраният файл се различава от започнатото качване.");
    if (!old) {
     let attempt = 0;
-    for (;;) { try { await api(`${id}/files/${fileKey}/chunks/${index}/`, { method: "PUT", headers: { "content-type": "application/octet-stream", "x-chunk-sha256": digest }, body: bytes }, signal); break; } catch (error) { const status = (error as { status?: number }).status; if (signal.aborted || ++attempt >= 4 || status && status < 500 && status !== 429) throw error; await new Promise(resolve => setTimeout(resolve, Math.min(10_000, status === 429 ? ((error as { retryAfter?: number }).retryAfter || 1) * 1000 : attempt * 1000))); } }
+    for (;;) { try { await api(`${id}/files/${fileKey}/chunks/${index}/`, { method: "POST", headers: { "content-type": "application/octet-stream", "x-chunk-sha256": digest }, body: bytes }, signal); break; } catch (error) { const status = (error as { status?: number }).status; if (signal.aborted || ++attempt >= 4 || status && status < 500 && status !== 429) throw error; await new Promise(resolve => setTimeout(resolve, Math.min(10_000, status === 429 ? ((error as { retryAfter?: number }).retryAfter || 1) * 1000 : attempt * 1000))); } }
    }
    sent += bytes.length; progress(`Качване: ${Math.round(sent / total * 100)}%`);
   }

@@ -51,7 +51,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
     setNotice(null);
     try {
       const response = await fetch(withBase("/api/editor/submissions/"), {
-        method: "PATCH",
+        method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: item.id, status: next }),
       });

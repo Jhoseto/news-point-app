@@ -3,10 +3,17 @@
 Дата: 21.10.2026 г. Основен план: [PLAN.md](./PLAN.md).
 Изпълнението е изрично възложено от Koce. Този файл е контролен списък към основния план.
 
+Последна проверка от Koce: входът в Studio показва материалите; обичайният мобилен браузър показва сайта нормално. След преинсталиране на Android PWA от основния домейн Koce потвърди, че и приложението работи; не е правена SW промяна. Текущите11 CSS заявки от home/offline са200/text-css; manifest/SW са налични.
+
+Следващият Studio проблем е диагностициран като Apache403/HTML за DELETE преди приложението. С изричното одобрение на Koce е пуснат ограничен POST delete action със същите origin/session/role/confirm/audit/domain проверки.53 теста/typecheck/build PASS; окончателен публичен POST invalid-id404 и unauthenticated401 PASS. Само Studio е рестартиран, без Web/worker/env/WP промени. Няма реално изтрит материал за проба. Следва owner refresh и собствено потвърждение на избраното изтриване. Подробности/доказателства в PLAN.md и tests/reports/studio-delete-20261021/.
+
+След пълния методен одит Koce изрично одобри и общия комплект: всички осем използвани блокирани функции вече имат POST път (video/podcast chunks/cancel, profile save/photo delete, staff role/delete, media rename, submissions status/link). Studio BUILD_ID zxV8JBybMEydhy4Rp6rMx/PID130983; Web/worker/env непроменени.128 локални теста,38 Linux tests,typecheck/build PASS. Финални59 публични boundary проверки и9 конкретни POST проверки минаха без5xx/shared-cache HIT; legacy verb routes остават403, но клиентите вече не ги използват. Не са правени реални content/user мутации за QA. Следва запазване на черновата/refresh/избор на същото видео от Koce за истински upload/transcode резултат. Доказателства tests/reports/studio-post-actions-20261021/.
+
 ## Правила
 
 - Основен адрес: https://newspoint.bg; Studio: https://newspoint.bg/admin.
 - Без нови архивни копия, редакционна пауза или изключване/пренастройване на WordPress синхронизацията.
+- Изключение, потвърдено изрично от Koce след активацията: разрешен е кратък рестарт на общия worker за зареждане на основния публичен адрес; WP source/интервалът и включеното публикуване се запазват.
 - Старият акаунт, WordPress файловете и базата се запазват. Без SQL миграции, Git commit/push или тестови публикации.
 - Подготвя се отделна компилация от действително инсталирания сървърен код. Работещите файлове и настройки не се заменят при подготовката.
 - Тайните остават само в частната .env.local; не се записват в отчети.
@@ -15,14 +22,14 @@
 
 | № | Статус | Отговорник | Действие и условие за преминаване |
 |---|---|---|---|
-| 1 | Частично; блокира активацията | Koce + Codex | Административен SPanel вход потвърден на server.newspoint.bg; Cloudflare account вход потвърден, но DNS и SSL/TLS разделите се сриват с Refresh the page to try again, включително след refresh. SSH np2 работи; sudo иска парола; еднократен root login със същия ключ е отказан. Нужен е работещ достъп до CF настройките и root/администратор за Apache; права не са разширявани. |
+| 1 | Проверено; предишните блокери отпаднаха | Koce + Codex | SPanel/Cloudflare достъпите работят. Поддръжката премести account mapping към np2. Използван е np2 ingress без root/sudo и без нови административни права. DNS @/www остава Proxied към същия VPS. |
 | 2 | Проверено | Codex | Прочетени реалните данни и работещите процеси; два примерни медийни файла налични; News Point connected, publishing=1, два succeeded/comment jobs. Без промени по съдържанието. |
-| 3 | Готово в отделно копие | Codex | /home/np2/domain-cutover-20261021, stage-only .env.local с WEB_URL=https://newspoint.bg, STUDIO_PUBLIC_URL=https://newspoint.bg/admin, NP_PUBLIC_INDEXING=1. Web и Studio build/typecheck успешни. Активният .env.local е SHA-256 непроменен. |
-| 4 | Частните проверки минаха; публичните предстоят | Codex | Пълен SEO одит:26 страници/0 грешки,52220 sitemap URL/пълно покритие,16 crawler/19 missing-private проверки,legacy image redirect/RSS PASS. Частни smoke портове3110/3111:медия,реален MP4 Range206,Studio login200,callback без сесия401/private no-store/noindex,SSE initial200. Без повторно Facebook свързване. |
-| 5 | Предстои | Codex; Koce при недостъпни права | Непосредствено преди превключването: изключване на общия WP HTML cache; dynamic/API/Studio извън кеш; Full (strict) само с валиден origin сертификат за apex и www. |
-| 6 | Предстои | Codex; Koce при недостъпни права | Активиране на проверените компилации и настройки; Apache основни хостове към np2; www/preview → apex със запазен път/query. Без DNS промяна при потвърдена сегашна архитектура. |
-| 7 | Предстои | Codex | Purge и публични проверки: desktop/mobile, статии/рубрики, снимки/видео/Range, Studio/401/no-store, SSE, redirects, SEO и бъдещи Facebook URL. |
-| 8 | Предстои | Codex + Koce | Запис на резултатите; първоначално наблюдение; следващ реален редакционен материал проверява Facebook без тестов пост. Автоматично наблюдение не е настроено. |
+| 3 | Активирано | Codex | Подготвените production build/env са активирани. WEB_URL=https://newspoint.bg, STUDIO_PUBLIC_URL=https://newspoint.bg/admin, NP_PUBLIC_INDEXING=1. В окончателния Web rebuild е зададен STUDIO_URL=http://127.0.0.1:3101, записан и в активния .env.local за устойчиво стартиране. Тайните и WP настройките са запазени. |
+| 4 | Подготовката мина; окончателните публични резултати са в стъпка7 | Codex | Пълен SEO одит:26 страници/0 грешки,52220 sitemap URL/пълно покритие,16 crawler/19 missing-private проверки,legacy image redirect/RSS PASS. Частни smoke портове3110/3111:медия,реален MP4 Range206,Studio login200,callback без сесия401/private no-store/noindex,SSE initial200. Без повторно Facebook свързване. |
+| 5 | Готово | Codex | Старото Cache public WordPress pages е Disabled. Активно scoped Strict TLS правило за точно newspoint.bg/www.newspoint.bg, без промяна на останалите хостове. Активен Bypass cache за двата хоста при /admin,/api,/settings,/search или cookies. Останалите ресурси остават с default/origin cache policy. |
+| 6 | Основен домейн активен; preview недостъпен | Codex | Web/Studio/ingress използват apex. HTTP и www връщат308 към https://newspoint.bg със запазени path/query. Временният site44159-izdo3c.scloudsite101.com вече няма DNS resolution от лаптопа; не може да се докаже негово пренасочване чрез np2 ingress. DNS на newspoint.bg не е променян. |
+| 7 | Публичните основни проверки минаха; мобилен и редакционен вход остават | Codex + Koce | Purge Everything изпълнен.17 TLS-validated origin checks и9 публични CF проверки PASS; браузърът от www достига новата начална, Studio login е наличен. Реални нова/архивна статия, рубрика, изображение и MP4 Range206; canonical/robots/sitemap; защитен callback401/private no-store/noindex; LivePoint SSE200/retry. Не е създаван материал/FB пост. Мобилният viewport override не се приложи (остана1280px); не се отчита като преминал мобилен тест. Нужен е нормален редакционен вход от Koce и проверка на следващ реален FB материал. |
+| 8 | Резултатите са записани; наблюдението и реалното FB публикуване предстоят | Codex + Koce | Запис на резултатите; първоначално наблюдение; следващ реален редакционен материал проверява Facebook без тестов пост. Автоматично наблюдение не е настроено. |
 
 ## Условия за спиране и обратен път
 
@@ -46,6 +53,20 @@
 Очакван прозорец: 1–2 часа след готови достъпи и компилация; читателско прекъсване от няколко минути е цел, не гаранция. Наблюдение през следващите 24–48 часа изисква последващи проверки; не е обещана непрекъсната автоматизация.
 
 ## Текущо спиране и предаване към доставчика
+
+### Актуален резултат: основният домейн е активен (21.10,19:18 EEST)
+
+По-долните блокиращи бележки са история. След изключване на старото HTML cache правило бяха активирани готовите Web/Studio компилации и main-domain ingress. Post-activation проверката откри пропуснат build-time STUDIO_URL: Web търсеше localhost:3001 и връщаше500 за /admin/login/. Направен е нов build в отделната stage директория с реалния upstream127.0.0.1:3101; подменен е само Web output и е рестартиран само провереният Web PID. Остатъчен SSE handle задържа първия Web процес след SIGTERM при затворен listener; прекратен е само този проверен Web PID. Окончателно Web BUILD_ID=ZJHjy7SOW30yEZtgRc5yV, Studio BUILD_ID=CL0GHbHAM_nLH7TpDi6Bb. PID Web116063,Studio112783.
+
+Автоматичният преглед първоначално отхвърли общото рестартиране, защото worker изпълнява и WP sync. Отхвърлената команда не е изпълнена; Web/Studio бяха отделени и активирани без worker промяна. После Koce изрично разреши краткия общ worker рестарт: проверени и спрени нормално parent64971/child65056, стартиран един нормален worker119300 с основния WEB_URL, същите WP source/120s, publishing=1 и останали настройки. Няма режим upload-only/DEV_REMOTE или спиране на функции. След старта WP sync продължава опитите и отчита308 за /wp-json на основния домейн — очаквано последствие от запазения източник; не е поправян/пренастройван. Предварително съществуващото reader-push paused предупреждение също остава извън тази промяна.
+
+CF Configuration Rule bcf6d80d2bf0414b886a6db967659eb4 е Active, SSL Strict само за apex/www. Cache Rule7ae738f475c04f528ffe232fc2da3de8 е Active/Bypass cache за гореописаните private/cookie заявки, поставено Last. Старото WP правило b19fb63082664de8bd99295b97625d65 е Disabled. Purge Everything е изпълнено след здрав Studio proxy. От лаптопа реалните публични HTTPS отговори са200/DYNAMIC (начална,Studio), callback401/DYNAMIC/private no-store; www308/DYNAMIC към apex, HTTP308 пази path/query. VPS curl още получава CF challenge, затова публичните доказателства са от лаптопа/браузъра, а origin тестовете ползват официалния CA и --resolve без TLS bypass.
+
+Окончателните17 origin и9 public проверки са успешни. Първият post-activation smoke използваше остарял примерен article slug (404) и case-sensitive HTTP Location сравнение; сверени са действителният адрес от публичната начална и регистронезависимите HTTP headers, след което smoke мина. Един browser reload временно показа PWA offline; следващото зареждане успя, публичните curl проверки200, без промяна по SW. Не се отчита пълна cross-browser/PWA проверка. Временният preview hostname е NXDOMAIN от лаптопа; main/www вече не насочват към него.
+
+Доказателства: tests/reports/cutover-20261021/{post-activation-smoke.json,public-smoke.json,livepoint-headers.txt,livepoint-initial.txt,main-domain-live.png,studio-main-domain-live.png,strict-tls-active.png,private-cache-bypass-active.png}. Скриптовете activation/fix/restart и частните сървърни activation-results/studio-upstream-results/worker-origin-restart-results описват точния bounded rollout. Без архивни копия, SQL промени, тестови публикации, Git операции, стари WP файлове/акаунт или Meta повторно свързване.
+
+Следва: Koce влиза в https://newspoint.bg/admin/ и проверява от телефон; следващият истински Facebook-selected материал служи за delivery проверка. Preview DNS/redirect остава недостъпен за този акаунт. Наблюдението24–48часа е последваща работа, не създадена автоматизация. Основният домейн и исканата поправка на www са проверени като работещи.
 
 Актуален резултат21.10,след изрично одобрение от Koce: Cloudflare Origin сертификатът е издаден и инсталиран през SPanel в np2. SANs са точно newspoint.bg/www.newspoint.bg, без wildcard; край на валидността17.10.2041 15:42UTC. Ключът е генериран/запазен в SPanel; Cloudflare получи само публичния CSR. Проверка с официалния Cloudflare Origin RSA root и curl --cacert/--resolve мина за двата хоста, без изключване на TLS валидация. SPanel вече показва CloudFlare вместо Self-signed. Сървърният отчет е в stage/origin-ssl-results.json. Активният .env остава непроменен; apex/www още пренасочват308 към стария preview canonical до активацията на готовото приложение. DNS/proxy/cache/режим Full са непроменени. Следва scoped Full(strict) за проверените два хоста, координиран кеш/production activation/purge и публичните проверки. Не се обещава автоматично подновяване на Origin CA сертификата по общия текст на SPanel.
 

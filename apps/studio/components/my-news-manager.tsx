@@ -63,7 +63,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
     setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status } : entry)));
     try {
       const response = await fetch(withBase("/api/editor/submissions/"), {
-        method: "PATCH",
+        method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: item.id, status }),
       });
@@ -90,7 +90,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
     setPending(true);
     try {
       const response = await fetch(withBase("/api/editor/submissions/"), {
-        method: "PATCH",
+        method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: item.id, status: item.status, articleId: trimmed || null }),
       });

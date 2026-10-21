@@ -20,8 +20,9 @@ export async function mediaUploadAPI(request: Request, parts: string[] = []) {
   }
   if (parts.length === 1 && request.method === "GET") return json(await mediaUploadStatus(db, staff.id, id!));
   if (parts.length === 1 && request.method === "DELETE") { auditFacts({ uploadId: id! }); return json(await cancelMediaUpload(db, staff.id, id!)); }
+  if (parts.length === 2 && action === "cancel" && request.method === "POST") { auditFacts({ uploadId: id! }); return json(await cancelMediaUpload(db, staff.id, id!)); }
   if (parts.length === 2 && action === "complete" && request.method === "POST") { auditFacts({ uploadId: id! }); return json(await completeMediaUpload(db, staff.id, id!), 202); }
-  if (parts.length === 5 && action === "files" && chunksPart === "chunks" && request.method === "PUT") {
+  if (parts.length === 5 && action === "files" && chunksPart === "chunks" && ["POST", "PUT"].includes(request.method)) {
    if (!/^\d+$/.test(index ?? "")) return json({ error: { message: "Невалидна част." } }, 400);
    const bytes = await boundedBody(request, UPLOAD_CHUNK_BYTES);
    return json(await putMediaChunk(db, staff.id, id!, fileId!, Number(index), request.headers.get("x-chunk-sha256") || "", bytes));

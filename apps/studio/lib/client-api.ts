@@ -10,7 +10,7 @@ export interface ApiError {
 export type ApiResult<T> = { ok: true; data: T } | { ok: false; status: number; error: ApiError };
 
 /** JSON call to a Studio API route; `path` is relative to the Studio base path. */
-export async function callApi<T>(method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body: unknown = {}): Promise<ApiResult<T>> {
+export async function callApi<T>(method: "GET" | "POST", path: string, body: unknown = {}): Promise<ApiResult<T>> {
   try {
     const response = await fetch(withBase(path), {
       method,

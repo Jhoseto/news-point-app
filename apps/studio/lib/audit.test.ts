@@ -87,6 +87,7 @@ describe("Exact editorial metadata", () => {
     expect(auditDescriptor("/admin/api/arrangements/", "POST", { action: "place", pageKey: "home" })).toMatchObject({ area: "arrangements", verb: "place", entityId: "home" });
     expect(auditDescriptor("/api/polls", "POST", { action: "correct", input: { id: articleId } })).toMatchObject({ action: "polls.correct", entityId: articleId });
     expect(auditDescriptor("/api/stories", "POST", { action: "replaceArticles", themeId: articleId })).toMatchObject({ action: "stories.replaceArticles" });
+    expect(auditDescriptor(`/admin/api/uploads/${articleId}/cancel/`, "POST", {})).toMatchObject({ action: "navigation.cancel", actionLabel: "Отказ на задача" });
   });
   it("retains placement queue order, deadlines, exclusions and full changed text", () => {
     const before = { slots: { lead: { items: [{ articleId, endsAt: null }] } }, excluded: [] };
