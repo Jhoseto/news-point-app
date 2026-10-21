@@ -16,7 +16,7 @@ const base = (process.env.SEO_BASE_URL ?? "http://localhost:3000").replace(/\/+$
 const origin = new URL((process.env.WEB_URL ?? "https://newspoint.bg").trim()).origin;
 const dir = resolve(root, "tests/reports/seo");
 const expectIndexable = process.argv.includes("--expect-indexable");
-const staticPaths = ["/", "/temi/", "/livepoint/podcast/", "/livepoint/weather/", "/livepoint/traffic/", "/livepoint/cameras/", "/livepoint/report/", "/livepoint/my-news/", "/team/", "/contacts/", "/advertising/"];
+const staticPaths = ["/", "/temi/", "/livepoint/podcast/", "/livepoint/weather/", "/livepoint/traffic/", "/livepoint/cameras/", "/livepoint/report/", "/livepoint/my-news/", "/team/", "/contacts/", "/advertising/", "/privacy-policy/", "/personal-data-policy/", "/cookies-policy/"];
 let auditPhase = "content read";
 
 async function request(path: string, headers: Record<string, string> = {}) {

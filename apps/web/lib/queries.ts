@@ -15,6 +15,7 @@ import { searchCursorUrl, type SearchCursor } from "./search-pagination";
 import type { SearchFilters } from "./search";
 import { asDate } from "./story-route";
 import { publicAuthorAnchor } from "./public-team";
+import { legacyPathCandidates } from "./legacy-path";
 
 export interface Media {
   url: string;
@@ -333,7 +334,8 @@ export const getCategoryByPath = cache(async (path: string): Promise<CategoryRef
   const [row] = await getDb()
     .select({ id: categories.id, slug: categories.slug, name: categories.name, path: categories.path })
     .from(categories)
-    .where(eq(categories.path, path))
+    .where(inArray(categories.path, legacyPathCandidates(path)))
+    .orderBy(desc(eq(categories.path, path)), asc(categories.path))
     .limit(1);
   return row ? { ...row, name: menuName(row.slug, row.name) } : null;
 });
@@ -360,7 +362,8 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
     .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
   const [row] = await (ready ? query.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id)) : query)
-    .where(and(eq(articles.path, path), isPublished()))
+    .where(and(inArray(articles.path, legacyPathCandidates(path)), isPublished()))
+    .orderBy(desc(eq(articles.path, path)), asc(articles.path))
     .limit(1);
   if (!row) return null;
 
