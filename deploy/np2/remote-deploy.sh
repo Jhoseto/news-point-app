@@ -48,6 +48,10 @@ read_env() {
 export STUDIO_URL="$(read_env STUDIO_URL "http://127.0.0.1:3101")"
 export WEB_URL="$(read_env WEB_URL "https://site44159-izdo3c.scloudsite101.com")"
 export STUDIO_PUBLIC_URL="$(read_env STUDIO_PUBLIC_URL "${WEB_URL%/}/admin")"
+# Next evaluates header rules during config loading, before root runtime dotenv.
+# Carry the server's explicit launch flags into the build; never default previews to index.
+export NP_PUBLIC_INDEXING="$(read_env NP_PUBLIC_INDEXING "0")"
+export NP_PUBLIC_ANALYTICS="$(read_env NP_PUBLIC_ANALYTICS "0")"
 export TTS_CACHE_DIR="$(read_env TTS_CACHE_DIR "$HOME/.cache/newspoint/tts")"
 case "$TTS_CACHE_DIR" in
   /*) ;;
@@ -71,6 +75,10 @@ fi
 echo "Building web and Studio..."
 if ! pnpm --filter @newspoint/web build || ! pnpm --filter @newspoint/studio build; then
   echo "Build failed. The live site was not replaced." >&2
+  exit 1
+fi
+if ! node "$SOURCE/deploy/np2/verify-web-indexing.mjs" "$SOURCE/.env.local" "$SOURCE/apps/web/.next/routes-manifest.json"; then
+  echo "Compiled SEO headers disagree with server configuration. The live site was not replaced." >&2
   exit 1
 fi
 

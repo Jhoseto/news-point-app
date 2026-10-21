@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceFiles = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/web/lib/indexing-policy.mjs", "deploy/np2/render-ingress.mjs",
+const sourceFiles = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfig.base.json", "apps/studio/next.config.ts", "apps/web/next.config.ts", "apps/web/lib/indexing-policy.mjs", "deploy/np2/render-ingress.mjs", "deploy/np2/verify-web-indexing.mjs",
   "apps/worker/src/facebook-post-image.ts", "apps/worker/assets/social/Manrope.ttf", "apps/worker/assets/social/OFL.txt", "apps/worker/assets/social/Montserrat.ttf", "apps/worker/assets/social/Montserrat-OFL.txt", "apps/web/public/brand/newspoint-logo-dark.webp"];
 function appEntries(directory, prefix) {
   return readdirSync(directory, { withFileTypes: true }).flatMap(entry => {

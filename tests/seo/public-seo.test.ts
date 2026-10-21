@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoveryRobots, llmsText } from "../../apps/web/lib/discovery";
-import { PUBLIC_SEO_PAGES, publicMetadata, publicPageMetadata } from "../../apps/web/lib/public-metadata";
+import { PUBLIC_SEO_PAGES, SITE_OG_IMAGE, publicMetadata, publicPageMetadata } from "../../apps/web/lib/public-metadata";
 import { absoluteMedia, shareCard, shareOrigin } from "../../apps/web/lib/share-card";
 import { parseSitemapFile, sitemapFiles, sitemapIndexXml, sitemapXml } from "../../apps/web/lib/sitemap-xml";
 import { publicAuthorAnchor } from "../../apps/web/lib/public-team";
@@ -57,7 +57,8 @@ describe("public metadata", () => {
       const page = PUBLIC_SEO_PAGES[key];
       const metadata = publicPageMetadata(key);
       expect(metadata.alternates?.canonical).toBe(`https://preview.example${page.path}`);
-      expect(metadata.openGraph).toMatchObject({ url: `https://preview.example${page.path}`, title: page.title, description: page.description, images: [{ url: `https://preview.example/share/page/${key}/`, width: 1200, height: 630 }] });
+      const imagePath = key === "home" ? SITE_OG_IMAGE : `/share/page/${key}/`;
+      expect(metadata.openGraph).toMatchObject({ url: `https://preview.example${page.path}`, title: page.title, description: page.description, images: [{ url: `https://preview.example${imagePath}`, width: 1200, height: 630 }] });
       expect(metadata.twitter).toMatchObject({ card: "summary_large_image", description: page.description });
       titles.add(page.title);
       descriptions.add(page.description);

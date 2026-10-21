@@ -42,7 +42,8 @@ const nextConfig: NextConfig = {
   // WordPress URLs end with a slash; imported paths are kept exactly (DEC-105).
   trailingSlash: true,
   async redirects() {
-    return process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [];
+    const sitemaps = ["/sitemap_index.xml", "/post-sitemap.xml", "/category-sitemap.xml"].map(source => ({ source, destination: "/sitemap.xml", permanent: true }));
+    return [...sitemaps, ...(process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [])];
   },
   // Studio (apps/studio, basePath /admin) is served through this host at /admin.
   // Pages keep the trailing slash; static files have none.
