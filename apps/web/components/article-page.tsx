@@ -16,6 +16,8 @@ import {
 import { asDate, themeChronologyNeighbours } from "@/lib/story-route";
 import { shareOrigin } from "@/lib/share-card";
 import { ArticleBody } from "./article-body";
+import { ArticleAnalytics } from "./article-analytics";
+import { publicAnalyticsEnabled, readPublicAnalyticsConfig } from "@/lib/public-analytics";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ArticleHeroZoom } from "./article-hero-zoom";
 import { ArticleRail } from "./article-rail";
@@ -79,9 +81,15 @@ export async function ArticlePage({
 
   // Lightbox gallery: hero first, then every body image in document order.
   const imageGallery = articleImageGallery(article.body, article.media, article.heroEmbedUrl ? null : article.hero);
+  const analytics = publicAnalyticsEnabled() ? readPublicAnalyticsConfig() : null;
 
   return (
     <div className="np-container np-article-page">
+      {analytics?.kind === "ga4" ? <ArticleAnalytics key={article.id} path={article.path} measurementId={analytics.measurementId}
+        meta={{ article_id: article.id, article_category: (article.category?.name ?? "Без рубрика").slice(0, 100),
+          article_author: article.authorName.slice(0, 100),
+          content_kind: article.heroEmbedUrl || article.body.some(block => block.type === "embed") ? "article_with_embed" : "article" }}
+        targets={[...neighbours, ...related, ...latest24h].map(({ path, id }) => ({ path, id }))} /> : null}
       <ReadingProgress />
       <div className="np-article-breadcrumb"><Breadcrumbs items={crumbs} /></div>
 

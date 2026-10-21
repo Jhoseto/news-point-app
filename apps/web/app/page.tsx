@@ -8,10 +8,11 @@ import { getMenuCategories } from "@/lib/queries";
 import { HomeShineRoot } from "@/components/home-shine-root";
 import { Fragment } from "react";
 import dynamic from "next/dynamic";
-import { LeadingCarousel } from "@/components/leading-carousel";
 import { carouselArticle } from "@/lib/carousel-article";
 
+const LeadingCarousel = dynamic(() => import("@/components/leading-carousel").then((module) => module.LeadingCarousel));
 const HomePoll = dynamic(() => import("@/components/home-poll").then((module) => module.HomePoll));
+import { DeferredPlacementRefresh } from "@/components/deferred-placement-refresh";
 import { LatestNews24h } from "@/components/latest-news-24h";
 import { CompactList } from "@/components/lists";
 import { PlovdivBanner } from "@/components/site-chrome";
@@ -23,7 +24,6 @@ import { loadPublicHome } from "@/lib/public-home";
 import { HOME_ANALYSES_RUBRIC_SLUG, HOME_FOCUS_RUBRIC_SLUG, HOME_VOICE_RUBRIC_SLUG } from "@newspoint/content";
 import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
-import { PlacementRefresh } from "@/components/placement-refresh";
 
 export const revalidate = 60;
 const homeMetadata = publicPageMetadata("home");
@@ -91,12 +91,12 @@ export default async function HomePage() {
   // Render exactly one shell in the RSC payload. Passing the other tree as
   // children of a client gate still serializes it into the HTML (~3 MB before).
   if (!ssrDesktop) {
-    return <><PlacementRefresh nextChangeAt={home.nextChangeAt} /><MobileCanonicalFeed model={mobile} ssrDesktop={false} /></>;
+    return <><DeferredPlacementRefresh nextChangeAt={home.nextChangeAt} /><MobileCanonicalFeed model={mobile} ssrDesktop={false} /></>;
   }
 
   return (
     <DesktopFeed ssrDesktop>
-    <PlacementRefresh nextChangeAt={home.nextChangeAt} />
+    <DeferredPlacementRefresh nextChangeAt={home.nextChangeAt} />
     <HomeShineRoot cycleSec={shineCycleSec} mobileHidden>
       <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
         <h1 className="sr-only">NewsPoint.bg – новини</h1>

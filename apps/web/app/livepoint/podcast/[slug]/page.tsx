@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { preload } from "react-dom";
 import { PodcastPageShell } from "@/components/podcast/page-shell";
+import { PodcastRoot } from "@/components/podcast/podcast-root";
 import { PodcastShow } from "@/components/podcast/show";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
 import { publicEpisode, publicEpisodes } from "@/lib/podcasts";
@@ -41,7 +42,9 @@ export default async function PodcastEpisodePage({ params }: Props) {
         podcastEpisode(origin, episode),
         breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "Podcast", path: "/livepoint/podcast/" }, { name: episode.title }]),
       ]} />
-      <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={origin} aboutInitiallyOpen={await ssrDesktopViewport()} />
+      <PodcastRoot>
+        <PodcastShow episodes={ordered} activeSlug={episode.slug} publicOrigin={origin} aboutInitiallyOpen={await ssrDesktopViewport()} />
+      </PodcastRoot>
     </PodcastPageShell>
   );
 }

@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LivePointStrip } from "@/components/livepoint/livepoint-strip";
+import { LivePointStripSlot } from "@/components/livepoint/livepoint-strip-slot";
+import type { LivePointData } from "@/components/livepoint/livepoint-provider";
 import { getMenuCategories } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { HeaderClock } from "./header-clock";
@@ -20,7 +21,7 @@ import { getDb, readPublicBreaking } from "@newspoint/db";
  * The LivePoint utility line is the second row (DEC-119).
  * Mobile vs desktop chrome is exclusive by Client Hints — do not ship both trees.
  */
-export async function SiteHeader() {
+export async function SiteHeader({ liveShell }: { liveShell: LivePointData }) {
   const [desktop, menu, breaking] = await Promise.all([ssrDesktopViewport(), getMenuCategories(), readPublicBreaking(getDb())]);
   return (
     <header data-np-header className="sticky top-0 z-40 border-b border-line bg-surface/90 pt-[env(safe-area-inset-top)] backdrop-blur-md">
@@ -57,7 +58,7 @@ export async function SiteHeader() {
           </div>
         ) : null}
       </div>
-      <LivePointStrip />
+      <LivePointStripSlot {...liveShell} />
       <BreakingBanner initial={breaking} categoryPaths={menu.map(item => item.path)} />
     </header>
   );

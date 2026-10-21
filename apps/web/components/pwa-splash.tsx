@@ -10,20 +10,15 @@ function standaloneReader(): boolean {
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-/** The supplied logo is present from the server's first frame through the reveal. */
+/** Standalone PWA only. Browser sessions skip SSR markup so Lighthouse is not charged for splash assets. */
 export function PwaSplash() {
-  const [phase, setPhase] = useState<"ready" | "play" | "leave" | "hidden">("ready");
+  const [phase, setPhase] = useState<"hidden" | "play" | "leave">("hidden");
 
   useLayoutEffect(() => {
-    if (!standaloneReader() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setPhase("hidden");
-      return;
-    }
+    if (!standaloneReader() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     setPhase("play");
     const leaveTimer = window.setTimeout(() => setPhase("leave"), DURATION_MS);
-    const hideTimer = window.setTimeout(() => {
-      setPhase("hidden");
-    }, DURATION_MS + EXIT_MS);
+    const hideTimer = window.setTimeout(() => setPhase("hidden"), DURATION_MS + EXIT_MS);
     return () => {
       window.clearTimeout(leaveTimer);
       window.clearTimeout(hideTimer);

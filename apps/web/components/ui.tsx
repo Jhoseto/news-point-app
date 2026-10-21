@@ -120,7 +120,7 @@ export function ArticleImage({
       style={{ ...(presentation.objectPosition ? { objectPosition: presentation.objectPosition } : {}), ...(objectPosition ? { objectPosition } : {}), ...(imageTransform ? { transform: `scale(${imageTransform.scale})`, transformOrigin: imageTransform.origin } : {}) }}
       loading={priority ? "eager" : "lazy"}
       fetchPriority={priority ? "high" : "low"}
-      decoding="async"
+      decoding={priority ? "sync" : "async"}
       className={`np-img ${className}`}
     />
   );

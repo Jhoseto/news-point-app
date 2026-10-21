@@ -44,8 +44,8 @@ export function preferWidthFromSizes(sizes: string | undefined, fallback: number
   if (px) return Math.min(1280, Math.max(320, Number(px[1]) * 2));
   if (/\b(22|25|33)vw\b/.test(sizes)) return 640;
   if (/\b(42|46|50)vw\b/.test(sizes)) return 960;
-  // Mobile lead is height-capped (~16rem); prefer ≤800 so 768w wins over a ~824 master.
-  if (sizes.includes("100vw")) return 800;
+  // Mobile lead is height-capped (~16rem); prefer ≤640 so 480w/640w wins over 768w masters.
+  if (sizes.includes("100vw")) return 640;
   return fallback;
 }
 
@@ -69,8 +69,8 @@ export function articleImageAttrs(
 ): ArticleImageAttrs {
   const { priority = false, sizes, lite = false } = opts;
   const presentation = imagePresentation(media);
-  // Mobile full-bleed leads stay ≤960; desktop priority band may use 1280.
-  const maxWidth = priority ? (sizes?.includes("100vw") ? 960 : 1280) : 960;
+  // Mobile full-bleed leads stay ≤640 (display is height-capped ~16rem); desktop band may use 1280.
+  const maxWidth = priority ? (sizes?.includes("100vw") ? 640 : 1280) : 960;
   const srcSet = lite ? undefined : compactSrcSet(presentation.srcSet, maxWidth);
   const prefer = preferWidthFromSizes(sizes, priority ? 960 : 640);
   const src = lite

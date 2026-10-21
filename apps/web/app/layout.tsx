@@ -8,8 +8,6 @@ import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { DeferredChrome } from "@/components/deferred-chrome";
 import { ViewportShellGate } from "@/components/viewport-shell-gate";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
-import { PodcastProvider } from "@/components/podcast/provider";
-import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { ThemeScript } from "@/components/theme-script";
 import { PwaSplash } from "@/components/pwa-splash";
 import { MANROPE_FACE_CSS } from "@/lib/manrope-face";
@@ -23,7 +21,7 @@ import { shareOrigin } from "@/lib/share-card";
 import { SITE_OG_IMAGE, SITE_OG_IMAGE_ALT } from "@/lib/public-metadata";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { PublicAnalyticsGate } from "@/components/public-analytics-gate";
-import { CookieConsent } from "@/components/cookie-consent";
+import { DeferredCookieConsent } from "@/components/deferred-cookie-consent";
 import { publicRobotsMetadata } from "@/lib/indexing-policy.mjs";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
@@ -101,8 +99,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Inline @font-face — avoids an extra render-blocking CSS request for Manrope. */}
         <style dangerouslySetInnerHTML={{ __html: MANROPE_FACE_CSS }} />
-        <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="" />
-        <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         <JsonLd data={[organization, website]} id="np-ld-org-website" />
       </head>
       <body className="min-h-[100dvh]">
@@ -115,21 +111,19 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           Към съдържанието
         </a>
-        <PodcastProvider>
-        <LivePointProvider
-          weather={weather}
-          trafficConnected={isTomTomConfigured()}
-          camerasLiveLabel={hasVerifiedLiveCamera()}
-          latest={latest}
-        >
-          <SiteHeader />
-          <SiteBody>{children}</SiteBody>
-          <MobileChromeIsland rubrics={mobileRubrics} />
-        </LivePointProvider>
-        </PodcastProvider>
+        <SiteHeader
+          liveShell={{
+            weather,
+            latest,
+            trafficConnected: isTomTomConfigured(),
+            camerasLiveLabel: hasVerifiedLiveCamera(),
+          }}
+        />
+        <SiteBody>{children}</SiteBody>
+        <MobileChromeIsland rubrics={mobileRubrics} />
         <DeferredChrome />
         <PublicAnalyticsGate />
-        <CookieConsent />
+        <DeferredCookieConsent />
       </body>
     </html>
   );

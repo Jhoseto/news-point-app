@@ -27,7 +27,10 @@ const nextConfig: NextConfig = {
   // Resumable video/podcast requests are <=4 MiB. Keep enough room for the
   // remaining 30 MiB music /25 MiB image forms, including multipart overhead.
   // This also bounds rewrite buffering below Cloudflare's smallest upload cap.
-  experimental: { proxyClientMaxBodySize: "32mb" },
+  experimental: {
+    proxyClientMaxBodySize: "32mb",
+    optimizePackageImports: ["@newspoint/content", "@newspoint/db"],
+  },
   // Preserve the pinned Next list (social previews included) and put metadata
   // in <head> for AI readers that do not execute streamed client scripts.
   // Recheck this Next internal export when upgrading the pinned version.
