@@ -241,6 +241,10 @@ describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database fl
     vi.stubEnv("META_APP_SECRET", "explicit-oauth-fixture"); vi.stubEnv("META_LOGIN_CONFIG_ID", "");
     const started = await startFacebookConnection(admin); const url = new URL(started.url);
     expect(url.origin).toBe("https://www.facebook.com");
+    expect(url.searchParams.get("response_type")).toBe("code");
+    expect(url.searchParams.has("config_id")).toBe(false);
+    expect(url.searchParams.has("override_default_response_type")).toBe(false);
+    expect(url.searchParams.get("scope")?.split(",")).toEqual(["pages_show_list", "pages_read_engagement", "pages_manage_posts", "pages_manage_engagement"]);
     expect(url.searchParams.get("redirect_uri")).toBe("https://site44159-izdo3c.scloudsite101.com/admin/api/social/callback/");
     const state = url.searchParams.get("state")!;
     const remote = vi.fn<typeof fetch>().mockImplementation(async target => {
