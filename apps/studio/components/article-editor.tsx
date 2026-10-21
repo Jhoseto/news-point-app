@@ -8,7 +8,7 @@ import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/article
 import { callApi } from "@/lib/client-api";
 import { textToBody } from "@/lib/editor/body";
 import { documentWords } from "@/lib/editor/document";
-import { observeEmbedFrame, embedFrameUrl, localVideoUrl, videoSourceUrl } from "@newspoint/content";
+import { observeEmbedFrame, embedFrameUrl, localVideoUrl, sofiaWallToUtc, utcToSofiaWall, videoSourceUrl } from "@newspoint/content";
 import { VisualArticleEditor, type VisualEditorHandle } from "./visual-article-editor";
 import { parseEmbedInput } from "@/lib/editor/embed";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
@@ -25,6 +25,7 @@ export interface EditorProps {
   socialStatus?: SocialStatus;
   homeHeroReady?: boolean;
   staff: { id: string; name: string };
+  staffProfiles: { id: string; name: string }[];
   article: {
     id: string | null;
     sourceSystem: "wordpress" | "studio";
@@ -75,12 +76,13 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
   );
 }
 
-export function ArticleEditor({ socialStatus = { ready: false, connected: false, enabled: false, job: null }, homeHeroReady = false, article, draft: initialDraft, staff, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
+export function ArticleEditor({ socialStatus = { ready: false, connected: false, enabled: false, job: null }, homeHeroReady = false, article, draft: initialDraft, staff, staffProfiles, sections, media, storyThemes = [], storyThemeId: initialStoryThemeId = null, webUrl }: EditorProps) {
   const [articleId, setArticleId] = useState(article.id);
   const idRef = useRef(article.id);
   const initial = { ...initialDraft, social: normalizeSocial(initialDraft.social, initialDraft.title), homeHeroPosition: initialDraft.homeHeroPosition ?? null, listenEnabled: initialDraft.listenEnabled ?? article.listenEnabled };
   const [draft, setDraft] = useState<Draft>(initial);
   const manualAuthorName = useRef(initial.authorKind === "manual" ? initial.authorName : "");
+  const [publishAtMode, setPublishAtMode] = useState<"auto" | "custom">(initial.publishAtSofia ? "custom" : "auto");
   const [saved, setSaved] = useState<Draft>(initial);
   const [revision, setRevision] = useState(article.revision);
   const [savedAt, setSavedAt] = useState(article.revisionSavedAt);
@@ -190,13 +192,38 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
     setHeroDialog(false);
   };
 
-  const selectAuthor = (authorKind: Draft["authorKind"]) => {
+  const authorProfileOptions = useMemo(() => {
+    const byId = new Map(staffProfiles.map((profile) => [profile.id, profile.name.trim()] as const));
+    if (draft.authorKind === "staff" && draft.authorUserId && !byId.has(draft.authorUserId)) {
+      byId.set(draft.authorUserId, draft.authorName.trim() || "Неизвестен профил");
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .filter((profile) => profile.name.length > 0)
+      .sort((a, b) => a.name.localeCompare(b.name, "bg"));
+  }, [draft.authorKind, draft.authorName, draft.authorUserId, staffProfiles]);
+
+  const selectAuthorKind = (authorKind: Draft["authorKind"]) => {
     if (draft.authorKind === "manual") manualAuthorName.current = draft.authorName;
     setDraft((current) => {
-      if (authorKind === "staff") return { ...current, authorKind, authorUserId: staff.id, authorName: staff.name };
+      if (authorKind === "staff") {
+        const userId = current.authorUserId && authorProfileOptions.some((profile) => profile.id === current.authorUserId)
+          ? current.authorUserId
+          : staff.id;
+        const name = authorProfileOptions.find((profile) => profile.id === userId)?.name ?? staff.name;
+        return { ...current, authorKind, authorUserId: userId, authorName: name };
+      }
       if (authorKind === "newsroom") return { ...current, authorKind, authorUserId: null, authorName: "NewsPoint.bg" };
       return { ...current, authorKind, authorUserId: null, authorName: current.authorKind === "manual" ? current.authorName : manualAuthorName.current };
     });
+    setProblems([]);
+    if (notice?.tone === "success") setNotice(null);
+  };
+
+  const selectStaffAuthor = (authorUserId: string) => {
+    const profile = authorProfileOptions.find((item) => item.id === authorUserId);
+    if (!profile) return;
+    setDraft((current) => ({ ...current, authorKind: "staff", authorUserId: profile.id, authorName: profile.name }));
     setProblems([]);
     if (notice?.tone === "success") setNotice(null);
   };
@@ -302,7 +329,12 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
     setDraft(current => ({ ...current, homeHeroPosition: null }));
     setSaved(current => ({ ...current, homeHeroPosition: null }));
     if (draft.viewSeed != null) setSeedLocked(true);
-    setPublished((current) => ({ isPublic: true, revision: result.data.revision, path: result.data.path, at: current.at ?? new Date().toISOString() }));
+    setPublished((current) => ({
+      isPublic: true,
+      revision: result.data.revision,
+      path: result.data.path,
+      at: result.data.publishedAt ?? current.at ?? new Date().toISOString(),
+    }));
     setNotice({
       tone: "success",
       text: result.data.type === "article.published" ? "Статията е публикувана. Читателите я виждат веднага." : "Публикацията е обновена.",
@@ -673,19 +705,35 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               <legend className="px-1 text-xs font-bold text-ink">Автор и публикуване</legend>
               <div className="flex flex-wrap items-end gap-3">
                 <label htmlFor="author-kind" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
-                  Автор
-                  <select data-help="Избира кой ще е посочен като автор: вашият профил, NewsPoint.bg или друго име."
+                  Тип автор
+                  <select data-help="Редакционен профил от екипа, общ подпис NewsPoint.bg или свободно име."
                     id="author-kind"
-                    aria-label="Публичен автор"
+                    aria-label="Тип публичен автор"
                     value={draft.authorKind}
-                    onChange={(event) => selectAuthor(event.target.value as Draft["authorKind"])}
+                    onChange={(event) => selectAuthorKind(event.target.value as Draft["authorKind"])}
                     className="np-input mt-1"
                   >
-                    <option value="staff">{draft.authorKind === "staff" && draft.authorUserId !== staff.id ? `Профил: ${draft.authorName}` : `Моето име: ${staff.name}`}</option>
+                    <option value="staff">Редакционен профил</option>
                     <option value="newsroom">NewsPoint.bg</option>
                     <option value="manual">Друг автор</option>
                   </select>
                 </label>
+                {draft.authorKind === "staff" ? (
+                  <label htmlFor="author-profile" className="min-w-[12rem] flex-[2] text-[11px] font-semibold text-muted">
+                    Профил от редакцията
+                    <select data-help="Публичното име на избрания колега се показва на сайта като автор на материала."
+                      id="author-profile"
+                      aria-label="Редакционен профил"
+                      value={draft.authorUserId ?? staff.id}
+                      onChange={(event) => selectStaffAuthor(event.target.value)}
+                      className="np-input mt-1"
+                    >
+                      {authorProfileOptions.map((profile) => (
+                        <option key={profile.id} value={profile.id}>{profile.name}</option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 {draft.authorKind === "manual" ? (
                   <label htmlFor="manual-author" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
                     Име
@@ -702,23 +750,56 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                 ) : null}
               </div>
               <div className={published.at ? "opacity-60" : undefined}>
-                <p className="text-[0.6875rem] text-muted">Публикуване по час (българско време). Празни полета не пускат новината сами.</p>
-                <div className="mt-2 flex flex-wrap items-end gap-2">
-                  <label className="text-[11px] font-semibold text-muted">Дата
-                    <input data-help="Датата за първото публикуване на новината. Потвърдете насрочването с бутона за публикуване." type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
-                      const time = draft.publishAtSofia?.slice(11, 16) || "08:00";
-                      update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
-                    }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
+                <p className="text-[0.6875rem] text-muted">Публичен момент на новината (българско време). По подразбиране — часът на публикуване.</p>
+                <div className="mt-2 flex flex-wrap items-end gap-3">
+                  <label htmlFor="publish-at-mode" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
+                    Момент на публикуване
+                    <select
+                      id="publish-at-mode"
+                      data-help="Автоматично записва текущия час при публикуване. Зададената дата позволява задна дата или насочване за бъдеще (само запис, без бутона Публикувай)."
+                      disabled={Boolean(published.at)}
+                      value={publishAtMode}
+                      onChange={(event) => {
+                        const mode = event.target.value as "auto" | "custom";
+                        setPublishAtMode(mode);
+                        if (mode === "auto") update("publishAtSofia", null);
+                        else update("publishAtSofia", draft.publishAtSofia ?? utcToSofiaWall(new Date()) ?? null);
+                      }}
+                      className="np-input mt-1"
+                    >
+                      <option value="auto">Автоматично (сега)</option>
+                      <option value="custom">Зададена дата и час</option>
+                    </select>
                   </label>
-                  <label className="text-[11px] font-semibold text-muted">Час
-                    <input data-help="Часът за първото публикуване по софийско време. Използва се заедно с избраната дата." type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
-                      const date = draft.publishAtSofia?.slice(0, 10);
-                      update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
-                    }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
-                  </label>
-                  {draft.publishAtSofia && !published.isPublic ? <button type="button" className="np-btn np-btn-secondary h-8 px-2 text-xs" onClick={() => update("publishAtSofia", null)}>Изчисти</button> : null}
+                  {publishAtMode === "custom" ? (
+                    <>
+                      <label className="text-[11px] font-semibold text-muted">Дата
+                        <input data-help="Датата, която читателите ще виждат като публикуване (може да е в миналото)." type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                          const time = draft.publishAtSofia?.slice(11, 16) || utcToSofiaWall(new Date())?.slice(11, 16) || "12:00";
+                          update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
+                        }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
+                      </label>
+                      <label className="text-[11px] font-semibold text-muted">Час
+                        <input data-help="Часът на публикуване по софийско време." type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                          const date = draft.publishAtSofia?.slice(0, 10) || utcToSofiaWall(new Date())?.slice(0, 10) || "";
+                          update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
+                        }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
+                      </label>
+                    </>
+                  ) : null}
                 </div>
-                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Новината вече е публикувана. Часът важи само преди първото публикуване.</p> : null}
+                {publishAtMode === "custom" && draft.publishAtSofia && !published.at ? (
+                  <p className="mt-2 text-[0.6875rem] text-muted">
+                    {(() => {
+                      const instant = sofiaWallToUtc(draft.publishAtSofia);
+                      if (!instant) return "Невалидна дата или час.";
+                      return instant.getTime() > Date.now()
+                        ? "Бъдещ час: запишете — новината ще излезе автоматично. Бутонът „Публикувай“ работи само за минал/настоящ момент."
+                        : "Задна или текуща дата: при „Публикувай“ на сайта ще се покаже този момент.";
+                    })()}
+                  </p>
+                ) : null}
+                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Публичният момент е фиксиран след първото публикуване ({formatWhen(published.at)}).</p> : null}
               </div>
               {storyThemeId ? (
                 <p className="text-[0.6875rem] text-muted">

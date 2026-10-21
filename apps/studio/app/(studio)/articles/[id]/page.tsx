@@ -6,6 +6,7 @@ import { homeHeroReady, getEditorArticle, listRecentMedia, listSections } from "
 import { bodyImageIds } from "@/lib/editor/body";
 import { getArticleStoryThemeId, listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
+import { listStaffProfiles } from "@/lib/users";
 import { getDb } from "@newspoint/db";
 import { readSocialStatus } from "@newspoint/db/social-publishing";
 
@@ -19,11 +20,12 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
   const article = await getEditorArticle(id);
   if (!article) notFound();
   const includeMedia = [article.draft.heroMediaId, ...(article.draft.body?.flatMap(block => block.type === "image" ? [block.mediaAssetId] : []) ?? bodyImageIds(article.draft.bodyText))].filter(Boolean) as string[];
-  const [sections, media, storyThemes, storyThemeId] = await Promise.all([
+  const [sections, media, storyThemes, storyThemeId, staffProfiles] = await Promise.all([
     listSections(),
     listRecentMedia(48, includeMedia),
     listStoryThemeOptions(),
     getArticleStoryThemeId(id),
+    listStaffProfiles(),
   ]);
   const { draft, revisionSavedAt, publishedAt, ...rest } = article;
   return (
@@ -32,6 +34,7 @@ export default async function EditArticlePage({ params }: PageProps<"/articles/[
       key={id}
       homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}
+      staffProfiles={staffProfiles}
       article={{ ...rest, publishedAt: publishedAt?.toISOString() ?? null, revisionSavedAt: revisionSavedAt?.toISOString() ?? null }}
       draft={draft}
       sections={sections}

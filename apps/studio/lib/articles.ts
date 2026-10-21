@@ -49,6 +49,7 @@ import { articlePath } from "./editor/slug";
 import { libraryImageUrl } from "./media-library";
 import type { Staff } from "./session";
 import { intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
+import { resolveFirstPublishedAt, ScheduledPublishConflictError } from "./publish-at";
 
 export class EditorError extends Error {
   constructor(
@@ -274,12 +275,19 @@ interface Authorship {
   authorName: string;
 }
 
-function resolveAuthorship(staff: Staff, draft: DraftInput, preserved?: Authorship): Authorship {
+async function resolveAuthorship(db: Pick<ReturnType<typeof getDb>, "select">, draft: DraftInput): Promise<Authorship> {
   if (draft.authorKind === "newsroom") return { authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" };
   if (draft.authorKind === "manual") return { authorKind: "manual", authorUserId: null, authorName: draft.authorName.trim() };
-  if (draft.authorUserId === staff.id) return { authorKind: "staff", authorUserId: staff.id, authorName: staff.name };
-  if (preserved?.authorKind === "staff" && preserved.authorUserId === draft.authorUserId) return preserved;
-  throw new EditorError(422, "invalid_author", "Изберете валиден авторски профил.");
+  const userId = draft.authorUserId?.trim();
+  if (!userId) throw new EditorError(422, "invalid_author", "Изберете валиден авторски профил.");
+  const [profile] = await db
+    .select({ id: staffUsers.id, name: staffUsers.name })
+    .from(staffUsers)
+    .where(eq(staffUsers.id, userId))
+    .limit(1);
+  const name = profile?.name?.trim();
+  if (!profile || !name) throw new EditorError(422, "invalid_author", "Изберете валиден авторски профил.");
+  return { authorKind: "staff", authorUserId: profile.id, authorName: name };
 }
 
 function scheduleInstant(wall: string | null | undefined): Date | null {
@@ -370,8 +378,8 @@ async function refreshViewSchedule(tx: Pick<ReturnType<typeof getDb>, "select" |
 
 export async function createArticle(staff: Staff, draft: DraftInput): Promise<{ id: string; revision: number }> {
   const body = draft.body ?? textToBody(draft.bodyText ?? "");
-  const authorship = resolveAuthorship(staff, draft);
   return getDb().transaction(async (tx) => {
+    const authorship = await resolveAuthorship(tx, draft);
     const id = draft.creationId ?? crypto.randomUUID();
     const inserted = await tx.insert(articles).values({
       id,
@@ -471,7 +479,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     if (!stored.success && draft.body !== undefined) throw new EditorError(422, "body_locked", "Архивният формат се запазва без промяна. Можете да редактирате останалите полета.");
     const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
     await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
-    const authorship = resolveAuthorship(staff, draft, latest?.revision ?? article);
+    const authorship = await resolveAuthorship(tx, draft);
     const auditBefore = auditActive() ? { draft: { social: await readRevisionSocial(tx, id, current, latest?.revision.title ?? article.title), ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveHomeHero(tx, id, number, draft.homeHeroPosition);
@@ -513,6 +521,7 @@ export interface PublishOutcome {
   path: string;
   eventId: number;
   type: "article.published" | "article.updated";
+  publishedAt?: string;
   duplicate?: boolean;
   homeHeroPosition?: 1 | 2 | 3 | 4 | null;
 }
@@ -591,6 +600,15 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     const topics = [...new Set([previousSlug, category.slug].filter((slug): slug is string => !!slug))];
 
     const version = article.publishedAt ? article.version + 1 : article.version;
+    let firstPublishedAt: Date;
+    try {
+      firstPublishedAt = article.publishedAt ?? resolveFirstPublishedAt(article);
+    } catch (error) {
+      if (error instanceof ScheduledPublishConflictError) {
+        throw new EditorError(422, "scheduled_future", error.message);
+      }
+      throw error;
+    }
     const [updated] = await tx
       .update(articles)
       .set({
@@ -607,7 +625,7 @@ export async function publishRevision(staff: Staff, id: string, revision: number
         primaryCategoryId: category.id,
         isPublic: true,
         listenEnabled: versionListening ?? listenEnabled,
-        publishedAt: article.publishedAt ?? sql`now()`,
+        publishedAt: firstPublishedAt,
         version,
         publishedRevision: revision,
         scheduledPublishAt: null,
@@ -634,7 +652,17 @@ export async function publishRevision(staff: Staff, id: string, revision: number
       const placement = await publishHomeHero(tx, id, homeHeroPosition, staff.id, staff.name);
       if (auditActive()) auditEvidence({ article: publicAuditState(article), homeArrangement: placement.before }, { article: publicAuditState(updated!), homeArrangement: placement.after });
     }
-    const outcome: PublishOutcome & { listenEnabled: boolean } = { articleId: id, revision, version, path: updated!.path, eventId: event!.id, type, homeHeroPosition, listenEnabled: versionListening ?? listenEnabled };
+    const outcome: PublishOutcome & { listenEnabled: boolean } = {
+      articleId: id,
+      revision,
+      version,
+      path: updated!.path,
+      eventId: event!.id,
+      type,
+      ...(updated!.publishedAt ? { publishedAt: updated!.publishedAt.toISOString() } : {}),
+      homeHeroPosition,
+      listenEnabled: versionListening ?? listenEnabled,
+    };
     await tx.update(publishRequests).set({ outcome }).where(eq(publishRequests.idempotencyKey, idempotencyKey));
     return outcome;
   }).then(async outcome => {

@@ -3,6 +3,7 @@ import { ArticleEditor } from "@/components/article-editor";
 import { homeHeroReady, listRecentMedia, listSections } from "@/lib/articles";
 import { listStoryThemeOptions } from "@/lib/story-themes";
 import { requireStaff } from "@/lib/session";
+import { listStaffProfiles } from "@/lib/users";
 import { getDb } from "@newspoint/db";
 import { readSocialStatus } from "@newspoint/db/social-publishing";
 
@@ -11,12 +12,13 @@ export const dynamic = "force-dynamic";
 
 export default async function NewArticlePage() {
   const staff = await requireStaff();
-  const [sections, media, storyThemes] = await Promise.all([listSections(), listRecentMedia(), listStoryThemeOptions()]);
+  const [sections, media, storyThemes, staffProfiles] = await Promise.all([listSections(), listRecentMedia(), listStoryThemeOptions(), listStaffProfiles()]);
   return (
     <ArticleEditor
       socialStatus={await readSocialStatus(getDb())}
       homeHeroReady={await homeHeroReady()}
       staff={{ id: staff.id, name: staff.name }}
+      staffProfiles={staffProfiles}
       article={{
         id: null,
         sourceSystem: "studio",
