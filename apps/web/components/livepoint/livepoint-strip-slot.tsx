@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { afterCriticalPageLoad } from "@/lib/deferred-page-work";
-import { isLivePointModule } from "@/lib/livepoint/config";
+import { isLivePointModule, type LivePointModule } from "@/lib/livepoint/config";
 import type { LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import type { DataEnvelope } from "@/lib/livepoint/types";
 import { LivePointStripFallback } from "./livepoint-strip-fallback";
@@ -26,6 +26,11 @@ type Props = {
 
 export function LivePointStripSlot(props: Props) {
   const [ready, setReady] = useState(false);
+  const [initialModule, setInitialModule] = useState<LivePointModule | null>(null);
+  const activateModule = (module: LivePointModule) => {
+    setInitialModule(module);
+    setReady(true);
+  };
   useEffect(() => {
     const query = new URLSearchParams(window.location.search).get("livepoint");
     if (isLivePointModule(query)) {
@@ -55,7 +60,15 @@ export function LivePointStripSlot(props: Props) {
       cancelIdle();
     };
   }, []);
-  if (!ready) return <LivePointStripFallback weather={props.weather} latest={props.latest} />;
+  if (!ready) {
+    return (
+      <LivePointStripFallback
+        weather={props.weather}
+        latest={props.latest}
+        onModuleActivate={activateModule}
+      />
+    );
+  }
   return (
     <LivePointProvider
       weather={props.weather}

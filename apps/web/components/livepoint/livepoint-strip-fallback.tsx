@@ -1,26 +1,31 @@
+"use client";
+
 import Link from "next/link";
 import type { LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import type { DataEnvelope } from "@/lib/livepoint/types";
-import { MODULE_PATHS } from "@/lib/livepoint/config";
+import { MODULE_PATHS, type LivePointModule } from "@/lib/livepoint/config";
 import { formatTempC } from "@/lib/livepoint/weather/labels";
 import { CameraIcon, CarIcon, ChevronRightIcon, CloudSunIcon, FeatherIcon, HeadphonesIcon, MegaphoneIcon } from "../icons";
 
 type Props = {
   weather: DataEnvelope<WeatherForecast>;
   latest: LatestHeadline | null;
+  onModuleActivate?: (module: LivePointModule) => void;
 };
 
 /** Same chrome as LivePointStrip, but plain links until the interactive strip loads. */
-export function LivePointStripFallback({ weather, latest }: Props) {
+export function LivePointStripFallback({ weather, latest, onModuleActivate }: Props) {
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
-  const items = [
-    { href: MODULE_PATHS.podcast, label: "Podcast", icon: <HeadphonesIcon width={17} height={17} /> },
-    { href: MODULE_PATHS.weather, label: `Време${forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}`, icon: <CloudSunIcon width={17} height={17} /> },
-    { href: MODULE_PATHS.traffic, label: "Трафик", icon: <CarIcon width={17} height={17} /> },
-    { href: MODULE_PATHS.cameras, label: "Камери", icon: <CameraIcon width={17} height={17} /> },
-    { href: MODULE_PATHS.report, label: "Подай сигнал", icon: <MegaphoneIcon width={17} height={17} /> },
-    { href: MODULE_PATHS["my-news"], label: "Моята новина", icon: <FeatherIcon width={17} height={17} /> },
-  ] as const;
+  const items: { module: LivePointModule; label: string; icon: React.ReactNode }[] = [
+    { module: "podcast", label: "Podcast", icon: <HeadphonesIcon width={17} height={17} /> },
+    { module: "weather", label: `Време${forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}`, icon: <CloudSunIcon width={17} height={17} /> },
+    { module: "traffic", label: "Трафик", icon: <CarIcon width={17} height={17} /> },
+    { module: "cameras", label: "Камери", icon: <CameraIcon width={17} height={17} /> },
+    { module: "report", label: "Подай сигнал", icon: <MegaphoneIcon width={17} height={17} /> },
+    { module: "my-news", label: "Моята новина", icon: <FeatherIcon width={17} height={17} /> },
+  ];
+  const itemClass =
+    "np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2";
 
   return (
     <div className="np-lp-row flex items-center lg:pl-[var(--np-rail-w)]" data-np-livepoint-defer>
@@ -44,17 +49,25 @@ export function LivePointStripFallback({ weather, latest }: Props) {
           </div>
           <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
         </div>
-        {items.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            prefetch={false}
-            className="np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2"
-          >
-            <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{item.icon}</span>
-            <span className="np-lp-item-label np-lp-word">{item.label}</span>
-          </Link>
-        ))}
+        {items.map((item) =>
+          onModuleActivate ? (
+            <button
+              key={item.module}
+              type="button"
+              data-lp-module={item.module}
+              onClick={() => onModuleActivate(item.module)}
+              className={itemClass}
+            >
+              <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{item.icon}</span>
+              <span className="np-lp-item-label np-lp-word">{item.label}</span>
+            </button>
+          ) : (
+            <Link key={item.module} href={MODULE_PATHS[item.module]} prefetch={false} className={itemClass}>
+              <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{item.icon}</span>
+              <span className="np-lp-item-label np-lp-word">{item.label}</span>
+            </Link>
+          ),
+        )}
         {latest ? (
           <Link
             href={latest.path}

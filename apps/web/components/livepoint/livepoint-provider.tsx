@@ -164,6 +164,7 @@ export function LivePointProvider({
     setDirty(false);
   }, [pathname]);
 
+
   useEffect(() => {
     const onPop = () => {
       const next = queryModule();

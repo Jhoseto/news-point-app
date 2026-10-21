@@ -3,7 +3,6 @@ import { JsonLd } from "@/components/json-ld";
 import { breadcrumbList, collectionPage, podcastSeries } from "@/lib/jsonld";
 import { preload } from "react-dom";
 import { PodcastPageShell } from "@/components/podcast/page-shell";
-import { PodcastRoot } from "@/components/podcast/podcast-root";
 import { PodcastShow } from "@/components/podcast/show";
 import { shareOrigin } from "@/lib/share-card";
 import { STUDIO_PHOTO } from "@/components/podcast/studio-photo";
@@ -33,9 +32,7 @@ export default async function PodcastPage() {
         collectionPage({ origin, path: page.path, title: page.title, description: page.description, items: visibleEpisodes }),
         breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "Podcast" }]),
       ]} />
-      <PodcastRoot>
-        <PodcastShow episodes={episodes} publicOrigin={origin} aboutInitiallyOpen={desktop} />
-      </PodcastRoot>
+      <PodcastShow episodes={episodes} publicOrigin={origin} aboutInitiallyOpen={desktop} />
     </PodcastPageShell>
   );
 }

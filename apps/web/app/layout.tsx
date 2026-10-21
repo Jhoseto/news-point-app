@@ -21,7 +21,9 @@ import { shareOrigin } from "@/lib/share-card";
 import { SITE_OG_IMAGE, SITE_OG_IMAGE_ALT } from "@/lib/public-metadata";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { PublicAnalyticsGate } from "@/components/public-analytics-gate";
-import { DeferredCookieConsent } from "@/components/deferred-cookie-consent";
+import { CookieConsent } from "@/components/cookie-consent";
+import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
+import { PodcastRoot } from "@/components/podcast/podcast-root";
 import { publicRobotsMetadata } from "@/lib/indexing-policy.mjs";
 
 /** Shared with pages that export the same value. A dynamic child still renders per request. */
@@ -98,6 +100,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <head>
         <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Inline @font-face — avoids an extra render-blocking CSS request for Manrope. */}
+        <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/manrope-latin.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
         <style dangerouslySetInnerHTML={{ __html: MANROPE_FACE_CSS }} />
         <JsonLd data={[organization, website]} id="np-ld-org-website" />
       </head>
@@ -111,19 +115,21 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           Към съдържанието
         </a>
-        <SiteHeader
-          liveShell={{
-            weather,
-            latest,
-            trafficConnected: isTomTomConfigured(),
-            camerasLiveLabel: hasVerifiedLiveCamera(),
-          }}
-        />
-        <SiteBody>{children}</SiteBody>
-        <MobileChromeIsland rubrics={mobileRubrics} />
+        <PodcastRoot>
+          <LivePointProvider
+            weather={weather}
+            latest={latest}
+            trafficConnected={isTomTomConfigured()}
+            camerasLiveLabel={hasVerifiedLiveCamera()}
+          >
+            <SiteHeader />
+            <SiteBody>{children}</SiteBody>
+            <MobileChromeIsland rubrics={mobileRubrics} />
+          </LivePointProvider>
+        </PodcastRoot>
         <DeferredChrome />
         <PublicAnalyticsGate />
-        <DeferredCookieConsent />
+        <CookieConsent />
       </body>
     </html>
   );

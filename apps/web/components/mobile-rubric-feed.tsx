@@ -19,7 +19,7 @@ import { LATEST_CAROUSEL_SPEED } from "@/lib/carousel-autoplay";
 import { carouselArticle } from "@/lib/carousel-article";
 
 const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
-const HomePoll = dynamic(() => import("./deferred-home-poll").then((m) => m.DeferredHomePoll));
+const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
 
 /** Start the mobile LCP image fetch in parallel with HTML/CSS (same attrs as ArticleImage). */
 function preloadLeadHero(hero: ReturnType<typeof reviveFeedArticle>["hero"], enabled: boolean) {
