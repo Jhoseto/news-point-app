@@ -225,7 +225,7 @@ const readLatest24Hours = unstable_cache(async (minute: number): Promise<Article
     .where(and(isPublished(), gt(articles.publishedAt, new Date(asOfMs - LATEST_WINDOW_MS))))
     .orderBy(desc(articles.publishedAt));
   return rows.map(toSummary);
-}, ["public-latest-24h"], { revalidate: 60 });
+}, ["public-latest-24h"], { revalidate: 60, tags: ["public-listings"] });
 
 /** Minute bucket so a public page can stay on the ISR path. */
 export function publicAsOfMs(now = Date.now()): number {
@@ -657,7 +657,7 @@ export const getPublishedStoryThemes = cache(({ limit = 24 }: { limit?: number }
   return unstable_cache(
     async () => getPublishedStoryThemesInternal({ limit }),
     ["public-story-themes", String(limit)],
-    { revalidate: 60, tags: ["public-story-themes"] },
+    { revalidate: 60, tags: ["public-story-themes", "public-listings"] },
   )().then((themes) => themes.map(reviveThemeSummary));
 });
 
@@ -737,7 +737,7 @@ export const getStoryThemeBySlug = cache((slug: string): Promise<StoryThemeDetai
   return unstable_cache(
     async () => getStoryThemeBySlugInternal(normalized),
     ["public-story-theme", normalized],
-    { revalidate: 60, tags: ["public-story-themes"] },
+    { revalidate: 60, tags: ["public-story-themes", "public-listings"] },
   )().then(reviveThemeDetail);
 });
 

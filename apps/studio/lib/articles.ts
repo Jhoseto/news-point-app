@@ -646,19 +646,20 @@ export async function publishRevision(staff: Staff, id: string, revision: number
 
 /** Shows or hides an already published article on the public site. Drafts stay in the editor. */
 export async function setArticleVisibility(id: string, visible: boolean, actor?: { id: string; name: string }): Promise<{ isPublic: boolean }> {
-  return getDb().transaction(async (tx) => {
+  const result = await getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
-    if (article.isPublic === visible) { auditEvidence({ isPublic: article.isPublic }, { isPublic: article.isPublic }); return { isPublic: article.isPublic }; }
+    const [category] = article.primaryCategoryId
+      ? await tx.select({ slug: categories.slug, path: categories.path }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
+      : [];
+    const paths = ["/", article.path, category?.path, "/feed/", "/sitemap.xml", "/llms.txt"].filter((path): path is string => !!path);
+    if (article.isPublic === visible) { auditEvidence({ isPublic: article.isPublic }, { isPublic: article.isPublic }); return { isPublic: article.isPublic, paths }; }
     if (visible && !article.publishedAt) {
       throw new EditorError(422, "not_published", "Статията още не е публикувана. Пуснете я от редактора.");
     }
     const version = article.version + 1;
     await tx.update(articles).set({ isPublic: visible, version, updatedAt: new Date() }).where(eq(articles.id, id));
     auditEvidence({ isPublic: article.isPublic, title: article.title }, { isPublic: visible, title: article.title });
-    const [category] = article.primaryCategoryId
-      ? await tx.select({ slug: categories.slug }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
-      : [];
     await tx.insert(outboxEvents).values({
       type: "article.updated",
       entityId: id,
@@ -674,8 +675,11 @@ export async function setArticleVisibility(id: string, visible: boolean, actor?:
       if (visible) await refreshViewSchedule(tx, id);
       else await tx.update(articleViewBoosts).set({ nextIncrementAt: null, updatedAt: new Date() }).where(eq(articleViewBoosts.articleId, id));
     }
-    return { isPublic: visible };
+    return { isPublic: visible, paths };
   });
+  // Refresh only after commit, including idempotent retries; outbox remains the durable path.
+  await triggerRevalidate([...new Set(result.paths)]);
+  return { isPublic: result.isPublic };
 }
 
 async function purgeArticlePlacements(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {

@@ -22,7 +22,9 @@ export interface RevalidateResult {
 }
 
 function readBaseUrl(): string | null {
-  const raw = process.env.WEB_URL?.trim();
+  // Same-server services can bypass public CDN/WAF ingress without weakening it.
+  // Server-only deployment configuration; never derived from request headers.
+  const raw = process.env.REVALIDATE_INTERNAL_URL?.trim() || process.env.WEB_URL?.trim();
   return raw && raw.length > 0 ? raw : null;
 }
 

@@ -43,10 +43,42 @@ beforeAll(async () => {
   await db.insert(schema.categories).values({ id: categoryId, slug: "qa-rubric", path: "/qa-rubric/", name: "QA", kind: "section" });
   await db.insert(schema.mediaAssets).values({ id: imageId, provider: "object_storage", storageKey: "news/2026/10/qa.webp", alt: "QA" });
 }, 30000);
-beforeEach(() => { vi.unstubAllEnvs(); });
-afterAll(async () => { vi.unstubAllEnvs(); await pg?.close(); });
+beforeEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterAll(async () => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); await pg?.close(); });
 
 describe("editor API permissions and validation", () => {
+  it("refreshes visibility caches after commit and on retries without inventing another event", async () => {
+    const created = await createArticle(staff, draft());
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    vi.stubEnv("REVALIDATE_SECRET", "qa-secret");vi.stubEnv("WEB_URL", "https://public.example");vi.stubEnv("REVALIDATE_INTERNAL_URL", "http://127.0.0.1:3100");
+    const request = vi.fn(async (_url: unknown, init: RequestInit) => {
+      const [row] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+      expect(row?.isPublic).toBe(false);
+      expect(JSON.parse(String(init.body)).paths).toEqual(expect.arrayContaining(["/", row!.path, "/qa-rubric/", "/feed/", "/sitemap.xml", "/llms.txt"]));
+      return new Response("{}", { status: 200 });
+    });
+    vi.stubGlobal("fetch", request);
+    await expect(setArticleVisibility(created.id, false, staff)).resolves.toEqual({ isPublic: false });
+    const [beforeRetry] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+    await setArticleVisibility(created.id, false, staff);
+    const [afterRetry] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+    expect(afterRetry!.version).toBe(beforeRetry!.version);
+    const events = await db.select().from(schema.outboxEvents).where(eq(schema.outboxEvents.entityId, created.id));
+    expect(events.filter(event => event.payload.visibilityChange?.visible === false)).toHaveLength(1);
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(String(request.mock.calls[0]![0])).toBe("http://127.0.0.1:3100/api/revalidate/");
+  });
+  it("does not refresh after a rejected visibility mutation or undo hiding when refresh fails", async () => {
+    const created = await createArticle(staff, draft());
+    vi.stubEnv("REVALIDATE_SECRET", "qa-secret");vi.stubEnv("WEB_URL", "https://public.example");
+    const request = vi.fn().mockRejectedValue(Error("QA unavailable"));vi.stubGlobal("fetch", request);
+    await expect(setArticleVisibility(created.id, true, staff)).rejects.toMatchObject({ code: "not_published" });
+    expect(request).not.toHaveBeenCalled();
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    await expect(setArticleVisibility(created.id, false, staff)).resolves.toEqual({ isPublic: false });
+    const [article] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+    expect(article!.isPublic).toBe(false);expect(request).toHaveBeenCalled();
+  });
   it("rejects foreign origins, expired sessions, unknown roles, malformed and ambiguous bodies", async () => {
     const run = vi.fn(async () => ({ saved: true }));
     const request = (origin: string, body: string) => new Request("http://localhost:3001/admin/api/editor/articles/", { method: "POST", headers: { origin, "content-type": "application/json" }, body });
