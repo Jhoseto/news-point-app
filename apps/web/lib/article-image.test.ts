@@ -25,6 +25,15 @@ describe("article-image", () => {
     expect(attrs.sizes).toBe("100vw");
   });
 
+  it("keeps the 480w rung so small cards do not jump to 768w", () => {
+    const set = compactSrcSet(
+      "/a 320w, /b 480w, /c 768w, /d 960w, /e 1440w",
+      960,
+    );
+    expect(set).toContain("480w");
+    expect(set).toContain("768w");
+  });
+
   it("picks compact mid rungs for cards", () => {
     const set = compactSrcSet(
       "/a 320w, /b 768w, /c 960w, /d 1440w, /e 2000w",

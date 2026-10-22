@@ -25,7 +25,9 @@ export function compactSrcSet(srcSet: string | undefined, maxWidth: number): str
     return entries.map((entry) => `${entry.url} ${entry.width}w`).join(", ");
   }
   const largest = entries[entries.length - 1]!.width;
-  const targets = [320, 768, largest];
+  // Keep the 480w rung when it exists. Otherwise a ~45vw phone card skips
+  // from 320w to 768w and downloads the larger file for the same on-screen size.
+  const targets = [320, 480, 768, largest];
   const picked: SrcEntry[] = [];
   for (const target of targets) {
     const best = entries.reduce((a, b) => (Math.abs(b.width - target) < Math.abs(a.width - target) ? b : a));

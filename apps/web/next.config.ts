@@ -107,8 +107,12 @@ const nextConfig: NextConfig = {
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
     const workerCache = { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] };
+    const fontCache = {
+      source: "/fonts/:file*",
+      headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+    };
     // Catch-all first; explicit PWA/wordmark paths below override Cache-Control.
-    return [viewportHints, ...indexingHeaderRules(), brandHashed, ...brandRevalidate, workerCache];
+    return [viewportHints, ...indexingHeaderRules(), brandHashed, ...brandRevalidate, fontCache, workerCache];
   },
 };
 
