@@ -21,6 +21,7 @@ import { shareOrigin } from "@/lib/share-card";
 import { SITE_OG_IMAGE, SITE_OG_IMAGE_ALT } from "@/lib/public-metadata";
 import { PUBLIC_CONTACT } from "@/lib/public-contact";
 import { PublicAnalyticsGate } from "@/components/public-analytics-gate";
+import { ClickyAnalyticsGate } from "@/components/clicky-analytics-gate";
 import { CookieConsent } from "@/components/cookie-consent";
 import { LivePointProvider } from "@/components/livepoint/livepoint-provider";
 import { PodcastRoot } from "@/components/podcast/podcast-root";
@@ -129,6 +130,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         </PodcastRoot>
         <DeferredChrome />
         <PublicAnalyticsGate />
+        <ClickyAnalyticsGate />
         <CookieConsent />
       </body>
     </html>

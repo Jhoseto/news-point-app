@@ -2,6 +2,7 @@
 
 import { embedFrameUrl, embedAspectRatio, videoSourceUrl, observeEmbedFrame } from "@newspoint/content";
 import { useCookieConsent } from "./cookie-consent-store";
+import { youtubeTrackingSrc } from "@/lib/clicky-track";
 import { ExternalContentConsent } from "./external-content-consent";
 
 export function ArticleEmbedFrame({
@@ -27,7 +28,7 @@ export function ArticleEmbedFrame({
     <div id={id} className={`${className} np-embed-canvas`} style={{ aspectRatio: embedAspectRatio(src) }}>
       <iframe
         ref={observeEmbedFrame}
-        src={playSrc}
+        src={youtubeTrackingSrc(playSrc)}
         title={title}
         loading={provider === "facebook" ? "eager" : "lazy"}
         allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"

@@ -3,13 +3,10 @@
 import { useEffect } from "react";
 import type { PublicAnalyticsConfig } from "@/lib/public-analytics";
 import type { AnalyticsWindow } from "@/lib/cookie-consent-effects";
-import { currentCookieConsent, useCookieConsent } from "./cookie-consent-store";
 
-/** Basic consent mode: no Google script, iframe or cookieless ping before an affirmative choice. */
+/** Page measurement. Clicky and Google Analytics stay on for „Само необходимите“. Ads stay off. */
 export function PublicAnalytics({ config }: { config: PublicAnalyticsConfig }) {
-  const allowed = useCookieConsent().record?.statistics === true;
   useEffect(() => {
-    if (!allowed || !currentCookieConsent()?.statistics) return;
     const tracking = window as AnalyticsWindow;
     if (tracking.__npAnalyticsLoaded) return;
     tracking.__npAnalyticsLoaded = config;
@@ -28,7 +25,7 @@ export function PublicAnalytics({ config }: { config: PublicAnalyticsConfig }) {
       script.src = `https://www.googletagmanager.com/gtag/js?id=${config.measurementId}`;
     }
     document.head.appendChild(script);
-    // StrictMode must not reinitialize the runtime. The root controller handles revocation.
-  }, [allowed, config]);
+    // StrictMode must not reinitialize the runtime.
+  }, [config]);
   return null;
 }

@@ -8,7 +8,7 @@ import "./cookie-consent.css";
 
 const categories = [
   { key: "preferences", title: "Удобства", text: "Запомня последните ви търсения само в този браузър. Търсенето работи и без тази история." },
-  { key: "statistics", title: "Статистика", text: "Разрешава Google Analytics и собствения брояч на прочитанията, за да разбираме кои материали се четат." },
+  { key: "statistics", title: "Статистика", text: "Включва собствения брояч на прочитанията. Clicky и Google Analytics работят и без тази категория." },
   { key: "external", title: "Външно съдържание", text: "Зарежда вградените видеа и камери. Доставчиците им получават технически данни и може да използват свои бисквитки. При изключване остава връзка към източника." },
 ] as const;
 
@@ -62,7 +62,7 @@ export function CookieConsent() {
     {consent.ready && !consent.record ? <section hidden={open} className="np-cookie-banner np-cookie-surface" aria-labelledby={`${id}-banner-title`}>
       <div className="np-cookie-copy"><span className="np-cookie-kicker">NEWSPOINT · ВАШИЯТ ИЗБОР</span>
         <h2 id={`${id}-banner-title`}>Малко настройки. Ясен избор.</h2>
-        <p>Използваме необходими записи за работата на сайта. С ваше съгласие добавяме история на търсенията, Google Analytics и брояч на прочитанията, както и външни видеа и камери. Можете да четете и само с необходимите.</p>
+        <p>Необходимите записи включват работата на сайта и измерването на посещенията с Clicky и Google Analytics. С ваше съгласие добавяме история на търсенията, брояч на прочитанията и външни видеа и камери.</p>
         <a href="/cookies-policy/">Политика за бисквитките</a><span aria-hidden="true"> · </span><a href="/personal-data-policy/">Лични данни</a>
       </div>
       <div className="np-cookie-actions">
@@ -77,9 +77,9 @@ export function CookieConsent() {
       <div className="np-cookie-dialog-head"><div><span className="np-cookie-kicker">ПОВЕРИТЕЛНОСТ · NEWSPOINT</span><h2 ref={heading} tabIndex={-1} id={`${id}-title`}>Настройки за бисквитки</h2></div><button type="button" className="np-cookie-close" aria-label="Затвори без запазване" onClick={() => setOpen(false)}>×</button></div>
       <div className="np-cookie-dialog-body">
         <p id={`${id}-intro`}>Изберете какво разрешавате. Допълнителните категории са изключени, докато не ги приемете. Промяна се прилага с „Запази избора“.</p>
-        <div className="np-cookie-category"><div><h3>Необходими</h3><p>Работа и защита на сайта, запомняне на този избор и изрично поискани функции като тема, гласуване и известия. Не включва статистика.</p></div><span className="np-cookie-always">Винаги активни</span></div>
+        <div className="np-cookie-category"><div><h3>Необходими</h3><p>Работа и защита на сайта, запомняне на този избор, Clicky и Google Analytics за посещенията, и изрично поискани функции като тема, гласуване и известия.</p></div><span className="np-cookie-always">Винаги активни</span></div>
         {categories.map(category => <label className="np-cookie-category" key={category.key}><span><strong>{category.title}</strong><span id={`${id}-${category.key}`} className="np-cookie-description">{category.text}</span></span><input type="checkbox" role="switch" aria-describedby={`${id}-${category.key}`} checked={choices[category.key]} onChange={event => setChoices(previous => ({ ...previous, [category.key]: event.target.checked }))} /></label>)}
-        <p>Изборът се помни до 180 дни в този браузър. Можете да го промените от „Настройки за бисквитки“ във футъра и в настройките на сайта. При спиране на вече заредена статистика страницата се презарежда, за да се прекрати работата ѝ.</p>
+        <p>Изборът се помни до 180 дни в този браузър. Можете да го промените от „Настройки за бисквитки“ във футъра и в настройките на сайта. Спирането на брояча на прочитанията не спира Clicky и Google Analytics.</p>
         <a href="/cookies-policy/">Вижте имената, сроковете и доставчиците</a>
       </div>
       <div className="np-cookie-dialog-foot np-cookie-actions">

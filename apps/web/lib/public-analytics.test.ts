@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { publicAnalyticsEnabled, readPublicAnalyticsConfig } from "./public-analytics";
+import { clickyEnabled, publicAnalyticsEnabled, readClickySiteId, readPublicAnalyticsConfig } from "./public-analytics";
 
 const prodEnv = {
   NODE_ENV: "production",
@@ -35,5 +35,13 @@ describe("publicAnalytics", () => {
     expect(publicAnalyticsEnabled({ ...prodEnv, NP_PUBLIC_INDEXING: "0" })).toBe(false);
     expect(publicAnalyticsEnabled({ ...prodEnv, NP_PUBLIC_INDEXING: "0", NP_PUBLIC_ANALYTICS: "1" })).toBe(true);
     expect(publicAnalyticsEnabled({ ...prodEnv, NEXT_PUBLIC_GTM_ID: "" })).toBe(false);
+  });
+
+  it("accepts only a numeric Clicky site id and stays off without one", () => {
+    expect(readClickySiteId({ NEXT_PUBLIC_CLICKY_SITE_ID: "100686001" })).toBe("100686001");
+    expect(readClickySiteId({ NEXT_PUBLIC_CLICKY_SITE_ID: "site-1" })).toBeNull();
+    expect(clickyEnabled({ ...prodEnv, NEXT_PUBLIC_CLICKY_SITE_ID: "100686001" })).toBe(true);
+    expect(clickyEnabled({ ...prodEnv, NP_PUBLIC_INDEXING: "0", NEXT_PUBLIC_CLICKY_SITE_ID: "100686001" })).toBe(false);
+    expect(clickyEnabled(prodEnv)).toBe(false);
   });
 });

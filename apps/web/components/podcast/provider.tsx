@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { PublicEpisode } from "@/lib/podcast-types";
+import { logClickyMedia } from "@/lib/clicky-track";
 import { adjacentEpisode, clampPlaybackTime } from "@/lib/podcast-playback";
 
 type PlayerValue = {
@@ -92,13 +93,33 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       setBuffered(end);
     };
     const onMeta = () => setDuration(Number.isFinite(node.duration) ? node.duration : 0);
-    const onPlay = () => setPlaying(true);
+    const onPlay = () => {
+      setPlaying(true);
+      const current = episodeRef.current;
+      if (current) logClickyMedia("play", node.currentTime, current.audioUrl, current.title);
+    };
     const onPlaying = () => { setPlaying(true); setWaiting(false); };
     const onWaiting = () => setWaiting(true);
-    const onSeeked = () => { onTime(); setWaiting(!node.paused && node.readyState < 3); };
-    const onPause = () => { setPlaying(false); setWaiting(false); };
+    const onSeeked = () => {
+      onTime();
+      setWaiting(!node.paused && node.readyState < 3);
+      const current = episodeRef.current;
+      if (current) logClickyMedia("seek", node.currentTime, current.audioUrl, current.title);
+    };
+    const onPause = () => {
+      setPlaying(false);
+      setWaiting(false);
+      const current = episodeRef.current;
+      if (current && node.currentTime > 0 && !node.ended) logClickyMedia("pause", node.currentTime, current.audioUrl, current.title);
+    };
     const onError = () => { setWaiting(false); setPlaying(false); if (node.getAttribute("src")) setError("Звукът не може да се пусне."); };
-    const onEnded = () => { setPlaying(false); setWaiting(false); step(1); };
+    const onEnded = () => {
+      const current = episodeRef.current;
+      if (current) logClickyMedia("end", node.duration || node.currentTime, current.audioUrl, current.title);
+      setPlaying(false);
+      setWaiting(false);
+      step(1);
+    };
     node.addEventListener("playing", onPlaying);
     node.addEventListener("waiting", onWaiting);
     node.addEventListener("seeking", onWaiting);
