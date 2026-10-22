@@ -534,6 +534,109 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
             </div>
           ) : null}
 
+          <div className="studio-publish studio-meta np-card overflow-hidden">
+            <fieldset className="studio-meta-fields" disabled={readOnly}>
+              <label htmlFor="author-kind" className="studio-meta-field">
+                <span>Автор</span>
+                <select data-help="Редакционен профил от екипа, общ подпис NewsPoint.bg или свободно име."
+                  id="author-kind"
+                  aria-label="Тип публичен автор"
+                  value={draft.authorKind}
+                  onChange={(event) => selectAuthorKind(event.target.value as Draft["authorKind"])}
+                  className="np-input min-w-0 flex-1"
+                >
+                  <option value="staff">Редакционен профил</option>
+                  <option value="newsroom">NewsPoint.bg</option>
+                  <option value="manual">Друг автор</option>
+                </select>
+              </label>
+              {draft.authorKind === "staff" ? (
+                <label htmlFor="author-profile" className="studio-meta-field">
+                  <span>Профил</span>
+                  <select data-help="Публичното име на избрания колега се показва на сайта като автор на материала."
+                    id="author-profile"
+                    aria-label="Редакционен профил"
+                    value={draft.authorUserId ?? staff.id}
+                    onChange={(event) => selectStaffAuthor(event.target.value)}
+                    className="np-input min-w-0 flex-1"
+                  >
+                    {authorProfileOptions.map((profile) => (
+                      <option key={profile.id} value={profile.id}>{profile.name}</option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {draft.authorKind === "manual" ? (
+                <label htmlFor="manual-author" className="studio-meta-field">
+                  <span>Име</span>
+                  <input data-help="Публичното име на автора, което читателите ще виждат."
+                    id="manual-author"
+                    value={draft.authorName}
+                    maxLength={AUTHOR_NAME_MAX}
+                    onChange={(event) => update("authorName", event.target.value)}
+                    placeholder="Име и фамилия"
+                    className="np-input min-w-0 flex-1"
+                    autoComplete="off"
+                  />
+                </label>
+              ) : null}
+              <label htmlFor="publish-at-mode" className="studio-meta-field">
+                <span>Момент</span>
+                <select
+                  id="publish-at-mode"
+                  data-help="За нова новина автоматично записва текущия час при публикуване. За вече публикувана новина зададената дата сменя часа на сайта при запис."
+                  value={publishAtMode}
+                  onChange={(event) => {
+                    const mode = event.target.value as "auto" | "custom";
+                    setPublishAtMode(mode);
+                    if (mode === "auto") update("publishAtSofia", published.at ? utcToSofiaWall(new Date(published.at)) : null);
+                    else update("publishAtSofia", draft.publishAtSofia ?? (published.at ? utcToSofiaWall(new Date(published.at)) : utcToSofiaWall(new Date())) ?? null);
+                  }}
+                  className="np-input min-w-0 flex-1"
+                >
+                  <option value="auto">{published.at ? "Запази текущия час" : "Автоматично (сега)"}</option>
+                  <option value="custom">Зададена дата и час</option>
+                </select>
+              </label>
+              {publishAtMode === "custom" ? (
+                <>
+                  <label className="studio-meta-field">
+                    <span>Дата</span>
+                    <input data-help="Датата, която читателите виждат като публикуване. За вече публикувана новина се сменя със запис." type="date" value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                      const time = draft.publishAtSofia?.slice(11, 16) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(11, 16) : null) || utcToSofiaWall(new Date())?.slice(11, 16) || "12:00";
+                      update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
+                    }} className="np-input min-w-0 flex-1" />
+                  </label>
+                  <label className="studio-meta-field">
+                    <span>Час</span>
+                    <input data-help="Часът на публикуване по софийско време. За вече публикувана новина се сменя със запис." type="time" value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                      const date = draft.publishAtSofia?.slice(0, 10) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(0, 10) : null) || utcToSofiaWall(new Date())?.slice(0, 10) || "";
+                      update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
+                    }} className="np-input min-w-0 flex-1" />
+                  </label>
+                </>
+              ) : null}
+              {publishAtMode === "custom" && draft.publishAtSofia && !published.at ? (
+                <p className="studio-meta-field-span text-[10px] leading-tight text-muted">
+                  {(() => {
+                    const instant = sofiaWallToUtc(draft.publishAtSofia);
+                    if (!instant) return "Невалидна дата или час.";
+                    return instant.getTime() > Date.now()
+                      ? "Бъдещ час: запишете — новината ще излезе автоматично."
+                      : "При „Публикувай“ на сайта ще се покаже този момент.";
+                  })()}
+                </p>
+              ) : null}
+              {published.at ? <p className="studio-meta-field-span text-[10px] leading-tight text-muted">Часът на сайта се сменя със запис ({formatWhen(published.at)}).</p> : null}
+              {storyThemeId ? (
+                <p className="studio-meta-field-span text-[10px] leading-tight text-muted">
+                  След запис новината влиза в избраната тема{published.isPublic ? "" : " и на сайта след публикуване"}.
+                </p>
+              ) : null}
+              <SocialPublishingFields value={draft.social} title={draft.title} onChange={value => update("social", value)} disabled={readOnly || busy || Boolean(conflict)} initialStatus={socialStatus} articleId={articleId} publishedRevision={published.revision} />
+            </fieldset>
+          </div>
+
           <div className="studio-meta np-card overflow-hidden">
             <div className="studio-meta-fields">
               <label htmlFor="category" className="studio-meta-field">
@@ -699,112 +802,6 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
             <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} onMediaImported={rememberMedia} />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
-            <fieldset className="np-card mt-4 space-y-3 p-3" disabled={readOnly}>
-              <legend className="px-1 text-xs font-bold text-ink">Автор и публикуване</legend>
-              <div className="flex flex-wrap items-end gap-3">
-                <label htmlFor="author-kind" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
-                  Тип автор
-                  <select data-help="Редакционен профил от екипа, общ подпис NewsPoint.bg или свободно име."
-                    id="author-kind"
-                    aria-label="Тип публичен автор"
-                    value={draft.authorKind}
-                    onChange={(event) => selectAuthorKind(event.target.value as Draft["authorKind"])}
-                    className="np-input mt-1"
-                  >
-                    <option value="staff">Редакционен профил</option>
-                    <option value="newsroom">NewsPoint.bg</option>
-                    <option value="manual">Друг автор</option>
-                  </select>
-                </label>
-                {draft.authorKind === "staff" ? (
-                  <label htmlFor="author-profile" className="min-w-[12rem] flex-[2] text-[11px] font-semibold text-muted">
-                    Профил от редакцията
-                    <select data-help="Публичното име на избрания колега се показва на сайта като автор на материала."
-                      id="author-profile"
-                      aria-label="Редакционен профил"
-                      value={draft.authorUserId ?? staff.id}
-                      onChange={(event) => selectStaffAuthor(event.target.value)}
-                      className="np-input mt-1"
-                    >
-                      {authorProfileOptions.map((profile) => (
-                        <option key={profile.id} value={profile.id}>{profile.name}</option>
-                      ))}
-                    </select>
-                  </label>
-                ) : null}
-                {draft.authorKind === "manual" ? (
-                  <label htmlFor="manual-author" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
-                    Име
-                    <input data-help="Публичното име на автора, което читателите ще виждат."
-                      id="manual-author"
-                      value={draft.authorName}
-                      maxLength={AUTHOR_NAME_MAX}
-                      onChange={(event) => update("authorName", event.target.value)}
-                      placeholder="Име и фамилия"
-                      className="np-input mt-1"
-                      autoComplete="off"
-                    />
-                  </label>
-                ) : null}
-              </div>
-              <div>
-                <p className="text-[0.6875rem] text-muted">Публичен момент на новината (българско време). По подразбиране — часът на публикуване.</p>
-                <div className="mt-2 flex flex-wrap items-end gap-3">
-                  <label htmlFor="publish-at-mode" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
-                    Момент на публикуване
-                    <select
-                      id="publish-at-mode"
-                      data-help="За нова новина автоматично записва текущия час при публикуване. За вече публикувана новина зададената дата сменя часа на сайта при запис."
-                      value={publishAtMode}
-                      onChange={(event) => {
-                        const mode = event.target.value as "auto" | "custom";
-                        setPublishAtMode(mode);
-                        if (mode === "auto") update("publishAtSofia", published.at ? utcToSofiaWall(new Date(published.at)) : null);
-                        else update("publishAtSofia", draft.publishAtSofia ?? (published.at ? utcToSofiaWall(new Date(published.at)) : utcToSofiaWall(new Date())) ?? null);
-                      }}
-                      className="np-input mt-1"
-                    >
-                      <option value="auto">{published.at ? "Запази текущия час" : "Автоматично (сега)"}</option>
-                      <option value="custom">Зададена дата и час</option>
-                    </select>
-                  </label>
-                  {publishAtMode === "custom" ? (
-                    <>
-                      <label className="text-[11px] font-semibold text-muted">Дата
-                        <input data-help="Датата, която читателите виждат като публикуване. За вече публикувана новина се сменя със запис." type="date" value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
-                          const time = draft.publishAtSofia?.slice(11, 16) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(11, 16) : null) || utcToSofiaWall(new Date())?.slice(11, 16) || "12:00";
-                          update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
-                        }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
-                      </label>
-                      <label className="text-[11px] font-semibold text-muted">Час
-                        <input data-help="Часът на публикуване по софийско време. За вече публикувана новина се сменя със запис." type="time" value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
-                          const date = draft.publishAtSofia?.slice(0, 10) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(0, 10) : null) || utcToSofiaWall(new Date())?.slice(0, 10) || "";
-                          update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
-                        }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
-                      </label>
-                    </>
-                  ) : null}
-                </div>
-                {publishAtMode === "custom" && draft.publishAtSofia && !published.at ? (
-                  <p className="mt-2 text-[0.6875rem] text-muted">
-                    {(() => {
-                      const instant = sofiaWallToUtc(draft.publishAtSofia);
-                      if (!instant) return "Невалидна дата или час.";
-                      return instant.getTime() > Date.now()
-                        ? "Бъдещ час: запишете — новината ще излезе автоматично. Бутонът „Публикувай“ работи само за минал/настоящ момент."
-                        : "Задна или текуща дата: при „Публикувай“ на сайта ще се покаже този момент.";
-                    })()}
-                  </p>
-                ) : null}
-                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Часът на сайта се сменя със запис. За вече публикувана новина може да е сега или назад ({formatWhen(published.at)}).</p> : null}
-              </div>
-              {storyThemeId ? (
-                <p className="text-[0.6875rem] text-muted">
-                  След запис новината влиза в хронологията на избраната тема{published.isPublic ? " и в публичния roadmap" : " (на сайта ще се види след публикуване)"}.
-                </p>
-              ) : null}
-            </fieldset>
-            <SocialPublishingFields value={draft.social} title={draft.title} onChange={value => update("social", value)} disabled={readOnly || busy || Boolean(conflict)} initialStatus={socialStatus} articleId={articleId} publishedRevision={published.revision} />
           </div>
         </div>
 

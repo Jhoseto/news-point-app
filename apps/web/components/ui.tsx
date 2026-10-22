@@ -29,9 +29,12 @@ export function CategoryLabel({ category }: { category: CategoryRef }) {
 }
 
 export function NewBadge({ publishedAt, compact = false }: { publishedAt: Date; compact?: boolean }) {
+  // The expiry delay is wall-clock time. Server HTML and the hydrating browser
+  // are a fraction of a second apart, so this attribute is allowed to differ.
   const remainingSeconds = Math.max(0, (publishedAt.getTime() + 60 * 60 * 1000 - Date.now()) / 1000);
   return (
     <span
+      suppressHydrationWarning
       className={`np-new-badge inline-flex items-center rounded-full border border-white/55 bg-[#0b1552]/85 font-extrabold text-white shadow-[0_3px_14px_rgb(0_0_0/0.24)] backdrop-blur-sm ${compact ? "gap-1 px-1.5 py-px text-[0.5625rem] tracking-[0.08em]" : "gap-1.5 px-2 py-0.5 text-[0.625rem] tracking-[0.1em] 2xl:px-2.5 2xl:py-1"}`}
       style={{ "--np-new-ttl": `${remainingSeconds}s` } as CSSProperties}
     >
