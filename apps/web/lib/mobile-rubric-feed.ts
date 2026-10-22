@@ -11,11 +11,12 @@ const media = z.object({ url: z.string().max(2048).refine(value => value.startsW
 const article = z.object({ id: z.string().min(1).max(80), path, title: text, excerpt: text, authorName: text,
   publishedAt: z.iso.datetime(), category: category.nullable(), hero: media.nullable() }).strict();
 const articles = z.array(article).max(50);
+const latestCarouselArticles = z.array(article).max(120);
 const section = z.object({ category, articles, layout: z.enum(["grid", "feature", "list"]), wide: z.boolean() }).strict();
 const poll = z.object({ id: z.string().max(80), question: text, description: text, startsAt: z.iso.datetime().nullable(),
   endsAt: z.iso.datetime().nullable(), open: z.boolean(), adjusted: z.boolean(), total: z.number().int().nonnegative(),
   options: z.array(z.object({ id: z.string().max(80), label: text, count: z.number().int().nonnegative(), percent: z.number().min(0).max(100) }).strict()).max(6) }).strict();
-const home = z.object({ kind: z.literal("home"), hero: article.nullable(), support: articles, latestCarousel: articles, main: z.array(section).max(24),
+const home = z.object({ kind: z.literal("home"), hero: article.nullable(), support: articles, latestCarousel: latestCarouselArticles, main: z.array(section).max(24),
   aside: z.array(section).max(24), focusCarousel: articles, topicsCarousel: articles, voiceCarousel: articles, poll: poll.nullable() }).strict();
 const pageStripItem = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("page"), page: z.number().int().min(1), href: path }).strict(),

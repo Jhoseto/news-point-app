@@ -2038,6 +2038,20 @@ html[data-reduced-motion="true"] .np-title-float-tip[data-open] {
   pointer-events: none;
 }
 
+.np-carousel-exact-time {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.22rem;
+  margin-top: 0.05rem;
+  color: var(--np-muted);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
 @media (max-width: 767px) {
   .np-latest-mobile-thumb { display: block; float: right; width: 3.25rem; height: 2.35rem; margin: 0 0 .35rem .6rem; border-radius: .45rem; object-fit: cover; }
 
@@ -2075,6 +2089,9 @@ html[data-reduced-motion="true"] .np-title-float-tip[data-open] {
   }
   .np-carousel-compact [data-carousel-card] a > div:last-child > div:last-child {
     display: none;
+  }
+  .np-carousel-compact .np-carousel-exact-time {
+    font-size: 0.625rem;
   }
   .np-carousel-compact [data-carousel-card] .text-xs {
     font-size: 0.625rem;

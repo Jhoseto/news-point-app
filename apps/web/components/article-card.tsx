@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { ArticleSummary } from "@/lib/queries";
-import { formatClock, isRecentArticle, isoDate } from "@/lib/format";
+import { formatClock, formatExactPublishTime, isRecentArticle, isoDate } from "@/lib/format";
 import { categoryAccentStyle } from "@/lib/category-accent";
 import { cardShineStyle } from "@/lib/shine-style";
 import { ArrowRightIcon } from "./icons";
 import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
+import { ClockIcon } from "./icons";
 import { ClampedTitleTip } from "./clamped-title-tip";
 
 /**
@@ -121,6 +122,7 @@ export function ArticleCard({
   shineDelaySec,
   tabbable = true,
   liteMedia = false,
+  exactTime = false,
 }: {
   article: ArticleSummary;
   showExcerpt?: boolean;
@@ -129,6 +131,8 @@ export function ArticleCard({
   tabbable?: boolean;
   /** Carousel loop clone: one URL, no srcset, to keep HTML smaller. */
   liteMedia?: boolean;
+  /** Compact clock under the title. Used by the mobile latest-news strip. */
+  exactTime?: boolean;
 }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
@@ -147,11 +151,17 @@ export function ArticleCard({
         <div className="flex flex-1 flex-col gap-2.5 p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             {article.category ? <CategoryLabel category={article.category} /> : <span />}
-            <TimeMeta date={article.publishedAt} relative className="shrink-0" />
+            {exactTime ? null : <TimeMeta date={article.publishedAt} relative className="shrink-0" />}
           </div>
           <ClampedTitleTip className="line-clamp-3 text-[1.02rem] leading-snug font-extrabold tracking-[-0.012em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </ClampedTitleTip>
+          {exactTime ? (
+            <time dateTime={isoDate(article.publishedAt)} className="np-carousel-exact-time">
+              <ClockIcon width={11} height={11} />
+              {formatExactPublishTime(article.publishedAt)}
+            </time>
+          ) : null}
           {showExcerpt && article.excerpt ? (
             <p className="line-clamp-2 text-sm leading-relaxed text-muted">{article.excerpt}</p>
           ) : null}

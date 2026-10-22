@@ -1,6 +1,6 @@
 import "server-only";
-import { HOME_CAROUSEL_COUNT } from "@newspoint/content";
 import { loadPublicHome, type PublicHome } from "./public-home";
+import { chronologicalLatest } from "./latest-window";
 import type { ArticleSummary } from "./queries";
 import type { CategoryCursor } from "./category-pagination";
 import { loadPublicCategory } from "./public-category";
@@ -21,11 +21,11 @@ function envelope(canonicalPath: string, asOfMs: number, menu: CategoryRef[], fe
   return mobileRubricFeedSchema.parse({ schemaVersion: 1, canonicalPath, menuVersion: rubricMenuVersion(rubrics),
     contentVersion: publicVersion(JSON.stringify(feed)), asOfMs, freshUntil: Math.min(asOfMs + 60_000, nextChangeAt ?? Infinity), rubrics, feed });
 }
+const LATEST_CAROUSEL_CAP = 120;
+
+/** Every story from the last 24 hours, newest on the left. */
 function latestCarouselArticles(home: PublicHome): ArticleSummary[] {
-  const skip = new Set<string>();
-  if (home.hero) skip.add(home.hero.id);
-  for (const article of home.support) skip.add(article.id);
-  return home.latest.filter((article) => !skip.has(article.id)).slice(0, HOME_CAROUSEL_COUNT);
+  return chronologicalLatest(home.latest, home.asOfMs, LATEST_CAROUSEL_CAP);
 }
 
 export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {

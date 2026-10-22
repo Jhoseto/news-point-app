@@ -66,6 +66,17 @@ export function timelineDayBreak(previous: Date | undefined, current: Date): boo
   return sofiaDayKey(previous) !== sofiaDayKey(current);
 }
 
+/** Exact Sofia clock for a latest-news card. Yesterday keeps the day, so 23:40 is not read as today. */
+export function formatExactPublishTime(date: Date, now = new Date()): string {
+  const time = timeFormat.format(date);
+  const key = sofiaDayKey(date);
+  const todayKey = sofiaDayKey(now);
+  if (key === todayKey) return time;
+  const dayDiff = Math.round((parseDayKey(todayKey).getTime() - parseDayKey(key).getTime()) / 86_400_000);
+  if (dayDiff === 1) return `вчера · ${time}`;
+  return `${numericDayFormat.format(date).replace(/\.$/, "")} · ${time}`;
+}
+
 /** "12:34" within the last 24 hours, "23.09" otherwise; fits a narrow timeline column. */
 export function formatClock(date: Date, now = new Date()): string {
   const elapsedMs = now.getTime() - date.getTime();

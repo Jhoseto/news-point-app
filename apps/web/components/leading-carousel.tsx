@@ -27,6 +27,7 @@ export function LeadingCarousel({
   previewOffset = 0,
   mobileOnly = false,
   compactCards = false,
+  exactTime = false,
   speed = CAROUSEL_SPEED,
 }: {
   articles: ArticleSummary[];
@@ -45,6 +46,8 @@ export function LeadingCarousel({
   mobileOnly?: boolean;
   /** Half-width cards for the mobile „Последни новини“ strip only. */
   compactCards?: boolean;
+  /** Exact publish clock under each card. */
+  exactTime?: boolean;
   /** CSS pixels per second, independent of card width or refresh rate. */
   speed?: number;
 }) {
@@ -121,6 +124,7 @@ export function LeadingCarousel({
           tabbable={!duplicate}
           // Carousels are below the LCP fold; skip srcset on every card (not only clones).
           liteMedia
+          exactTime={exactTime}
           {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])}
         />
       </div>

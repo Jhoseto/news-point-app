@@ -94,8 +94,6 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const allowLeave = useRef(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [published, setPublished] = useState({ isPublic: article.isPublic, revision: article.publishedRevision, path: article.path, at: article.publishedAt });
-
-  const [seedLocked, setSeedLocked] = useState(article.viewSeedLocked);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [mediaTarget, setMediaTarget] = useState<"body" | "hero">("hero");
   const [videoTarget, setVideoTarget] = useState<"body" | "hero" | null>(null);
@@ -271,7 +269,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
         }
 
         if (!sameDraft(snapshot, saved)) {
-          const result = await callApi<{ revision: number }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: payload });
+          const result = await callApi<{ revision: number; publishedAt?: string }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: payload });
           if (!result.ok) {
             if (result.status === 409 && result.error.code === "conflict") setConflict(result.error.details as Conflict);
             else {
@@ -284,6 +282,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           setSaved(snapshot);
           setRevision(result.data.revision);
           setSavedAt(new Date().toISOString());
+          if (result.data.publishedAt) setPublished((current) => ({ ...current, at: result.data.publishedAt ?? current.at }));
           if (!(await assignTheme(idRef.current))) return null;
           return result.data.revision;
         }
@@ -328,7 +327,6 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
     publishKey.current = null;
     setDraft(current => ({ ...current, homeHeroPosition: null }));
     setSaved(current => ({ ...current, homeHeroPosition: null }));
-    if (draft.viewSeed != null) setSeedLocked(true);
     setPublished((current) => ({
       isPublic: true,
       revision: result.data.revision,
@@ -607,10 +605,10 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               <div className="studio-meta-field">
                 <span>Прегледи</span>
                 <div className="studio-meta-views">
-                  <input data-help="Желан начален общ брой прегледи при публикуване. Системата допълва броя; реалните посещения се пазят отделно."
+                  <input data-help="Общият брой, който читателите виждат. След публикуване се сменя със запис. Реалните посещения остават; ако са повече от това число, на сайта се вижда реалният брой."
                     aria-label="Прегледи при публикуване"
                     inputMode="numeric"
-                    disabled={readOnly || seedLocked}
+                    disabled={readOnly}
                     value={draft.viewSeed ?? ""}
                     onChange={(event) => update("viewSeed", event.target.value === "" ? null : Math.max(0, Math.trunc(Number(event.target.value) || 0)))}
                     placeholder="старт"
@@ -749,39 +747,38 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                   </label>
                 ) : null}
               </div>
-              <div className={published.at ? "opacity-60" : undefined}>
+              <div>
                 <p className="text-[0.6875rem] text-muted">Публичен момент на новината (българско време). По подразбиране — часът на публикуване.</p>
                 <div className="mt-2 flex flex-wrap items-end gap-3">
                   <label htmlFor="publish-at-mode" className="min-w-[12rem] flex-1 text-[11px] font-semibold text-muted">
                     Момент на публикуване
                     <select
                       id="publish-at-mode"
-                      data-help="Автоматично записва текущия час при публикуване. Зададената дата позволява задна дата или насочване за бъдеще (само запис, без бутона Публикувай)."
-                      disabled={Boolean(published.at)}
+                      data-help="За нова новина автоматично записва текущия час при публикуване. За вече публикувана новина зададената дата сменя часа на сайта при запис."
                       value={publishAtMode}
                       onChange={(event) => {
                         const mode = event.target.value as "auto" | "custom";
                         setPublishAtMode(mode);
-                        if (mode === "auto") update("publishAtSofia", null);
-                        else update("publishAtSofia", draft.publishAtSofia ?? utcToSofiaWall(new Date()) ?? null);
+                        if (mode === "auto") update("publishAtSofia", published.at ? utcToSofiaWall(new Date(published.at)) : null);
+                        else update("publishAtSofia", draft.publishAtSofia ?? (published.at ? utcToSofiaWall(new Date(published.at)) : utcToSofiaWall(new Date())) ?? null);
                       }}
                       className="np-input mt-1"
                     >
-                      <option value="auto">Автоматично (сега)</option>
+                      <option value="auto">{published.at ? "Запази текущия час" : "Автоматично (сега)"}</option>
                       <option value="custom">Зададена дата и час</option>
                     </select>
                   </label>
                   {publishAtMode === "custom" ? (
                     <>
                       <label className="text-[11px] font-semibold text-muted">Дата
-                        <input data-help="Датата, която читателите ще виждат като публикуване (може да е в миналото)." type="date" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
-                          const time = draft.publishAtSofia?.slice(11, 16) || utcToSofiaWall(new Date())?.slice(11, 16) || "12:00";
+                        <input data-help="Датата, която читателите виждат като публикуване. За вече публикувана новина се сменя със запис." type="date" value={draft.publishAtSofia?.slice(0, 10) ?? ""} onChange={(event) => {
+                          const time = draft.publishAtSofia?.slice(11, 16) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(11, 16) : null) || utcToSofiaWall(new Date())?.slice(11, 16) || "12:00";
                           update("publishAtSofia", event.target.value ? `${event.target.value}T${time}` : null);
                         }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
                       </label>
                       <label className="text-[11px] font-semibold text-muted">Час
-                        <input data-help="Часът на публикуване по софийско време." type="time" disabled={Boolean(published.at)} value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
-                          const date = draft.publishAtSofia?.slice(0, 10) || utcToSofiaWall(new Date())?.slice(0, 10) || "";
+                        <input data-help="Часът на публикуване по софийско време. За вече публикувана новина се сменя със запис." type="time" value={draft.publishAtSofia?.slice(11, 16) ?? ""} onChange={(event) => {
+                          const date = draft.publishAtSofia?.slice(0, 10) || (published.at ? utcToSofiaWall(new Date(published.at))?.slice(0, 10) : null) || utcToSofiaWall(new Date())?.slice(0, 10) || "";
                           update("publishAtSofia", date && event.target.value ? `${date}T${event.target.value}` : null);
                         }} className="mt-1 block h-8 rounded-md border border-line bg-surface px-2 text-xs text-ink" />
                       </label>
@@ -799,7 +796,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                     })()}
                   </p>
                 ) : null}
-                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Публичният момент е фиксиран след първото публикуване ({formatWhen(published.at)}).</p> : null}
+                {published.at ? <p className="mt-2 text-[0.6875rem] text-muted">Часът на сайта се сменя със запис. За вече публикувана новина може да е сега или назад ({formatWhen(published.at)}).</p> : null}
               </div>
               {storyThemeId ? (
                 <p className="text-[0.6875rem] text-muted">

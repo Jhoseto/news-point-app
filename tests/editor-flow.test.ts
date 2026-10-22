@@ -5,6 +5,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { eq, sql } from "drizzle-orm";
 import * as schema from "@newspoint/db/schema";
+import { sofiaWallToUtc } from "../packages/content/src/sofia-time";
 import { listRevisionHistory, createArticle, getEditorArticle, publishRevision, saveRevision, setArticleVisibility, deleteArticle } from "../apps/studio/lib/articles";
 import { publishDueScheduled } from "../packages/db/src/scheduled-publish";
 import { editorMutation } from "../apps/studio/lib/api";
@@ -193,6 +194,25 @@ describe("article editor transactions", () => {
     await saveRevision(staff, created.id, 2, settings);await publishRevision(staff, created.id, 3, randomUUID(), true);
     const [repeated] = await db.select().from(schema.articleViewBoosts).where(eq(schema.articleViewBoosts.articleId, created.id));
     expect(repeated?.artificialCount).toBe(22);expect(repeated?.seededAt).toEqual(applied?.seededAt);
+  });
+  it("corrects the public view total and publish time after publication", async () => {
+    const input = draft({ viewSeed: 25, viewEvery: 4, viewUnit: "minutes", viewTarget: 80 });
+    const created = await createArticle(staff, input);
+    await db.insert(schema.articleReadCounts).values({ articleId: created.id, readCount: 3 });
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    expect((await getEditorArticle(created.id))?.draft.publishAtSofia).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+    await saveRevision(staff, created.id, 1, { ...input, viewSeed: 40, publishAtSofia: "2024-05-06T08:15" });
+    expect(await getEditorArticle(created.id)).toMatchObject({ viewReal: 3, viewAdded: 37, draft: { viewSeed: 40, publishAtSofia: "2024-05-06T08:15" } });
+    const [row] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+    expect(row?.publishedAt?.toISOString()).toBe(sofiaWallToUtc("2024-05-06T08:15")!.toISOString());
+    await db.update(schema.articleViewBoosts).set({ artificialCount: 50 }).where(eq(schema.articleViewBoosts.articleId, created.id));
+    expect((await getEditorArticle(created.id))?.draft.viewSeed).toBe(53);
+    await saveRevision(staff, created.id, 2, { ...input, viewSeed: 53, publishAtSofia: "2024-05-06T08:15" });
+    const [kept] = await db.select().from(schema.articleViewBoosts).where(eq(schema.articleViewBoosts.articleId, created.id));
+    expect(kept?.artificialCount).toBe(50);
+    await expect(saveRevision(staff, created.id, 3, { ...input, viewSeed: 53, publishAtSofia: "2099-01-01T12:00" })).rejects.toMatchObject({ code: "published_future" });
+    const [unchanged] = await db.select().from(schema.articles).where(eq(schema.articles.id, created.id));
+    expect(unchanged?.publishedAt?.toISOString()).toBe(row?.publishedAt?.toISOString());
   });
   it("keeps hidden public content intact until explicit republishing and emits an update", async () => {
     const input = draft(); const created = await createArticle(staff, input);

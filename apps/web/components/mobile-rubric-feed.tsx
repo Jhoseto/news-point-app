@@ -46,7 +46,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   const support = feed.support.map(reviveFeedArticle);
   const plovdivSection = feed.main.find((section) => section.category.slug === HOME_LEAD_SECTION);
   const mainAfterPlovdiv = feed.main.filter((section) => section.category.slug !== HOME_LEAD_SECTION);
-  const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean; speed?: number }, id: string) => {
+  const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean; exactTime?: boolean; speed?: number }, id: string) => {
     const position = window?.[id]?.carousel;
     const rotated = position ? [...articles.slice(position.index), ...articles.slice(0, position.index)] : articles;
     return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(article => carouselArticle(reviveFeedArticle(article)))} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
@@ -86,7 +86,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
     </div>
     <div className="np-mobile-home-pre-focus flex flex-col gap-4">
-      {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true, speed: LATEST_CAROUSEL_SPEED }, "latest") : null}
+      {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true, exactTime: true, speed: LATEST_CAROUSEL_SPEED }, "latest") : null}
       {feed.focusCarousel.length ? carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus") : null}
     </div>
     {plovdivSection ? renderMainSection(plovdivSection) : null}

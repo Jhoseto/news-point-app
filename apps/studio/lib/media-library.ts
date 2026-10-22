@@ -75,13 +75,13 @@ export async function listMediaFolder(folder: string, offset = 0, limit = 80): P
       and (mime is null or mime not like 'video/%')
       and storage_key !~ '-card\\.webp$'
       and split_part(storage_key, '/', 5) = ''
-    order by storage_key desc
+    order by created_at desc, id desc
     limit ${limit} offset ${offset}
   `);
   return { total: Number(count?.total ?? 0), items: mapLibraryRows(rows) };
 }
 
-/** Newest-first page across the whole news media archive. */
+/** Newest upload first across the whole news media archive. */
 export async function listMediaArchive(offset = 0, limit = 80): Promise<{ items: LibraryImage[]; total: number }> {
   const db = getDb();
   const [count] = await db.execute<{ total: number }>(sql`
@@ -91,7 +91,7 @@ export async function listMediaArchive(offset = 0, limit = 80): Promise<{ items:
     select id, storage_key, alt, source_url
     from media_assets
     where ${NEWS_MASTER}
-    order by storage_key desc
+    order by created_at desc, id desc
     limit ${limit} offset ${offset}
   `);
   return { total: Number(count?.total ?? 0), items: mapLibraryRows(rows) };
@@ -125,7 +125,7 @@ export async function searchMediaLibrary(
       and storage_key !~ '-card\\.webp$'
       ${scope}
       and (alt ilike ${pattern} or storage_key ilike ${pattern})
-    order by storage_key desc
+    order by created_at desc, id desc
     limit ${limit} offset ${offset}
   `);
   return { total: Number(count?.total ?? 0), items: mapLibraryRows(rows) };

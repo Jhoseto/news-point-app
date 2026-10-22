@@ -48,7 +48,7 @@ import { publishProblems } from "./editor/input";
 import { articlePath } from "./editor/slug";
 import { libraryImageUrl } from "./media-library";
 import type { Staff } from "./session";
-import { intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
+import { artificialForSeed, intervalToSeconds, splitInterval, type ViewUnit } from "./view-boost";
 import { resolveFirstPublishedAt, ScheduledPublishConflictError } from "./publish-at";
 
 export class EditorError extends Error {
@@ -255,11 +255,11 @@ export async function getEditorArticle(id: string): Promise<EditorArticle | null
     revisionSavedBy: latest?.savedBy ?? null,
     draft: {
       ...draft,
-      viewSeed: boost && boost.seedCount > 0 ? boost.seedCount : null,
+      viewSeed: boost?.seededAt ? (read?.readCount ?? 0) + (boost?.artificialCount ?? 0) : boost && boost.seedCount > 0 ? boost.seedCount : null,
       viewEvery: interval.amount,
       viewUnit: interval.unit,
       viewTarget: boost?.targetCount ?? null,
-      publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null,
+      publishAtSofia: editorPublishAt(article),
     },
     editableBody,
     canEdit: true,
@@ -297,6 +297,25 @@ function scheduleInstant(wall: string | null | undefined): Date | null {
   return instant;
 }
 
+/** Wall time shown in the editor: the public moment, or a scheduled draft moment. */
+function editorPublishAt(article: { publishedAt: Date | null; scheduledPublishAt: Date | null }): string | null {
+  if (article.publishedAt) return utcToSofiaWall(article.publishedAt);
+  if (article.scheduledPublishAt) return utcToSofiaWall(article.scheduledPublishAt);
+  return null;
+}
+
+/** A new public moment for an already published article. Null keeps the current one. */
+function editedPublishedAt(article: { publishedAt: Date | null }, wall: string | null | undefined): Date | null {
+  if (!article.publishedAt || !wall) return null;
+  const instant = scheduleInstant(wall);
+  if (!instant) return null;
+  if (utcToSofiaWall(article.publishedAt) === utcToSofiaWall(instant)) return null;
+  if (instant.getTime() > Date.now() + 2 * 60_000) {
+    throw new EditorError(422, "published_future", "Публичният момент на вече пусната новина може да е сега или в миналото.");
+  }
+  return instant;
+}
+
 function revisionValues(draft: DraftInput, body: unknown, authorship: Authorship) {
   return {
     title: draft.title,
@@ -331,31 +350,52 @@ async function viewDraft(tx: Pick<ReturnType<typeof getDb>, "select" | "execute"
   if (!await hasArticleViewBoosts(tx)) return {};
   const [boost] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
   const interval = splitInterval(boost?.intervalSeconds ?? null);
+  const [read] = boost?.seededAt
+    ? await tx.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, articleId)).limit(1)
+    : [];
+  const publicTotal = (read?.readCount ?? 0) + (boost?.artificialCount ?? 0);
   return {
-    viewSeed: boost && boost.seedCount > 0 ? boost.seedCount : null,
+    viewSeed: boost?.seededAt ? publicTotal : boost && boost.seedCount > 0 ? boost.seedCount : null,
     viewEvery: interval.amount,
     viewUnit: interval.unit,
     viewTarget: boost?.targetCount ?? null,
   };
 }
 
-async function saveViewSettings(tx: Pick<ReturnType<typeof getDb>, "insert" | "execute">, articleId: string, draft: DraftInput) {
-  if (!await hasArticleViewBoosts(tx)) return;
+async function saveViewSettings(tx: Pick<ReturnType<typeof getDb>, "insert" | "select" | "update" | "execute">, articleId: string, draft: DraftInput): Promise<{ displayedChanged: boolean }> {
+  if (!await hasArticleViewBoosts(tx)) return { displayedChanged: false };
+  const [previous] = await tx.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, articleId)).limit(1);
+  const seed = draft.viewSeed ?? 0;
   const intervalSeconds = intervalToSeconds(draft.viewEvery ?? null, draft.viewUnit ?? "minutes");
   await tx.insert(articleViewBoosts).values({
     articleId,
-    seedCount: draft.viewSeed ?? 0,
+    seedCount: seed,
     intervalSeconds,
     targetCount: draft.viewTarget ?? null,
   }).onConflictDoUpdate({
     target: articleViewBoosts.articleId,
     set: {
-      seedCount: draft.viewSeed ?? 0,
+      seedCount: seed,
       intervalSeconds,
       targetCount: draft.viewTarget ?? null,
       updatedAt: new Date(),
     },
   });
+  // Before the first publication the seed waits. After that, a different number replaces what readers see.
+  if (!previous?.seededAt) return { displayedChanged: false };
+  const [read] = await tx.select({ readCount: articleReadCounts.readCount }).from(articleReadCounts).where(eq(articleReadCounts.articleId, articleId)).limit(1);
+  const real = read?.readCount ?? 0;
+  if (seed === real + previous.artificialCount) return { displayedChanged: false };
+  const added = artificialForSeed(seed, real);
+  const displayed = (read?.readCount ?? 0) + added;
+  const target = draft.viewTarget ?? null;
+  const auto = intervalSeconds != null && target != null && displayed < target;
+  await tx.update(articleViewBoosts).set({
+    artificialCount: added,
+    nextIncrementAt: auto ? sql`now() + make_interval(secs => ${intervalSeconds})` : null,
+    updatedAt: new Date(),
+  }).where(eq(articleViewBoosts.articleId, articleId));
+  return { displayedChanged: previous.artificialCount !== added };
 }
 
 async function refreshViewSchedule(tx: Pick<ReturnType<typeof getDb>, "select" | "update" | "execute">, articleId: string) {
@@ -445,8 +485,8 @@ export interface Conflict {
 }
 
 /** Optimistic concurrency: the save applies only on top of the revision the editor loaded. */
-export async function saveRevision(staff: Staff, id: string, expectedRevision: number, draft: DraftInput): Promise<{ revision: number }> {
-  return getDb().transaction(async (tx) => {
+export async function saveRevision(staff: Staff, id: string, expectedRevision: number, draft: DraftInput): Promise<{ revision: number; publishedAt?: string }> {
+  const saved = await getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
     if (draft.homeHeroPosition != null && draft.homeHeroExpectedPublishedRevision !== undefined && draft.homeHeroExpectedPublishedRevision !== article.publishedRevision) {
@@ -469,7 +509,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
         savedAt: latest!.revision.createdAt,
         savedBy: latest!.savedBy,
         media: await listMediaByIds([...new Set([latest!.revision.heroMediaId, ...(articleBody.safeParse(latest!.revision.body).data ?? []).flatMap(block => block.type === "image" ? [block.mediaAssetId] : [])].filter((mediaId): mediaId is string => !!mediaId))], tx),
-        draft: { ...toDraft(latest!.revision).draft, social: await readRevisionSocial(tx, id, current, latest!.revision.title), homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null },
+        draft: { ...toDraft(latest!.revision).draft, social: await readRevisionSocial(tx, id, current, latest!.revision.title), homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: editorPublishAt(article) },
       };
       throw new EditorError(409, "conflict", "Някой друг е записал по-нова версия.", conflict);
     }
@@ -480,7 +520,8 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
     const body = draft.body ?? (stored.success && bodyToText(stored.data) !== null ? textToBody(draft.bodyText ?? "") : original);
     await validateMedia(tx, draft, articleBody.safeParse(body).data ?? []);
     const authorship = await resolveAuthorship(tx, draft);
-    const auditBefore = auditActive() ? { draft: { social: await readRevisionSocial(tx, id, current, latest?.revision.title ?? article.title), ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.scheduledPublishAt ? utcToSofiaWall(article.scheduledPublishAt) : null }, revision: current } : null;
+    const auditBefore = auditActive() ? { draft: { social: await readRevisionSocial(tx, id, current, latest?.revision.title ?? article.title), ...toDraft(latest?.revision ?? article).draft, homeHeroPosition: current > (article.publishedRevision ?? 0) ? await revisionHomeHero(tx, id, current) : null, listenEnabled: (await revisionListen(tx, id, current)) ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: editorPublishAt(article) }, revision: current } : null;
+    const nextPublishedAt = editedPublishedAt(article, draft.publishAtSofia);
     await tx.insert(articleRevisions).values({ articleId: id, number, createdBy: staff.id, ...revisionValues(draft, body, authorship) });
     await saveHomeHero(tx, id, number, draft.homeHeroPosition);
     await saveListening(tx, id, number, draft.listenEnabled, article.listenEnabled);
@@ -490,7 +531,7 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
       .update(articles)
       .set(
         article.publishedAt
-          ? { scheduledPublishAt: null, updatedAt: new Date() }
+          ? { scheduledPublishAt: null, ...(nextPublishedAt ? { publishedAt: nextPublishedAt } : {}), updatedAt: new Date() }
           : {
               title: draft.title,
               excerpt: draft.excerpt,
@@ -504,14 +545,21 @@ export async function saveRevision(staff: Staff, id: string, expectedRevision: n
             },
       )
       .where(eq(articles.id, id));
-    await saveViewSettings(tx, id, draft);
+    const views = await saveViewSettings(tx, id, draft);
     if (article.isPublic) await refreshViewSchedule(tx, id);
-    if (auditBefore) auditEvidence(auditBefore, { draft: { social: await readRevisionSocial(tx, id, number, draft.title), ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, homeHeroPosition: draft.homeHeroPosition ?? null, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? null : draft.publishAtSofia ?? null }, revision: number });
-    return { revision: number };
-  }).then(async (saved) => {
-    await publishDueScheduled(getDb(), id);
-    return saved;
+    const refresh = Boolean(article.isPublic && (nextPublishedAt || views.displayedChanged));
+    const [category] = refresh && article.primaryCategoryId
+      ? await tx.select({ path: categories.path }).from(categories).where(eq(categories.id, article.primaryCategoryId)).limit(1)
+      : [];
+    const refreshPaths = refresh
+      ? ["/", article.path, category?.path, "/feed/", "/sitemap.xml", "/llms.txt"].filter((path): path is string => !!path)
+      : [];
+    if (auditBefore) auditEvidence(auditBefore, { draft: { social: await readRevisionSocial(tx, id, number, draft.title), ...toDraft({ ...revisionValues(draft, body, authorship), heroEmbedUrl: draft.heroEmbedUrl ?? null }).draft, homeHeroPosition: draft.homeHeroPosition ?? null, listenEnabled: draft.listenEnabled ?? article.listenEnabled, ...(await viewDraft(tx, id)), publishAtSofia: article.publishedAt ? utcToSofiaWall(nextPublishedAt ?? article.publishedAt) : draft.publishAtSofia ?? null }, revision: number });
+    return { revision: number, publishedAt: nextPublishedAt?.toISOString(), refreshPaths };
   });
+  if (saved.refreshPaths.length) await triggerRevalidate([...new Set(saved.refreshPaths)]);
+  await publishDueScheduled(getDb(), id);
+  return saved.publishedAt ? { revision: saved.revision, publishedAt: saved.publishedAt } : { revision: saved.revision };
 }
 
 export interface PublishOutcome {

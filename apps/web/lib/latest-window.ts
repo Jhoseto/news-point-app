@@ -1,5 +1,16 @@
 export const LATEST_WINDOW_MS = 24 * 60 * 60 * 1000;
 
+/** Last 24 hours, newest on the left. Later copies of the same story are dropped. */
+export function chronologicalLatest<T extends { id: string; publishedAt: Date }>(articles: T[], nowMs: number, cap = Number.POSITIVE_INFINITY): T[] {
+  const seen = new Set<string>();
+  const ordered = inLatestWindow(articles, nowMs).filter((article) => {
+    if (seen.has(article.id)) return false;
+    seen.add(article.id);
+    return true;
+  }).sort((left, right) => right.publishedAt.getTime() - left.publishedAt.getTime() || left.id.localeCompare(right.id));
+  return ordered.length > cap ? ordered.slice(0, cap) : ordered;
+}
+
 export function inLatestWindow<T extends { publishedAt: Date }>(articles: T[], nowMs: number): T[] {
   const cutoff = nowMs - LATEST_WINDOW_MS;
   return articles.filter((article) => {

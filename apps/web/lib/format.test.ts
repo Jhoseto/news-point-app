@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCardTime,
   formatClock,
+  formatExactPublishTime,
   formatShort,
   formatTimelineDayHeading,
   isRecentArticle,
@@ -24,6 +25,16 @@ describe("formatShort", () => {
 
   it("shows day and month for earlier days", () => {
     expect(formatShort(new Date("2026-09-23T19:45:00Z"), now)).toBe("23 септември");
+  });
+});
+
+describe("formatExactPublishTime", () => {
+  it("shows only the Sofia clock for a story published today", () => {
+    expect(formatExactPublishTime(new Date("2026-09-24T04:40:00Z"), now)).toBe("07:40");
+  });
+
+  it("keeps yesterday beside the clock inside the 24-hour window", () => {
+    expect(formatExactPublishTime(new Date("2026-09-23T19:45:00Z"), now)).toBe("вчера · 22:45");
   });
 });
 
