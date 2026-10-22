@@ -208,7 +208,7 @@ export function CompactCard({ article, shineDelaySec }: { article: ArticleSummar
   const shine = cardShineStyle(shineDelaySec);
   return (
     <article className="group">
-      <Link href={article.path} prefetch={false} className="np-news-card relative flex items-start gap-3 rounded-xl p-1.5 -m-1.5 transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-surface-2">
+      <Link href={article.path} prefetch={false} className="np-news-card relative flex items-start gap-3 rounded-xl transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-surface-2">
         <div className={`${shine.className} shrink-0 rounded-lg`} style={shine.style}>
           <ArticleImage media={article.hero} sizes="112px" className="aspect-[4/3] w-24 rounded-lg sm:w-28" />
         </div>
