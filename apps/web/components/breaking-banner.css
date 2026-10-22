@@ -5,13 +5,15 @@
 .np-breaking-heading { display: flex; flex: none; align-self: flex-start; align-items: flex-start; border-radius: 6px 3px 3px 0; background: linear-gradient(170deg, rgb(255 255 255 / .24), transparent 46%), linear-gradient(110deg, #cb3046, #a51630 62%, #7c132d); box-shadow: inset 0 1px 0 rgb(255 255 255 / .42), inset 0 -1px 0 rgb(59 4 20 / .3), inset -1px 0 0 rgb(255 255 255 / .16); color: #fff; }
 .np-breaking-label { display: flex; align-items: center; min-height: 29px; padding-left: 12px; font-size: 12px; line-height: 1; font-weight: 800; letter-spacing: .025em; text-shadow: 0 1px 1px rgb(69 0 19 / .28); }
 .np-breaking-window { display: flex; align-items: center; flex: 1; min-width: 0; overflow: hidden; font-size: 16px; line-height: 1.375; font-weight: 600; }
-.np-breaking-track { display: flex; flex: none; width: max-content; will-change: transform; }
+.np-breaking-track { display: none; flex: none; width: max-content; }
 .np-breaking-segment { display: block; flex: none; box-sizing: border-box; min-width: var(--np-breaking-window-w, 0px); padding-right: 64px; white-space: nowrap; }
-/* One line from the first paint. The wrapped copy is only the paused/expanded state. */
-.np-breaking-static { display: none; }
+/* First paint is already one line. Motion starts only after hydration, so it does not tax TBT. */
+.np-breaking-static { display: block; padding: 0 12px; line-height: 30px; white-space: nowrap; overflow: hidden; }
 .np-breaking-host:not([data-paused]) .np-breaking { height: 30px; overflow: hidden; }
+.np-breaking-host[data-ready]:not([data-paused]) .np-breaking-track { display: flex; }
+.np-breaking-host[data-ready]:not([data-paused]) .np-breaking-static { display: none; }
 .np-breaking-host[data-paused] .np-breaking-track { display: none; }
-.np-breaking-host[data-paused] .np-breaking-static { display: block; padding: 4px 12px; white-space: normal; overflow-wrap: anywhere; }
+.np-breaking-host[data-paused] .np-breaking-static { display: block; padding: 4px 12px; line-height: 1.375; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 .np-breaking-toggle { display: flex; min-height: 29px; align-items: center; justify-content: center; padding: 0 12px 0 4px; color: inherit; background: transparent; cursor: pointer; }
 .np-breaking-heading { padding: 0; text-align: left; cursor: pointer; }
 .np-breaking-heading[aria-expanded="true"] svg { transform: rotate(90deg); }
