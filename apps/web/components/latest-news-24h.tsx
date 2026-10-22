@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
@@ -209,6 +209,27 @@ export function LatestNews24h({
     };
   }, []);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const links = [...root.querySelectorAll<HTMLElement>("a[data-latest-id]")];
+    const mark = () => {
+      const bounds = root.getBoundingClientRect();
+      for (const link of links) {
+        const rect = link.getBoundingClientRect();
+        const inside = rect.height > 1
+          && rect.top >= bounds.top - 1 && rect.bottom <= bounds.bottom + 1
+          && rect.left >= bounds.left - 1 && rect.right <= bounds.right + 1;
+        link.toggleAttribute("data-np-latest-clip", !inside);
+      }
+    };
+    const observer = new IntersectionObserver(mark, { root, threshold: [0, 1] });
+    for (const link of links) observer.observe(link);
+    mark();
+    return () => observer.disconnect();
+  }, [visible]);
+
   const rememberPointer = (event: { clientX: number; clientY: number }) => {
     pointerRef.current = { x: event.clientX, y: event.clientY, inside: true };
   };
@@ -236,7 +257,7 @@ export function LatestNews24h({
           <span className="tabular-nums">{visible.length} {visible.length === 1 ? "новина" : "новини"}</span>
         </p>
         {visible.length ? (
-          <div className="np-scroll-soft np-latest-panel-scroll min-h-0 flex-1 pr-2">
+          <div ref={scrollRef} className="np-scroll-soft np-latest-panel-scroll min-h-0 flex-1 pr-2">
           <ol
             aria-label="Публикации от последните 24 часа"
             className={`np-latest-panel-list relative flex flex-col before:pointer-events-none before:absolute before:top-2 before:bottom-2 before:left-[3.25rem] before:w-px before:bg-line ${dense ? "gap-2.5" : "gap-4"}`}
@@ -260,7 +281,7 @@ export function LatestNews24h({
                     placeRef.current(event.currentTarget);
                   }}
                   onFocus={(event) => placeRef.current(event.currentTarget)}
-                  className="-m-1.5 block min-w-0 rounded-lg p-1.5 transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
+                  className="block min-w-0 rounded-lg transition-colors hover:bg-surface-2 focus-visible:bg-surface-2"
                 >
                   {article.hero ? <ArticleImage media={{ ...article.hero, alt: "" }} sizes="52px" className="np-latest-mobile-thumb" /> : null}
                   <h3 className="line-clamp-2 min-w-0 break-words text-sm leading-snug font-semibold text-ink transition-colors group-hover:text-logo">{article.title}</h3>
