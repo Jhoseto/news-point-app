@@ -6,7 +6,7 @@ import { flushClickyGoals, logClickyGoal, startClickyExtras } from "@/lib/clicky
 
 type ClickyWindow = Window & {
   clicky?: { log: (href: string, title?: string, type?: string) => void };
-  clicky_custom?: { history_disable?: number };
+  clicky_custom?: { history_disable?: number; getHighEntropyValues?: number };
   __npClickyLoaded?: string;
 };
 
@@ -19,6 +19,8 @@ function installClicky(siteId: string) {
   tracking.clicky_custom = tracking.clicky_custom ?? {};
   // Next.js changes the address without a new document. We log those ourselves.
   tracking.clicky_custom.history_disable = 1;
+  // Chrome and similar browsers can report the phone model. Safari and Firefox do not offer it.
+  tracking.clicky_custom.getHighEntropyValues = 1;
   if (document.getElementById("np-clicky")) return;
   const script = document.createElement("script");
   script.id = "np-clicky";
