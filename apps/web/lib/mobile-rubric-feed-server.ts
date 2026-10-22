@@ -2,12 +2,19 @@ import "server-only";
 import { HOME_CAROUSEL_COUNT } from "@newspoint/content";
 import { loadPublicHome, type PublicHome } from "./public-home";
 import type { ArticleSummary } from "./queries";
-import type { ComposedSection } from "./home-compose";
 import type { CategoryCursor } from "./category-pagination";
 import { loadPublicCategory } from "./public-category";
 import { getMenuCategories, type CategoryRef } from "./queries";
 import { mobileRubrics, publicVersion, rubricMenuVersion } from "./mobile-rubric-nav";
-import { mobileRubricFeedSchema, serializeFeedArticle, type MobileFeedContent, type MobileRubricFeed } from "./mobile-rubric-feed";
+import { mobileRubricFeedSchema, serializeFeedArticle, reviveFeedArticle, type MobileFeedContent, type MobileRubricFeed } from "./mobile-rubric-feed";
+import { carouselArticle } from "./carousel-article";
+
+function serializeCarouselArticle(value: ArticleSummary) {
+  // Match the existing mobile render projection *after* its responsive-image
+  // reduction. Keep every card and its exact lite image, but do not send unused
+  // excerpts/variant ladders in both the canonical model and preview payload.
+  return serializeFeedArticle(carouselArticle(reviveFeedArticle(serializeFeedArticle(value))));
+}
 
 function envelope(canonicalPath: string, asOfMs: number, menu: CategoryRef[], feed: MobileFeedContent, nextChangeAt: number | null): MobileRubricFeed {
   const rubrics = mobileRubrics(menu.map(({ name, path }) => ({ name, path })));
@@ -21,24 +28,13 @@ function latestCarouselArticles(home: PublicHome): ArticleSummary[] {
   return home.latest.filter((article) => !skip.has(article.id)).slice(0, HOME_CAROUSEL_COUNT);
 }
 
-function injectVoiceAfterBulgaria(main: ComposedSection[], voice: ComposedSection | null): ComposedSection[] {
-  if (!voice) return main;
-  const ordered: ComposedSection[] = [];
-  for (const section of main) {
-    ordered.push(section);
-    if (section.category.slug === "balgariya") ordered.push(voice);
-  }
-  return ordered;
-}
-
 export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {
   const sections = (items: PublicHome["main"]) => items.map(({ category, articles, layout, wide }) => ({ category, articles: articles.map(serializeFeedArticle), layout, wide }));
-  const main = injectVoiceAfterBulgaria(home.main, home.voiceSection);
   return envelope("/", home.asOfMs, menu, { kind: "home", hero: home.hero ? serializeFeedArticle(home.hero) : null,
-    support: home.support.map(serializeFeedArticle), latestCarousel: latestCarouselArticles(home).map(serializeFeedArticle),
-    main: sections(main), aside: sections(home.aside),
-    focusCarousel: home.focusCarousel.map(serializeFeedArticle), topicsCarousel: home.topicsCarousel.map(serializeFeedArticle),
-    voiceCarousel: [], poll: home.poll }, home.nextChangeAt);
+    support: home.support.map(serializeFeedArticle), latestCarousel: latestCarouselArticles(home).map(serializeCarouselArticle),
+    main: sections(home.main), aside: sections(home.aside),
+    focusCarousel: home.focusCarousel.map(serializeCarouselArticle), topicsCarousel: home.topicsCarousel.map(serializeCarouselArticle),
+    voiceCarousel: home.voiceCarousel.map(serializeCarouselArticle), poll: home.poll }, home.nextChangeAt);
 }
 export function categoryMobileFeed(
   category: CategoryRef,

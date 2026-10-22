@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
-import { BREAKING_CHANGED, BREAKING_SYNC, breakingVisibleAt, type PublicBreaking } from "@newspoint/content";
+import { BREAKING_CHANGED, BREAKING_SYNC, breakingVisibleAt, type PublicBreaking } from "@newspoint/content/breaking-public";
 import "./breaking-banner.css";
 
 function setCss(target: HTMLElement, name: string, value: string) {

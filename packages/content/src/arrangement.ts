@@ -24,7 +24,7 @@ export const HOME_CAROUSEL_COUNT = 10;
 export const HOME_FOCUS_CAROUSEL_PREFIX = "carousel";
 /** Slot keys `top-temi-0` … for the „Анализи и коментари“ carousel (legacy prefix). */
 export const HOME_TOP_THEMES_CAROUSEL_PREFIX = "top-temi";
-/** Legacy slot prefix; homepage voice row is now a wide section, not a carousel. */
+/** Slot keys `glasat-0` … for the „Гласът на истината“ carousel. */
 export const HOME_VOICE_CAROUSEL_PREFIX = "glasat";
 export const HOME_FOCUS_RUBRIC_SLUG = "na-fokus";
 export const HOME_ANALYSES_RUBRIC_SLUG = "ot-soczialnite-mrezhi";
@@ -126,6 +126,20 @@ export function sectionSlotKey(slug: string, index: number): string {
   return `section:${slug}:${index}`;
 }
 
+/** Old wide-section pins become carousel places, without overwriting a newer carousel pin. */
+export function withVoiceCarouselSlots(document: ArrangementDocument): ArrangementDocument {
+  const slots = { ...document.slots };
+  let changed = false;
+  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
+    const nextKey = homeCarouselSlotKey(HOME_VOICE_CAROUSEL_PREFIX, index);
+    const legacyKey = sectionSlotKey(HOME_VOICE_RUBRIC_SLUG, index);
+    if (slots[nextKey]?.items.length || !slots[legacyKey]?.items.length) continue;
+    slots[nextKey] = slots[legacyKey];
+    changed = true;
+  }
+  return changed ? { slots, excluded: document.excluded } : document;
+}
+
 export interface SlotLabel {
   key: string;
   group: string;
@@ -145,11 +159,15 @@ export function homeSlotCatalog(categories: { slug: string; name: string }[]): S
   for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
     slots.push({ key: homeCarouselSlotKey(HOME_TOP_THEMES_CAROUSEL_PREFIX, index), group: "Анализи и коментари", label: `Място ${index + 1}` });
   }
+  for (let index = 0; index < HOME_CAROUSEL_COUNT; index += 1) {
+    slots.push({ key: homeCarouselSlotKey(HOME_VOICE_CAROUSEL_PREFIX, index), group: "Гласът на истината", label: `Място ${index + 1}` });
+  }
   for (let index = 0; index < HOME_LATEST_PIN_COUNT; index += 1) {
     slots.push({ key: `latest-${index}`, group: "Последни", label: `Отгоре ${index + 1}` });
   }
   const planned = planHomeSections(categories);
   for (const section of [...planned.main, ...planned.aside]) {
+    if (HOME_RUBRIC_SECTIONS_CUSTOM.has(section.slug)) continue;
     for (let index = 0; index < section.count; index += 1) {
       const label = section.aside ? `Ред ${index + 1}` : index === 0 ? "Голяма карта" : `Малка ${index}`;
       slots.push({ key: sectionSlotKey(section.slug, index), group: section.name, label });

@@ -7,6 +7,7 @@ import {
   emptyArrangement,
   referencedArticleIds,
   sanitizeArrangement,
+  withVoiceCarouselSlots,
   resolveMediaUrl,
   triggerRevalidate,
   type ArrangementDocument,
@@ -113,8 +114,8 @@ export async function loadArrangement(pageKey: string): Promise<{
       .orderBy(desc(pageArrangements.createdAt))
       .limit(HISTORY_LIMIT),
   ]);
-  const published = readDocument(state.published?.document);
-  const draft = state.draft ? readDocument(state.draft.document) : published;
+  const published = withVoiceCarouselSlots(readDocument(state.published?.document));
+  const draft = state.draft ? withVoiceCarouselSlots(readDocument(state.draft.document)) : published;
   const articles = await articleMap([...new Set([...referencedArticleIds(draft), ...referencedArticleIds(published)])]);
   return {
     ready,
@@ -139,7 +140,7 @@ async function checkedState(tx: ArrangementTx, pageKey: string, expectedVersion?
 export async function saveArrangement(staff: Staff, pageKey: string, document: ArrangementDocument, note: string, expectedVersion?: string): Promise<{ version: string }> {
   await requireReady();
   const page = pageOf(pageKey, await menuCategories());
-  const clean = sanitizeArrangement(page.key, document, page.categories);
+  const clean = sanitizeArrangement(page.key, withVoiceCarouselSlots(document), page.categories);
   return getDb().transaction(async tx => {
     const state = await checkedState(tx, page.key, expectedVersion);
     const previous = readDocument(state.draft?.document ?? state.published?.document);

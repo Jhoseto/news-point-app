@@ -52,9 +52,10 @@ export default async function NewArticlePage() {
         authorName: staff.name,
         viewSeed: null,
         viewEvery: null,
-        viewUnit: "minutes",
+        viewUnit: "seconds",
         viewTarget: null,
         publishAtSofia: null,
+        social: { facebook: { enabled: true, text: "", textMode: "auto" } },
       }}
       sections={sections}
       media={media}

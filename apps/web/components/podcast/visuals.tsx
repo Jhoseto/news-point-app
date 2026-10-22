@@ -1,5 +1,7 @@
 "use client";
 
+import "./podcast.css";
+
 import { useState } from "react";
 export function PodcastOrbit({ className = "" }: { className?: string }) {
   return <img src="/brand/mark.svg" alt="" aria-hidden="true" className={`np-podcast-orbit ${className}`} />;

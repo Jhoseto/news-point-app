@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { focalPointSchema, imageVariantsSchema } from "@newspoint/content";
+import { focalPointSchema, imageVariantsSchema } from "@newspoint/content/image-schemas";
 import type { ArticleSummary } from "./queries";
 
 const path = z.string().max(1200).refine(value => value.startsWith("/") && !value.startsWith("//") && !/[?#\\]/.test(value));

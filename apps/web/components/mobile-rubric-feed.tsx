@@ -6,7 +6,7 @@ import { Fragment } from "react";
 import { preload } from "react-dom";
 import { MobileFeedBoundary } from "./mobile-feed-boundary";
 import type { MobileRubricFeed as Feed, MobileFeedContent, MobileHomeMainSection } from "@/lib/mobile-rubric-feed";
-import { HOME_LEAD_SECTION } from "@newspoint/content";
+import { HOME_LEAD_SECTION } from "@newspoint/content/arrangement";
 import { reviveFeedArticle } from "@/lib/mobile-rubric-feed";
 import { articleImageAttrs } from "@/lib/article-image";
 import { MobileCompactRow, MobileHorizonCard, MobileLeadCard, MobileSmallPair, MobileSupportingCard } from "./mobile-home-cards";
@@ -91,7 +91,14 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
     </div>
     {plovdivSection ? renderMainSection(plovdivSection) : null}
     {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-right" }, "topics")}
-    {mainAfterPlovdiv.map((section) => renderMainSection(section))}
+    {mainAfterPlovdiv.map((section) => (
+      <Fragment key={section.category.id}>
+        {renderMainSection(section)}
+        {section.category.slug === "balgariya"
+          ? carousel(feed.voiceCarousel, { title: "Гласът на истината", href: "/glasat-na-istinata/", accentSlug: "glasat-na-istinata" }, "voice")
+          : null}
+      </Fragment>
+    ))}
     {feed.aside.length ? <aside className="flex flex-col gap-6" aria-label="Още новини">{feed.aside.map(section => <Block key={section.category.id} id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><CompactList title={section.category.name} accentSlug={section.category.slug} href={section.category.path} articles={section.articles.map(reviveFeedArticle)} /></div></Block>)}</aside> : null}
     <Block id="brand" {...(window ? { window } : {})}><section aria-label="NewsPoint.bg" className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface px-6 py-8 shadow-card sm:px-10">
       <div className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40" aria-hidden="true" />

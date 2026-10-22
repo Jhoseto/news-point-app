@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { shineDelayProp } from "@/lib/shine-style";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
@@ -9,8 +9,10 @@ import { whenNearViewport } from "@/lib/deferred-page-work";
 import { ArticleCard } from "./article-card";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { useReducedMotion } from "./reader-preferences";
+import { carouselCloneCount } from "@/lib/carousel-clones";
 
 const DRAG_THRESHOLD = 5;
+const CarouselCard = memo(ArticleCard);
 
 export function LeadingCarousel({
   articles,
@@ -54,13 +56,25 @@ export function LeadingCarousel({
   const reduceMotion = useReducedMotion();
   // Originals remain SSR/accessible. Materialize copies only near the strip,
   // rather than doubling every offscreen carousel during initial hydration.
-  const [loopReady, setLoopReady] = useState(false);
+  const [loopCount, setLoopCount] = useState(0);
+  const loopReady = loopCount > 0;
+  const prepareLoop = useCallback(() => {
+    const element = viewport.current, strip = firstSet.current;
+    if (preview || !element || !strip) return;
+    setLoopCount(carouselCloneCount(articles.length, element.clientWidth, strip.offsetWidth));
+  }, [articles.length, preview]);
   useEffect(() => {
-    if (preview || articles.length < 2) { setLoopReady(false); return; }
+    if (preview || articles.length < 2) { setLoopCount(0); return; }
     const element = viewport.current;
     if (!element) return;
-    return whenNearViewport(element, () => setLoopReady(true));
-  }, [articles.length, preview]);
+    return whenNearViewport(element, prepareLoop);
+  }, [articles.length, preview, prepareLoop]);
+  useEffect(() => {
+    if (!loopReady || !viewport.current || !firstSet.current) return;
+    const resize = new ResizeObserver(prepareLoop);
+    resize.observe(viewport.current); resize.observe(firstSet.current);
+    return () => resize.disconnect();
+  }, [loopReady, prepareLoop]);
   const assignViewport = useCallback((element: HTMLDivElement | null) => {
     viewport.current = element;
     if (element && preview) element.scrollLeft = previewOffset;
@@ -95,14 +109,14 @@ export function LeadingCarousel({
   if (!articles.length) return null;
 
   const cards = (duplicate: boolean) =>
-    articles.map((article, index) => (
+    (duplicate ? articles.slice(0, loopCount) : articles).map((article, index) => (
       <div
         key={`${duplicate ? "copy" : "original"}-${article.id}`}
         data-carousel-card
         aria-hidden={duplicate || undefined}
         className={compactCards ? "np-carousel-mobile-card np-carousel-mobile-card--compact shrink-0" : "np-carousel-mobile-card w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"}
       >
-        <ArticleCard
+        <CarouselCard
           article={article}
           tabbable={!duplicate}
           // Carousels are below the LCP fold; skip srcset on every card (not only clones).
@@ -116,8 +130,8 @@ export function LeadingCarousel({
     <section
       aria-labelledby={headingId}
       data-mobile-pager-ignore
-      onFocusCapture={() => { if (!preview && articles.length >= 2) setLoopReady(true); }}
-      onPointerDownCapture={() => { if (!preview && articles.length >= 2) setLoopReady(true); }}
+      onFocusCapture={prepareLoop}
+      onPointerDownCapture={prepareLoop}
       className={`group/carousel min-w-0${compactCards ? " np-carousel-compact" : ""}`}
     >
       <div className={`np-section-heading flex items-center justify-between gap-4 ${compactCards ? "mb-3" : "mb-5"}`} style={categoryAccentStyle(accentSlug)}>

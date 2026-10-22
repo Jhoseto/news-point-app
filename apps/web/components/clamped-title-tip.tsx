@@ -49,7 +49,6 @@ export function ClampedTitleTip({
   const anchor = useRef<HTMLHeadingElement | null>(null);
   const hideTimer = useRef(0);
   const showTimer = useRef(0);
-  const [portalReady, setPortalReady] = useState(false);
   const [tip, setTip] = useState<{ x: number; y: number; open: boolean; closing?: boolean } | null>(null);
   const reducedMotion = useReducedMotion();
 
@@ -61,7 +60,6 @@ export function ClampedTitleTip({
   }, []);
 
   useEffect(() => {
-    setPortalReady(true);
     return () => {
       clearShowTimer();
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
@@ -164,7 +162,7 @@ export function ClampedTitleTip({
       >
         {children}
       </Tag>
-      {portalReady && tip
+      {tip
         ? createPortal(
             <div
               role="tooltip"

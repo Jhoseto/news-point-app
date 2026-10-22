@@ -207,7 +207,7 @@ function toDraft(row: {
       authorName: row.authorName,
       viewSeed: null,
       viewEvery: null,
-      viewUnit: "minutes",
+      viewUnit: "seconds",
       viewTarget: null,
       publishAtSofia: null,
     },

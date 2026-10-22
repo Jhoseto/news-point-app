@@ -38,6 +38,8 @@ vi.mock("./queries", () => ({
 import { loadPublicHome } from "./public-home";
 import { loadPublicCategory } from "./public-category";
 import { categoryMobileFeed, homeMobileFeed } from "./mobile-rubric-feed-server";
+import { reviveFeedArticle, serializeFeedArticle } from "./mobile-rubric-feed";
+import { carouselArticle } from "./carousel-article";
 
 const category: CategoryRef = { id: "0f1e2c8a-1b2d-4c3e-9a10-111111111111", slug: "plovdiv", name: "Fixture rubric", path: "/plovdiv/" };
 const automaticId = "6f1e2c8a-1b2d-4c3e-9a10-111111111111", pinnedId = "6f1e2c8a-1b2d-4c3e-9a10-222222222222";
@@ -56,6 +58,25 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("cached listing inputs and placement clocks", () => {
+  it("projects only mobile carousel payloads without changing any rendered card", async () => {
+    const home = await loadPublicHome();
+    const fixture = { ...article(automaticId), excerpt: "Fixture excerpt ".repeat(100), hero: {
+      url: "/media/news/2026/fixture.webp", width: 1600, height: 1000, alt: "Fixture image", caption: "Fixture caption", credit: "Fixture credit",
+      focalPoint: { x: 0.2, y: 0.7 }, variants: [320, 480, 640, 768, 960, 1280].map(width => ({ url: `/media/news/2026/fixture-${width}.webp`, width, height: width * 0.625 })),
+    } };
+    home.hero = fixture; home.support = [fixture];
+    home.focusCarousel = [fixture, { ...fixture, id: pinnedId, hero: null }];
+    home.topicsCarousel = [fixture];
+    const previous = home.focusCarousel.map(serializeFeedArticle).map(reviveFeedArticle).map(carouselArticle);
+    const model = homeMobileFeed(home, [category]);
+    if (model.feed.kind !== "home") throw Error("Wrong fixture feed");
+    expect(model.feed.focusCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual(previous);
+    expect(model.feed.topicsCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
+    expect(model.feed.hero).toEqual(serializeFeedArticle(fixture));
+    expect(model.feed.support).toEqual([serializeFeedArticle(fixture)]);
+    expect(JSON.stringify(model.feed.focusCarousel).length).toBeLessThan(JSON.stringify(home.focusCarousel.map(serializeFeedArticle)).length);
+    expect(fixture.hero.variants).toHaveLength(6); expect(fixture.excerpt).not.toBe("");
+  });
   it("restores the homepage's automatic order at the exact end within one cached minute", async () => {
     placement("hero", end);
     const before = await loadPublicHome();

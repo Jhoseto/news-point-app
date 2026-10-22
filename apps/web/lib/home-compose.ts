@@ -3,6 +3,8 @@ import {
   HOME_CAROUSEL_COUNT,
   HOME_LATEST_PIN_COUNT,
   HOME_SUPPORT_COUNT,
+  HOME_VOICE_CAROUSEL_PREFIX,
+  HOME_VOICE_RUBRIC_SLUG,
   activePlacement,
   planHomeSections,
   sectionSlotKey,
@@ -138,7 +140,11 @@ export function composeLabelCarousel(input: {
   const excluded = new Set(document.excluded);
   const slot = (key: string) => resolveSlot(document, key, now, visible, pinned);
   const picker = new UniquePicker();
-  const pins = Array.from({ length: slotCount }, (_, index) => slot(`${slotPrefix}-${index}`));
+  const pins = Array.from({ length: slotCount }, (_, index) => {
+    const placed = slot(`${slotPrefix}-${index}`);
+    if (placed || slotPrefix !== HOME_VOICE_CAROUSEL_PREFIX) return placed;
+    return slot(sectionSlotKey(HOME_VOICE_RUBRIC_SLUG, index));
+  });
   const head = fillPinned(picker, pool, slotCount, pins, excluded);
   const used = new Set(head.map((article) => article.id));
   const tail = pool.filter((article) => !used.has(article.id) && !excluded.has(article.id));

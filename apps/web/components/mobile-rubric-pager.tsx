@@ -60,7 +60,10 @@ export function MobileRubricPager() {
   }, []);
   useEffect(() => {
     mounted.current = true;
-    const cancel = afterCriticalPageLoad(preparePreview, 0, { skipConstrained: false });
+    // The invisible neighbour renderer can parse a full feed. Give the real
+    // page its post-load paint window first; pointer/key input still prepares
+    // immediately through the listeners below, including slow connections.
+    const cancel = afterCriticalPageLoad(preparePreview, 1200, { skipConstrained: false });
     window.addEventListener("pointerdown", preparePreview, { once: true, passive: true });
     window.addEventListener("keydown", preparePreview, { once: true });
     return () => {

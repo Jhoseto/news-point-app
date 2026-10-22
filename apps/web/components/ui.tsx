@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { imagePresentation } from "@newspoint/content";
+import { imagePresentation } from "@newspoint/content/image-presentation";
 import type { CSSProperties, ReactNode } from "react";
 import type { CategoryRef, Media } from "@/lib/queries";
 import { articleImageAttrs } from "@/lib/article-image";

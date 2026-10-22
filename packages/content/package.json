@@ -4,6 +4,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./image-presentation": "./src/image-presentation-runtime.ts",
+    "./image-schemas": "./src/image-presentation.ts",
+    "./arrangement": "./src/arrangement.ts",
+    "./breaking-public": "./src/breaking-public.ts",
+    "./menu": "./src/menu.ts",
     "./disk": "./src/remote-disk.ts",
     "./audio": "./src/audio-processing.ts",
     "./upload-media": "./src/upload-media.ts",

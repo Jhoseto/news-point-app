@@ -27,6 +27,6 @@ describe("view boost", () => {
     expect(splitInterval(300)).toEqual({ amount: 5, unit: "minutes" });
     expect(splitInterval(7200)).toEqual({ amount: 2, unit: "hours" });
     expect(splitInterval(15)).toEqual({ amount: 15, unit: "seconds" });
-    expect(splitInterval(null)).toEqual({ amount: null, unit: "minutes" });
+    expect(splitInterval(null)).toEqual({ amount: null, unit: "seconds" });
   });
 });

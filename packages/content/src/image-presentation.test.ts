@@ -1,9 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { focalPointSchema, imagePresentation, responsiveImageVariants } from "./image-presentation";
+import { focalPointSchema, imageVariantSchema, imagePresentation, responsiveImageVariants } from "./image-presentation";
+import { validImageVariant, validFocalPoint } from "./image-presentation-runtime";
 
 const source = { url: "https://newspoint.bg/wp-content/uploads/original.jpg", width: 1600, height: 900 };
 const variant = { url: "https://newspoint.bg/wp-content/uploads/small.jpg", width: 640, height: 360 };
 describe("public image presentation", () => {
+  it("keeps lightweight browser validation equivalent to the server schemas", () => {
+    const variants: unknown[] = [null, undefined, [], {}, variant, { ...variant, extra: 1 }];
+    for (const width of [NaN, Infinity, -1, 0, .5, 1, 16384, 16385, "640", null]) {
+      variants.push({ ...variant, width }, { ...variant, height: width });
+    }
+    for (const url of ["/media/news/a.webp", "/media/news/../a.webp", "https://x.test/a.webp", "http://x.test/a.webp", "https://x.test/a.webp?q=1", "https://x.test/" + "x".repeat(2048), "javascript:alert(1)", "https://u:p@x.test/a.webp"]) variants.push({ ...variant, url });
+    for (const value of variants) expect(validImageVariant(value), JSON.stringify(value)).toBe(imageVariantSchema.safeParse(value).success);
+    const points: unknown[] = [null, undefined, [], {}, { x: 0, y: 1 }, { x: 0, y: 1, extra: true }];
+    for (const x of [NaN, Infinity, -1, 0, .5, 1, 2, "0", null]) points.push({ x, y: .5 }, { x: .5, y: x });
+    for (const point of points) expect(validFocalPoint(point), JSON.stringify(point)).toBe(focalPointSchema.safeParse(point).success);
+  });
   it("preserves the original fallback without metadata", () => {
     expect(imagePresentation(source)).toEqual({ srcSet: undefined, objectPosition: undefined });
   });
@@ -21,6 +33,7 @@ describe("public image presentation", () => {
   });
   it("rejects an unbounded candidate list", () => {
     expect(responsiveImageVariants(Array(7).fill(variant), source)).toEqual([]);
+    expect(responsiveImageVariants(new Array(2), source)).toEqual([]);
   });
   it("keeps the existing CSS position without valid editorial focus", () => {
     expect(imagePresentation({ ...source, focalPoint: { x: -1, y: 0.2 } }).objectPosition).toBeUndefined();

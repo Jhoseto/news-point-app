@@ -8,7 +8,7 @@ export function intervalToSeconds(amount: number | null, unit: ViewUnit): number
 }
 
 export function splitInterval(seconds: number | null): { amount: number | null; unit: ViewUnit } {
-  if (seconds == null || seconds <= 0) return { amount: null, unit: "minutes" };
+  if (seconds == null || seconds <= 0) return { amount: null, unit: "seconds" };
   if (seconds % 3600 === 0) return { amount: seconds / 3600, unit: "hours" };
   if (seconds % 60 === 0) return { amount: seconds / 60, unit: "minutes" };
   return { amount: seconds, unit: "seconds" };

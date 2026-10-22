@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { ensureReaderServiceWorker, readPushServerState, readPushSupport } from "@/lib/push-client";
+import { controllerUpdateHandler } from "@/lib/service-worker-update";
 
 export function PwaRegister() {
   useEffect(() => {
@@ -9,7 +10,6 @@ export function PwaRegister() {
     let registration: ServiceWorkerRegistration | null = null;
     let closed = false;
     let reconciling = false;
-    let reloading = false;
     const check = async () => {
       if (document.visibilityState === "hidden") {
         registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
@@ -31,11 +31,13 @@ export function PwaRegister() {
       if (event.data?.type === "PUSH_SUBSCRIPTION_CHANGED") void check();
     };
     const onResume = () => { void check(); };
-    const onControllerChange = () => {
-      if (reloading || closed) return;
-      reloading = true;
-      window.location.reload();
-    };
+    // First-install clients.claim() already has current HTML/assets. Only a
+    // replacement controller needs the existing update reload.
+    const onControllerChange = controllerUpdateHandler(
+      navigator.serviceWorker.controller,
+      () => navigator.serviceWorker.controller,
+      () => { if (!closed) window.location.reload(); },
+    );
     void check();
     window.addEventListener("online", onResume);
     document.addEventListener("visibilitychange", onResume);

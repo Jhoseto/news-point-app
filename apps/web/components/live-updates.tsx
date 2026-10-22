@@ -7,7 +7,7 @@ import { formatClock } from "@/lib/format";
 import { LIVE_EVENT_NAME, type LiveEvent } from "@/lib/live/events";
 import { createLiveRefreshScheduler } from "@/lib/live/refresh";
 import { NewArticleToast } from "./live-toast";
-import { BREAKING_CHANGED, BREAKING_SYNC } from "@newspoint/content";
+import { BREAKING_CHANGED, BREAKING_SYNC } from "@newspoint/content/breaking-public";
 
 const REFRESH_DEBOUNCE_MS = 700;
 const BANNER_MS = 9000;

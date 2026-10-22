@@ -1,4 +1,4 @@
-import { imagePresentation } from "@newspoint/content";
+import { imagePresentation } from "@newspoint/content/image-presentation";
 import type { Media } from "@/lib/queries";
 
 type SrcEntry = { url: string; width: number };

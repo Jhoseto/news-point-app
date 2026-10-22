@@ -11,7 +11,6 @@ import {
   HOME_PAGE_KEY,
   HOME_RUBRIC_SECTIONS_CUSTOM,
   HOME_TOP_THEMES_CAROUSEL_PREFIX,
-  HOME_VOICE_RUBRIC_SLUG,
   HOME_VOICE_CAROUSEL_PREFIX,
   activePlacement,
   nextArrangementChangeAt,
@@ -766,9 +765,8 @@ function HomeMap({
   imageFor: (key: string) => string | null;
 }) {
   const balIndex = planned.main.findIndex((section) => section.slug === "balgariya");
-  const beforeSplit = planned.main.filter((section, index) => section.wide && index < balIndex);
+  const beforeSplit = planned.main.filter((section, index) => section.wide && index < balIndex && !HOME_RUBRIC_SECTIONS_CUSTOM.has(section.slug));
   const bulgaria = planned.main.find((section) => section.slug === "balgariya");
-  const voiceSection = planned.main.find((section) => section.slug === HOME_VOICE_RUBRIC_SLUG);
   const afterSplit = planned.main.filter((section, index) => section.wide && index > balIndex && !HOME_RUBRIC_SECTIONS_CUSTOM.has(section.slug));
   return (
     <div className="flex flex-col gap-4">
@@ -838,15 +836,18 @@ function HomeMap({
               ))}
             </div>
           </div>
-          {voiceSection ? (
-            <SectionBlock
-              section={voiceSection}
-              selected={selected}
-              onSelect={onSelect}
-              titleFor={titleFor}
-              metaFor={metaFor}
-            />
-          ) : null}
+          <CarouselRow
+            title="Гласът на истината"
+            hint="Новини от рубрика glasat-na-istinata · /glasat-na-istinata/"
+            count={HOME_CAROUSEL_COUNT}
+            slotPrefix={HOME_VOICE_CAROUSEL_PREFIX}
+            color="#3818d6"
+            selected={selected}
+            onSelect={onSelect}
+            onEditCarousel={() => onEditCarousel(HOME_VOICE_CAROUSEL_PREFIX)}
+            titleFor={titleFor}
+            metaFor={metaFor}
+          />
         </>
       ) : null}
 

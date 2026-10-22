@@ -1,4 +1,4 @@
-export { PUBLIC_MENU, menuName } from "@newspoint/content";
+export { PUBLIC_MENU, menuName } from "@newspoint/content/menu";
 
 /** Phone/PWA rubrics drawer order, without changing the desktop/global menu. */
 export function mobileRubricsMenuOrder<T extends { slug: string }>(items: readonly T[]): T[] {

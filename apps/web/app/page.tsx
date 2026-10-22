@@ -64,7 +64,7 @@ function HomeAsideLists({
 export default async function HomePage() {
   const [home, menu, ssrDesktop] = await Promise.all([loadPublicHome(), getMenuCategories(), ssrDesktopViewport()]);
   const mobile = homeMobileFeed(home, menu);
-  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceSection, poll } = home;
+  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceCarousel, poll } = home;
 
   const shine = createHomeShine();
   const bandHero = hero ? shine.nextCard() : undefined;
@@ -74,13 +74,13 @@ export default async function HomePage() {
   shine.sectionBreak();
   const focusShineDelays = focusCarousel.map(() => shine.nextCard());
   const analysesShineDelays = topicsCarousel.map(() => shine.nextCard());
+  const voiceShineDelays = voiceCarousel.map(() => shine.nextCard());
 
   const narrowMain = mainSections.filter((section) => !section.wide);
   const wideMain = mainSections.filter((section) => section.wide);
   const shineSections = [
     ...narrowMain,
     ...wideMain,
-    ...(voiceSection ? [{ ...voiceSection, layout: voiceSection.layout === "feature" ? "feature" as const : "grid" as const }] : []),
   ];
   const shineCycleSec = estimateHomeShineCycleSec(
     shine,
@@ -159,14 +159,14 @@ export default async function HomePage() {
                   </div>
                   <HomeAsideLists sections={asideSections} shine={shine} className="hidden flex-col gap-6 lg:flex" />
                 </div>
-                {voiceSection ? (
-                  <CategorySection
-                    key={voiceSection.category.id}
-                    category={voiceSection.category}
-                    articles={voiceSection.articles}
-                    layout="feature"
-                    wide
-                    shine={shine}
+                {voiceCarousel.length ? (
+                  <LeadingCarousel
+                    articles={voiceCarousel.map(carouselArticle)}
+                    shineDelays={voiceShineDelays}
+                    title="Гласът на истината"
+                    headingId="sec-glasat-na-istinata"
+                    href={`/${HOME_VOICE_RUBRIC_SLUG}/`}
+                    accentSlug={HOME_VOICE_RUBRIC_SLUG}
                   />
                 ) : null}
               </Fragment>

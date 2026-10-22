@@ -10,20 +10,8 @@ export const breakingInputSchema = z.strictObject({
 }).refine(value => !value.enabled || value.text.length > 0, { message: "Въведете текст, преди да включите лентата.", path: ["text"] });
 
 export type BreakingInput = z.infer<typeof breakingInputSchema>;
-export interface PublicBreaking { version: number; text: string; path: string | null; }
+export { BREAKING_CHANGED, BREAKING_SYNC, breakingVisibleAt, type PublicBreaking } from "./breaking-public";
 export interface BreakingSettings {
   ready: boolean; version: number; enabled: boolean; text: string;
   articleId: string | null; articleTitle: string | null;
-}
-
-export const BREAKING_CHANGED = "np:breaking-changed";
-export const BREAKING_SYNC = "np:breaking-sync";
-
-export function breakingVisibleAt(pathname: string, categoryPaths: readonly string[]): boolean {
-  if (pathname === "/") return true;
-  const path = pathname.replace(/\/+$/, "");
-  return categoryPaths.some(category => {
-    const base = category.replace(/\/+$/, "");
-    return path === base || path.startsWith(`${base}/archive/`) && !path.slice(base.length + 9).includes("/");
-  });
 }

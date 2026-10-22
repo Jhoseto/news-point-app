@@ -37,4 +37,21 @@ describe("home top-news map", () => {
     expect(html).toContain('aria-label="Топ 1 · Водеща"');
     expect(html).toContain('aria-label="Топ 2 · До водещата"');
   });
+
+  it("shows Гласът на истината once, as a carousel after България", () => {
+    const html = renderToStaticMarkup(createElement(ArrangeDesk, {
+      version: "qa", pageKey: "home", note: "", history: [], ready: true, articles: {}, draft: emptyArrangement(),
+      menu: [
+        { id: "plovdiv", slug: "plovdiv", name: "Пловдив", path: "/plovdiv/" },
+        { id: "voice", slug: "glasat-na-istinata", name: "Гласът на истината", path: "/glasat-na-istinata/" },
+        { id: "bg", slug: "balgariya", name: "България", path: "/balgariya/" },
+      ],
+    }));
+    const voice = html.split("Гласът на истината").length - 1;
+    const bulgaria = html.indexOf("България");
+    const voiceAt = html.indexOf("Гласът на истината");
+    expect(voice).toBe(1);
+    expect(voiceAt).toBeGreaterThan(bulgaria);
+    expect(html).toContain("Подреди карусела");
+  });
 });
