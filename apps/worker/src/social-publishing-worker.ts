@@ -8,13 +8,14 @@ import { hasSocialPublishing } from "@newspoint/db/social-publishing";
 import { mediaFile, readMediaFile } from "@newspoint/content/upload-media";
 import { socialArticleUrl } from "@newspoint/content";
 import { FacebookClient, FacebookError, facebookPermalink } from "@newspoint/content/facebook";
-import { MakeSocialClient, MakeSocialError, makeSocialConfiguration } from "@newspoint/content/make-social";
+import { MAKE_SOCIAL_MAX_PHOTO_BYTES, MakeSocialClient, MakeSocialError, makeSocialConfiguration, usesMakeSocialProvider } from "@newspoint/content/make-social";
 import { decryptSocialSecret, pageSecretContext } from "@newspoint/content/social-secrets";
 import { renderFacebookPostImage } from "./facebook-post-image";
 
 type Job = typeof socialPublications.$inferSelect;
 const LEASE_MS = 120_000;
 const RETRIES = [30_000, 120_000, 600_000, 1_800_000, 7_200_000, 21_600_000];
+const MAX_SOURCE_PHOTO_BYTES = 32 * 1024 * 1024;
 const inside = (root: string, path: string) => path === root || path.startsWith(root + sep);
 function socialTempRoot(): string {
   const media = process.env.MEDIA_ROOT;
@@ -31,15 +32,15 @@ export async function prepareSocialPhoto(job: Job, title: string): Promise<{ pre
   // Production is local disk; laptop SSH uses the existing direct remote-file transport.
   if (!process.env.MEDIA_SSH_TARGET) {
     const info = path ? await stat(path).catch(() => null) : null;
-    if (!info?.isFile() || info.size > 32 * 1024 * 1024) throw new FacebookError("image");
+    if (!info?.isFile() || info.size > MAX_SOURCE_PHOTO_BYTES) throw new FacebookError("image");
   }
   const source = await readMediaFile(job.storageKey);
-  if (!source || source.length > 32 * 1024 * 1024) throw new FacebookError("image");
+  if (!source || source.length > MAX_SOURCE_PHOTO_BYTES) throw new FacebookError("image");
   let bytes: Buffer;
   try {
     bytes = await renderFacebookPostImage(source, title);
-    if (bytes.length > 4 * 1024 * 1024) bytes = await sharp(bytes).jpeg({ quality: 70, mozjpeg: true }).toBuffer();
-    if (bytes.length > 4 * 1024 * 1024) throw new Error();
+    if (bytes.length > MAKE_SOCIAL_MAX_PHOTO_BYTES) bytes = await sharp(bytes).jpeg({ quality: 70, mozjpeg: true }).toBuffer();
+    if (bytes.length > MAKE_SOCIAL_MAX_PHOTO_BYTES) throw new Error();
   } catch { throw new FacebookError("image"); }
   const root = socialTempRoot(); await mkdir(root, { recursive: true, mode: 0o700 });
   const hash = createHash("sha256").update(bytes).digest("hex");
@@ -51,13 +52,13 @@ export async function prepareSocialPhoto(job: Job, title: string): Promise<{ pre
 async function preparedPhoto(job: Job): Promise<Buffer> {
   if (!job.preparedFile || !/^[a-f0-9-]{36}-[a-f0-9]{64}\.jpg$/.test(job.preparedFile)) throw new FacebookError("image");
   const bytes = await readFile(resolve(socialTempRoot(), job.preparedFile)).catch(() => null);
-  if (!bytes || bytes.length > 4 * 1024 * 1024 || createHash("sha256").update(bytes).digest("hex") !== job.preparedHash) throw new FacebookError("image");
+  if (!bytes || bytes.length > MAKE_SOCIAL_MAX_PHOTO_BYTES || createHash("sha256").update(bytes).digest("hex") !== job.preparedHash) throw new FacebookError("image");
   return bytes;
 }
 
 export async function claimSocialJob(db: ScriptDb): Promise<Job | null> {
   return db.transaction(async tx => {
-    // A vanished sender may already have written to Meta. Never replay its POST blindly.
+    // A vanished sender may already have published externally. Never replay its POST blindly.
     await tx.execute(sql`update social_publications set status='uncertain',error_code='lost_response',lease_token=null,lease_until=null,updated_at=now()
       where status='sending' and lease_until < now()`);
     await tx.execute(sql`update social_publications set status='pending',lease_token=null,lease_until=null
@@ -85,6 +86,7 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     }).where(owned).returning({ id: socialPublications.id });
     return rows.length > 0;
   };
+  const makeMode = usesMakeSocialProvider();
   let externalStarted = false;
   let generation: number | null = null;
   try {
@@ -92,7 +94,6 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     if (!article?.isPublic || !article.publishedAt || article.publishedAt > new Date()) {
       await finish({ status: job.status === "uncertain" ? "uncertain" : "cancelled", errorCode: "not_public", nextAttemptAt: new Date(Date.now() + 86400_000) }); return;
     }
-    const makeMode = process.env.SOCIAL_PUBLISHING_PROVIDER === "make";
     const makeConfig = makeMode ? makeSocialConfiguration() : null;
     const [connection] = makeMode ? [] : await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
     if (makeMode ? !makeConfig || makeConfig.pageId !== job.pageId : !connection || connection.status !== "connected" || connection.pageId !== job.pageId) throw new FacebookError("connection");
@@ -168,7 +169,7 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     }
     // COMMIT/DB errors following a successful POST must remain ambiguous, never retryable.
     const failure = error instanceof FacebookError || error instanceof MakeSocialError ? error : new FacebookError(externalStarted ? "lost_response" : "internal", true, externalStarted);
-    if (failure.code === "connection" && process.env.SOCIAL_PUBLISHING_PROVIDER !== "make") {
+    if (failure.code === "connection" && !makeMode) {
       await db.update(socialConnections).set({ status: "invalid", updatedAt: new Date() })
         .where(and(eq(socialConnections.provider, "facebook"), eq(socialConnections.pageId, job.pageId), generation !== null ? eq(socialConnections.generation, generation) : undefined));
     }
@@ -185,7 +186,7 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
 }
 
 async function checkConnection(db: ScriptDb) {
-  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") return;
+  if (usesMakeSocialProvider()) return;
   const [connection] = await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
   if (!connection || connection.status !== "connected" || connection.checkedAt && Date.now() - connection.checkedAt.getTime() < 3600_000) return;
   try {

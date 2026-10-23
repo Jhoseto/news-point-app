@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MAKE_SOCIAL_MAX_PHOTO_BYTES, MakeSocialClient, MakeSocialError, makeSocialConfiguration } from "./make-social-api";
+import { MAKE_SOCIAL_MAX_PHOTO_BYTES, MakeSocialClient, MakeSocialError, makeSocialConfiguration, usesMakeSocialProvider } from "./make-social-api";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -46,9 +46,11 @@ describe("Make social webhook client", () => {
   it("validates configured secrets without returning partial configuration", () => {
     vi.stubEnv("SOCIAL_PUBLISHING_PROVIDER", "make"); vi.stubEnv("MAKE_SOCIAL_WEBHOOK_URL", "https://hook.eu2.make.com/example");
     vi.stubEnv("MAKE_SOCIAL_WEBHOOK_API_KEY", "key"); vi.stubEnv("MAKE_FACEBOOK_PAGE_ID", "11"); vi.stubEnv("MAKE_FACEBOOK_PAGE_NAME", "News Point");
+    expect(usesMakeSocialProvider()).toBe(true);
     expect(makeSocialConfiguration()).toMatchObject({ pageId: "11", pageName: "News Point" });
     vi.stubEnv("MAKE_SOCIAL_WEBHOOK_URL", "http://hook.eu2.make.com/example"); expect(makeSocialConfiguration()).toBeNull();
     vi.stubEnv("MAKE_SOCIAL_WEBHOOK_URL", "https://user:password@hook.eu2.make.com/example"); expect(makeSocialConfiguration()).toBeNull();
+    vi.stubEnv("SOCIAL_PUBLISHING_PROVIDER", "meta"); expect(usesMakeSocialProvider()).toBe(false);
   });
 
   it("rejects malformed success responses", async () => {

@@ -5,7 +5,7 @@ import { getDb, socialConnections, socialOauthStates, socialPublications, social
 import { hasSocialPublishing } from "@newspoint/db/social-publishing";
 import { socialOrigin } from "@newspoint/content";
 import { FacebookClient, FACEBOOK_PERMISSIONS, facebookPermalink, facebookVersion, type FacebookPage } from "@newspoint/content/facebook";
-import { makeSocialConfiguration } from "@newspoint/content/make-social";
+import { makeSocialConfiguration, usesMakeSocialProvider } from "@newspoint/content/make-social";
 import { decryptSocialSecret, encryptSocialSecret, pageSecretContext, verifyFacebookSignedRequest } from "@newspoint/content/social-secrets";
 import { EditorError } from "./articles";
 import { auditEvidence } from "./audit-context";
@@ -26,7 +26,7 @@ async function ready() {
 }
 export async function startFacebookConnection(staff: Staff) {
   admin(staff); await ready();
-  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
+  if (usesMakeSocialProvider()) throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
   if (!/^\d+$/.test(process.env.META_APP_ID ?? "") || !process.env.META_APP_SECRET) throw new EditorError(422, "configuration", "Не е настроено Meta приложението.");
   // Validate the key before opening Facebook, not after the user grants consent.
   encryptSocialSecret("check", "configuration");
@@ -68,7 +68,7 @@ export async function finishFacebookConnection(staff: Staff, state: string, code
 }
 export async function facebookSettings(staff: Staff, selection?: string) {
   admin(staff);
-  const provider = process.env.SOCIAL_PUBLISHING_PROVIDER === "make" ? "make" as const : "meta" as const;
+  const provider = usesMakeSocialProvider() ? "make" as const : "meta" as const;
   if (!await hasSocialPublishing(getDb())) return { ready: false, provider, connection: null, pages: [], problems: [] };
   if (provider === "make") {
     const configured = makeSocialConfiguration();
@@ -86,7 +86,7 @@ export async function facebookSettings(staff: Staff, selection?: string) {
 }
 export async function selectFacebookPage(staff: Staff, selection: string, pageId: string) {
   admin(staff); await ready();
-  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
+  if (usesMakeSocialProvider()) throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
   return getDb().transaction(async tx => {
     // Fixed lock serializes page changes with reconnect/disconnect and an initial connection.
     await tx.execute(sql`select pg_advisory_xact_lock(19661018,39)`);
@@ -109,7 +109,7 @@ export async function selectFacebookPage(staff: Staff, selection: string, pageId
 }
 export async function disconnectFacebook(staff: Staff) {
   admin(staff); await ready();
-  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
+  if (usesMakeSocialProvider()) throw new EditorError(422, "provider", "Facebook се управлява чрез Make.");
   await getDb().transaction(async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(19661018,39)`);
     await tx.update(socialConnections).set({ encryptedToken: "", metaUserId: null, status: "disconnected", generation: sql`${socialConnections.generation} + 1`, updatedAt: new Date() }).where(eq(socialConnections.provider, "facebook"));

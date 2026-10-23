@@ -20,8 +20,12 @@ export class MakeSocialError extends Error {
   ) { super(code); }
 }
 
+export function usesMakeSocialProvider(): boolean {
+  return process.env.SOCIAL_PUBLISHING_PROVIDER === "make";
+}
+
 export function makeSocialConfiguration() {
-  if (process.env.SOCIAL_PUBLISHING_PROVIDER !== "make") return null;
+  if (!usesMakeSocialProvider()) return null;
   const webhook = process.env.MAKE_SOCIAL_WEBHOOK_URL?.trim();
   const apiKey = process.env.MAKE_SOCIAL_WEBHOOK_API_KEY?.trim();
   const pageId = process.env.MAKE_FACEBOOK_PAGE_ID?.trim();
@@ -76,14 +80,22 @@ export class MakeSocialClient {
 
   private async request(action: "publish" | "comment", input: { jobId: string; articleUrl: string; message?: string; photo?: Buffer; postId?: string }): Promise<MakeSocialSuccess> {
     const body = new FormData();
-    body.set("action", action); body.set("jobId", input.jobId); body.set("articleUrl", input.articleUrl);
+    body.set("action", action);
+    body.set("jobId", input.jobId);
+    body.set("articleUrl", input.articleUrl);
     if (input.message !== undefined) body.set("message", input.message);
     if (input.postId) body.set("postId", input.postId);
     if (input.photo) body.set("photo", new Blob([Uint8Array.from(input.photo)], { type: "image/jpeg" }), `${input.jobId}.jpg`);
     let response: Response;
     try {
-      response = await this.send(this.webhook, { method: "POST", headers: { "x-make-apikey": this.apiKey }, body,
-        cache: "no-store", redirect: "error", signal: AbortSignal.timeout(120_000) });
+      response = await this.send(this.webhook, {
+        method: "POST",
+        headers: { "x-make-apikey": this.apiKey },
+        body,
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(120_000),
+      });
     } catch {
       throw new MakeSocialError("lost_response", true, true);
     }
