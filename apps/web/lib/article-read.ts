@@ -34,8 +34,8 @@ export function markArticleReadsEligibleAfterNavigation(storage: Storage) {
   }
 }
 
-export function articleReadRequestBody(revisit: boolean) {
-  return revisit ? JSON.stringify({ revisit: true }) : "{}";
+export function articleReadRequestBody() {
+  return "{}";
 }
 
 const readsInFlight = new Map<string, Promise<number | null>>();

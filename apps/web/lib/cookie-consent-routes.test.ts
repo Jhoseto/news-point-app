@@ -7,6 +7,7 @@ import { POST as clearStatistics } from "../app/api/privacy/clear-statistics/rou
 const db = vi.hoisted(() => ({ getDb: vi.fn(() => ({})), hasArticleReadCounts: vi.fn(async () => false) }));
 vi.mock("@newspoint/db", () => ({ ...db, articleReadCounts: {}, articleViewBoosts: {}, articles: {}, hasArticleViewBoosts: vi.fn() }));
 vi.mock("@/lib/article-read", async () => await import("./article-read"));
+vi.mock("@/lib/article-read-cookie-cleanup", async () => await import("./article-read-cookie-cleanup"));
 vi.mock("@/lib/cookie-consent", async () => await import("./cookie-consent"));
 const id = "00000000-0000-4000-8000-000000000001";
 const context = { params: Promise.resolve({ id }) };
@@ -30,6 +31,14 @@ it("allows a valid statistics choice to reach the existing database-capability c
   expect(response.status).toBe(503); // Explicit isolated fixture: counts unavailable, no live data.
   expect(db.getDb).toHaveBeenCalledOnce();
   expect(db.hasArticleReadCounts).toHaveBeenCalledOnce();
+});
+it("expires legacy article markers without issuing replacement read cookies", async () => {
+  const legacy = Array.from({ length: 160 }, (_, index) => `np_rd_00000000-0000-4000-8000-${index.toString().padStart(12, "0")}=1`).join("; ");
+  const response = await countRead(request(`${serializeConsent(createConsent(ALL_OPTIONAL_CONSENT, "all"), true)}; ${legacy}`), context);
+  expect(response.status).toBe(503);
+  expect(response.cookies.getAll()).toHaveLength(160);
+  expect(response.cookies.getAll().every(cookie => cookie.name.startsWith("np_rd_") && cookie.value === "")).toBe(true);
+  expect(response.headers.get("set-cookie")).not.toContain("Max-Age=86400");
 });
 it("rejects foreign origins even when a consent cookie is supplied", async () => {
   const req = request(serializeConsent(createConsent(ALL_OPTIONAL_CONSENT, "all"), true), "https://other.example");

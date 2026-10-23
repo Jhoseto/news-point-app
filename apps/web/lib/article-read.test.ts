@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  articleReadRequestBody,
   isArticleReadSameOrigin,
   markArticleReadCounted,
   markArticleReadsEligibleAfterNavigation,
@@ -51,6 +52,10 @@ describe("isArticleReadSameOrigin", () => {
 });
 
 describe("article read session", () => {
+  it("uses one cookie-free request shape for first opens and returns", () => {
+    expect(articleReadRequestBody()).toBe("{}");
+  });
+
   it("counts once per tab session until another route opens and the reader returns", () => {
     const storage = new Map<string, string>();
     const session = {

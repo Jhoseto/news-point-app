@@ -25,6 +25,7 @@ export function verifyDeployArchive(entries, root = repository) {
     const name = parts.at(-1);
     return path.startsWith("/") || parts.includes("..") || parts.includes("node_modules") || parts.includes(".git") || parts.includes(".next")
       || path === "logs" || path.startsWith("logs/") || path === "tests/reports" || path.startsWith("tests/reports/")
+      || path === ".codex-remote-attachments" || path.startsWith(".codex-remote-attachments/")
       || (name?.startsWith(".env") && name !== ".env.example");
   });
   return { missing, forbidden, checked: required.length };

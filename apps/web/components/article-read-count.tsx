@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   articleReadRequestBody,
-  isArticleReadRevisit,
   markArticleReadCounted,
   markArticleReadsEligibleAfterNavigation,
   shareArticleRead,
@@ -15,11 +14,11 @@ import { currentCookieConsent, useCookieConsent } from "./cookie-consent-store";
 
 const formatter = new Intl.NumberFormat("bg-BG");
 
-async function sendArticleRead(articleId: string, revisit: boolean): Promise<number | null> {
+async function sendArticleRead(articleId: string): Promise<number | null> {
   const response = await fetch(`/api/articles/${articleId}/read/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: articleReadRequestBody(revisit),
+    body: articleReadRequestBody(),
   });
   if (!response.ok || response.status === 204) return null;
   const result = await response.json() as { count?: unknown };
@@ -43,11 +42,10 @@ export function ArticleReadCount({ articleId, initialCount }: { articleId: strin
     if (!allowed || initialCount === null) return;
     let storage: Storage;
     try { storage = sessionStorage; storage.getItem("np-read:v1:probe"); } catch { return; }
-    const revisit = isArticleReadRevisit(articleId, storage);
     if (!shouldSendArticleRead(articleId, storage)) return;
 
     let ignore = false;
-    void shareArticleRead(articleId, () => sendArticleRead(articleId, revisit).catch(() => null)).then((next) => {
+    void shareArticleRead(articleId, () => sendArticleRead(articleId).catch(() => null)).then((next) => {
       if (ignore || next === null || !currentCookieConsent()?.statistics) return;
       try { markArticleReadCounted(articleId, storage); } catch { /* No local persistence. */ }
       setCount(next);
