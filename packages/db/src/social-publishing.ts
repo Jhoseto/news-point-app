@@ -1,9 +1,20 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { defaultSocial, normalizeSocial, socialArticleUrl, socialMessage, type SocialInput, type SocialStatus } from "@newspoint/content";
+import { makeSocialConfiguration } from "@newspoint/content/make-social";
 import type { ScriptDb } from "./node";
 import { articles, articleRevisions, mediaAssets, socialConnections, socialPublications } from "./schema";
 
 type Executor = Pick<ScriptDb, "execute">;
+type SocialPage = { pageId: string; name: string; connected: boolean; provider: "facebook" | "make" };
+async function activeSocialPage(db: Pick<ScriptDb, "select">): Promise<SocialPage> {
+  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") {
+    const configured = makeSocialConfiguration();
+    return { pageId: configured?.pageId ?? "unconnected", name: configured?.pageName ?? "Make", connected: Boolean(configured), provider: "make" };
+  }
+  const [connection] = await db.select({ pageId: socialConnections.pageId, name: socialConnections.name, status: socialConnections.status })
+    .from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+  return { pageId: connection?.pageId ?? "unconnected", name: connection?.name ?? "Facebook", connected: connection?.status === "connected", provider: "facebook" };
+}
 export async function hasSocialPublishing(db: Executor): Promise<boolean> {
   const rows = await db.execute<{ ready: boolean }>(sql`select to_regclass('public.article_revision_social') is not null
     and to_regclass('public.social_connections') is not null and to_regclass('public.social_publications') is not null
@@ -43,11 +54,11 @@ export async function enqueueSocialPublication(db: Pick<ScriptDb, "execute" | "s
   if (!facebook.enabled) return;
   const [existing] = await db.select({ id: socialPublications.id }).from(socialPublications).where(eq(socialPublications.articleId, id)).limit(1);
   if (existing) return; // Includes a task created before the Page was connected.
-  const [connection] = await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+  const connection = await activeSocialPage(db);
   const [media] = article.heroMediaId ? await db.select().from(mediaAssets).where(eq(mediaAssets.id, article.heroMediaId)) : [];
   const url = socialArticleUrl(process.env.WEB_URL, article.path);
-  const error = !url ? "origin" : !facebook.text.trim() ? "text" : !media?.storageKey || article.heroEmbedUrl ? "image" : !connection || connection.status !== "connected" ? "connection" : null;
-  await db.insert(socialPublications).values({ articleId: id, revision, pageId: connection?.pageId ?? "unconnected",
+  const error = !url ? "origin" : !facebook.text.trim() ? "text" : !media?.storageKey || article.heroEmbedUrl ? "image" : !connection.connected ? "connection" : null;
+  await db.insert(socialPublications).values({ articleId: id, revision, pageId: connection.pageId,
     text: facebook.text, articleUrl: url ?? "", mediaId: article.heroMediaId, storageKey: media?.storageKey,
     status: error ? "failed" : "pending", errorCode: error,
   }).onConflictDoNothing();
@@ -56,9 +67,9 @@ export async function enqueueSocialPublication(db: Pick<ScriptDb, "execute" | "s
 export async function readSocialStatus(db: ScriptDb, id?: string): Promise<SocialStatus> {
   const ready = await hasSocialPublishing(db);
   if (!ready) return { ready: false, connected: false, enabled: false, job: null };
-  const [connection] = await db.select({ status: socialConnections.status }).from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+  const connection = await activeSocialPage(db);
   const [job] = id ? await db.select().from(socialPublications).where(eq(socialPublications.articleId, id)).orderBy(desc(socialPublications.createdAt)).limit(1) : [];
-  return { ready, connected: connection?.status === "connected", enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", job: job ? {
+  return { ready, connected: connection.connected, enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", job: job ? {
     id: job.id, status: job.status, step: job.step, text: job.text, url: job.permalink,
     message: socialMessage(job.status, job.step, job.errorCode), canRetry: job.status === "failed" && job.errorCode !== "connection",
   } : null };
@@ -72,8 +83,8 @@ export async function retrySocialPublication(db: ScriptDb, id: string): Promise<
     if (!article?.isPublic) return false;
     const [job] = await tx.select().from(socialPublications).where(eq(socialPublications.articleId, id)).for("update");
     if (!job || job.status !== "failed") return false;
-    const [connection] = await tx.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
-    if (!connection || connection.status !== "connected" || (job.pageId !== "unconnected" && job.pageId !== connection.pageId)) return false;
+    const connection = await activeSocialPage(tx);
+    if (!connection.connected || (job.pageId !== "unconnected" && job.pageId !== connection.pageId)) return false;
     const values: Partial<typeof socialPublications.$inferInsert> = { status: "pending", attempts: 0, nextAttemptAt: new Date(), errorCode: null, leaseToken: null, leaseUntil: null, updatedAt: new Date() };
     if (!job.photoId && !job.operationStartedAt && ["prepare", "photo"].includes(job.step)) {
       const [rev] = await tx.select().from(articleRevisions).where(and(eq(articleRevisions.articleId, id), eq(articleRevisions.number, article.publishedRevision!)));

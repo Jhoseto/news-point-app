@@ -8,6 +8,7 @@ import { hasSocialPublishing } from "@newspoint/db/social-publishing";
 import { mediaFile, readMediaFile } from "@newspoint/content/upload-media";
 import { socialArticleUrl } from "@newspoint/content";
 import { FacebookClient, FacebookError, facebookPermalink } from "@newspoint/content/facebook";
+import { MakeSocialClient, MakeSocialError, makeSocialConfiguration } from "@newspoint/content/make-social";
 import { decryptSocialSecret, pageSecretContext } from "@newspoint/content/social-secrets";
 import { renderFacebookPostImage } from "./facebook-post-image";
 
@@ -74,7 +75,7 @@ export async function claimSocialJob(db: ScriptDb): Promise<Job | null> {
 }
 
 export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
-  client?: FacebookClient; photo?: (job: Job) => Promise<Buffer>;
+  client?: FacebookClient; makeClient?: MakeSocialClient; photo?: (job: Job) => Promise<Buffer>;
 } = {}): Promise<void> {
   const owned = and(eq(socialPublications.id, job.id), eq(socialPublications.leaseToken, job.leaseToken!), sql`${socialPublications.leaseUntil} > now()`);
   const finish = async (values: Partial<typeof socialPublications.$inferInsert>) => {
@@ -91,19 +92,26 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     if (!article?.isPublic || !article.publishedAt || article.publishedAt > new Date()) {
       await finish({ status: job.status === "uncertain" ? "uncertain" : "cancelled", errorCode: "not_public", nextAttemptAt: new Date(Date.now() + 86400_000) }); return;
     }
-    const [connection] = await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
-    if (!connection || connection.status !== "connected" || connection.pageId !== job.pageId) throw new FacebookError("connection");
-    generation = connection.generation;
-    const client = dependencies.client ?? new FacebookClient(decryptSocialSecret(connection.encryptedToken, pageSecretContext(connection.pageId)));
+    const makeMode = process.env.SOCIAL_PUBLISHING_PROVIDER === "make";
+    const makeConfig = makeMode ? makeSocialConfiguration() : null;
+    const [connection] = makeMode ? [] : await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
+    if (makeMode ? !makeConfig || makeConfig.pageId !== job.pageId : !connection || connection.status !== "connected" || connection.pageId !== job.pageId) throw new FacebookError("connection");
+    generation = connection?.generation ?? null;
+    const client = makeMode ? null : dependencies.client ?? new FacebookClient(decryptSocialSecret(connection!.encryptedToken, pageSecretContext(connection!.pageId)));
+    const makeClient = makeMode ? dependencies.makeClient ?? MakeSocialClient.configured() : null;
     if (!socialArticleUrl(new URL(job.articleUrl).origin, new URL(job.articleUrl).pathname)) throw new FacebookError("origin");
     if (job.status === "uncertain") {
+      if (makeMode) {
+        // The webhook may have completed after the response was lost. Never replay it blindly.
+        await finish({ status: "uncertain", errorCode: "review", nextAttemptAt: new Date(Date.now() + 3600_000) }); return;
+      }
       if (job.step === "comment" && job.postId) {
-        const comments = await client.comments(job.postId);
+        const comments = await client!.comments(job.postId);
         const matches = comments.filter(c => c.from?.id === job.pageId && c.message === job.articleUrl);
         if (matches.length === 1) { await finish({ status: "succeeded", commentId: matches[0]!.id, errorCode: null }); return; }
       }
       if (job.photoId) {
-        const postId = job.postId ?? await client.photoPost(job.photoId);
+        const postId = job.postId ?? await client!.photoPost(job.photoId);
         if (postId && job.step !== "comment") { await finish({ status: "pending", step: "comment", postId, attempts: 0, errorCode: null, nextAttemptAt: new Date() }); return; }
       }
       // Unknown photos require explicit admin reconciliation; do not fetch unused candidates.
@@ -118,32 +126,49 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
       await finish({ ...prepared, status: "pending", step: "photo", attempts: 0, errorCode: null, nextAttemptAt: new Date() }); return;
     }
     if (job.step === "resolve") {
+      if (makeMode) throw new MakeSocialError("review");
       if (!job.photoId) throw new FacebookError("review");
-      const postId = await client.photoPost(job.photoId);
+      const postId = await client!.photoPost(job.photoId);
       if (!postId) throw new FacebookError("post_pending", true);
-      const post = await client.post(postId);
+      const post = await client!.post(postId);
       await finish({ status: "pending", step: "comment", postId, permalink: facebookPermalink(post.permalink_url), attempts: 0, errorCode: null, nextAttemptAt: new Date() }); return;
     }
     const bytes = job.step === "photo" ? await (dependencies.photo ?? preparedPhoto)(job) : null;
     if (process.env.SOCIAL_PUBLISHING_ENABLED !== "1") { await finish({ status: "pending", nextAttemptAt: new Date(Date.now() + 60_000) }); return; }
     if (job.step === "comment" && !job.postId) throw new FacebookError("review");
+    const connectionFence = makeMode
+      ? sql`${makeConfig?.pageId ?? "unconnected"} = ${job.pageId}`
+      : sql`exists(select 1 from social_connections where provider='facebook' and status='connected' and page_id=${job.pageId} and generation=${generation})`;
     const started = await db.update(socialPublications).set({ status: "sending", operationStartedAt: new Date(), attempts: job.attempts + 1, updatedAt: new Date() }).where(and(owned,
-      sql`exists(select 1 from social_connections where provider='facebook' and status='connected' and page_id=${job.pageId} and generation=${generation})`,
+      connectionFence,
       sql`exists(select 1 from articles where id=${job.articleId}::uuid and is_public=true)`,
     )).returning({ id: socialPublications.id });
     if (!started.length) return;
     externalStarted = true;
-    if (job.step === "photo") {
-      const result = await client.uploadPhoto(job.pageId, job.text, bytes!);
+    if (makeMode && job.step === "photo") {
+      const result = await makeClient!.publish({ jobId: job.id, message: job.text, articleUrl: job.articleUrl, photo: bytes! });
+      await finish({ postId: result.postId, commentId: result.commentId, permalink: result.permalink ?? `https://www.facebook.com/${result.postId}`,
+        status: "succeeded", attempts: 0, errorCode: null });
+    } else if (makeMode) {
+      const result = await makeClient!.comment({ jobId: job.id, articleUrl: job.articleUrl, postId: job.postId! });
+      await finish({ postId: result.postId, commentId: result.commentId, permalink: result.permalink ?? job.permalink,
+        status: "succeeded", attempts: 0, errorCode: null });
+    } else if (job.step === "photo") {
+      const result = await client!.uploadPhoto(job.pageId, job.text, bytes!);
       await finish({ ...result, status: "pending", step: "resolve", attempts: 0, errorCode: null, nextAttemptAt: new Date() });
     } else {
-      const commentId = await client.comment(job.postId!, job.articleUrl);
+      const commentId = await client!.comment(job.postId!, job.articleUrl);
       await finish({ commentId, status: "succeeded", attempts: 0, errorCode: null });
     }
   } catch (error) {
+    if (error instanceof MakeSocialError && error.postId && job.step === "photo") {
+      await finish({ postId: error.postId, permalink: `https://www.facebook.com/${error.postId}`, status: "retry", step: "comment", attempts: 0,
+        errorCode: error.code, traceId: error.traceId, nextAttemptAt: new Date(Date.now() + Math.max(error.retryAfter, RETRIES[0]!)) });
+      return;
+    }
     // COMMIT/DB errors following a successful POST must remain ambiguous, never retryable.
-    const failure = error instanceof FacebookError ? error : new FacebookError(externalStarted ? "lost_response" : "internal", true, externalStarted);
-    if (failure.code === "connection") {
+    const failure = error instanceof FacebookError || error instanceof MakeSocialError ? error : new FacebookError(externalStarted ? "lost_response" : "internal", true, externalStarted);
+    if (failure.code === "connection" && process.env.SOCIAL_PUBLISHING_PROVIDER !== "make") {
       await db.update(socialConnections).set({ status: "invalid", updatedAt: new Date() })
         .where(and(eq(socialConnections.provider, "facebook"), eq(socialConnections.pageId, job.pageId), generation !== null ? eq(socialConnections.generation, generation) : undefined));
     }
@@ -160,6 +185,7 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
 }
 
 async function checkConnection(db: ScriptDb) {
+  if (process.env.SOCIAL_PUBLISHING_PROVIDER === "make") return;
   const [connection] = await db.select().from(socialConnections).where(eq(socialConnections.provider, "facebook"));
   if (!connection || connection.status !== "connected" || connection.checkedAt && Date.now() - connection.checkedAt.getTime() < 3600_000) return;
   try {

@@ -18,6 +18,7 @@ import { readRevisionSocial, retrySocialPublication } from "../packages/db/src/s
 import { claimSocialJob, prepareSocialPhoto, processSocialJob } from "../apps/worker/src/social-publishing-worker";
 import { defaultSocial } from "../packages/content/src/social-publishing";
 import { FacebookError, type FacebookClient } from "../packages/content/src/facebook-api";
+import { MakeSocialError, type MakeSocialClient } from "../packages/content/src/make-social-api";
 import { disconnectFacebook, facebookSettings, selectFacebookPage, startFacebookConnection, finishFacebookConnection, removeFacebookAuthorization } from "../apps/studio/lib/social-facebook";
 import { encryptSocialSecret } from "../packages/content/src/social-secrets";
 import { renderFacebookPostImage } from "../apps/worker/src/facebook-post-image";
@@ -35,6 +36,14 @@ const input = () => ({ title: "Explicit isolated Facebook QA fixture", slug: `is
 const api = () => ({ uploadPhoto: vi.fn().mockResolvedValue({ photoId: "22", postId: "11_22" }), photoPost: vi.fn().mockResolvedValue("11_22"),
   post: vi.fn().mockResolvedValue({ id: "11_22", permalink_url: "https://www.facebook.com/11/posts/22" }), comment: vi.fn().mockResolvedValue("22_33"),
   comments: vi.fn().mockResolvedValue([]), page: vi.fn().mockResolvedValue({ id: "11" }) });
+const makeApi = () => ({
+  publish: vi.fn().mockResolvedValue({ ok: true, postId: "11_22", commentId: "22_33", permalink: "https://www.facebook.com/11/posts/22" }),
+  comment: vi.fn().mockResolvedValue({ ok: true, postId: "11_22", commentId: "22_33", permalink: "https://www.facebook.com/11/posts/22" }),
+});
+function useMake() {
+  vi.stubEnv("SOCIAL_PUBLISHING_PROVIDER", "make"); vi.stubEnv("MAKE_SOCIAL_WEBHOOK_URL", "https://hook.eu2.make.com/fixture");
+  vi.stubEnv("MAKE_SOCIAL_WEBHOOK_API_KEY", "fixture-key"); vi.stubEnv("MAKE_FACEBOOK_PAGE_ID", "11"); vi.stubEnv("MAKE_FACEBOOK_PAGE_NAME", "News Point");
+}
 const jobFor = async (id: string) => (await db.select().from(schema.socialPublications).where(eq(schema.socialPublications.articleId, id)))[0]!;
 async function makeJob(step = "photo") {
   const draft = input(); const created = await createArticle(actor, draft); await publishRevision(actor, created.id, 1, randomUUID(), false);
@@ -222,6 +231,59 @@ describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database fl
     });
     await processSocialJob(db, (await claimSocialJob(db))!, { client: remote as unknown as FacebookClient, photo: async () => Buffer.from("fixture") });
     expect((await db.select().from(schema.socialConnections))[0]).toMatchObject({ generation: 2, status: "connected" });
+  });
+  it("publishes the photo and first comment through Make in one checkpoint", async () => {
+    useMake(); const id = await makeJob(); const remote = makeApi();
+    await processSocialJob(db, (await claimSocialJob(db))!, { makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("fixture") });
+    expect(await jobFor(id)).toMatchObject({ status: "succeeded", postId: "11_22", commentId: "22_33" });
+    expect(remote.publish).toHaveBeenCalledTimes(1); expect(remote.comment).not.toHaveBeenCalled();
+  });
+  it("checkpoints a Make post and retries only its failed comment", async () => {
+    useMake(); const id = await makeJob(); const remote = makeApi();
+    remote.publish.mockRejectedValueOnce(new MakeSocialError("comment_failed", true, false, "11_22"));
+    const deps = { makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("fixture") };
+    await processSocialJob(db, (await claimSocialJob(db))!, deps);
+    expect(await jobFor(id)).toMatchObject({ status: "retry", step: "comment", postId: "11_22" });
+    await db.update(schema.socialPublications).set({ nextAttemptAt: new Date(0) });
+    await processSocialJob(db, (await claimSocialJob(db))!, deps);
+    expect(await jobFor(id)).toMatchObject({ status: "succeeded", commentId: "22_33" });
+    expect(remote.publish).toHaveBeenCalledTimes(1); expect(remote.comment).toHaveBeenCalledTimes(1);
+  });
+  it("does not repeat a Make publish after a lost response", async () => {
+    useMake(); const id = await makeJob(); const remote = makeApi(); remote.publish.mockRejectedValueOnce(new MakeSocialError("lost_response", true, true));
+    const deps = { makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("fixture") };
+    await processSocialJob(db, (await claimSocialJob(db))!, deps);
+    expect(await jobFor(id)).toMatchObject({ status: "uncertain", step: "photo" });
+    await db.update(schema.socialPublications).set({ nextAttemptAt: new Date(0) });
+    await processSocialJob(db, (await claimSocialJob(db))!, deps);
+    expect(remote.publish).toHaveBeenCalledTimes(1);
+  });
+  it("retries a Make failure declared before publication", async () => {
+    useMake(); const id = await makeJob(); const remote = makeApi(); remote.publish.mockRejectedValueOnce(new MakeSocialError("busy", true, false));
+    const deps = { makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("fixture") };
+    await processSocialJob(db, (await claimSocialJob(db))!, deps); expect(await jobFor(id)).toMatchObject({ status: "retry", step: "photo" });
+    await db.update(schema.socialPublications).set({ nextAttemptAt: new Date(0) }); await processSocialJob(db, (await claimSocialJob(db))!, deps);
+    expect(await jobFor(id)).toMatchObject({ status: "succeeded" }); expect(remote.publish).toHaveBeenCalledTimes(2);
+  });
+  it("does not send a hidden article through Make", async () => {
+    useMake(); const id = await makeJob(); const remote = makeApi(); await db.update(schema.articles).set({ isPublic: false }).where(eq(schema.articles.id, id));
+    await processSocialJob(db, (await claimSocialJob(db))!, { makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("fixture") });
+    expect(await jobFor(id)).toMatchObject({ status: "cancelled" }); expect(remote.publish).not.toHaveBeenCalled();
+  });
+  it("shows the configured Make Page without exposing webhook secrets or allowing Meta OAuth actions", async () => {
+    useMake();
+    const settings = await facebookSettings(admin);
+    expect(settings).toMatchObject({
+      ready: true,
+      provider: "make",
+      connection: { pageId: "11", name: "News Point", status: "connected" },
+      pages: [],
+    });
+    const serialized = JSON.stringify(settings);
+    expect(serialized).not.toContain("hook.eu2.make.com");
+    expect(serialized).not.toContain("fixture-key");
+    await expect(startFacebookConnection(admin)).rejects.toMatchObject({ code: "provider" });
+    await expect(disconnectFacebook(admin)).rejects.toMatchObject({ code: "provider" });
   });
   it("restricts connection management to master_admin and never returns encrypted tokens", async () => {
     await expect(facebookSettings(actor)).rejects.toMatchObject({ status: 403 });
