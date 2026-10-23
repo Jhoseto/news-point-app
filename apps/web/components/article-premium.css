@@ -480,9 +480,14 @@
 /* End-of-story navigation: compact chronological neighbours, not a category promo. */
 .np-article-end { margin-top: clamp(3rem, 7vw, 5rem); }
 .np-article-neighbours { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.8rem; }
-/* Unlayered grid display overrides Tailwind's hidden utility on mobile. */
+/* The desktop pair stays hidden below the desktop breakpoint; mobile/PWA gets both directions. */
 @media (max-width: 63.999rem) {
-  .np-article-neighbours { display: none; }
+  .np-article-neighbours:not(.np-article-neighbours-mobile) { display: none; }
+  .np-article-neighbours-mobile { display: grid; }
+  .np-article-neighbours-mobile.is-single { grid-template-columns: 1fr; }
+}
+@media (min-width: 64rem) {
+  .np-article-neighbours-mobile { display: none; }
 }
 .np-article-neighbour {
   position: relative;

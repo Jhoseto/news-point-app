@@ -45,4 +45,23 @@ describe("article recommendations", () => {
     ], { now, excludeIds: ["neighbour"] });
     expect(result.map(({ id }) => id)).toEqual(["a"]);
   });
+
+  it("returns fewer than the limit rather than padding with unrelated rubric articles", () => {
+    const result = rankArticleRecommendations(current, [
+      story("strong", "Локомотив Пловдив подписа с Жоао Силва", "2026-09-29T09:00:00Z"),
+      story("unrelated-a", "Волейболният шампион започва подготовка", "2026-09-28T09:00:00Z"),
+      story("unrelated-b", "Баскетболният отбор представи нов екип", "2026-09-27T09:00:00Z"),
+    ], { now, limit: 10 });
+    expect(result.map(({ id }) => id)).toEqual(["strong"]);
+  });
+
+  it("does not treat shared Plovdiv geography or generic person words as a related topic", () => {
+    const missing = story("missing", "Издирват възрастна жена с деменция, изчезнала в район Тракия в Пловдив", "2026-09-29T10:00:00Z");
+    const result = rankArticleRecommendations(missing, [
+      story("follow-up", "Откриха изчезналата възрастна жена с деменция в Пловдив", "2026-09-29T11:00:00Z"),
+      story("lights", "Над 2000 нови LED лампи в район Тракия в Пловдив", "2026-09-29T11:00:00Z"),
+      story("accident", "Възрастна жена загина при инцидент в Пазарджик", "2026-09-29T11:00:00Z"),
+    ], { now, limit: 10 });
+    expect(result.map(({ id }) => id)).toEqual(["follow-up"]);
+  });
 });

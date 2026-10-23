@@ -42,7 +42,7 @@ describe("Reddit editorial embed", () => {
     expect(articleBody.parse(textToBody(bodyToText(body)!))).toEqual(body);
     expect(documentToBody({ type: "doc", content: [{ type: "npEmbed", attrs: { block } }] })).toEqual(body);
     expect(bodyToEditorHtml(body)).toContain("data-np-embed");
-    expect(publicationProblems({ title: "Тестов материал", slug: "testov-material", bodyBlocks: 1, primaryCategoryId: "test-category", heroMediaId: null, heroEmbedUrl: source, authorKind: "newsroom", authorName: "NewsPoint.bg" })).toEqual([]);
+    expect(publicationProblems({ title: "Тестов материал", slug: "testov-material", excerpt: "Кратко резюме", bodyBlocks: 1, primaryCategoryId: "test-category", heroMediaId: null, heroEmbedUrl: source, authorKind: "newsroom", authorName: "NewsPoint.bg" })).toEqual([]);
   });
   it("accepts official iframe and old/mobile Reddit post addresses", () => {
     expect(parseEmbedInput(`<iframe src="${frame.replaceAll("&", "&amp;")}"></iframe>`)).toEqual({ provider: "reddit", url: frame });

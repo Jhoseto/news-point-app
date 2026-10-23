@@ -24,6 +24,21 @@ export const PUBLIC_SEO_PAGES = {
   cookies: { path: LEGAL_PATHS.cookies, title: "Политика за бисквитките и сходните технологии", description: "Бисквитки, локални записи, цели, срокове и избор на посетителите на NewsPoint.bg." },
 } as const;
 
+const CATEGORY_SEO_OVERRIDES: Record<string, { title: string; description: string }> = {
+  plovdiv: {
+    title: "Новини от Пловдив днес – последни и актуални",
+    description: "Последни новини от Пловдив и областта: трафик, инциденти, община, култура, спорт и важните събития днес.",
+  },
+};
+
+/** Search metadata only. Visible rubric names and page layout stay unchanged. */
+export function categorySeo(category: { slug: string; name: string }): { title: string; description: string } {
+  return CATEGORY_SEO_OVERRIDES[category.slug] ?? {
+    title: category.name,
+    description: `Новини от рубрика ${category.name} — NewsPoint.bg`,
+  };
+}
+
 /** Register review pages for metadata/share cards, but don't submit unfinished policies for indexing. */
 export function discoverablePublicPages() {
   const reviewPaths = new Set<string>(legalReviewPending() ? Object.values(LEGAL_PATHS) : []);

@@ -67,13 +67,13 @@ describe("structured visual document", () => {
     expect(draftInput.safeParse({ ...draft, body: [] }).success).toBe(true);
     expect(draftInput.safeParse({ ...draft, body: [], bodyText: "" }).success).toBe(false);
     expect(draftInput.safeParse(draft).success).toBe(false);
-    expect(publishProblems({ ...draft, bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: "https://youtu.be/dQw4w9WgXcQ" })).toEqual([]);
+    expect(publishProblems({ ...draft, excerpt: "Кратко резюме", bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: "https://youtu.be/dQw4w9WgXcQ" })).toEqual([]);
   });
   it("bounds Facebook dimensions and rejects credentialed embedded targets", () => {
     const valid = "https://facebook.com/plugins/video.php?href=https%3A%2F%2Ffacebook.com%2Fwatch%2F%3Fv%3D123&width=99999&height=broken";
     expect(embedAspectRatio(valid)).toBe("1200/315");
     expect(embedFrameUrl("https://facebook.com/plugins/post.php?href=https%3A%2F%2Fuser%3Asecret%40facebook.com%2Fposts%2F123")).toBeNull();
-    expect(publishProblems({ title: "Материал", slug: "podcast-audio", bodyBlocks: 1, primaryCategoryId: "category", heroMediaId: "media", authorKind: "newsroom", authorName: "NewsPoint.bg" })).toContain("Този адрес е запазен. Изберете друг.");
+    expect(publishProblems({ title: "Материал", slug: "podcast-audio", excerpt: "Кратко резюме", bodyBlocks: 1, primaryCategoryId: "category", heroMediaId: "media", authorKind: "newsroom", authorName: "NewsPoint.bg" })).toContain("Този адрес е запазен. Изберете друг.");
   });
 });
 
@@ -206,12 +206,13 @@ describe("draft input", () => {
 
   it("lists what blocks publication", () => {
     expect(
-      publishProblems({ title: "Заг", slug: "", bodyBlocks: 0, primaryCategoryId: null, heroMediaId: null, authorKind: "manual", authorName: "" }),
-    ).toHaveLength(6);
+      publishProblems({ title: "Заг", slug: "", excerpt: "", bodyBlocks: 0, primaryCategoryId: null, heroMediaId: null, authorKind: "manual", authorName: "" }),
+    ).toHaveLength(7);
     expect(
       publishProblems({
         title: "Нормално заглавие",
         slug: "normalno-zaglavie",
+        excerpt: "Конкретно кратко резюме на новината.",
         bodyBlocks: 2,
         primaryCategoryId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a10",
         heroMediaId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a11",
@@ -219,5 +220,17 @@ describe("draft input", () => {
         authorName: "NewsPoint.bg",
       }),
     ).toEqual([]);
+    expect(
+      publishProblems({
+        title: "Нормално заглавие",
+        slug: "normalno-zaglavie",
+        excerpt: "   ",
+        bodyBlocks: 2,
+        primaryCategoryId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a10",
+        heroMediaId: "0b7c2a44-4f0e-4a61-9d61-2d1f0c6d3a11",
+        authorKind: "newsroom",
+        authorName: "NewsPoint.bg",
+      }),
+    ).toContain("Добавете кратко резюме на новината.");
   });
 });

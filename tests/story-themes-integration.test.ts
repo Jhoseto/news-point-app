@@ -126,7 +126,17 @@ beforeAll(async () => {
       author_kind text not null default 'newsroom', author_user_id text references staff_users(id),
       source_url text, body jsonb not null default '[]'::jsonb, listen_enabled boolean not null default false,
       version integer not null default 1,
+      published_revision integer,
+      source_modified_at timestamptz,
       updated_at timestamptz not null default now()
+    );
+    create table publish_requests (
+      idempotency_key uuid primary key,
+      article_id uuid not null references articles(id) on delete cascade,
+      revision integer not null,
+      requested_by text references staff_users(id) on delete set null,
+      outcome jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now()
     );
     create table categories (
       id uuid primary key,
@@ -515,6 +525,14 @@ describe("public sitemap queries (isolated Postgres fixtures)", () => {
     expect((await getArticleByPath(stored!.path))?.version).toBe(1);
     await pg.query("update articles set version = 7 where id = $1", [articleIds[0]]);
     expect((await getArticleByPath(stored!.path))?.version).toBe(7);
+  });
+  it("derives dateModified from the published revision rather than unrelated row updates", async () => {
+    const { getArticleByPath } = await import("../apps/web/lib/queries");
+    const modifiedAt = "2026-10-20T12:30:00.000Z";
+    const [stored] = await db.select({ path: schema.articles.path }).from(schema.articles).where(eq(schema.articles.id, articleIds[0]!));
+    await pg.query("update articles set published_at = $1, published_revision = 2, updated_at = now() where id = $2", ["2026-10-20T10:00:00.000Z", articleIds[0]]);
+    await pg.query("insert into publish_requests(idempotency_key, article_id, revision, created_at) values ($1, $2, 2, $3)", [randomUUID(), articleIds[0], modifiedAt]);
+    expect((await getArticleByPath(stored!.path))?.modifiedAt.toISOString()).toBe(modifiedAt);
   });
   it("links staff authors only to explicitly public profiles and preserves unknown bylines", async () => {
     const { getArticleByPath, getPublicTeam } = await import("../apps/web/lib/queries");

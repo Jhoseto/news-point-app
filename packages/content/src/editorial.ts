@@ -161,7 +161,7 @@ export const RESERVED_ARTICLE_SLUGS = new Set([
   "podcast", "podcast-audio", "news-podcast", "sitemaps", "llms.txt", "sitemap.xml", "robots.txt", "wp-admin", "wp-content", "wp-json",
 ]);
 export function publicationProblems(draft: {
-  title: string; slug: string; bodyBlocks: number; primaryCategoryId: string | null; heroMediaId: string | null;
+  title: string; slug: string; excerpt: string; bodyBlocks: number; primaryCategoryId: string | null; heroMediaId: string | null;
   heroEmbedUrl?: string | null; authorKind: string; authorName: string;
 }): string[] {
   const problems: string[] = [];
@@ -169,6 +169,7 @@ export function publicationProblems(draft: {
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug)) problems.push("Липсва адрес на статията.");
   else if (RESERVED_ARTICLE_SLUGS.has(draft.slug)) problems.push("Този адрес е запазен. Изберете друг.");
   if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
+  if (!draft.excerpt.trim()) problems.push("Добавете кратко резюме на новината.");
   if (!draft.primaryCategoryId) problems.push("Изберете рубрика.");
   if (draft.heroEmbedUrl ? !embedFrameUrl(draft.heroEmbedUrl) && !videoSourceUrl(draft.heroEmbedUrl) : !draft.heroMediaId) problems.push("Изберете основна снимка или поддържан водещ embed.");
   if (draft.authorKind === "manual" && (draft.authorName.trim().length < 2 || draft.authorName.length > 120 || /[<>\u0000-\u001f\u007f]/u.test(draft.authorName))) problems.push("Въведете валидно име на автора.");

@@ -2,10 +2,11 @@ import type { ArticleSummary } from "./queries";
 
 const STOP_WORDS = new Set([
   "автор", "беше", "били", "било", "бъдат", "българия", "вече", "всички", "всяка", "днес",
-  "докато", "дори", "друг", "друга", "други", "един", "една", "защо", "като", "които", "която",
+  "града", "градът", "докато", "дори", "друг", "друга", "други", "един", "една", "жена", "защо", "като", "които", "която",
   "който", "към", "между", "може", "много", "няма", "нова", "нови", "новина", "новини", "около",
-  "отново", "още", "преди", "през", "след", "срещу", "стана", "това", "този", "трябва", "какво",
-  "ще", "нейната", "неговата", "своята", "съобщи", "заяви", "каза",
+  "областта", "отново", "още", "преди", "пловдив", "пловдивска", "пловдивски", "пловдивския", "пловдивско",
+  "през", "район", "след", "срещу", "стана", "това", "този", "тракия", "трябва", "какво",
+  "ще", "мъж", "нейната", "неговата", "своята", "съобщи", "заяви", "каза",
 ]);
 
 function normalized(value: string): string {
@@ -65,11 +66,11 @@ export function rankArticleRecommendations(
     const phraseMatches = intersection(currentBigrams, bigrams(candidate.title));
     const oldDays = daysOld(candidate.publishedAt, now);
 
-    // A rubric or one incidental context word is not a topic signal.
-    if (!titleMatches.length && allMatches.length < 2) return [];
+    // Geography, a rubric or one incidental word is not a topic signal.
+    if (phraseMatches.length === 0 && titleMatches.length < 2 && allMatches.length < 3) return [];
     // Background from the archive enters only with an exact phrase or several title anchors.
-    if (oldDays > 730 && phraseMatches.length === 0 && titleMatches.length < 3) return [];
-    if (oldDays > 60 && phraseMatches.length === 0 && titleMatches.length < 2) return [];
+    if (oldDays > 730 && phraseMatches.length === 0 && titleMatches.length < 3 && allMatches.length < 4) return [];
+    if (oldDays > 60 && phraseMatches.length === 0 && titleMatches.length < 2 && allMatches.length < 4) return [];
 
     const titleScore = titleMatches.reduce((sum, term) => sum + Math.min(11, 6 + Math.max(0, term.length - 5)), 0);
     const contextScore = Math.min(18, allMatches.length * 3);
@@ -77,7 +78,7 @@ export function rankArticleRecommendations(
     const categoryScore = current.category?.id && current.category.id === candidate.category?.id ? 8 : 0;
     const freshnessScore = oldDays <= 7 ? 16 : oldDays <= 30 ? 12 : oldDays <= 60 ? 8 : oldDays <= 365 ? 4 : 0;
     const score = titleScore + contextScore + phraseScore + categoryScore + freshnessScore;
-    const minimum = oldDays <= 60 ? 17 : oldDays <= 730 ? 25 : 42;
+    const minimum = oldDays <= 60 ? 17 : oldDays <= 730 ? 25 : 30;
     return score >= minimum ? [{ article: candidate, score, titleTerms: candidateTitle }] : [];
   }).sort((left, right) => right.score - left.score
     || right.article.publishedAt.getTime() - left.article.publishedAt.getTime()

@@ -71,7 +71,7 @@ export async function ArticlePage({
   const older = themeStops ? (themeStops.previous ? themeStopToSummary(themeStops.previous) : null) : (timeline.older[0] ?? null);
   const newer = themeStops ? (themeStops.next ? themeStopToSummary(themeStops.next) : null) : (timeline.newer[0] ?? null);
   const neighbours = [older, newer].filter((item): item is ArticleSummary => Boolean(item));
-  const related = await getRecommendedArticles(article, 8, neighbours.map(({ id }) => id));
+  const related = await getRecommendedArticles(article, 10, neighbours.map(({ id }) => id));
   const sections = articleSections(article.body);
   const subtitle = articleSubtitle(article.excerpt, article.body);
   const shareUrl = `${shareOrigin()}${article.path}`;
@@ -168,9 +168,7 @@ export async function ArticlePage({
         )}
       </article>
 
-      <div className="hidden lg:block">
-        <RelatedStories articles={related} />
-      </div>
+      <RelatedStories articles={related} />
     </div>
   );
 }

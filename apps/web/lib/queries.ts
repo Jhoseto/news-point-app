@@ -4,7 +4,7 @@ import { cache } from "react";
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
-import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, staffUsers, storyThemeArticles, storyThemes } from "@newspoint/db";
+import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, publishRequests, staffUsers, storyThemeArticles, storyThemes } from "@newspoint/db";
 import { PUBLIC_MENU, menuName } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
@@ -16,6 +16,7 @@ import type { SearchFilters } from "./search";
 import { asDate } from "./story-route";
 import { publicAuthorAnchor } from "./public-team";
 import { legacyPathCandidates } from "./legacy-path";
+import { publicArticleModifiedAt } from "./article-dates";
 
 export interface Media {
   url: string;
@@ -48,7 +49,7 @@ export interface ArticleSummary {
 }
 
 export interface ArticleDetail extends ArticleSummary {
-  updatedAt?: Date;
+  modifiedAt: Date;
   authorKind?: "staff" | "newsroom" | "manual";
   publicAuthorAnchor?: string | undefined;
   authorName: string;
@@ -354,7 +355,8 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       body: articles.body,
       listenEnabled: articles.listenEnabled,
       version: articles.version,
-      updatedAt: articles.updatedAt,
+      publishedRevision: articles.publishedRevision,
+      sourceModifiedAt: articles.sourceModifiedAt,
     })
     .from(articles)
     .leftJoin(authorProfiles, and(eq(articles.authorKind, "staff"), eq(authorProfiles.staffUserId, articles.authorUserId), eq(authorProfiles.isPublic, true)))
@@ -366,6 +368,13 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     .orderBy(desc(eq(articles.path, path)), asc(articles.path))
     .limit(1);
   if (!row) return null;
+
+  const [publishedRequest] = row.publishedRevision == null ? [] : await db
+    .select({ createdAt: publishRequests.createdAt })
+    .from(publishRequests)
+    .where(and(eq(publishRequests.articleId, row.id), eq(publishRequests.revision, row.publishedRevision)))
+    .orderBy(desc(publishRequests.createdAt))
+    .limit(1);
 
   const body = articleBody.parse(row.body);
   const imageIds = body.flatMap((block) => (block.type === "image" ? [block.mediaAssetId] : []));
@@ -410,7 +419,11 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     readCount: realCount === null ? null : realCount + addedCount,
     listenEnabled: row.listenEnabled,
     version: row.version,
-    updatedAt: row.updatedAt,
+    modifiedAt: publicArticleModifiedAt({
+      publishedAt: row.publishedAt!,
+      publishedRevisionAt: publishedRequest?.createdAt,
+      sourceModifiedAt: row.sourceModifiedAt,
+    }),
   };
 });
 

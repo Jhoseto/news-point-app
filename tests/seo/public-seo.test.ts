@@ -1,7 +1,8 @@
 import { createRequire } from "node:module";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { publicArticleModifiedAt } from "../../apps/web/lib/article-dates";
 import { discoveryRobots, llmsText } from "../../apps/web/lib/discovery";
-import { PUBLIC_SEO_PAGES, SITE_OG_IMAGE, publicMetadata, publicPageMetadata } from "../../apps/web/lib/public-metadata";
+import { PUBLIC_SEO_PAGES, SITE_OG_IMAGE, categorySeo, publicMetadata, publicPageMetadata } from "../../apps/web/lib/public-metadata";
 import { absoluteMedia, shareCard, shareOrigin } from "../../apps/web/lib/share-card";
 import { parseSitemapFile, sitemapFiles, sitemapIndexXml, sitemapXml } from "../../apps/web/lib/sitemap-xml";
 import { publicAuthorAnchor } from "../../apps/web/lib/public-team";
@@ -43,6 +44,22 @@ describe("machine discovery", () => {
 });
 
 describe("public metadata", () => {
+  it("gives Plovdiv focused search metadata without changing the visible rubric name", () => {
+    expect(categorySeo({ slug: "plovdiv", name: "Пловдив" })).toEqual({
+      title: "Новини от Пловдив днес – последни и актуални",
+      description: "Последни новини от Пловдив и областта: трафик, инциденти, община, култура, спорт и важните събития днес.",
+    });
+    expect(categorySeo({ slug: "sport", name: "Спорт" })).toEqual({
+      title: "Спорт",
+      description: "Новини от рубрика Спорт — NewsPoint.bg",
+    });
+  });
+  it("uses only real editorial timestamps for dateModified", () => {
+    const publishedAt = new Date("2026-10-20T08:00:00Z");
+    expect(publicArticleModifiedAt({ publishedAt, publishedRevisionAt: new Date("2026-10-20T07:59:00Z") })).toEqual(publishedAt);
+    expect(publicArticleModifiedAt({ publishedAt, publishedRevisionAt: new Date("2026-10-20T09:00:00Z") })).toEqual(new Date("2026-10-20T09:00:00Z"));
+    expect(publicArticleModifiedAt({ publishedAt, sourceModifiedAt: new Date("2026-10-21T10:00:00Z") })).toEqual(new Date("2026-10-21T10:00:00Z"));
+  });
   it("rejects malformed canonical origins without including credentials in errors", () => {
     for (const value of ["not-a-url", "ftp://example.test", "https://user:secret@example.test", "https://example.test/subpath", "https://example.test/?x=1"]) {
       vi.stubEnv("WEB_URL", value);

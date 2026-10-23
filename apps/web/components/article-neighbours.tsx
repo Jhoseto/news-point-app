@@ -117,12 +117,14 @@ export function ArticleNeighbours({
   if (!older && !newer) return null;
   return (
     <>
-      {/* Phone: a single „Следваща новина" card; left-swipe navigates to it. */}
-      {newer ? (
-        <nav className="lg:hidden" aria-label={nextLabel}>
-          <NeighbourCard article={newer} direction="next" enablePointerTracking label={nextLabel} />
-        </nav>
-      ) : null}
+      {/* Phone/PWA: keep both chronological directions available. */}
+      <nav
+        className={`np-article-neighbours np-article-neighbours-mobile lg:hidden${older && newer ? "" : " is-single"}`}
+        aria-label={`${previousLabel} и ${nextLabel}`}
+      >
+        {older ? <NeighbourCard article={older} direction="previous" enablePointerTracking label={previousLabel} /> : null}
+        {newer ? <NeighbourCard article={newer} direction="next" enablePointerTracking label={nextLabel} /> : null}
+      </nav>
       {/* Desktop and tablet: both chronological neighbours. */}
       {older || newer ? (
         <nav className="np-article-neighbours hidden lg:grid" aria-label={`${previousLabel} и ${nextLabel}`}>
