@@ -1,6 +1,7 @@
 import { createRequire } from "node:module";
 import { resolve, join } from "node:path";
 import { copyFile, mkdir, stat } from "node:fs/promises";
+import { readerPwaIcon } from "./pwa-icon-art.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
@@ -11,6 +12,7 @@ const OUT_DIR = resolve(root, "apps/web/public/brand");
 const STUDIO_BRAND = resolve(root, "apps/studio/public/brand");
 
 const SVG_DENSITY = 512;
+const readerOnly = process.argv.includes("--reader-pwa-only");
 
 async function markRaster(size) {
   return sharp(MARK_SVG, { density: SVG_DENSITY }).resize(size, size, { fit: "fill" }).ensureAlpha().png().toBuffer();
@@ -63,17 +65,21 @@ const SIZES = [
 ];
 
 await mkdir(OUT_DIR, { recursive: true });
-await mkdir(STUDIO_BRAND, { recursive: true });
+if (!readerOnly) await mkdir(STUDIO_BRAND, { recursive: true });
 
 for (const { name, size, maskable } of SIZES) {
+  if (readerOnly && size < 120) continue;
   const target = resolve(OUT_DIR, name);
-  const image = await circularMarkPipeline(size, { maskable });
+  const image = size >= 120
+    ? await readerPwaIcon(sharp, MARK_SVG, size)
+    : await circularMarkPipeline(size, { maskable });
   const pngOpts = { compressionLevel: 9, ...(size <= 32 ? { palette: true } : {}) };
   await image.png(pngOpts).toFile(target);
   const info = await stat(target);
   console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
 }
 
+if (!readerOnly) {
 await (await squareMarkPipeline(512)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark-512w.webp"));
 await (await squareMarkPipeline(256)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark.webp"));
 
@@ -92,5 +98,6 @@ for (const name of ["studio-mark.webp", "studio-mark-512w.webp"]) {
   await copyFile(join(OUT_DIR, name), join(STUDIO_BRAND, name));
 }
 await (await squareMarkPipeline(32)).png({ compressionLevel: 9, palette: true }).toFile(STUDIO_ICON);
+}
 
 console.log("done");

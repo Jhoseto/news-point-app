@@ -1,48 +1,38 @@
 "use client";
 
-import { useLayoutEffect, useState } from "react";
+import { useEffect } from "react";
 
-const DURATION_MS = 2600;
-const EXIT_MS = 400;
-
-function standaloneReader(): boolean {
-  return window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-}
-
-/** Standalone PWA only. Browser sessions skip SSR markup so Lighthouse is not charged for splash assets. */
+/** The head script owns the document's launch; hydration never starts/restarts it. */
 export function PwaSplash() {
-  const [phase, setPhase] = useState<"hidden" | "play" | "leave">("hidden");
-
-  useLayoutEffect(() => {
-    if (!standaloneReader() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    setPhase("play");
-    const leaveTimer = window.setTimeout(() => setPhase("leave"), DURATION_MS);
-    const hideTimer = window.setTimeout(() => setPhase("hidden"), DURATION_MS + EXIT_MS);
-    return () => {
-      window.clearTimeout(leaveTimer);
-      window.clearTimeout(hideTimer);
-    };
+  useEffect(() => {
+    (window as Window & { __npLaunch?: { ready: () => void } }).__npLaunch?.ready();
   }, []);
 
-  if (phase === "hidden") return null;
-
+  // CSS loads artwork only during standalone launch. No browser image downloads.
   return (
-    <div className="np-pwa-splash" data-phase={phase} role="presentation" aria-hidden="true">
+    <div className="np-pwa-splash" role="presentation" aria-hidden="true">
+      <div className="np-pwa-splash-stage">
+      <div className="np-pwa-splash-aura" />
+      <div className="np-pwa-splash-ribbon" />
+      <svg className="np-pwa-splash-orbits" viewBox="0 0 600 600" fill="none">
+        <defs>
+          <linearGradient id="np-launch-orbit" x1="80" y1="220" x2="520" y2="380" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#a0cad9" stopOpacity="0" />
+            <stop offset=".45" stopColor="#7cbdcf" />
+            <stop offset=".75" stopColor="#b1b9da" />
+            <stop offset="1" stopColor="#b1b9da" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <ellipse cx="300" cy="300" rx="260" ry="155" transform="rotate(-26 300 300)" pathLength="1" />
+        <ellipse cx="300" cy="300" rx="275" ry="180" transform="rotate(-26 300 300)" pathLength="1" />
+      </svg>
       <div className="np-pwa-splash-scene">
-        <img
-          className="np-pwa-splash-logo"
-          src="/brand/pwa-launch-logo-1024.webp?v=3"
-          srcSet="/brand/pwa-launch-logo-512.webp?v=3 512w, /brand/pwa-launch-logo-1024.webp?v=3 1024w"
-          sizes="(max-width: 640px) 84vw, 42rem"
-          alt=""
-          width={1024}
-          height={341}
-          decoding="sync"
-          loading="lazy"
-        />
-        <span className="np-pwa-splash-sheen" />
-        <span className="np-pwa-splash-track"><span /></span>
+        <div className="np-pwa-splash-art">
+          <div className="np-pwa-splash-logo" />
+          <span className="np-pwa-splash-sheen" />
+        </div>
+        <span className="np-pwa-splash-line" />
+      </div>
       </div>
     </div>
   );

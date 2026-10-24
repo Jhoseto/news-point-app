@@ -44,6 +44,13 @@ describe("machine discovery", () => {
 });
 
 describe("public metadata", () => {
+  it("positions the homepage for Plovdiv without changing the site name or duplicating the city archive title", () => {
+    const home = publicPageMetadata("home");
+    expect(home.title).toEqual({ absolute: "Новини от Пловдив, България и света | NewsPoint.bg" });
+    expect(home.description).toContain("Пловдив и региона");
+    expect(home.openGraph).toMatchObject({ siteName: "NewsPoint.bg", title: PUBLIC_SEO_PAGES.home.title });
+    expect(PUBLIC_SEO_PAGES.home.title).not.toBe(`${categorySeo({ slug: "plovdiv", name: "Пловдив" }).title} | NewsPoint.bg`);
+  });
   it("gives Plovdiv focused search metadata without changing the visible rubric name", () => {
     expect(categorySeo({ slug: "plovdiv", name: "Пловдив" })).toEqual({
       title: "Новини от Пловдив днес – последни и актуални",

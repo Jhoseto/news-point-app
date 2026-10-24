@@ -26,8 +26,7 @@ import { type ArticleSummary, type CategoryRef } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 
 export const revalidate = 60;
-const homeMetadata = publicPageMetadata("home");
-export const metadata = { ...homeMetadata, title: { absolute: "NewsPoint.bg – Гласът на истината" } };
+export const metadata = publicPageMetadata("home");
 
 const FOCUS_ARCHIVE_PATH = `/${HOME_FOCUS_RUBRIC_SLUG}/`;
 
@@ -99,7 +98,7 @@ export default async function HomePage() {
     <DeferredPlacementRefresh nextChangeAt={home.nextChangeAt} />
     <HomeShineRoot cycleSec={shineCycleSec} mobileHidden>
       <div className="np-container flex flex-col gap-10 pt-6 pb-10 lg:pt-8 3xl:gap-12">
-        <h1 className="sr-only">NewsPoint.bg – новини</h1>
+        <h1 className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>
         {/* Desktop: one band about half the viewport tall. The lead, three smaller themes
           and „Последни“ all start inside it, so nothing needs a scroll. */}
         <div data-np-latest-frame className="hidden h-[min(64vh,32rem)] min-h-0 grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 lg:grid xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_18rem] 2xl:h-[min(56vh,34rem)] 2xl:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_21rem] 3xl:h-[min(54vh,36rem)] 3xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_23rem]">

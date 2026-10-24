@@ -10,6 +10,7 @@ import { ViewportShellGate } from "@/components/viewport-shell-gate";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { ThemeScript } from "@/components/theme-script";
 import { PwaSplash } from "@/components/pwa-splash";
+import { PWA_LAUNCH_SCRIPT } from "@/lib/pwa-launch";
 import { MANROPE_FACE_CSS } from "@/lib/manrope-face";
 import { hasVerifiedLiveCamera } from "@/lib/livepoint/cameras/catalog";
 import { isTomTomConfigured } from "@/lib/livepoint/config";
@@ -62,10 +63,10 @@ export const metadata: Metadata = {
       { url: "/brand/favicon-32.png", sizes: "32x32", type: "image/png" },
     ],
     apple: [
-      { url: "/brand/apple-touch-icon.png?v=7", sizes: "180x180", type: "image/png" },
-      { url: "/brand/apple-touch-icon-167.png?v=7", sizes: "167x167", type: "image/png" },
-      { url: "/brand/apple-touch-icon-152.png?v=7", sizes: "152x152", type: "image/png" },
-      { url: "/brand/apple-touch-icon-120.png?v=7", sizes: "120x120", type: "image/png" },
+      { url: "/brand/apple-touch-icon.png?v=8", sizes: "180x180", type: "image/png" },
+      { url: "/brand/apple-touch-icon-167.png?v=8", sizes: "167x167", type: "image/png" },
+      { url: "/brand/apple-touch-icon-152.png?v=8", sizes: "152x152", type: "image/png" },
+      { url: "/brand/apple-touch-icon-120.png?v=8", sizes: "120x120", type: "image/png" },
     ],
     other: [
       { rel: "apple-touch-startup-image", url: "/brand/splash-750x1334.png?v=7", media: "(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" },
@@ -99,6 +100,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="bg" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: PWA_LAUNCH_SCRIPT }} />
         <link rel="describedby" href="/llms.txt" type="text/plain" />
         {/* Inline @font-face — avoids an extra render-blocking CSS request for Manrope. */}
         <link rel="preload" href="/fonts/manrope-cyrillic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />

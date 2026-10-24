@@ -2170,56 +2170,141 @@ html[data-reduced-motion="true"] .np-title-float-tip[data-open] {
   }
 }
 
-/* The OS frame and the first app frame show the supplied logo on white. */
+/* First paint is covered before React hydrates; ordinary tabs fetch no launch art. */
 .np-pwa-splash {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: 2147483000;
   display: none;
   overflow: hidden;
+  contain: strict;
   background: #fff;
   pointer-events: auto;
 }
-@media (display-mode: standalone) {
-  .np-pwa-splash { display: block; }
+html[data-np-launch] .np-pwa-splash { display: block; }
+html[data-np-launch] { overflow: hidden; }
+html[data-np-launch="leave"] .np-pwa-splash {
+  animation: np-pwa-exit 400ms cubic-bezier(.4,0,.2,1) both;
 }
-.np-pwa-splash[data-phase="play"], .np-pwa-splash[data-phase="leave"] { display: block; }
-.np-pwa-splash[data-phase="leave"] { animation: np-pwa-exit 400ms ease-in both; }
+.np-pwa-splash-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--np-launch-width, 100%);
+  height: var(--np-launch-height, 100%);
+  isolation: isolate;
+}
 .np-pwa-splash-scene {
   position: absolute;
   top: 43%;
   left: 50%;
-  width: min(84vw, 42rem);
+  width: min(calc(var(--np-launch-width, 100vw) * .84), 42rem);
   transform: translate(-50%, -50%);
-  isolation: isolate;
+  mix-blend-mode: multiply;
 }
-.np-pwa-splash-logo {
-  display: block;
-  width: 100%;
+.np-pwa-splash-art { position: relative; }
+/* The wordmark is never translated, scaled or blurred during launch. */
+.np-pwa-splash-logo { width: 100%; aspect-ratio: 1024 / 341; }
+html[data-np-launch] .np-pwa-splash-logo {
+  background: url("/brand/pwa-launch-logo-1024.webp?v=3") center / contain no-repeat;
+}
+.np-pwa-splash-aura {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  width: min(calc(var(--np-launch-width, 100vw) * 1.55), 64rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0;
+  background: radial-gradient(ellipse at 28% 42%, rgb(47 180 216 / .18), transparent 48%),
+    radial-gradient(ellipse at 72% 58%, rgb(93 100 181 / .14), transparent 46%),
+    radial-gradient(ellipse at 48% 48%, rgb(221 237 244 / .8), transparent 60%);
+  transform: translate(-50%, -50%);
+}
+html[data-np-launch] .np-pwa-splash-aura {
+  animation: np-pwa-aura 2600ms cubic-bezier(.2,.65,.3,1) both;
+}
+.np-pwa-splash-ribbon {
+  position: absolute;
+  inset: 10% -60%;
+  opacity: 0;
+  background: linear-gradient(118deg, transparent 38%, rgb(224 242 249 / .4) 44%, rgb(255 255 255 / .95) 49%, rgb(190 220 235 / .25) 51%, transparent 57%);
+  pointer-events: none;
+}
+html[data-np-launch] .np-pwa-splash-ribbon { animation: np-pwa-ribbon 2400ms cubic-bezier(.25,.6,.25,1) 100ms both; }
+.np-pwa-splash-orbits {
+  position: absolute;
+  top: 43%;
+  left: 50%;
+  width: min(calc(var(--np-launch-width, 100vw) * 1.3), 54rem);
   height: auto;
-  transform-origin: 50% 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
 }
+.np-pwa-splash-orbits ellipse {
+  stroke: url(#np-launch-orbit);
+  stroke-width: .7;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+html[data-np-launch] .np-pwa-splash-orbits { animation: np-pwa-orbits 2600ms ease both; }
+html[data-np-launch] .np-pwa-splash-orbits ellipse { animation: np-pwa-orbit-trace 1900ms cubic-bezier(.2,.65,.3,1) 200ms both; }
+html[data-np-launch] .np-pwa-splash-orbits ellipse + ellipse { animation-delay: 380ms; stroke-width: .4; }
 .np-pwa-splash-sheen {
   position: absolute;
   inset: 0;
   opacity: 0;
   pointer-events: none;
-  background: linear-gradient(108deg, transparent 31%, rgb(30 183 234 / .03) 42%, rgb(250 255 255 / .75) 49%, rgb(82 103 245 / .2) 55%, transparent 67%);
-  transform: translateX(-105%);
 }
-.np-pwa-splash-track { position: absolute; top: calc(100% + 1.9rem); left: 50%; display: block; width: clamp(5.5rem, 25%, 8rem); height: 2px; overflow: hidden; border-radius: 2px; background: rgb(17 67 142 / .12); transform: translateX(-50%); opacity: 0; }
-.np-pwa-splash-track span { display: block; width: 100%; height: 100%; transform: scaleX(0); transform-origin: center; background: linear-gradient(90deg, #193c9b, #16a9d1 55%, #7033c3); }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-logo { animation: np-pwa-logo 2250ms cubic-bezier(.22,.7,.2,1) both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-sheen { -webkit-mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat; mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat; animation: np-pwa-sheen 1600ms cubic-bezier(.2,.6,.25,1) 420ms both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-track { animation: np-pwa-track-appear 500ms ease 650ms both; }
-.np-pwa-splash[data-phase="play"] .np-pwa-splash-track span { animation: np-pwa-progress 2600ms linear both; }
-@keyframes np-pwa-logo { 0% { transform: translateZ(0) scale(1); filter: saturate(1); } 45% { transform: translateY(-3px) scale(1.035); filter: saturate(1.1); } 100% { transform: translateY(0) scale(1); filter: saturate(1); } }
-@keyframes np-pwa-sheen { 0% { opacity: 0; transform: translateX(-105%); } 18% { opacity: .85; } 70% { opacity: .85; } 100% { opacity: 0; transform: translateX(105%); } }
-@keyframes np-pwa-track-appear { to { opacity: 1; } }
-@keyframes np-pwa-progress { to { transform: scaleX(1); } }
-@keyframes np-pwa-exit { to { opacity: 0; transform: scale(1.015); } }
+html[data-np-launch] .np-pwa-splash-sheen {
+  -webkit-mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat;
+  mask: url("/brand/pwa-launch-logo-mask.webp?v=3") center / contain no-repeat;
+}
+.np-pwa-splash-sheen::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(110deg, transparent 38%, rgb(255 255 255 / .8) 49%, rgb(167 225 250 / .3) 53%, transparent 64%);
+  transform: translateX(-100%);
+}
+html[data-np-launch] .np-pwa-splash-sheen { animation: np-pwa-sheen 1800ms ease 350ms both; }
+html[data-np-launch] .np-pwa-splash-sheen::before { animation: np-pwa-light-pass 1800ms cubic-bezier(.2,.65,.3,1) 350ms both; }
+/* A decorative signature, not a simulated loading percentage. */
+.np-pwa-splash-line {
+  position: absolute;
+  top: calc(100% + 2rem);
+  left: 50%;
+  width: 4.5rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #38a3cd, #4c56a2, transparent);
+  opacity: 0;
+  transform: translateX(-50%) scaleX(.35);
+}
+html[data-np-launch] .np-pwa-splash-line { animation: np-pwa-signature 2200ms ease 250ms both; }
+@keyframes np-pwa-aura {
+  0% { opacity: 0; }
+  40%, 70% { opacity: 1; }
+  100% { opacity: .5; }
+}
+@keyframes np-pwa-ribbon {
+  0% { opacity: 0; transform: translateX(-25%); }
+  25%, 70% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(25%); }
+}
+@keyframes np-pwa-orbits { 0%, 100% { opacity: 0; } 35%, 70% { opacity: .6; } }
+@keyframes np-pwa-orbit-trace { to { stroke-dashoffset: 0; } }
+@keyframes np-pwa-sheen { 0%, 100% { opacity: 0; } 25%, 65% { opacity: .65; } }
+@keyframes np-pwa-light-pass { to { transform: translateX(100%); } }
+@keyframes np-pwa-signature {
+  0% { opacity: 0; transform: translateX(-50%) scaleX(.35); }
+  40%, 75% { opacity: .65; transform: translateX(-50%) scaleX(1); }
+  100% { opacity: 0; transform: translateX(-50%) scaleX(1.15); }
+}
+@keyframes np-pwa-exit { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .np-pwa-splash { display: none; }
+  html[data-np-launch] { overflow: revert; }
+  html[data-np-launch] .np-pwa-splash { display: none; }
 }
 
 /* Mobile-only "Последни": the desktop timeline language, above the usable bottom menu. */

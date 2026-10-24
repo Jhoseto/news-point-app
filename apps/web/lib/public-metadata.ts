@@ -8,7 +8,7 @@ export const SITE_OG_IMAGE_WEBP = "/share/og-site-1200x630.webp";
 export const SITE_OG_IMAGE_ALT = "NewsPoint.bg – Гласът на истината";
 
 export const PUBLIC_SEO_PAGES = {
-  home: { path: "/", title: "NewsPoint.bg – Гласът на истината", description: "Новини от Пловдив, България и света." },
+  home: { path: "/", title: "Новини от Пловдив, България и света | NewsPoint.bg", description: "Последни новини от Пловдив и региона, България и света. Актуални събития, местни теми, спорт и култура от NewsPoint.bg." },
   themes: { path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg." },
   podcast: { path: "/livepoint/podcast/", title: "Podcast · LivePoint", description: "Подкасти на NewsPoint за слушане." },
   weather: { path: "/livepoint/weather/", title: "Време · LivePoint", description: "Прогноза за Пловдив." },

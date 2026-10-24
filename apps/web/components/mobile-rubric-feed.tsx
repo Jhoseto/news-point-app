@@ -77,7 +77,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
     );
   };
   return <div className={`np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
-    <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини</h1>
+    <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>
     <div className="flex flex-col gap-5">
       {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview && !window} now={now} />, window) : null}
       {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} now={now} />, window) : null}
