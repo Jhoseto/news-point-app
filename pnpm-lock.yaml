@@ -173,9 +173,6 @@ importers:
       '@newspoint/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@newspoint/wp-import':
-        specifier: workspace:*
-        version: link:../../scripts/wp-import
       drizzle-orm:
         specifier: 0.45.3
         version: 0.45.3(@electric-sql/pglite@0.5.8)(kysely@0.29.6)(postgres@3.4.9)
@@ -242,43 +239,6 @@ importers:
         specifier: 4.6.5
         version: 4.6.5
     devDependencies:
-      tsx:
-        specifier: 4.23.15
-        version: 4.23.15
-
-  scripts/wp-import:
-    dependencies:
-      '@newspoint/content':
-        specifier: workspace:*
-        version: link:../../packages/content
-      '@newspoint/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      dom-serializer:
-        specifier: 3.1.1
-        version: 3.1.1
-      domhandler:
-        specifier: 6.0.1
-        version: 6.0.1
-      drizzle-orm:
-        specifier: 0.45.3
-        version: 0.45.3(@electric-sql/pglite@0.5.8)(kysely@0.29.6)(postgres@3.4.9)
-      entities:
-        specifier: 8.1.0
-        version: 8.1.0
-      htmlparser2:
-        specifier: 12.0.0
-        version: 12.0.0
-      sanitize-html:
-        specifier: 2.17.7
-        version: 2.17.7
-      sharp:
-        specifier: 0.35.5
-        version: 0.35.5(@types/node@24.13.6)
-    devDependencies:
-      '@types/sanitize-html':
-        specifier: 2.16.1
-        version: 2.16.1
       tsx:
         specifier: 4.23.15
         version: 4.23.15

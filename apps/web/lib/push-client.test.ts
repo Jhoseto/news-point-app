@@ -52,6 +52,12 @@ describe("push browser lifecycle", () => {
     fakeWindow.pushManager = registration.pushManager;
     expect(await (await import("./push-client")).getBrowserPushSubscription()).toBe(sub);
   });
+  it("detects an existing subscription signed with a previous VAPID key", async () => {
+    const client = await import("./push-client");
+    expect(await client.isCurrentPushSubscription(publicKey)).toBe(true);
+    const replacement = createECDH("prime256v1"); replacement.generateKeys();
+    expect(await client.isCurrentPushSubscription(replacement.getPublicKey().toString("base64url"))).toBe(false);
+  });
   it("retries a pending explicit opt-out on resume without subscribing", async () => {
     const client = await import("./push-client");
     fetcher.mockResolvedValue(Response.json({ error: "unavailable" }, { status: 503 }));

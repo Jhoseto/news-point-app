@@ -27,15 +27,18 @@ async function publish() {
 }
 beforeAll(async () => {
   pg = new PGlite();
-  await pg.exec(`create table categories(id uuid primary key, slug text, in_menu boolean default true);
-    create table articles(id uuid primary key, title text, path text, is_public boolean default true, published_at timestamptz default now(), primary_category_id uuid);
+  await pg.exec(`create table categories(id uuid primary key, slug text, name text, in_menu boolean default true);
+    create table media_assets(id uuid primary key, storage_key text, mime text, width integer, height integer);
+    create table media_presentations(media_asset_id uuid primary key, variants jsonb default '[]'::jsonb);
+    create table articles(id uuid primary key, title text, excerpt text default '', path text, is_public boolean default true,
+      published_at timestamptz default now(), primary_category_id uuid, hero_media_id uuid);
     create table article_categories(article_id uuid, category_id uuid);`);
   for (const file of ["06_outbox.sql", "25_push_subscriptions.sql", "26_push_category_slugs.sql", "27_push_delivery.sql"]) await pg.exec(readFileSync(`packages/db/migrations/${file}`, "utf8"));
   db = drizzle(pg, { schema }) as unknown as ScriptDb;
 }, 30000);
 beforeEach(async () => {
-  await pg.exec("truncate push_jobs, push_subscriptions, outbox_events, article_categories, articles, categories cascade");
-  await pg.query("insert into categories values ($1, 'test-primary', true), ($2, 'test-secondary', true)", [category, extraCategory]);
+  await pg.exec("truncate push_jobs, push_subscriptions, outbox_events, article_categories, articles, media_presentations, media_assets, categories cascade");
+  await pg.query("insert into categories values ($1, 'test-primary', 'Пловдив', true), ($2, 'test-secondary', 'Регион', true)", [category, extraCategory]);
   article = randomUUID();
   await pg.query("insert into articles(id,title,path,primary_category_id) values ($1,'Explicit test article','/test-article/',$2)", [article, category]);
   await pg.query("insert into article_categories values ($1,$2)", [article, extraCategory]);
@@ -63,6 +66,29 @@ describe("durable reader push", () => {
     expect(await expandPushJob(db)).toBe(true);
     expect(await expandPushJob(db)).toBe(false);
     expect(await db.select().from(schema.pushDeliveries)).toHaveLength(2);
+  });
+  it("does not replay pre-launch jobs or send to devices subscribed with an older key", async () => {
+    const before = await subscriber();
+    const launchAt = new Date(Date.now() - 1000);
+    await publish();
+    await db.update(schema.pushJobs).set({ createdAt: new Date(launchAt.getTime() - 1000) });
+    expect(await expandPushJob(db, launchAt)).toBe(true);
+    expect(await db.select().from(schema.pushDeliveries)).toHaveLength(0);
+    await publish();
+    await expandPushJob(db, launchAt);
+    expect(await db.select().from(schema.pushDeliveries)).toHaveLength(0);
+    await db.update(schema.pushSubscriptions).set({ enabledAt: new Date() }).where(eq(schema.pushSubscriptions.id, before.id));
+    await publish();
+    await expandPushJob(db, launchAt);
+    expect(await db.select().from(schema.pushDeliveries)).toHaveLength(1);
+  });
+  it("rechecks the launch boundary after a delivery has already been claimed", async () => {
+    await subscriber(); await publish(); await expandPushJob(db);
+    const [claimed] = await claimPushDeliveries(db);
+    const send = vi.fn();
+    await deliverPush(db, claimed!, "https://reader.test", send, new Date(Date.now() + 1000));
+    expect(send).not.toHaveBeenCalled();
+    expect((await db.select().from(schema.pushDeliveries))[0]?.status).toBe("skipped");
   });
   it("keeps committed jobs across a new worker and claims each delivery once", async () => {
     await subscriber(); await subscriber(); await publish();
@@ -105,6 +131,33 @@ describe("durable reader push", () => {
     expect((await db.select().from(schema.pushSubscriptions).where(eq(schema.pushSubscriptions.id, sub.id)))[0]?.lastNotifiedAt).toBeInstanceOf(Date);
     expect(JSON.parse(send.mock.calls[0]![1]!).notification.navigate).toBe("https://reader.test/test-article/");
     expect(send.mock.calls[0]![2]).toMatchObject({ timeout: 15000 });
+  });
+  it("uses the real rubric, excerpt and locally hosted hero for a rich article notification", async () => {
+    const hero = randomUUID();
+    await pg.query("insert into media_assets values ($1, 'news/2026/10/story.webp', 'image/webp', 1600, 900)", [hero]);
+    await pg.query("insert into media_presentations values ($1, $2::jsonb)", [hero,
+      JSON.stringify([{ url: "/media/news/2026/10/story-640w.webp", width: 640, height: 360 }])]);
+    await db.update(schema.articles).set({ excerpt: "<p>Реален текст &amp; подробности.</p>", heroMediaId: hero })
+      .where(eq(schema.articles.id, article));
+    await subscriber(["test-primary"]); await publish(); await expandPushJob(db);
+    const [claimed] = await claimPushDeliveries(db);
+    const send = vi.fn().mockResolvedValue({});
+    await deliverPush(db, claimed!, "https://reader.test", send);
+    const notification = JSON.parse(send.mock.calls[0]![1]!).notification;
+    expect(notification.body).toBe("Пловдив · Реален текст & подробности.");
+    expect(notification.image).toBe("https://reader.test/media/news/2026/10/story-640w.webp");
+    expect(notification.icon).toBe("https://reader.test/brand/icon-192.png");
+    expect(notification.badge).toBe("https://reader.test/brand/push-badge.png");
+  });
+  it("omits an unavailable or unsupported hero image", async () => {
+    const hero = randomUUID();
+    await pg.query("insert into media_assets values ($1, null, 'image/jpeg', 1600, 900)", [hero]);
+    await db.update(schema.articles).set({ heroMediaId: hero }).where(eq(schema.articles.id, article));
+    await subscriber(); await publish(); await expandPushJob(db);
+    const [claimed] = await claimPushDeliveries(db);
+    const send = vi.fn().mockResolvedValue({});
+    await deliverPush(db, claimed!, "https://reader.test", send);
+    expect(JSON.parse(send.mock.calls[0]![1]!).notification).not.toHaveProperty("image");
   });
   it("persists transient retries and does not report them as accepted", async () => {
     const sub = await subscriber(); await publish(); await expandPushJob(db);

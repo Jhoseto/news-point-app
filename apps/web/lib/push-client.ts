@@ -124,6 +124,14 @@ export function urlBase64ToUint8Array(value: string): Uint8Array {
   return Uint8Array.from(raw, (character) => character.charCodeAt(0));
 }
 
+export async function isCurrentPushSubscription(publicKey: string): Promise<boolean> {
+  const sub = await getBrowserPushSubscription();
+  if (!sub?.options.applicationServerKey) return false;
+  const current = urlBase64ToUint8Array(publicKey);
+  const subscribed = new Uint8Array(sub.options.applicationServerKey);
+  return subscribed.length === current.length && subscribed.every((byte, index) => byte === current[index]);
+}
+
 let mutationTail: Promise<unknown> = Promise.resolve();
 function serial<T>(run: () => Promise<T>): Promise<T> {
   const pending = mutationTail.then(run, run);

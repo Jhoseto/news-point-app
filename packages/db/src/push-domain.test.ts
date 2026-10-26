@@ -25,9 +25,13 @@ describe("reader push contracts", () => {
     expect(payload.notification.title).toHaveLength(160);
     expect(payload.notification.body).toHaveLength(240);
     expect(payload.notification.navigate).toBe("https://reader.test/article/");
+    expect(payload.notification.icon).toBe("https://reader.test/brand/icon-192.png");
+    expect(payload.notification.badge).toBe("https://reader.test/brand/push-badge.png");
     expect(payload.notification.silent).toBe(false);
     expect(Buffer.byteLength(JSON.stringify(payload))).toBeLessThan(3000);
     expect(makePushPayload("😀".repeat(161), "", "https://reader.test/", "emoji").notification.title).toBe("😀".repeat(160));
+    expect(makePushPayload("Новина", "Описание", "https://reader.test/", "rich", "https://reader.test/media/news/photo.webp").notification.image)
+      .toBe("https://reader.test/media/news/photo.webp");
   });
   it("honors Retry-After and stops expired/permanent/exhausted retries", () => {
     expect(pushRetry(1, 429, "60", 0, 120000)).toEqual({ kind: "retry", dueAt: 60000 });
@@ -42,6 +46,8 @@ describe("reader push contracts", () => {
     const key = createECDH("prime256v1"); key.generateKeys();
     const env = { WEB_URL: "https://reader.test", VAPID_PUBLIC_KEY: key.getPublicKey().toString("base64url"), VAPID_PRIVATE_KEY: key.getPrivateKey().toString("base64url") };
     expect(readPushConfiguration(env)?.origin).toBe("https://reader.test");
+    expect(readPushConfiguration({ ...env, PUSH_LAUNCH_AT: "2026-10-26T20:00:00Z" })?.launchAt?.toISOString()).toBe("2026-10-26T20:00:00.000Z");
+    expect(readPushConfiguration({ ...env, PUSH_LAUNCH_AT: "invalid" })).toBeNull();
     expect(readPushConfiguration({ ...env, VAPID_PRIVATE_KEY: Buffer.alloc(32, 1).toString("base64url") })).toBeNull();
     expect(readPushConfiguration({ ...env, VAPID_SUBJECT: "invalid" })).toBeNull();
   });

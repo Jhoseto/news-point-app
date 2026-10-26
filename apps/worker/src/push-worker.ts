@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, lt, lte, or, sql } from "drizzle-orm";
 import webpush from "web-push";
-import { articleCategories, articles, categories, pushDeliveries, pushJobs, pushRateLimits, pushSubscriptions, type ScriptDb } from "@newspoint/db/node";
+import { mediaPublicPath, responsiveImageVariants } from "@newspoint/content";
+import { articleCategories, articles, categories, mediaAssets, mediaPresentations,
+  pushDeliveries, pushJobs, pushRateLimits, pushSubscriptions, type ScriptDb } from "@newspoint/db/node";
 import { readPushConfiguration } from "@newspoint/db/push-configuration";
 import { isAllowedPushEndpoint, makePushPayload, pushFilterMatches, pushRetry, readerNotificationUrl } from "@newspoint/db/push-domain";
 
@@ -10,7 +12,7 @@ const BATCH = 25;
 type Delivery = typeof pushDeliveries.$inferSelect;
 
 /** Row lock and INSERT SELECT keep fan-out atomic and independent of browsers. */
-export async function expandPushJob(db: ScriptDb): Promise<boolean> {
+export async function expandPushJob(db: ScriptDb, launchAt: Date | null = null): Promise<boolean> {
   return db.transaction(async (tx) => {
     await tx.execute(sql`set local statement_timeout = '20s'`);
     const [job] = await tx.select().from(pushJobs).where(eq(pushJobs.status, "pending"))
@@ -19,6 +21,7 @@ export async function expandPushJob(db: ScriptDb): Promise<boolean> {
     let categorySlugs: string[] = [];
     let eligible = job.expiresAt.getTime() > Date.now();
     if (job.kind === "article") {
+      if (launchAt && job.createdAt.getTime() < launchAt.getTime()) eligible = false;
       const [article] = await tx.select({ public: articles.isPublic, publishedAt: articles.publishedAt, slug: categories.slug })
         .from(articles).leftJoin(categories, eq(categories.id, articles.primaryCategoryId)).where(eq(articles.id, job.articleId!));
       eligible &&= Boolean(article?.public && article.publishedAt && article.publishedAt.getTime() <= Date.now()
@@ -33,6 +36,7 @@ export async function expandPushJob(db: ScriptDb): Promise<boolean> {
         select ${job.id}::uuid, s.id from push_subscriptions s
         where s.enabled = true
           and s.enabled_at <= ${job.createdAt.toISOString()}::timestamptz
+          and s.enabled_at >= ${(launchAt ?? new Date(0)).toISOString()}::timestamptz
           and (${job.kind} = 'test' and s.id = ${job.subscriptionId}::uuid
             or ${job.kind} = 'article' and (
               s.category_slugs is null and s.category_slug is null
@@ -65,7 +69,8 @@ export async function claimPushDeliveries(db: ScriptDb): Promise<Delivery[]> {
 }
 
 type Sender = typeof webpush.sendNotification;
-export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: string, send: Sender = webpush.sendNotification.bind(webpush)) {
+export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: string,
+  send: Sender = webpush.sendNotification.bind(webpush), launchAt: Date | null = null) {
   const ownsLease = and(eq(pushDeliveries.id, delivery.id), eq(pushDeliveries.status, "sending"), eq(pushDeliveries.leaseToken, delivery.leaseToken!));
   const finish = async (values: Partial<typeof pushDeliveries.$inferInsert>) => {
     const rows = await db.update(pushDeliveries).set({ ...values, leaseUntil: null, leaseToken: null }).where(ownsLease).returning({ id: pushDeliveries.id });
@@ -73,10 +78,14 @@ export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: stri
   };
   // Re-read opt-out, category filters and publication after claiming the job.
   const [row] = await db.select({ subscription: pushSubscriptions, job: pushJobs, title: articles.title,
-    path: articles.path, public: articles.isPublic, publishedAt: articles.publishedAt, slug: categories.slug })
+    excerpt: articles.excerpt, path: articles.path, public: articles.isPublic, publishedAt: articles.publishedAt,
+    slug: categories.slug, categoryName: categories.name, heroMediaId: articles.heroMediaId,
+    heroStorageKey: mediaAssets.storageKey, heroMime: mediaAssets.mime,
+    heroWidth: mediaAssets.width, heroHeight: mediaAssets.height })
     .from(pushDeliveries).innerJoin(pushJobs, eq(pushJobs.id, pushDeliveries.jobId))
     .innerJoin(pushSubscriptions, eq(pushSubscriptions.id, pushDeliveries.subscriptionId))
     .leftJoin(articles, eq(articles.id, pushJobs.articleId)).leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
     .where(ownsLease);
   if (!row) return;
   const { job, subscription } = row;
@@ -85,6 +94,8 @@ export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: stri
     .innerJoin(categories, eq(categories.id, articleCategories.categoryId)).where(eq(articleCategories.articleId, job.articleId)) : [];
   const slugs = [...new Set([...(row.slug ? [row.slug] : []), ...extra.map((entry) => entry.slug)])];
   if (!subscription.enabled || !subscription.enabledAt || subscription.enabledAt.getTime() > job.createdAt.getTime()
+    || (job.kind === "article" && launchAt && (job.createdAt.getTime() < launchAt.getTime()
+      || subscription.enabledAt.getTime() < launchAt.getTime()))
     || job.expiresAt.getTime() <= Date.now() || delivery.attempts > 6
     || !isAllowedPushEndpoint(subscription.endpoint) || !url
     || (job.kind === "article" && (!row.public || !row.publishedAt || row.publishedAt.getTime() > Date.now()
@@ -93,9 +104,25 @@ export async function deliverPush(db: ScriptDb, delivery: Delivery, origin: stri
     await finish({ status: "skipped", errorCode: "ineligible" });
     return;
   }
+  const excerpt = (row.excerpt ?? "").replace(/<[^>]*>/g, " ").replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/\s+/g, " ").trim();
+  const category = row.categoryName?.trim();
+  const summary = excerpt || "Нова публикация в NewsPoint.bg";
+  const body = category ? `${category} · ${summary}` : summary;
+  let heroPath = row.heroStorageKey && /^image\/(jpeg|png|webp|avif)$/i.test(row.heroMime ?? "")
+    ? mediaPublicPath(row.heroStorageKey) : null;
+  if (job.kind === "article" && heroPath && row.heroMediaId) {
+    const [presentation] = await db.select({ variants: mediaPresentations.variants }).from(mediaPresentations)
+      .where(eq(mediaPresentations.mediaAssetId, row.heroMediaId));
+    const variants = responsiveImageVariants(presentation?.variants, {
+      url: heroPath, width: row.heroWidth, height: row.heroHeight,
+    }).filter((variant) => variant.url.startsWith("/media/news/") && variant.width <= 960);
+    heroPath = variants.find((variant) => variant.width >= 640)?.url ?? variants.at(-1)?.url ?? heroPath;
+  }
   const payload = makePushPayload(job.kind === "test" ? "NewsPoint — тестово известие" : row.title!,
-    job.kind === "test" ? "Известията работят на това устройство. Докоснете, за да отворите NewsPoint." : "Нова публикация в NewsPoint.bg",
-    url, `np-${job.kind}-${job.kind === "test" ? job.id : job.articleId}`);
+    job.kind === "test" ? "Известията работят на това устройство. Докоснете, за да отворите NewsPoint." : body,
+    url, `np-${job.kind}-${job.kind === "test" ? job.id : job.articleId}`,
+    job.kind === "article" && heroPath ? new URL(heroPath, origin).href : undefined);
   const encoded = JSON.stringify(payload);
   // RFC 8291 leaves 3993 bytes for plaintext in a 4096-byte encrypted record.
   // Preserve the canonical URL; an exceptional oversized article is not retried.
@@ -147,10 +174,11 @@ export function startPushWorker(db: ScriptDb, log: (message: string) => void) {
         await db.delete(pushRateLimits).where(lt(pushRateLimits.windowStart, new Date(Date.now() - 3600_000)));
         lastMaintenance = Date.now();
       }
-      for (let i = 0; i < 5 && !stopped; i++) if (!(await expandPushJob(db))) break;
+      for (let i = 0; i < 5 && !stopped; i++) if (!(await expandPushJob(db, config.launchAt))) break;
       if (!stopped) {
         const claimed = await claimPushDeliveries(db);
-        const results = await Promise.allSettled(claimed.map((row) => deliverPush(db, row, config.origin)));
+        const results = await Promise.allSettled(claimed.map((row) => deliverPush(db, row, config.origin,
+          webpush.sendNotification.bind(webpush), config.launchAt)));
         if (results.some((result) => result.status === "rejected")) throw new Error("Delivery state unavailable");
         backlog = claimed.length === BATCH;
       }

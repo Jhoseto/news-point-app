@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getPushMenu, getPushPublicKey, mutatePush, PushClientError, pushErrorText, readPushServerState, readPushSupport,
+import { getPushMenu, getPushPublicKey, isCurrentPushSubscription, mutatePush, PushClientError, pushErrorText, readPushServerState, readPushSupport,
   subscribeForPush, type PushState, type PushSupport } from "@/lib/push-client";
 import { readPushDisablePending, readStoredPushRubrics, writeStoredPushRubrics } from "@/lib/push-preferences";
 
@@ -14,6 +14,7 @@ export function usePushSettings() {
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [configured, setConfigured] = useState(false);
+  const [needsRenewal, setNeedsRenewal] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -30,6 +31,7 @@ export function usePushSettings() {
     const request = ++revision.current;
     setLoading(true);
     setConfigured(false);
+    setNeedsRenewal(false);
     const current = readPushSupport();
     setSupport(current);
     if (current.needInstall || !current.supported) { setLoading(false); return; }
@@ -42,7 +44,11 @@ export function usePushSettings() {
       // A menu failure must not prevent a device from opting out.
       try { const items = await getPushMenu(); if (alive.current && request === revision.current) setRubrics(items); }
       catch { if (alive.current && request === revision.current) setError("Рубриките не се заредиха. Проверете връзката и опитайте отново."); }
-      try { await getPushPublicKey(); if (alive.current && request === revision.current) setConfigured(true); }
+      try {
+        const key = await getPushPublicKey();
+        const current = await isCurrentPushSubscription(key);
+        if (alive.current && request === revision.current) { setConfigured(true); setNeedsRenewal(Boolean(state?.enabled && !current)); }
+      }
       catch { if (alive.current && request === revision.current) setConfigured(false); }
     } catch (failure) {
       if (alive.current && request === revision.current) { setConfirmed(false); setError(pushErrorText(failure)); }
@@ -81,7 +87,7 @@ export function usePushSettings() {
         // Call immediately; subscribeForPush requests permission in this click.
         const result = await subscribeForPush({ categorySlugs: slugs });
         if (!result.ok) throw new PushClientError(result.reason);
-        if (alive.current) { accept(result.state); setConfigured(true); setSupport(readPushSupport()); }
+        if (alive.current) { accept(result.state); setConfigured(true); setNeedsRenewal(false); setSupport(readPushSupport()); }
       } else if (kind === "preferences" && !server) {
         if (next !== undefined && alive.current) { writeStoredPushRubrics(next); setSlugs(next); }
       } else {
@@ -99,8 +105,8 @@ export function usePushSettings() {
       if (alive.current) { setBusy(false); setPending(null); setLoading(false); }
     }
   };
-  return { support, server, rubrics, slugs, loading, busy, pending, configured, confirmed, error, notice, refresh, disablePending: readPushDisablePending(),
-    active: Boolean(server?.enabled && support?.permission === "granted"),
+  return { support, server, rubrics, slugs, loading, busy, pending, configured, confirmed, needsRenewal, error, notice, refresh, disablePending: readPushDisablePending(),
+    active: Boolean(server?.enabled && !needsRenewal && support?.permission === "granted"),
     enable: () => run("enable"), disable: () => run("disable"), test: () => run("test"),
     choose: (next: string[] | null) => run("preferences", next) };
 }

@@ -1,7 +1,6 @@
 packages:
   - apps/*
   - packages/*
-  - scripts/*
 allowBuilds:
   esbuild: true
 overrides:

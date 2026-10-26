@@ -43,6 +43,16 @@ describe("reader service worker", () => {
     const w = worker(); await w.fire("push", { data: { json: () => { throw new Error("bad"); } } });
     expect(w.self.registration.showNotification).toHaveBeenCalledOnce();
   });
+  it("shows a same-origin article image and ignores an external image", async () => {
+    const w = worker();
+    await w.fire("push", { data: { json: () => ({ web_push: 8030, notification: {
+      title: "Новина", navigate: "/article/", image: "https://reader.test/media/news/photo.webp",
+    } }) } });
+    expect(w.self.registration.showNotification.mock.calls[0]![1].image).toBe("https://reader.test/media/news/photo.webp");
+    const other = worker();
+    await other.fire("push", { data: { json: () => ({ title: "Новина", image: "https://evil.test/photo.png" }) } });
+    expect(other.self.registration.showNotification.mock.calls[0]![1]).not.toHaveProperty("image");
+  });
   it("failed navigation opens a new reader window and leaves Studio alone", async () => {
     const w = worker(); const navigate = vi.fn().mockRejectedValue(new Error("closed"));
     const studio = { url: "https://reader.test/admin/", navigate: vi.fn(), focus: vi.fn() };

@@ -101,6 +101,14 @@ function readerUrl(value) {
 function text(value, fallback, limit) {
   return typeof value === "string" && value.trim() ? Array.from(value).slice(0, limit).join("") : fallback;
 }
+function readerImage(value) {
+  try {
+    const url = new URL(value, self.location.origin);
+    if (url.origin === self.location.origin && url.pathname.startsWith("/media/news/")
+      && !url.search && !url.hash && !url.username && !url.password) return url.href;
+  } catch {}
+  return null;
+}
 self.addEventListener("push", (event) => {
   let payload = {};
   try { payload = event.data?.json() || {}; } catch {}
@@ -108,9 +116,11 @@ self.addEventListener("push", (event) => {
   const title = text(source?.title, "NewsPoint.bg", 160);
   const body = text(source?.body, "Нова публикация в NewsPoint.bg", 240);
   const url = readerUrl(source?.navigate || source?.url || source?.data?.url);
+  const image = readerImage(source?.image);
   event.waitUntil(self.registration.showNotification(title, {
     body, tag: text(source?.tag, "np-reader-news", 200), lang: "bg",
     icon: "/brand/icon-192.png", badge: "/brand/push-badge.png", data: { url },
+    ...(image ? { image } : {}),
     requireInteraction: false, renotify: false,
   }));
 });

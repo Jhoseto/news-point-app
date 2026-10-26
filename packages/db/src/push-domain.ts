@@ -36,11 +36,12 @@ export function readerNotificationUrl(path: string, origin: string): string | nu
   } catch { return null; }
 }
 
-export function makePushPayload(title: string, body: string, url: string, tag: string) {
+export function makePushPayload(title: string, body: string, url: string, tag: string, image?: string) {
   // New Apple versions can display this without executing the service worker.
   // SW also reads this format for browsers without declarative support.
   return { web_push: 8030, notification: { title: Array.from(title).slice(0, 160).join(""), body: Array.from(body).slice(0, 240).join(""), navigate: url,
-    lang: "bg", tag, icon: "/brand/icon-192.png", badge: "/brand/push-badge.png", silent: false } };
+    lang: "bg", tag, icon: new URL("/brand/icon-192.png", url).href, badge: new URL("/brand/push-badge.png", url).href,
+    ...(image ? { image } : {}), silent: false } };
 }
 
 export function pushRetry(attempt: number, status: number | undefined, retryAfter: string | undefined, now: number, expiresAt: number) {
