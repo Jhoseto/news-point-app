@@ -1,4 +1,5 @@
 import "server-only";
+import { NIGHT_PROGRAMME_SOURCES, programmeKind } from "./night-programmes";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { cache } from "react";
@@ -20,21 +21,23 @@ const sourceSchema = z.object({
 const previewSchema = z.object({ version: z.literal(1), sources: z.record(z.string(), sourceSchema) });
 
 const CATEGORY_SOURCES: Record<string, readonly string[]> = {
-  transport: ["plovdiv-livetransport-gtfs", "plovdiv-airport-flights", "plovdiv-low-emission", "plovdiv-transit"],
+  transport: ["plovdiv-livetransport-gtfs", "plovdiv-airport-flights", "plovdiv-low-emission", "plovdiv-low-emission-permit", "plovdiv-transit"],
   parking: ["plovdiv-parking-rules", "plovdiv-parking-operator"],
   outages: ["vik-outages", "evn-heating-outages"],
   municipality: ["plovdiv-management-competitions", "plovdiv-public-consultations", "plovdiv-auction-list", "plovdiv-tax-notices", "plovdiv-taxes", "plovdiv-housing", "plovdiv-contacts", "plovdiv-social-services", "plovdiv-eco-signals", "plovdiv-transport-signals", "plovdiv-council"],
-  education: ["first-grade-vacancies", "dz-vacancies", "plovdiv-municipal-schools", "dz-institutions"],
+  education: ["dz-admission-calendar", "first-grade-vacancies", "dz-vacancies", "plovdiv-municipal-schools", "dz-institutions"],
   environment: ["chistota-bulky-waste", "ecomap-collection-events", "ecomap-containers", "plovdiv-eco-signals"],
-  culture: ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "epaygo-plovdiv-explicit"],
-  nightlife: ["plovdiv-youth-centre", "club-code-upcoming", "epaygo-plovdiv-explicit"],
+  culture: ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-youth-centre", "epaygo-plovdiv-explicit"],
+  nightlife: ["club-code-upcoming", "epaygo-plovdiv-explicit", ...NIGHT_PROGRAMME_SOURCES],
   adopt: ["plovdiv-adoption-guide", "plovdiv-dog-shelter"],
 };
 
 const FRESH_MS: Record<string, number> = {
+  ...Object.fromEntries(NIGHT_PROGRAMME_SOURCES.map(id => [id, 8 * 60 * 60_000])),
   "plovdiv-transit": 30 * 60 * 60_000,
   "plovdiv-livetransport-gtfs": 8 * 60 * 60_000,
   "plovdiv-airport-flights": 90 * 60_000,
+  "plovdiv-low-emission-permit": 30 * 60 * 60_000,
   "plovdiv-low-emission": 30 * 60 * 60_000,
   "vik-outages": 2 * 60 * 60_000,
   "evn-heating-outages": 2 * 60 * 60_000,
@@ -42,6 +45,7 @@ const FRESH_MS: Record<string, number> = {
   "plovdiv-parking-operator": 30 * 60 * 60_000,
   "plovdiv-council": 30 * 60 * 60_000,
   "dz-vacancies": 8 * 60 * 60_000,
+  "dz-admission-calendar": 30 * 60 * 60_000,
   "dz-institutions": 30 * 60 * 60_000,
   "first-grade-vacancies": 30 * 60 * 60_000,
   "plovdiv-municipal-schools": 30 * 60 * 60_000,
@@ -87,6 +91,14 @@ function localDay(date: Date): string {
 }
 
 function isRelevantRow(sourceId: string, fields: Record<string, string | number>, today: string, now: Date): boolean {
+  if (sourceId === "plovdiv-low-emission-permit") return ["title", "eligibility", "requiredDocuments", "validity", "changes", "submission", "documents"].every(key => typeof fields[key] === "string" && String(fields[key]).length > 10);
+  if (sourceId === "dz-admission-calendar") return typeof fields.title === "string" && fields.year === today.slice(0, 4)
+    && ["vacanciesDate", "inPersonDeadline", "onlineDeadline", "resultsDate", "enrollmentDeadline", "registrationDate"].every((key, index, keys) => {
+      const value = fields[key];
+      return typeof value === "string" && /^20\d{2}-\d{2}-\d{2}$/u.test(value) && value.startsWith(`${fields.year}-`)
+        && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value
+        && (index === 0 || value >= String(fields[keys[index - 1]!]));
+    }) && String(fields.enrollmentDeadline) >= today;
   if (sourceId === "plovdiv-management-competitions") return typeof fields.title === "string" && typeof fields.company === "string"
     && typeof fields.place === "string" && fields.place.includes("Стамболов") && fields.time === "17:00"
     && typeof fields.published === "string" && typeof fields.deadline === "string"
@@ -163,6 +175,13 @@ function isRelevantRow(sourceId: string, fields: Record<string, string | number>
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === fields.date && fields.date >= today
       && typeof fields.location === "string" && PLOVDIV_OPERA_VENUES.has(fields.location);
   }
+  if (NIGHT_PROGRAMME_SOURCES.includes(sourceId)) {
+    const date = String(fields.date ?? ""), parsed = new Date(date + "T12:00:00Z");
+    return /^20\d{2}-\d{2}-\d{2}$/u.test(date) && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date && date >= today
+      && typeof fields.title === "string" && !!fields.title && typeof fields.place === "string" && !!fields.place
+      && (fields.time === "" || /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(String(fields.time)))
+      && !!programmeKind(sourceId, fields) && ["EventScheduled", "EventCancelled", "EventPostponed", "EventRescheduled"].includes(String(fields.status));
+  }
   if (sourceId === "epaygo-plovdiv-explicit") {
     return typeof fields.date === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(fields.date)
       && typeof fields.time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(fields.time)
@@ -195,7 +214,7 @@ export function selectCityObservations(
     const age = now.getTime() - Date.parse(source.checkedAt);
     const status = source.outcome === "unavailable" ? "unavailable" : age < 0 || age > (FRESH_MS[sourceId] ?? 0) ? "stale" : "observed";
     const items = status === "observed" ? source.items.filter(item => isRelevantRow(sourceId, item.fields, today, now)
-      && (categorySlug !== "nightlife" || sourceId !== "epaygo-plovdiv-explicit" || explicitNightEventKind(item.fields) !== null)) : [];
+      && (sourceId !== "epaygo-plovdiv-explicit" || (categorySlug === "nightlife" ? explicitNightEventKind(item.fields) !== null : explicitNightEventKind(item.fields) === null))) : [];
     if (sourceId === "plovdiv-youth-centre" && items.length === 0) return [];
     if ((sourceId === "plovdiv-auction-list" || sourceId === "plovdiv-public-consultations") && items.length === 0) return [];
     if (sourceId === "plovdiv-management-competitions" && items.length === 0) return [];

@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CityCategoryView, CityOutagesView, CityOutView, CityParkingView, CityTransportView } from "@/components/city-guide/city-guide";
+import { CityCategoryView, CityOutagesView, CityParkingView, CityTransportView } from "@/components/city-guide/city-guide";
 import { CityObservedData } from "@/components/city-guide/city-observations";
 import { CityLocalNav } from "@/components/city-guide/city-local-nav";
 import { CITY_CATEGORIES } from "@/lib/city-guide/catalog";
 import { loadCityObservations } from "@/lib/city-guide/local-observations";
 import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
-import { cityOutStories, cityStoriesForTopics } from "@/lib/city-guide/news";
+import { cityAgendaStories, cityStoriesForTopics } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
+import { CityEventAgenda } from "@/components/city-guide/city-event-agenda";
+import { cityAgenda, AGENDA_KINDS, type AgendaKind } from "@/lib/city-guide/event-agenda";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -33,20 +35,11 @@ export default async function CityCategoryPage({ params }: Props) {
   const observations = <CityObservedData categorySlug={slug} groups={activeGroups} stories={stories} articles={articles} />;
   const availableSlugs = categoryGroups.filter(entry => cityAvailableTopics(entry.slug, entry.groups).length > 0).map(entry => entry.slug);
   const withNav = (content: React.ReactNode) => <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={availableTopics} />{content}</>;
-  if (slug === "nightlife") {
-    const club = observationGroups.find(group => group.sourceId === "club-code-upcoming");
-    const events = club?.status === "observed" ? club.items.map(item => ({
-      key: item.key,
-      title: String(item.fields.title),
-      startDate: String(item.fields.startDate),
-      endDate: String(item.fields.endDate),
-      place: String(item.fields.place),
-      status: String(item.fields.status),
-      ...(typeof item.fields.price === "number" ? { price: item.fields.price } : {}),
-    })) : [];
-    const otherGroups = activeGroups.filter(group => group.sourceId !== "club-code-upcoming");
-    const outObservations = otherGroups.length ? <CityObservedData categorySlug={slug} groups={otherGroups} stories={stories} articles={articles} /> : events.length ? null : observations;
-    return withNav(<CityOutView stories={cityOutStories(articles)} observations={outObservations} events={events} {...(club?.checkedAt ? { checkedAt: club.checkedAt } : {})} nowIso={new Date().toISOString()} />);
+  if (slug === "nightlife" || slug === "culture") {
+    const events = cityAgenda(activeGroups, slug);
+    const kinds = [...new Set(events.map(event => event.kind))];
+    const news = Object.fromEntries(["all", ...kinds].map(kind => [kind, cityAgendaStories(articles, kind === "all" ? kinds : [kind as AgendaKind])]));
+    return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` }))} /><CityEventAgenda category={slug} events={events} news={news} today={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" })} /></>;
   }
   if (slug === "outages") return withNav(<CityOutagesView category={category} stories={stories} observations={observations} />);
   if (slug === "transport") return withNav(<CityTransportView category={category} stories={stories} observations={observations} activeTopics={availableTopics.map(topic => topic.title)} hasFareData={activeGroups.some(group => group.sourceId === "plovdiv-transit")} hasRouteData={activeGroups.some(group => group.sourceId === "plovdiv-livetransport-gtfs")} />);

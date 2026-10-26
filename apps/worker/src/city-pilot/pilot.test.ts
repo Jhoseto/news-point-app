@@ -25,6 +25,17 @@ function response(body: string, status = 200, headers: Record<string, string> = 
 afterEach(() => vi.unstubAllGlobals());
 
 describe("city source pilot", () => {
+  it("honours Retry-After from a required PDF without refreshing a previous snapshot", async () => {
+    const source = candidateSources.find(entry => entry.id === "plovdiv-low-emission-permit")!;
+    const listing = '<div id="content"><h1>Бланки и формуляри</h1><p>Зона с ниски емисии:</p><p><a href="/wp-content/uploads/2026/09/info.pdf">Информация</a></p><p><a href="/wp-content/uploads/2026/09/form.pdf">Заявление</a></p><p>Синя зона:</p></div>';
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(response(listing)).mockResolvedValueOnce(response("rate limited", 429, { "retry-after": "172800" })));
+    const result = await runPilotSource(source, { failures: 0, items: { old: "hash" }, lastSuccessAt: "2026-10-23T10:00:00.000Z" }, time);
+    expect(result.journal.outcome).toBe("failed");
+    expect(result.journal.error).toContain("HTTP 429");
+    expect(result.state.nextDueAt).toBe(new Date(time + 172800000).toISOString());
+    expect(result.state.lastSuccessAt).toBe("2026-10-23T10:00:00.000Z");
+    expect(result.snapshot).toBeUndefined();
+  });
   it("tracks an edit and a missing row without treating the missing row as resolved", async () => {
     const first = vikPage([vikRow("ул. А"), vikRow("ул. Б")]);
     const second = vikPage([vikRow("ул. А", "два квартала")]);
@@ -268,7 +279,10 @@ describe("city source pilot", () => {
       "feed_info.txt": strToU8("feed_start_date,feed_end_date,feed_version\n20261024,20261231,20261025\n"),
       "calendar.txt": strToU8("service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nWEEKEND,0,0,0,0,0,1,1,20261024,20261231\n"),
       "routes.txt": strToU8("route_id,route_type,route_short_name,route_long_name\n24,3,24,Линия 24\n"),
-      "trips.txt": strToU8("route_id,service_id,trip_headsign\n24,WEEKEND,Прослав\n24,WEEKEND,Устрем\n"),
+      "trips.txt": strToU8("route_id,service_id,trip_headsign,trip_id\n24,WEEKEND,Прослав,t1\n24,WEEKEND,Устрем,t2\n"),
+      "agency.txt": strToU8("agency_timezone\nEurope/Sofia\n"),
+      "stops.txt": strToU8("stop_id,stop_name\ns1,QA спирка 1\ns2,QA спирка 2\n"),
+      "stop_times.txt": strToU8("trip_id,stop_id,arrival_time,departure_time,stop_sequence\nt1,s1,08:00:00,08:00:00,1\nt1,s2,08:10:00,08:10:00,2\nt2,s2,08:30:00,08:30:00,1\nt2,s1,08:40:00,08:40:00,2\n"),
     });
     const sunday = Date.parse("2026-10-25T12:00:00Z");
     expect(parsePlovdivGtfsArchive(archive, sunday).items[0]?.fields).toMatchObject({ line: "24", destinations: "Прослав · Устрем", serviceDate: "2026-10-25" });

@@ -1,3 +1,4 @@
+import { VENUE_PROGRAMMES, collectVenueProgramme } from "./venue-programmes";
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -6,11 +7,15 @@ import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainer
 import { previewAfterCheck, type LocalPreview } from "./preview";
 import { parsePlovdivGtfsArchive } from "./gtfs";
 import { collectFirstGradeVacancies } from "./first-grade";
-import { auctionPdfText, collectMunicipalAuctions } from "./auctions";
+import { collectMunicipalAuctions } from "./auctions";
 import { collectYouthCentreEvents } from "./youth-centre";
+import { collectLowEmissionPermit } from "./low-emission-permit";
+import { collectAdmissionCalendar } from "./admission-calendar";
 import { collectPublicConsultations } from "./public-consultations";
 import { collectManagementCompetitions } from "./competitions";
+import { archiveProcedurePdf, auctionConditions, competitionSections, type ProcedureDocument } from "./procedure-documents";
 import { createCityPilotWriter } from "@newspoint/db/city";
+import { archiveEventImage, eventImageUrl, normalizeEventTitle, theatrePhotos, theatreDetailPhoto } from "./event-media";
 
 type SourceState = {
   etag?: string;
@@ -36,6 +41,7 @@ const maxBodyBytes = 4_000_000;
 const agent = process.env.CITY_PILOT_USER_AGENT || "NewsPointCityPilot/0.1 (+https://newspoint.bg/)";
 
 const intervals: Record<string, number> = {
+  ...Object.fromEntries(Object.keys(VENUE_PROGRAMMES).map(id => [id, 6 * 60 * 60_000])),
   // This page is about 2 MB and advertises no conditional cache validator.
   // Start gently; increase only if source behaviour and value justify it.
   "vik-outages": 60 * 60_000,
@@ -93,7 +99,7 @@ function dueAfter(source: CandidateSource, failures: number, retryAfter: string 
   return new Date(now + delay).toISOString();
 }
 
-async function bodyWithinLimit(response: Response): Promise<Uint8Array> {
+async function bodyWithinLimit(response: Response, limit = maxBodyBytes): Promise<Uint8Array> {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("response has no body");
   const parts: Uint8Array[] = [];
@@ -102,9 +108,9 @@ async function bodyWithinLimit(response: Response): Promise<Uint8Array> {
     const { done, value } = await reader.read();
     if (done) break;
     length += value.byteLength;
-    if (length > maxBodyBytes) {
+    if (length > limit) {
       await reader.cancel();
-      throw new Error(`body exceeds ${maxBodyBytes} bytes`);
+      throw new Error(`body exceeds ${limit} bytes`);
     }
     parts.push(value);
   }
@@ -161,13 +167,23 @@ async function loadState(): Promise<PilotState> {
 async function saveState(state: PilotState): Promise<void> {
   const temp = `${statePath}.tmp`;
   await writeFile(temp, JSON.stringify(state, null, 2) + "\n", "utf8");
-  await rename(temp, statePath);
+  await replaceSnapshot(temp, statePath);
 }
 
 async function savePreview(preview: LocalPreview): Promise<void> {
   if (!previewPath) return;
   await writeFile(`${previewPath}.tmp`, JSON.stringify(preview, null, 2) + "\n", "utf8");
-  await rename(`${previewPath}.tmp`, previewPath);
+  await replaceSnapshot(`${previewPath}.tmp`, previewPath);
+}
+
+async function replaceSnapshot(temp: string, target: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try { await rename(temp, target); return; }
+    catch (error) {
+      if (attempt >= 5 || !["EPERM", "EBUSY", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) throw error;
+      await new Promise(done => setTimeout(done, 200 * (attempt + 1)));
+    }
+  }
 }
 
 function differences(before: Record<string, string>, after: Record<string, string>) {
@@ -181,7 +197,7 @@ function differences(before: Record<string, string>, after: Record<string, strin
 export async function runPilotSource(source: CandidateSource, previous: SourceState, now = Date.now(), requireSnapshot = false): Promise<{ state: SourceState; journal: Record<string, unknown>; snapshot?: PilotSnapshot }> {
   const started = Date.now();
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
@@ -205,17 +221,34 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       const state = { ...previous, failures: 0, lastCheckedAt: checkedAt, lastSuccessAt: checkedAt, nextDueAt: dueAfter(source, 0, null, now) };
       return { state, journal: { sourceId: source.id, checkedAt, httpStatus, outcome: "unchanged", durationMs: Date.now() - started, bytes: body.byteLength, bodyHash, itemCount: Object.keys(state.items).length } };
     }
-    let snapshot = source.id === "plovdiv-management-competitions" ? await collectManagementCompetitions(decodeHtml(body, response.headers.get("content-type")), async (url) => {
+    const procedureDocuments = new Map<string, ProcedureDocument>();
+    const readProcedure = async (url: string, title: string) => {
       await new Promise(done => setTimeout(done, 1200));
       const pdf = await requestSource({ ...source, url, format: "pdf" }, { failures: 0, items: {} }, true);
-      if (!pdf.response.ok || !pdf.response.headers.get("content-type")?.toLowerCase().includes("application/pdf")) throw new Error("plovdiv-management-competitions: notice PDF request failed");
-      return auctionPdfText(await bodyWithinLimit(pdf.response));
-    }, new Date(now)) : source.id === "plovdiv-public-consultations" ? await collectPublicConsultations(decodeHtml(body, response.headers.get("content-type")), async (url) => {
+      if (!pdf.response.ok || !pdf.response.headers.get("content-type")?.toLowerCase().includes("application/pdf")) {
+        retryAfter = pdf.response.headers.get("retry-after") ?? retryAfter;
+        await pdf.response.body?.cancel();
+        throw new Error(`${source.id}: procedure PDF request failed (HTTP ${pdf.response.status})`);
+      }
+      const document = await archiveProcedurePdf(await bodyWithinLimit(pdf.response), title, outputDir);
+      procedureDocuments.set(url, document);
+      return document;
+    };
+    let snapshot = VENUE_PROGRAMMES[source.id] ? await collectVenueProgramme(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
+      await new Promise(done => setTimeout(done, 1200));
+      const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
+      if (!detail.response.ok || !detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        retryAfter = detail.response.headers.get("retry-after") ?? retryAfter;
+        await detail.response.body?.cancel();
+        throw new Error(source.id + ": event detail request failed (HTTP " + detail.response.status + ")");
+      }
+      return decodeHtml(await bodyWithinLimit(detail.response), detail.response.headers.get("content-type"));
+    }, new Date(now)) : source.id === "plovdiv-low-emission-permit" ? await collectLowEmissionPermit(decodeHtml(body, response.headers.get("content-type")), readProcedure) : source.id === "dz-admission-calendar" ? await collectAdmissionCalendar(decodeHtml(body, response.headers.get("content-type")), readProcedure, new Date(now)) : source.id === "plovdiv-management-competitions" ? await collectManagementCompetitions(decodeHtml(body, response.headers.get("content-type")), async url => (await readProcedure(url, "Обява и условия за конкурса")).text, new Date(now), readProcedure) : source.id === "plovdiv-public-consultations" ? await collectPublicConsultations(decodeHtml(body, response.headers.get("content-type")), async (url) => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       if (!detail.response.ok || !detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("plovdiv-public-consultations: detail request failed");
       return decodeHtml(await bodyWithinLimit(detail.response), detail.response.headers.get("content-type"));
-    }, new Date(now)) : source.id === "plovdiv-youth-centre" ? await collectYouthCentreEvents(decodeHtml(body, response.headers.get("content-type")), async (url) => {
+    }, new Date(now), readProcedure) : source.id === "plovdiv-youth-centre" ? await collectYouthCentreEvents(decodeHtml(body, response.headers.get("content-type")), async (url) => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       if (detail.response.status === 404 || detail.response.status === 410 || detail.response.status === 500) {
@@ -229,12 +262,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       const notices = await requestSource({ ...source, url: "https://www.plovdiv.bg/announcements/messages/obyavi/" }, { failures: 0, items: {} }, true);
       if (!notices.response.ok || !notices.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("plovdiv-auction-list: termination listing request failed");
       return decodeHtml(await bodyWithinLimit(notices.response), notices.response.headers.get("content-type"));
-    })(), async (url) => {
-      await new Promise(done => setTimeout(done, 1200));
-      const pdf = await requestSource({ ...source, url, format: "pdf" }, { failures: 0, items: {} }, true);
-      if (!pdf.response.ok || !pdf.response.headers.get("content-type")?.toLowerCase().includes("application/pdf")) throw new Error("plovdiv-auction-list: document request failed");
-      return auctionPdfText(await bodyWithinLimit(pdf.response));
-    }, new Date(now)) : daySensitive ? parsePlovdivGtfsArchive(body, now) : source.id === "ecomap-containers"
+    })(), async url => (await readProcedure(url, "Обява и условия за търга")).text, new Date(now)) : daySensitive ? parsePlovdivGtfsArchive(body, now) : source.id === "ecomap-containers"
       ? parseEcomapContainers(decodeHtml(body, response.headers.get("content-type"))) : source.id === "ecomap-collection-events"
       ? parseEcomapCollectionEvents(decodeHtml(body, response.headers.get("content-type"))) : partitioned
       ? await collectFirstGradeVacancies(decodeHtml(body, response.headers.get("content-type")), async (district, schoolType) => {
@@ -248,6 +276,15 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
         if (!page.response.ok || !page.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("first-grade-vacancies: district request failed");
         return decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type"));
       }) : parsePilotPage(source.id, decodeHtml(body, response.headers.get("content-type")));
+    if (source.id === "plovdiv-management-competitions" || source.id === "plovdiv-auction-list") {
+      for (const item of snapshot.items) {
+        const document = procedureDocuments.get(item.sourceUrl);
+        if (!document) throw new Error("procedure: record document missing");
+        const attachments: ProcedureDocument[] = typeof item.fields.documents === "string" ? JSON.parse(item.fields.documents) : [];
+        item.fields = { ...item.fields, ...(source.id === "plovdiv-management-competitions" ? competitionSections(document.text) : auctionConditions(document.text)), documents: JSON.stringify([document, ...attachments]) };
+        item.fingerprint = createHash("sha256").update(JSON.stringify(item.fields)).digest("hex");
+      }
+    }
     if (detailDriven) {
       if (snapshot.items.length > 30) throw new Error(`${source.id}: detail count exceeds pilot request budget`);
       const items = [];
@@ -268,6 +305,54 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       snapshot = { ...snapshot, items, limitations: source.id === "club-code-upcoming"
         ? ["Every listing row is checked against structured event detail; repeated observation is still needed for cancellations and removals.", "Ticket availability is not part of this pilot."]
         : [...snapshot.limitations, `${rejected.length} explicitly named candidates lacked structured detail or a Plovdiv address.`, "No explicit event status is supplied; disappearance is not proof of cancellation."] };
+    }
+    if (source.id === "plovdiv-theatre") {
+      await new Promise(done => setTimeout(done, 1200));
+      const page = await requestSource({ ...source, url: "https://dtp.bg/production-category/current-season" }, { failures: 0, items: {} }, true);
+      if (!page.response.ok) throw new Error("theatre photographs: programme unavailable");
+      const photos = theatrePhotos(decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type")));
+      await new Promise(done => setTimeout(done, 1200));
+      const home = await requestSource({ ...source, url: "https://dtp.bg/" }, { failures: 0, items: {} }, true);
+      if (!home.response.ok) throw new Error("theatre photographs: current highlights unavailable");
+      for (const [title, url] of theatrePhotos(decodeHtml(await bodyWithinLimit(home.response), home.response.headers.get("content-type")))) photos.set(title, url);
+      // Both official programmes name the same author and production; no fuzzy title matching.
+      const lecture = photos.get(normalizeEventTitle("Лекция № 3 за силата на словото"));
+      if (lecture) photos.set(normalizeEventTitle("КАМЕН ДОНЕВ - ЗА СИЛАТА НА СЛОВОТО"), lecture);
+      if (snapshot.items.some(entry => normalizeEventTitle(String(entry.fields.title)) === "боряна")) {
+        await new Promise(done => setTimeout(done, 1200));
+        const guest = await requestSource({ ...source, url: "https://dtp.bg/show/name-ihlcyi" }, { failures: 0, items: {} }, true);
+        if (!guest.response.ok) throw new Error("theatre photograph: guest production unavailable");
+        const photo = theatreDetailPhoto(decodeHtml(await bodyWithinLimit(guest.response), guest.response.headers.get("content-type")), "Боряна");
+        if (photo) photos.set("боряна", photo);
+      }
+      for (const entry of snapshot.items) {
+        const url = photos.get(normalizeEventTitle(String(entry.fields.title)));
+        if (url) entry.fields.imageUrl = url;
+      }
+    }
+    const archived = new Map<string, Awaited<ReturnType<typeof archiveEventImage>>>();
+    for (const entry of snapshot.items) {
+      const url = eventImageUrl(entry.fields.imageUrl, source.url);
+      if (!url) continue;
+      try {
+        let photo = archived.get(url);
+        if (!photo) {
+          await new Promise(done => setTimeout(done, 1200));
+          const image = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
+          if (image.response.status === 429 || image.response.status === 503) {
+            retryAfter = image.response.headers.get("retry-after");
+            throw new Error(`event photograph: HTTP ${image.response.status}`);
+          }
+          if (!image.response.ok || !image.response.headers.get("content-type")?.startsWith("image/")) throw new Error("event photograph unavailable");
+          photo = await archiveEventImage(await bodyWithinLimit(image.response, 12_000_000), outputDir);
+          archived.set(url, photo);
+        }
+        Object.assign(entry.fields, photo);
+      } catch (error) {
+        if (retryAfter || /HTTP (429|503)/u.test(String(error))) throw error;
+        snapshot.limitations.push(`Photograph unavailable for ${entry.key}: ${errorText(error)}`);
+      }
+      entry.fingerprint = createHash("sha256").update(JSON.stringify(entry.fields)).digest("hex");
     }
     const items = Object.fromEntries(snapshot.items.map((entry) => [entry.key, entry.fingerprint]));
     const partition = source.id === "vik-outages" ? String(snapshot.items[0]?.fields.date ?? "") : undefined;
@@ -308,6 +393,10 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
 
 export async function run(): Promise<void> {
   const watch = process.argv.includes("--watch");
+  const selection = process.argv.find(arg => arg.startsWith("--sources="))?.slice("--sources=".length).split(",");
+  const refresh = process.argv.includes("--refresh");
+  if (selection?.some(id => !pilotSources.some(source => source.id === id)) || (refresh && (!selection || watch))) throw new Error("Explicit valid --sources are required for a one-off --refresh");
+  const selectedSources = selection ? pilotSources.filter(source => selection.includes(source.id)) : pilotSources;
   const writer = process.env.CITY_PILOT_PERSIST_DB === "1" ? createCityPilotWriter() : null;
   await mkdir(outputDir, { recursive: true });
   const state = await loadState();
@@ -322,9 +411,9 @@ export async function run(): Promise<void> {
     }
   }
   do {
-    for (const source of pilotSources) {
+    for (const source of selectedSources) {
       const previous = state.sources[source.id] ?? { failures: 0, items: {} };
-      if (previous.nextDueAt && Date.parse(previous.nextDueAt) > Date.now()) {
+      if (!refresh && previous.nextDueAt && Date.parse(previous.nextDueAt) > Date.now()) {
         if (!watch && process.env.CITY_PILOT_QUIET_SKIPS !== "1") process.stdout.write(`${source.id}: skipped until ${previous.nextDueAt}\n`);
         continue;
       }
@@ -357,7 +446,7 @@ export async function run(): Promise<void> {
       process.stdout.write(`${source.id}: ${result.journal.outcome} (${result.journal.httpStatus ?? "network"})\n`);
     }
     if (!watch) break;
-    const next = Math.min(...pilotSources.map((source) => Date.parse(state.sources[source.id]?.nextDueAt ?? ""))).valueOf();
+    const next = Math.min(...selectedSources.map((source) => Date.parse(state.sources[source.id]?.nextDueAt ?? ""))).valueOf();
     await new Promise((done) => setTimeout(done, Math.max(1000, Math.min(60_000, next - Date.now()))));
   } while (watch);
   await writer?.close();

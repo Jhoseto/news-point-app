@@ -1,3 +1,6 @@
+import { CityLowEmissionPermit } from "./city-low-emission-permit";
+import { CityAdmissionCalendar } from "./city-admission-calendar";
+import { CityTransitTimetable } from "./city-transit-timetable";
 import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
 import type { ArticleSummary } from "@/lib/queries";
@@ -209,7 +212,7 @@ function ObservationGroup({ group, story, articles }: { group: CityObservation; 
   const name = meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка';
   return <article className="city-observed-group" id={`nablyudavani-${group.sourceId}`} data-source={group.sourceId}>
     <div className="city-observed-group-head"><div><p className="city-panel-eyebrow">{meta?.utility ? 'ПОЛЕЗЕН КОНТАКТ' : 'В ТВОЯ ГРАД'}</p><h3>{name}</h3><p className="city-panel-description">{meta?.description}</p></div><span className="city-panel-total" title="Брой записи в тази справка">{group.items.length}</span></div>
-    {MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityMunicipalRecords group={group} /> : group.sourceId === 'plovdiv-dog-shelter' ? <CityDogGallery items={group.items} story={story} /> : group.sourceId === 'plovdiv-social-services' ? <CitySocialServices items={group.items} /> : group.sourceId === 'plovdiv-municipal-schools' ? <CitySchoolDirectory items={group.items} /> : group.sourceId === 'dz-institutions' ? <CitySchoolDirectory items={group.items} kind="childcare" /> : group.sourceId === 'ecomap-containers' ? <CityEcoPoints items={group.items} /> : <>
+    {group.sourceId === 'plovdiv-low-emission-permit' ? <CityLowEmissionPermit group={group} /> : group.sourceId === 'dz-admission-calendar' ? <CityAdmissionCalendar group={group} /> : group.sourceId === 'plovdiv-livetransport-gtfs' ? <CityTransitTimetable lines={group.items.map(item => ({ key: item.key, line: String(item.fields.line), destinations: String(item.fields.destinations) }))} checkedAt={group.checkedAt} /> : MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityMunicipalRecords group={group} /> : group.sourceId === 'plovdiv-dog-shelter' ? <CityDogGallery items={group.items} story={story} /> : group.sourceId === 'plovdiv-social-services' ? <CitySocialServices items={group.items} /> : group.sourceId === 'plovdiv-municipal-schools' ? <CitySchoolDirectory items={group.items} /> : group.sourceId === 'dz-institutions' ? <CitySchoolDirectory items={group.items} kind="childcare" /> : group.sourceId === 'ecomap-containers' ? <CityEcoPoints items={group.items} /> : <>
       <div className="city-observed-grid">{group.items.slice(0, 8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div>
       {group.items.length > 8 ? <details className="city-observed-more"><summary>Покажи още {group.items.length - 8}</summary><div className="city-observed-grid">{group.items.slice(8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div></details> : null}
     </>}

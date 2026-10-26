@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { DomUtils, parseDocument } from "htmlparser2";
 import type { PilotItem, PilotSnapshot } from "./parse";
+import type { ProcedureDocument } from "./procedure-documents";
 
 const sourceId = "plovdiv-public-consultations";
 const indexUrl = "https://www.plovdiv.bg/announcements/pna/";
@@ -82,16 +83,50 @@ export function parseConsultationDetail(html: string, entry: ConsultationListing
   return { key: entry.id, sourceUrl: entry.detailUrl, fields, fingerprint: digest(fields) };
 }
 
-export async function collectPublicConsultations(html: string, readDetail: (url: string) => Promise<string>, now = new Date()): Promise<PilotSnapshot> {
+export function consultationAttachments(html: string): { title: string; url: string }[] {
+  const dom = parseDocument(html);
+  const heading = DomUtils.getElementsByTagName("h3", dom).find(node => text(node) === "Документи");
+  if (!heading?.parent) throw new Error(`${sourceId}: documents section missing`);
+  const links = DomUtils.getElementsByTagName("a", heading.parent).filter(node => node.attribs["data-file"]);
+  const documents = links.map(link => {
+    const id = link.attribs["data-file"]!;
+    if (!/^\d+$/u.test(id) || link.attribs["data-url"] !== `https://strategy.bg/file-preview-modal/${id}`) throw new Error(`${sourceId}: document location changed`);
+    return { title: text(link), url: `https://strategy.bg/download/${id}` };
+  });
+  if (!documents.some(doc => doc.title.startsWith("Проект на акт"))
+    || documents.length > 8 || new Set(documents.map(doc => doc.url)).size !== documents.length) throw new Error(`${sourceId}: incomplete or duplicated document package`);
+  return documents;
+}
+
+export function consultationDescription(html: string): string {
+  const dom = parseDocument(html);
+  const heading = DomUtils.getElementsByTagName("h3", dom).find(node => text(node) === "Отговорна институция");
+  let previous = heading?.parent?.prev;
+  while (previous && !text(previous)) previous = previous.prev;
+  const description = previous ? text(previous) : "";
+  if (description.length < 60 || description.length > 30_000) throw new Error(`${sourceId}: project description missing`);
+  return description;
+}
+
+export async function collectPublicConsultations(html: string, readDetail: (url: string) => Promise<string>, now = new Date(), readDocument?: (url: string, title: string) => Promise<ProcedureDocument>): Promise<PilotSnapshot> {
   const listing = parseConsultationListing(html, now);
   const items: PilotItem[] = [];
   for (const entry of listing) {
-    const item = parseConsultationDetail(await readDetail(entry.detailUrl), entry, now);
-    if (item) items.push(item);
+    const detail = await readDetail(entry.detailUrl);
+    const item = parseConsultationDetail(detail, entry, now);
+    if (item) {
+      if (readDocument) {
+        const documents: ProcedureDocument[] = [];
+        for (const attachment of consultationAttachments(detail)) documents.push(await readDocument(attachment.url, attachment.title));
+        item.fields = { ...item.fields, description: consultationDescription(detail), documents: JSON.stringify(documents) };
+        item.fingerprint = digest(item.fields);
+      }
+      items.push(item);
+    }
   }
   return { sourceId, items, completeness: "uncertain", limitations: [
     "Only municipal normative-act projects linked from this listing to a matching state consultation with an explicit active status and future deadline are included.",
     "General administrative acts, district consultations and local-only project pages are outside this pilot; a draft is not an adopted rule.",
-    "The public consultation portal is used to verify dates, status and submission channels; the attached project documents are not extracted in this pilot.",
+    "Attached document packages and descriptions are checked with each active detail when document collection is enabled; drafts are not adopted rules.",
   ] };
 }

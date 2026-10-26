@@ -1,3 +1,4 @@
+import { VENUE_PROGRAMMES } from "./venue-programmes";
 export type CityCategory = "transport" | "parking" | "outages" | "municipality" | "education" | "environment" | "events" | "adoption";
 export type SourceFormat = "html" | "json" | "map" | "gtfs" | "ical" | "pdf" | "unknown";
 
@@ -14,6 +15,7 @@ export type CandidateSource = {
 export const candidateSources: CandidateSource[] = [
   { id: "plovdiv-transit", category: "transport", url: "https://www.plovdiv.bg/item/transport/mass-public-transport/", format: "html", pilot: true },
   { id: "plovdiv-transport-news", category: "transport", url: "https://www.plovdiv.bg/category/transport/", format: "html" },
+  { id: "plovdiv-low-emission-permit", category: "transport", url: "https://www.plovdiv.bg/administration/municipal-enterprises/op_parking/form/", format: "html", pilot: true },
   { id: "plovdiv-low-emission", category: "transport", url: "https://www.plovdiv.bg/zona-s-niska-emisia/", format: "html", pilot: true },
   { id: "baem-plovdiv", category: "transport", url: "https://baem.bg/map/plovdiv", format: "map" },
   { id: "plovdiv-taxis", category: "transport", url: "https://www.plovdiv.bg/item/transport/taxi-companies/", format: "html" },
@@ -62,6 +64,7 @@ export const candidateSources: CandidateSource[] = [
   { id: "plovdiv-auction-list", category: "municipality", url: "https://www.plovdiv.bg/announcements/auctions/turgove/", format: "html", pilot: true },
   { id: "plovdiv-donations", category: "municipality", url: "https://www.plovdiv.bg/wp-content/uploads/darenia/export_donations_2026.html", format: "html" },
   { id: "plovdiv-social-services", category: "municipality", url: "https://www.plovdiv.bg/wp-content/uploads/2026/10/SotsialniUslugi.html", format: "html", pilot: true },
+  { id: "dz-admission-calendar", category: "education", url: "https://dz-priem.plovdiv.bg/user_guide", format: "html", pilot: true },
   { id: "dz-home", category: "education", url: "https://dz-priem.plovdiv.bg/", format: "html" },
   { id: "dz-vacancies", category: "education", url: "https://dz-priem.plovdiv.bg/vacancies", format: "html", pilot: true },
   // One public page has six district tables and 88 individually identified sites.
@@ -119,4 +122,10 @@ export const candidateSources: CandidateSource[] = [
   { id: "plovdiv-markets", category: "municipality", url: "https://www.plovdiv.bg/administration/municipal-enterprises/market/", format: "html" },
 ];
 
+// Separate venue feeds keep a failure at one programme from hiding other venues.
+for (const [id, config] of Object.entries(VENUE_PROGRAMMES)) {
+  const existing = candidateSources.find(source => source.id === id);
+  if (existing) existing.pilot = true;
+  else candidateSources.push({ id, category: "events", url: config.url, format: "html", pilot: true });
+}
 export const pilotSources = candidateSources.filter((source) => source.pilot);

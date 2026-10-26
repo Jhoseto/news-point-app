@@ -1,3 +1,4 @@
+import { eventImageUrl } from "./event-media";
 import { createHash } from "node:crypto";
 import { DomUtils, parseDocument } from "htmlparser2";
 
@@ -593,6 +594,12 @@ function parseCouncil(dom: Root): PilotSnapshot {
 }
 
 function parseOpera(dom: Root): PilotSnapshot {
+  const photographs = new Map<string, string>();
+  for (const card of allByClass(dom, "event")) {
+    const link = DomUtils.findOne(node => /\/performance\/details\?id=\d+/u.test(node.attribs.href ?? ""), card);
+    const photo = eventImageUrl(firstTag(firstByClass(card, "main-img") ?? card, "img")?.attribs.src, "https://operaplovdiv.bg/");
+    if (link && photo) photographs.set(absolute(link.attribs.href!, "https://operaplovdiv.bg/"), photo);
+  }
   const items: PilotItem[] = [];
   for (const card of allByClass(dom, "event")) {
     if (!hasClass(card, "card") || !card.attribs["data-id"]) continue;
@@ -606,7 +613,8 @@ function parseOpera(dom: Root): PilotSnapshot {
     if (!period || !parts || !validCalendarDate(period[1]!, parts[2]!, parts[1]!) || !link?.attribs.href || !title || !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(time) || !location) throw new Error("plovdiv-opera: event card schema changed");
     const date = `${period[1]}-${parts[2]!.padStart(2, "0")}-${parts[1]!.padStart(2, "0")}`;
     const sourceUrl = absolute(link.attribs.href, "https://operaplovdiv.bg/");
-    items.push(item(`${sourceUrl}:${date}:${time}`, sourceUrl, { title, date, time, location }));
+    const image = eventImageUrl(firstTag(firstByClass(card, "main-img") ?? card, "img")?.attribs.src, sourceUrl) ?? photographs.get(sourceUrl);
+    items.push(item(`${sourceUrl}:${date}:${time}`, sourceUrl, { title, date, time, location, ...(image ? { imageUrl: image } : {}) }));
   }
   return unique("plovdiv-opera", items, ["Listing changes and cancellations need repeated observation; the performance URL may be shared by several dates."], "uncertain");
 }
@@ -690,7 +698,7 @@ export function parseEpayGoEventDetail(html: string, listingItem: PilotItem): Pi
   const listingDate = String(listingItem.fields.dateText).match(/^(\d{1,2})\s+(\p{L}+)$/u);
   const detailMonth = new Intl.DateTimeFormat("bg-BG", { month: "long", timeZone: "UTC" }).format(detailDate);
   if (!listingDate || Number(listingDate[1]) !== Number(parts[3]) || listingDate[2] !== detailMonth) throw new Error("epaygo-plovdiv-explicit: listing and detail dates disagree");
-  return item(listingItem.key, listingItem.sourceUrl, { title: String(event.name), date: `${parts[1]}-${parts[2]}-${parts[3]}`, time: parts[4]!, place, address });
+  return item(listingItem.key, listingItem.sourceUrl, { title: String(event.name), date: `${parts[1]}-${parts[2]}-${parts[3]}`, time: parts[4]!, place, address, ...(eventImageUrl(event.image, listingItem.sourceUrl) ? { imageUrl: eventImageUrl(event.image, listingItem.sourceUrl)! } : {}) });
 }
 
 function parseAdoptionGuide(dom: Root): PilotSnapshot {
@@ -733,7 +741,7 @@ function parseGalleryExhibitions(dom: Root): PilotSnapshot {
       || `${end[1]}-${end[2]}-${end[3]}` < `${start[1]}-${start[2]}-${start[3]}` || !venue) {
       throw new Error(`${sourceId}: incomplete exhibition card`);
     }
-    return item(key, listingUrl, { title, startDate: `${start[1]}-${start[2]}-${start[3]}`, endDate: `${end[1]}-${end[2]}-${end[3]}`, venue });
+    return item(key, listingUrl, { title, startDate: `${start[1]}-${start[2]}-${start[3]}`, endDate: `${end[1]}-${end[2]}-${end[3]}`, venue, ...(eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl) ? { imageUrl: eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl)! } : {}) });
   });
   return unique(sourceId, entries, ["The current listing can contain ended exhibitions; reader view filters by end date.", "No explicit cancellation state or verified opening hours are provided."], "uncertain");
 }
@@ -927,6 +935,8 @@ export function parseClubEventDetail(html: string, listingItem: PilotItem): Pilo
   const price = offer && typeof offer === "object" && "price" in offer ? offer.price : undefined;
   const currency = offer && typeof offer === "object" && "priceCurrency" in offer ? offer.priceCurrency : undefined;
   const fields: Record<string, string | number> = { title: String(event.name), startDate: start, endDate: end, place, status: statusName };
+  const image = eventImageUrl(event.image, listingItem.sourceUrl);
+  if (image) fields.imageUrl = image;
   if (typeof address === "string" && address) fields.address = address;
   if ((typeof price === "string" || typeof price === "number") && /^\d+(?:\.\d{1,2})?$/u.test(String(price)) && Number(price) > 0 && currency === "EUR") {
     fields.price = Number(price);

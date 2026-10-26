@@ -220,6 +220,16 @@ export const getLatest = cache(async (limit: number): Promise<ArticleSummary[]> 
   return rows.map(toSummary);
 });
 
+/** Bounded context pool for the city agenda; independent of editorial category assignment. */
+export const getCityEventContext = cache(async (): Promise<ArticleSummary[]> => {
+  const rows = await (await summaryQuery()).query.where(and(isPublished(),
+    gt(articles.publishedAt, new Date(Date.now() - 180 * 86_400_000)),
+    or(ilike(articles.title, "%пловдив%"), ilike(articles.excerpt, "%пловдив%")),
+    sql`${articles.title} ~* ${"концерт|джаз|стендъп|stand.up|диджей|парти|театър|театрал|постановк|опера|балет|изложб|галери|работилниц|младежк|предприемач"}`,
+  )).orderBy(desc(articles.publishedAt)).limit(100);
+  return rows.map(toSummary);
+});
+
 const readLatest24Hours = unstable_cache(async (minute: number): Promise<ArticleSummary[]> => {
   const asOfMs = minute * 60_000;
   const rows = await (await summaryQuery()).query

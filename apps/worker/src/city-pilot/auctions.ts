@@ -150,6 +150,6 @@ export async function collectMunicipalAuctions(html: string, terminationHtml: st
   return { sourceId, items, completeness: "uncertain", limitations: [
     "Only notices published in the last 30 days with validated application and auction dates are covered; this is not a complete municipal property register.",
     "The municipal general announcements list is cross-checked for parcel-matched termination orders and each matching PDF is validated; other channels may still publish changes.",
-    "Amounts, bank details and other legal conditions are not extracted; the dates and title require independent confirmation before acting.",
+    "The runner archives the full notice and extracts amounts only for the validated table layout; paid auction dossiers are not included.",
   ] };
 }

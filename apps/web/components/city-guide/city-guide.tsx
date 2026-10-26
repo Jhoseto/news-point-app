@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CITY_CATEGORIES, type CityCategory } from "@/lib/city-guide/catalog";
+import { cityReaderTopicLabel } from "@/lib/city-guide/presentation";
 import { cityNewsUrl, type CityStory } from "@/lib/city-guide/news";
 import { nightEventStatusLabel, nightPeriodMatches, type CityNightEvent } from "@/lib/city-guide/night-events";
 import { ArticleImage } from "@/components/ui";
@@ -66,7 +67,7 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
           <div className="city-photo-panel-label"><small>{category.eyebrow}</small><h2>{category.title}</h2></div>
           <div className="city-photo-panel-details" id={detailsId}>
             <p>{category.lead}</p>
-            <div className="city-photo-panel-topics" aria-label={`Теми в ${category.title}`}>{topics.slice(0, 4).map(topic => <Link key={topic.title} href={`${ROOT}/${category.slug}/${topicHrefByCategory[category.slug]?.[topic.title] ?? ""}`}>{topic.title} <Arrow diagonal /></Link>)}</div>
+            <div className="city-photo-panel-topics" aria-label={`Теми в ${category.title}`}>{topics.slice(0, 4).map(topic => <Link key={topic.title} href={`${ROOT}/${category.slug}/${topicHrefByCategory[category.slug]?.[topic.title] ?? ""}`}>{cityReaderTopicLabel(topic.title)} <Arrow diagonal /></Link>)}</div>
             <div className="city-photo-panel-bottom"><Link href={`${ROOT}/${category.slug}/`} className="city-photo-panel-all" aria-label={`${activeTopics.length} справки с данни в ${category.title}`}>{activeTopics.length} справки с данни <Arrow /></Link>{story ? <Link href={story.path} prefetch={false} className="city-photo-panel-news"><small>СВЪРЗАНА НОВИНА</small><span>{story.title}</span><Arrow diagonal /></Link> : null}</div>
           </div>
         </div>
@@ -134,7 +135,7 @@ export function CityCategoryView({ category, stories, observations }: { category
   const related = [...new Map(Object.values(stories).filter((story): story is CityStory => !!story).map(story => [story.path, story])).values()].slice(0, 3);
   const intro: Record<string, string> = {
     municipality: "Предстоящи срокове, отворени обсъждания и условия за кандидатстване. Избери какво те интересува.",
-    education: "Свободните места за прием са на преден план. Училищните адреси са под ръка, когато ти потрябват.",
+    education: "Срокове за кандидатстване и записване, свободни места в градини, ясли и първи клас.",
     environment: "Кога идва мобилният пункт, къде да предадеш отпадъци и как да заявиш извозване.",
     culture: "Планирай следващото излизане — театър, опера и изложби с конкретни дати и места.",
     adopt: "Запознай се с животните и прочети как протича осиновяването.",
@@ -153,11 +154,11 @@ export function CityTransportView({ category, stories, observations, activeTopic
   const related = activeTopics.flatMap(title => stories[title] ? [stories[title]!] : []).slice(0, 3);
   return <div className="city-page city-transport-page city-accent-blue" ref={motionRoot}><div className="np-container city-container">
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={ROOT + "/"}>Моят Пловдив</Link><span>/</span><span aria-current="page">{category.title}</span></nav>
-    <header className="city-transport-hero" data-city-reveal><div className="city-transport-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 01</p><h1>Транспорт <em>и движение.</em></h1><p>Маршрути, промени по пътя и полезни официални справки — подредени за бърз избор.</p><a href={hasRouteData ? "#nablyudavani-plovdiv-livetransport-gtfs" : hasFareData ? "#nablyudavani-plovdiv-transit" : "#city-observed-title"}>Към справките <Arrow /></a></div><div className="city-transport-hero-photo" role="img" aria-label="Снимка от въздуха на Пловдив"><span>ПЛОВДИВ / В ДВИЖЕНИЕ</span></div></header>
-    <div className="city-transport-note" role="note"><span aria-hidden="true">✳</span><p>{hasRouteData ? "По-долу са публикуваните линии и посоки за днес. Часове по спирки, позиции на автобусите и текущи затваряния още не са проверени." : hasFareData ? "По-долу са последно наблюдаваните цени за билети и карти. Разписания, движение на автобуси и текущи затваряния още не се показват автоматично." : "Проверените транспортни справки се показват по-долу."}</p></div>
+    <header className="city-transport-hero" data-city-reveal><div className="city-transport-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 01</p><h1>Транспорт <em>и движение.</em></h1><p>Автобусни линии и посоки, билети и карти, полети от и до Пловдив.</p><a href={hasRouteData ? "#nablyudavani-plovdiv-livetransport-gtfs" : hasFareData ? "#nablyudavani-plovdiv-transit" : "#city-observed-title"}>Към справките <Arrow /></a></div><div className="city-transport-hero-photo" role="img" aria-label="Снимка от въздуха на Пловдив"><span>ПЛОВДИВ / В ДВИЖЕНИЕ</span></div></header>
+    <div className="city-transport-note" role="note"><span aria-hidden="true">✳</span><p>{hasRouteData ? "Избери линия, посока и спирка за планираните часове днес. Разписанието не отчита закъснения или временни отклонения." : hasFareData ? "По-долу са последно наблюдаваните цени за билети и карти. Разписания, движение на автобуси и текущи затваряния още не се показват автоматично." : "Проверените транспортни справки се показват по-долу."}</p></div>
     {observations}
     {related.length ? <CityNewsRail stories={related} title="Новини по темите" /> : null}
-    <p className="city-proof-note">Локален визуален преглед. Не показваме непроверени часове по спирки, позиции на автобуси или временни затваряния.</p>
+    <p className="city-proof-note">Часовете са планирани, а не измерени пристигания. Движение в реално време и временни затваряния още не са включени.</p>
   </div></div>;
 }
 

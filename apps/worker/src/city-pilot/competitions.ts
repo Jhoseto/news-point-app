@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { DomUtils, parseDocument } from "htmlparser2";
 import type { PilotItem, PilotSnapshot } from "./parse";
+import type { ProcedureDocument } from "./procedure-documents";
 
 const sourceId = "plovdiv-management-competitions";
 const listingUrl = "https://www.plovdiv.bg/announcements/messages/konkursi/";
@@ -15,7 +16,7 @@ function isoDate(raw: string): string {
   return iso;
 }
 
-export type CompetitionLink = { title: string; company: string; published: string; pdfUrl: string };
+export type CompetitionLink = { title: string; company: string; published: string; pdfUrl: string; attachments?: { title: string; url: string }[] };
 
 export function parseCompetitionListing(html: string, now = new Date()): CompetitionLink[] {
   const content = DomUtils.getElementById("content", parseDocument(html));
@@ -43,7 +44,15 @@ export function parseCompetitionListing(html: string, now = new Date()): Competi
       || !/^\/wp-content\/uploads\/20\d{2}\/\d{2}\/[\w()%.-]+\.pdf$/iu.test(pdfUrl.pathname)) throw new Error(`${sourceId}: unsupported management notice`);
     if (seen.has(pdfUrl.href)) throw new Error(`${sourceId}: duplicate competition PDF`);
     seen.add(pdfUrl.href);
-    links.push({ title, company, published, pdfUrl: pdfUrl.href });
+    const attachments = DomUtils.getElementsByTagName("a", card).filter(link => link !== titleLink).map(link => {
+      const url = new URL(link.attribs.href ?? "", listingUrl);
+      const title = clean(DomUtils.textContent(link));
+      if (!title || url.protocol !== "https:" || url.hostname !== "www.plovdiv.bg" || !/^\/wp-content\/uploads\/20\d{2}\/\d{2}\/[\w()%.-]+\.pdf$/iu.test(url.pathname) || seen.has(url.href)) throw new Error(`${sourceId}: unsupported or duplicate attachment`);
+      seen.add(url.href);
+      return { title, url: url.href };
+    });
+    if (attachments.length > 3) throw new Error(`${sourceId}: too many form attachments`);
+    links.push({ title, company, published, pdfUrl: pdfUrl.href, attachments });
   }
   if (links.length > 6) throw new Error(`${sourceId}: PDF request budget exceeded`);
   return links;
@@ -69,15 +78,23 @@ export function parseCompetitionNoticeText(raw: string, link: CompetitionLink, n
   return { key: `pdf:${hash(link.pdfUrl).slice(0, 24)}`, sourceUrl: link.pdfUrl, fields, fingerprint: hash(JSON.stringify(fields) + hash(text)) };
 }
 
-export async function collectManagementCompetitions(html: string, readPdf: (url: string) => Promise<string>, now = new Date()): Promise<PilotSnapshot> {
+export async function collectManagementCompetitions(html: string, readPdf: (url: string) => Promise<string>, now = new Date(), readAttachment?: (url: string, title: string) => Promise<ProcedureDocument>): Promise<PilotSnapshot> {
   const links = parseCompetitionListing(html, now);
   const items: PilotItem[] = [];
   for (const link of links) {
     const item = parseCompetitionNoticeText(await readPdf(link.pdfUrl), link, now);
-    if (item) items.push(item);
+    if (item) {
+      if (readAttachment) {
+        const attachments: ProcedureDocument[] = [];
+        for (const attachment of link.attachments ?? []) attachments.push(await readAttachment(attachment.url, attachment.title));
+        item.fields.documents = JSON.stringify(attachments);
+        item.fingerprint = hash(JSON.stringify(item.fields));
+      }
+      items.push(item);
+    }
   }
   return { sourceId, items, completeness: "uncertain", limitations: [
     "Only recent PDF notices for management competitions of municipal companies with an explicit future application deadline are included; ordinary municipal vacancies are outside this pilot.",
-    "The application deadline and location are checked in each PDF; eligibility, attached forms, stages, withdrawals and cancellations still require separate verification.",
+    "Notice requirements and attached forms are read with each cycle; independently published withdrawals, results and cancellations still require separate verification.",
   ] };
 }

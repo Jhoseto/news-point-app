@@ -20,6 +20,32 @@ function preview(sourceId: string, source: {
 }
 
 describe("local city observations", () => {
+  it("hides stale, failed, invalid or expired venue programmes while keeping explicit cancellation", () => {
+    const fields = { title: "Fixture concert", date: "2026-10-30", time: "20:00", place: "Fixture venue", eventKind: "live", status: "EventCancelled" };
+    const select = (overrides = {}, checkedAt = "2026-10-24T15:50:00.000Z", outcome: "observed" | "unavailable" = "observed") => selectCityObservations("nightlife", preview("bilet-beebop", { checkedAt, outcome, items: [{ key: "fixture", fields: { ...fields, ...overrides } }] }), now)[0]?.items ?? [];
+    expect(select()[0]?.fields.status).toBe("EventCancelled");
+    expect(select({}, "2026-10-24T00:00:00.000Z")).toEqual([]);
+    expect(select({}, undefined, "unavailable")).toEqual([]);
+    for (const change of [{ date: "2026-02-30" }, { date: "2026-10-23" }, { time: "28:00" }, { eventKind: "business" }, { status: "unknown" }]) expect(select(change)).toEqual([]);
+  });
+  it("hides a failed, stale or incomplete low-emission permit package", () => {
+    const row = { key: "permit", fields: Object.fromEntries(["title", "eligibility", "requiredDocuments", "validity", "changes", "submission", "documents"].map(key => [key, "Explicit QA fixture"])) };
+    expect(selectCityObservations("transport", preview("plovdiv-low-emission-permit", { items: [row] }), now)[0]?.items).toEqual([row]);
+    expect(selectCityObservations("transport", preview("plovdiv-low-emission-permit", { items: [row], outcome: "unavailable" }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("transport", preview("plovdiv-low-emission-permit", { items: [row], checkedAt: "2026-10-20T00:00:00.000Z" }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("transport", preview("plovdiv-low-emission-permit", { items: [{ ...row, fields: { ...row.fields, requiredDocuments: "" } }] }), now)[0]?.items).toEqual([]);
+  });
+  it("expires childcare enrollment deadlines and rejects corrupt or stale calendar dates", () => {
+    const checkedAt = "2026-10-26T07:00:00.000Z";
+    const item = { key: "2026-11-03", fields: { title: "Текущо класиране", year: "2026", vacanciesDate: "2026-10-26", inPersonDeadline: "2026-10-30", onlineDeadline: "2026-11-02", resultsDate: "2026-11-03", enrollmentDeadline: "2026-11-11", registrationDate: "2026-11-12" } };
+    const select = (entry = item, at = checkedAt, outcome: "observed" | "unavailable" = "observed", checked = at) => selectCityObservations("education", preview("dz-admission-calendar", { checkedAt: checked, outcome, items: [entry] }), new Date(at))[0]?.items;
+    expect(select()).toEqual([item]);
+    expect(select(item, "2026-11-12T07:00:00.000Z")).toEqual([]);
+    expect(select(item, checkedAt, "unavailable")).toEqual([]);
+    expect(select(item, "2026-10-28T07:00:00.000Z", "observed", checkedAt)).toEqual([]);
+    expect(select({ ...item, fields: { ...item.fields, onlineDeadline: "2026-11-31" } })).toEqual([]);
+    expect(select({ ...item, fields: { ...item.fields, inPersonDeadline: "2026-11-04" } })).toEqual([]);
+  });
   it("shows only open management competitions with a verified deadline", () => {
     const row = { key: "pdf:manager", fields: { title: "Обява за конкурс", company: "ЕКОБУС ПЛОВДИВ", published: "2026-10-02", deadline: "2026-11-02", time: "17:00", place: "Деловодство на Община Пловдив, пл. „Стефан Стамболов“ № 1" } };
     const checkedAt = "2026-10-26T06:00:00.000Z";
@@ -34,7 +60,7 @@ describe("local city observations", () => {
       { key: "other", fields: { title: "Нощта на предприемачите", date: "2026-11-18", time: "19:00", place: "Piano Bar", address: "Пловдив" } },
     ];
     const source = preview("epaygo-plovdiv-explicit", { items });
-    expect(selectCityObservations("culture", source, now)[0]?.items.map(item => item.key)).toEqual(["live", "standup", "other"]);
+    expect(selectCityObservations("culture", source, now)[0]?.items.map(item => item.key)).toEqual(["other"]);
     expect(selectCityObservations("nightlife", source, now)[0]?.items.map(item => item.key)).toEqual(["live", "standup"]);
     expect(selectCityObservations("nightlife", preview("epaygo-plovdiv-explicit", { items: [items[2]!] }), now)).toEqual([]);
     expect(selectCityObservations("nightlife", preview("epaygo-plovdiv-explicit", { items, outcome: "unavailable" }), now)).toEqual([]);
@@ -49,9 +75,9 @@ describe("local city observations", () => {
   it("keeps only dated Youth Center events with a fresh successful check", () => {
     const item = { key: "event:one", fields: { title: "Младежки форум", published: "2026-10-15", date: "2026-11-06", endDate: "2026-11-08", time: "", place: "Младежки център Пловдив" } };
     const checkedAt = "2026-10-26T06:00:00.000Z";
-    expect(selectCityObservations("nightlife", preview("plovdiv-youth-centre", { checkedAt, items: [item] }), new Date(checkedAt))[0]?.items).toEqual([item]);
-    expect(selectCityObservations("nightlife", preview("plovdiv-youth-centre", { checkedAt: "2026-11-09T06:00:00.000Z", items: [item] }), new Date("2026-11-09T06:00:00.000Z"))).toEqual([]);
-    expect(selectCityObservations("nightlife", preview("plovdiv-youth-centre", { checkedAt, outcome: "unavailable", items: [item] }), new Date(checkedAt))).toEqual([]);
+    expect(selectCityObservations("culture", preview("plovdiv-youth-centre", { checkedAt, items: [item] }), new Date(checkedAt))[0]?.items).toEqual([item]);
+    expect(selectCityObservations("culture", preview("plovdiv-youth-centre", { checkedAt: "2026-11-09T06:00:00.000Z", items: [item] }), new Date("2026-11-09T06:00:00.000Z"))).toEqual([]);
+    expect(selectCityObservations("culture", preview("plovdiv-youth-centre", { checkedAt, outcome: "unavailable", items: [item] }), new Date(checkedAt))).toEqual([]);
   });
   it("shows only open auction notices from the termination-aware snapshot", () => {
     const row = { key: "pdf:one", fields: { title: "Обява за търг за терен", published: "2026-10-14", deadline: "2026-10-28", auctionDate: "2026-10-30" } };

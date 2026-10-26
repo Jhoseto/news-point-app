@@ -19,18 +19,18 @@ describe("city navigation coverage", () => {
   });
 
   it("opens the Youth Center panel only when a dated activity is present", () => {
-    expect(cityAvailableTopics("nightlife", [group("plovdiv-youth-centre")])).toContainEqual({ title: "Младежки инициативи", href: "#nablyudavani-plovdiv-youth-centre" });
-    expect(cityAvailableTopics("nightlife", [group("plovdiv-youth-centre", "observed", 0)])).toEqual([]);
+    expect(cityAvailableTopics("culture", [group("plovdiv-youth-centre")])).toContainEqual({ title: "Срещи и работилници", href: "#agenda-community" });
+    expect(cityAvailableTopics("culture", [group("plovdiv-youth-centre", "observed", 0)])).toEqual([]);
   });
 
   it("shows live music and stand-up topics only when matching event titles are present", () => {
     const events = group("epaygo-plovdiv-explicit");
     events.items = [{ key: "live", fields: { title: "Band - Live at Rock Bar" } }];
-    expect(cityAvailableTopics("nightlife", [events])).toContainEqual({ title: "Музика на живо", href: "#city-record-epaygo-plovdiv-explicit-live" });
+    expect(cityAvailableTopics("nightlife", [events])).toContainEqual({ title: "Музика на живо", href: "#agenda-live" });
     expect(cityAvailableTopics("nightlife", [events]).map(topic => topic.title)).not.toContain("Стендъп");
     events.items.push({ key: "standup", fields: { title: "Stand-up Comedy" } });
-    expect(cityAvailableTopics("nightlife", [events])).toContainEqual({ title: "Стендъп", href: "#city-record-epaygo-plovdiv-explicit-standup" });
-    expect(cityAvailableTopics("nightlife", [group("club-code-upcoming")])).toContainEqual({ title: "Партита", href: "#city-agenda-title" });
+    expect(cityAvailableTopics("nightlife", [events])).toContainEqual({ title: "Стендъп", href: "#agenda-standup" });
+    expect(cityAvailableTopics("nightlife", [group("club-code-upcoming")])).toContainEqual({ title: "Партита", href: "#agenda-party" });
   });
 
   it("links municipal housing directly to verified guidance and hides a failed read", () => {

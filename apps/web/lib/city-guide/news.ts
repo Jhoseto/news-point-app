@@ -1,5 +1,6 @@
 import type { ArticleSummary, Media } from "../queries";
 import { searchPageUrl } from "../search";
+import type { AgendaKind } from "./event-agenda";
 
 export type CityStory = {
   path: string;
@@ -192,4 +193,29 @@ export function cityStoryForTransitLine(line: string, articles: ArticleSummary[]
 export function cityOutStories(articles: ArticleSummary[], limit = 3, now = new Date()): CityStory[] {
   return rankStories(articles.filter(article => OUT_STORY_TITLE.test(article.title) && eligibleStory(article, now, "Пловдив OUT")), "концерт фестивал театър музика", now)
     .slice(0, limit).map(toCityStory);
+}
+
+const AGENDA_NEWS: Record<AgendaKind, RegExp> = {
+  party: /(?:^|[^а-я])парти(?:то|та)?(?=[^а-я]|$)|диджей|\bDJ\b|клубна.*музика/iu,
+  live: /концерт|музика на живо|джаз|рок груп/iu,
+  standup: /стенд[ -]?ъп|stand[ -]?up/iu,
+  theatre: /театрал|постановк|спектак|драматичн.*театър|театър.*(?:премиер|програм|сцен)/iu,
+  opera: /(?:^|[^а-я])(?:опера(?:та)?|балет[а-я]*)(?=[^а-я]|$)|симфони/iu,
+  exhibition: /изложб|галери/iu,
+  community: /работилниц|младежк.*(?:форум|център|инициатив|обучени)|предприемач.*(?:форум|срещ|събити)|творческ.*срещ/iu,
+};
+export function cityAgendaStories(articles: ArticleSummary[], kinds: AgendaKind[], now = new Date()): CityStory[] {
+  const seen = new Set<string>();
+  return articles.filter(article => {
+    const age = now.getTime() - article.publishedAt.getTime();
+    const retrospective = /след концерта|закри|откриха|отбеляза|представи|премиерата|спечели|награда/iu.test(article.title);
+    return age >= 0 && age <= 180 * 86_400_000 && (age <= EVENT_NEWS_MAX_AGE_MS || retrospective) && eligibleStory(article, now)
+      && !/парти[яи]|ДАНС|прокуратур|кръводар|птичи грип|пожарник|за деца|за кучета|церемони|водосвет|бойните знамена|убийств|насили|агресия|катастроф|жесток бой|голов спектакъл/iu.test(article.title)
+      && /пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`)
+      && kinds.some(kind => AGENDA_NEWS[kind].test(article.title));
+  }).sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()).filter(article => {
+    const key = article.title.toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]/gu, "");
+    if (seen.has(key) || seen.has(article.path)) return false;
+    seen.add(key); seen.add(article.path); return true;
+  }).slice(0, 4).map(toCityStory);
 }

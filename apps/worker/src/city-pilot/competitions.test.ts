@@ -8,6 +8,11 @@ const page = (name = title) => `<div id="content"><h1>Конкурси</h1>${car
 const pdf = (deadline = "02.11.2026", company = "ЕКОБУС ПЛОВДИВ") => `ОБЩИНА ПЛОВДИВ. Конкурс за възлагане управлението на “${company}” ЕООД. Документите за участие в конкурса се подават лично в „Деловодство“ на община Пловдив, пл. „Ст. Стамболов” № 1. Срок за подаване на документи: до 17.00 часа на ${deadline} г.`;
 
 describe("municipal management competition pilot", () => {
+  it("keeps attached blank forms associated with their own notice and rejects external attachments", () => {
+    const withForm = page().replace("</div></div>", '<p><a href="/wp-content/uploads/2026/10/forms.pdf">Заявление и декларация</a></p></div></div>');
+    expect(parseCompetitionListing(withForm, now)[0]?.attachments).toEqual([{ title: "Заявление и декларация", url: "https://www.plovdiv.bg/wp-content/uploads/2026/10/forms.pdf" }]);
+    expect(() => parseCompetitionListing(withForm.replace('/wp-content/uploads/2026/10/forms.pdf', 'https://example.com/forms.pdf'), now)).toThrow("unsupported");
+  });
   it("reads only a recent management competition PDF and versions a deadline edit", async () => {
     expect(parseCompetitionListing(page(), now)).toHaveLength(1);
     const first = await collectManagementCompetitions(page(), async () => pdf(), now);

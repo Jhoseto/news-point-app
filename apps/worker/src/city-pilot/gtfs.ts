@@ -1,13 +1,17 @@
 import { createHash } from "node:crypto";
 import { strFromU8, unzipSync } from "fflate";
 import type { PilotItem, PilotSnapshot } from "./parse";
+import { buildTimetables } from "./gtfs-timetable";
 
-const required = new Set(["feed_info.txt", "calendar.txt", "routes.txt", "trips.txt"]);
+const required = new Set(["feed_info.txt", "calendar.txt", "routes.txt", "trips.txt", "stops.txt", "stop_times.txt", "agency.txt"]);
 const columns = {
   "feed_info.txt": ["feed_start_date", "feed_end_date", "feed_version"],
   "calendar.txt": ["service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"],
   "routes.txt": ["route_id", "route_type", "route_short_name", "route_long_name"],
-  "trips.txt": ["route_id", "service_id", "trip_headsign"],
+  "trips.txt": ["route_id", "service_id", "trip_headsign", "trip_id"],
+  "stops.txt": ["stop_id", "stop_name"],
+  "stop_times.txt": ["trip_id", "stop_id", "arrival_time", "departure_time", "stop_sequence"],
+  "agency.txt": ["agency_timezone"],
 } as const;
 
 function csvLine(line: string): string[] {
@@ -52,14 +56,22 @@ function validDay(value: string): boolean {
 export function parsePlovdivGtfsArchive(bytes: Uint8Array, now = Date.now()): PilotSnapshot {
   if (bytes.byteLength > 4_000_000) throw new Error("GTFS: archive exceeds pilot request budget");
   let hasCalendarExceptions = false;
+  let hasFrequencies = false;
+  let totalSize = 0;
   const archive = unzipSync(bytes, { filter: (file) => {
     if (file.name === "calendar_dates.txt") hasCalendarExceptions = true;
-    return required.has(file.name) && file.originalSize <= 2_000_000;
+    if (file.name === "frequencies.txt") hasFrequencies = true;
+    if (!required.has(file.name)) return false;
+    totalSize += file.originalSize;
+    if (file.originalSize > 6_000_000 || totalSize > 8_000_000) throw new Error("GTFS: extracted tables exceed pilot budget");
+    return true;
   } });
   if (hasCalendarExceptions) throw new Error("GTFS: calendar exceptions require separate validation");
+  if (hasFrequencies) throw new Error("GTFS: frequency-based trips require separate validation");
   for (const name of required) if (!archive[name]) throw new Error(`GTFS: ${name} missing`);
   const files = Object.fromEntries([...required].map((name) => [name, archive[name]!])) as Record<keyof typeof columns, Uint8Array>;
-  if (Object.values(files).reduce((sum, entry) => sum + entry.byteLength, 0) > 3_000_000) throw new Error("GTFS: extracted tables exceed pilot budget");
+  const agencies = table("agency.txt", files["agency.txt"]);
+  if (!agencies.length || agencies.some(row => row.agency_timezone !== "Europe/Sofia")) throw new Error("GTFS: service timezone changed");
   const today = localDay(now);
   const feed = table("feed_info.txt", files["feed_info.txt"]);
   if (feed.length !== 1 || !validDay(feed[0]!.feed_start_date!) || !validDay(feed[0]!.feed_end_date!) || !validDay(feed[0]!.feed_version!)) throw new Error("GTFS: invalid feed interval");
@@ -75,6 +87,8 @@ export function parsePlovdivGtfsArchive(bytes: Uint8Array, now = Date.now()): Pi
   const trips = table("trips.txt", files["trips.txt"]);
   if (routes.length === 0 || routes.length > 100 || trips.length === 0 || trips.length > 20_000) throw new Error("GTFS: route or trip count outside pilot budget");
   const heads = new Map<string, Set<string>>();
+  const activeTrips = trips.filter(trip => services.has(trip.service_id));
+  const timetables = buildTimetables(activeTrips, table("stops.txt", files["stops.txt"]), table("stop_times.txt", files["stop_times.txt"]));
   for (const trip of trips) {
     if (!services.has(trip.service_id)) continue;
     if (!trip.route_id || !trip.trip_headsign) throw new Error("GTFS: active trip lacks route or destination");
@@ -90,8 +104,10 @@ export function parsePlovdivGtfsArchive(bytes: Uint8Array, now = Date.now()): Pi
     const names = [...(heads.get(key) ?? [])].sort((a, b) => a.localeCompare(b, "bg"));
     if (keys.has(key) || route.route_type !== "3" || !route.route_short_name || !route.route_long_name || !names.length || names.length > 10) throw new Error("GTFS: incomplete or duplicate active bus route");
     keys.add(key);
-    const fields = { line: route.route_short_name, name: route.route_long_name, destinations: names.join(" · "), serviceDate: `${today.slice(0, 4)}-${today.slice(4, 6)}-${today.slice(6, 8)}` };
-    items.push({ key, sourceUrl: "https://gtfs.livetransport.eu/gtfs/plovdiv.zip", fields, fingerprint: createHash("sha256").update(JSON.stringify([key, route.route_short_name, route.route_long_name, names])).digest("hex") });
+    const timetable = timetables.get(key);
+    if (!timetable?.length) throw new Error("GTFS: route timetable missing");
+    const fields = { line: route.route_short_name, name: route.route_long_name, destinations: names.join(" · "), serviceDate: `${today.slice(0, 4)}-${today.slice(4, 6)}-${today.slice(6, 8)}`, timetable: JSON.stringify(timetable) };
+    items.push({ key, sourceUrl: "https://gtfs.livetransport.eu/gtfs/plovdiv.zip", fields, fingerprint: createHash("sha256").update(JSON.stringify(fields)).digest("hex") });
   }
-  return { sourceId: "plovdiv-livetransport-gtfs", items, completeness: "uncertain", limitations: ["Only the route numbers and published destinations for the currently active Sofia service day are extracted.", "The feed's weekday and weekend calendars differ; this preview is not a complete weekly timetable or live vehicle position.", "Stop order, departure times, service exceptions and schedule accuracy still need separate validation."] };
+  return { sourceId: "plovdiv-livetransport-gtfs", items, completeness: "uncertain", limitations: ["Published stop sequences and planned departures cover only the current Sofia service day, not live vehicle positions or predictions.", "Frequency-based trips and calendar exceptions are rejected until supported. Accuracy on the street has not been independently confirmed."] };
 }

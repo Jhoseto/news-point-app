@@ -1,3 +1,4 @@
+import { eventImageUrl } from "./event-media";
 import { createHash } from "node:crypto";
 import { DomUtils, parseDocument } from "htmlparser2";
 import type { PilotItem, PilotSnapshot } from "./parse";
@@ -77,7 +78,8 @@ export function parseYouthDetail(html: string, listing: YouthListing): PilotItem
   if (date < listing.published || endDate < date || Date.parse(`${date}T12:00:00Z`) - Date.parse(`${listing.published}T12:00:00Z`) > 60 * 24 * 60 * 60_000 || Date.parse(`${endDate}T12:00:00Z`) - Date.parse(`${date}T12:00:00Z`) > 7 * 24 * 60 * 60_000) return null;
   const room = content.match(/зала\s*[„"]([^“”"]+)[“”"]/iu)?.[1];
   const place = room ? `Младежки център Пловдив · зала „${room}“` : "Младежки център Пловдив";
-  const fields = { title: listing.title, date, endDate, time, place, published: listing.published };
+  const picture = DomUtils.getElementsByTagName("img", body).map(node => eventImageUrl(node.attribs.src, listing.detailUrl)).find(Boolean);
+  const fields = { ...(picture ? { imageUrl: picture } : {}), title: listing.title, date, endDate, time, place, published: listing.published };
   return { key: `event:${digest(listing.detailUrl).slice(0, 24)}`, sourceUrl: listing.detailUrl, fields, fingerprint: digest(JSON.stringify(fields) + digest(content)) };
 }
 
