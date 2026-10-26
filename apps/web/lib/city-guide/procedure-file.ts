@@ -1,3 +1,4 @@
+import { cityStorageDirectories } from "./storage";
 import "server-only";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -5,9 +6,7 @@ import { resolve } from "node:path";
 
 export async function readProcedureFile(hash: string): Promise<Uint8Array | null> {
   if (!/^[a-f0-9]{64}$/u.test(hash)) return null;
-  const relative = "tests/reports/city-preview-live/documents";
-  const directories = process.env.CITY_PILOT_OUTPUT_DIR ? [resolve(process.env.CITY_PILOT_OUTPUT_DIR, "documents")]
-    : [resolve(process.cwd(), relative), resolve(process.cwd(), "../..", relative)];
+  const directories = cityStorageDirectories("documents");
   for (const directory of directories) {
     try {
       const bytes = await readFile(resolve(directory, `${hash}.pdf`));

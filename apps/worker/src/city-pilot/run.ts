@@ -1,3 +1,4 @@
+import { citySourcePolicy } from "@newspoint/content/city-sources";
 import { VENUE_PROGRAMMES, collectVenueProgramme } from "./venue-programmes";
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
@@ -33,55 +34,16 @@ type SourceState = {
 
 type PilotState = { version: 1; sources: Record<string, SourceState> };
 
-const outputDir = resolve(process.env.CITY_PILOT_OUTPUT_DIR || resolve(import.meta.dirname, "../../../../tests/reports/city-source-pilot"));
+const outputDir = resolve(process.env.CITY_GUIDE_STORAGE_DIR || process.env.CITY_PILOT_OUTPUT_DIR || resolve(import.meta.dirname, "../../../../tests/reports/city-source-pilot"));
 const statePath = resolve(outputDir, "state.json");
 const journalPath = resolve(outputDir, "runs.jsonl");
 const previewPath = process.env.CITY_PILOT_STORE_PREVIEW === "1" ? resolve(outputDir, "preview.json") : null;
 const maxBodyBytes = 4_000_000;
 const agent = process.env.CITY_PILOT_USER_AGENT || "NewsPointCityPilot/0.1 (+https://newspoint.bg/)";
 
-const intervals: Record<string, number> = {
-  ...Object.fromEntries(Object.keys(VENUE_PROGRAMMES).map(id => [id, 6 * 60 * 60_000])),
-  // This page is about 2 MB and advertises no conditional cache validator.
-  // Start gently; increase only if source behaviour and value justify it.
-  "vik-outages": 60 * 60_000,
-  "evn-heating-outages": 60 * 60_000,
-  "plovdiv-parking-rules": 24 * 60 * 60_000,
-  "plovdiv-parking-operator": 24 * 60 * 60_000,
-  "plovdiv-municipal-schools": 24 * 60 * 60_000,
-  "plovdiv-transit": 24 * 60 * 60_000,
-  "plovdiv-low-emission": 24 * 60 * 60_000,
-  "plovdiv-livetransport-gtfs": 6 * 60 * 60_000,
-  "plovdiv-airport-flights": 60 * 60_000,
-  "dz-vacancies": 6 * 60 * 60_000,
-  "dz-institutions": 24 * 60 * 60_000,
-  "first-grade-vacancies": 24 * 60 * 60_000,
-  "plovdiv-social-services": 24 * 60 * 60_000,
-  "plovdiv-contacts": 24 * 60 * 60_000,
-  "plovdiv-transport-signals": 24 * 60 * 60_000,
-  "plovdiv-tax-notices": 24 * 60 * 60_000,
-  "plovdiv-auction-list": 24 * 60 * 60_000,
-  "plovdiv-housing": 24 * 60 * 60_000,
-  "plovdiv-public-consultations": 24 * 60 * 60_000,
-  "plovdiv-management-competitions": 24 * 60 * 60_000,
-  "plovdiv-youth-centre": 6 * 60 * 60_000,
-  "plovdiv-taxes": 24 * 60 * 60_000,
-  "chistota-bulky-waste": 24 * 60 * 60_000,
-  "ecomap-containers": 24 * 60 * 60_000,
-  "ecomap-collection-events": 24 * 60 * 60_000,
-  "plovdiv-eco-signals": 24 * 60 * 60_000,
-  "plovdiv-council": 24 * 60 * 60_000,
-  "plovdiv-opera": 6 * 60 * 60_000,
-  "plovdiv-theatre": 6 * 60 * 60_000,
-  "club-code-upcoming": 6 * 60 * 60_000,
-  "epaygo-plovdiv-explicit": 6 * 60 * 60_000,
-  "plovdiv-dog-shelter": 24 * 60 * 60_000,
-  "plovdiv-gallery-current": 6 * 60 * 60_000,
-  "plovdiv-adoption-guide": 24 * 60 * 60_000,
-};
 
 export function pilotRefreshSeconds(sourceId: string): number {
-  return Math.round((intervals[sourceId] ?? 24 * 60 * 60_000) / 1000);
+  return citySourcePolicy(sourceId).refreshSeconds;
 }
 
 function sha256(value: Uint8Array): string {
@@ -89,7 +51,7 @@ function sha256(value: Uint8Array): string {
 }
 
 function dueAfter(source: CandidateSource, failures: number, retryAfter: string | null, now: number): string {
-  const base = intervals[source.id] ?? 24 * 60 * 60_000;
+  const base = citySourcePolicy(source.id).refreshSeconds * 1000;
   let delay = failures ? Math.min(24 * 60 * 60_000, base * 2 ** Math.min(failures, 4)) : base;
   if (retryAfter) {
     const seconds = Number(retryAfter);

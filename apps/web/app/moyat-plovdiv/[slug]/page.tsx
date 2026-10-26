@@ -1,3 +1,4 @@
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityCategoryView, CityOutagesView, CityParkingView, CityTransportView } from "@/components/city-guide/city-guide";
@@ -20,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CityCategoryPage({ params }: Props) {
-  if (process.env.NODE_ENV !== "development") notFound();
+  if (!cityGuideEnabled()) notFound();
   const { slug } = await params;
   const category = CITY_CATEGORIES.find(item => item.slug === slug);
   if (!category) notFound();

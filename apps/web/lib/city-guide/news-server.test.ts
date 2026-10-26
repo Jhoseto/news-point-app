@@ -1,0 +1,20 @@
+import { afterEach, expect, it, vi } from "vitest";
+const queries = vi.hoisted(() => ({ getMenuCategories: vi.fn(), getByCategory: vi.fn(), getLatest: vi.fn(), getCityEventContext: vi.fn(), getCityGuideContext: vi.fn() }));
+vi.mock("../queries", () => queries);
+afterEach(() => { vi.useRealTimers(); vi.resetModules(); });
+it("shares a refresh, includes newly published articles after 15 minutes, and clears stale results on failure", async () => {
+  vi.useFakeTimers(); vi.setSystemTime(new Date("2026-10-26T10:00:00Z"));
+  queries.getMenuCategories.mockResolvedValue([]);
+  queries.getLatest.mockResolvedValue([]); queries.getCityEventContext.mockResolvedValue([]);
+  const story = { id: "fixture", title: "Синя зона в Пловдив", excerpt: "", publishedAt: new Date("2026-10-26T09:00:00Z") };
+  queries.getCityGuideContext.mockResolvedValue([story]);
+  const { loadCityArticlePool } = await import("./news-server");
+  expect((await Promise.all([loadCityArticlePool(), loadCityArticlePool()]))[0]).toEqual([story]);
+  expect(queries.getCityGuideContext).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(15 * 60_000);
+  queries.getCityGuideContext.mockResolvedValue([{ ...story, id: "new" }]);
+  expect((await loadCityArticlePool())[0]?.id).toBe("new");
+  vi.advanceTimersByTime(15 * 60_000);
+  queries.getCityGuideContext.mockRejectedValue(new Error("fixture unavailable"));
+  expect(await loadCityArticlePool()).toEqual([]);
+});

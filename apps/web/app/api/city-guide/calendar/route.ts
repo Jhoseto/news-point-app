@@ -1,3 +1,4 @@
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { loadCityObservations } from "../../../../lib/city-guide/local-observations";
 import { cityDeadlineCalendar } from "../../../../lib/city-guide/calendar";
 
@@ -5,7 +6,7 @@ const allowed = new Set(["plovdiv-tax-notices", "plovdiv-public-consultations", 
 const headers = { "Cache-Control": "private, no-store" };
 
 export async function GET(request: Request) {
-  if (process.env.NODE_ENV !== "development") return new Response(null, { status: 404, headers });
+  if (!cityGuideEnabled()) return new Response(null, { status: 404, headers });
   const params = new URL(request.url).searchParams;
   const sourceId = params.get("sourceId") ?? "";
   const recordKey = params.get("recordKey") ?? "";

@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { departureLabel, type CityTimetable } from "@/lib/city-guide/timetable";
+import type { CityStory } from "@/lib/city-guide/news";
+import { CityRelatedNews } from "./city-related-news";
 
 type Line = { key: string; line: string; destinations: string };
 type Schedule = { serviceDate: string; checkedAt: string; timetable: CityTimetable };
-export function CityTransitTimetable({ lines, checkedAt }: { lines: Line[]; checkedAt: string }) {
+export function CityTransitTimetable({ lines, checkedAt, news = {} }: { lines: Line[]; checkedAt: string; news?: Record<string, CityStory[]> }) {
   const [selected, setSelected] = useState(lines[0]?.key ?? "");
   const [filter, setFilter] = useState("");
   const [data, setData] = useState<Schedule | null>(null);
@@ -37,5 +39,6 @@ export function CityTransitTimetable({ lines, checkedAt }: { lines: Line[]; chec
         <details className="city-procedure-document"><summary>Всички спирки по маршрута <span aria-hidden="true">+</span></summary><ol className="city-transit-stop-list">{pattern?.stops.map((stop, index) => <li key={`${stop.id}-${index}`}><button type="button" aria-pressed={stopIndex === index} onClick={() => setStopIndex(index)}>{stop.name}{stop.code ? ` · № ${stop.code}` : ""}</button></li>)}</ol></details>
       </>}
     </div>
+    <CityRelatedNews stories={news[selected] ?? []} topic={`Още за линия ${line?.line ?? ""}`} />
   </div>;
 }

@@ -1,3 +1,4 @@
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityGuideHome } from "@/components/city-guide/city-guide";
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CityGuidePage() {
-  if (process.env.NODE_ENV !== "development") notFound();
+  if (!cityGuideEnabled()) notFound();
   const [articles, transport, outages, parking, municipality, education, environment, culture, adoption, nightlife] = await Promise.all([
     loadCityArticlePool(),
     loadCityObservations("transport"),

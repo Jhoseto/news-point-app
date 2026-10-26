@@ -1,3 +1,4 @@
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { loadCityObservations } from "../../../../lib/city-guide/local-observations";
 import { cityProcedureDocuments } from "../../../../lib/city-guide/procedure-documents";
 import { readProcedureFile } from "../../../../lib/city-guide/procedure-file";
@@ -6,7 +7,7 @@ const sources = new Set(["plovdiv-management-competitions", "plovdiv-auction-lis
 const privateHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
 export async function GET(request: Request) {
   const missing = () => new Response(null, { status: 404, headers: privateHeaders });
-  if (process.env.NODE_ENV !== "development") return missing();
+  if (!cityGuideEnabled()) return missing();
   const params = new URL(request.url).searchParams;
   const source = params.get("sourceId") ?? "", key = params.get("recordKey") ?? "", hash = params.get("hash") ?? "";
   if (!sources.has(source) || !key || key.length > 500 || !/^[a-f0-9]{64}$/u.test(hash)) return missing();

@@ -1,3 +1,5 @@
+import { cityStorageDirectories } from "@/lib/city-guide/storage";
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -6,13 +8,12 @@ import { loadCityObservations } from "@/lib/city-guide/local-observations";
 export async function GET(request: Request) {
   const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
   const missing = () => new Response(null, { status: 404, headers });
-  if (process.env.NODE_ENV !== "development") return missing();
+  if (!cityGuideEnabled()) return missing();
   const p = new URL(request.url).searchParams, category = p.get("category") ?? "", hash = p.get("hash") ?? "";
   if (!["culture", "nightlife"].includes(category) || !/^[a-f0-9]{64}$/u.test(hash) || (p.get("recordKey")?.length ?? 0) > 1000) return missing();
   const group = (await loadCityObservations(category)).find(g => g.sourceId === p.get("sourceId") && g.status === "observed");
   if (!group?.items.some(item => item.key === p.get("recordKey") && item.fields.imageHash === hash)) return missing();
-  const relative = "tests/reports/city-preview-live/event-images";
-  const dirs = process.env.CITY_PILOT_OUTPUT_DIR ? [resolve(process.env.CITY_PILOT_OUTPUT_DIR, "event-images")] : [resolve(process.cwd(), relative), resolve(process.cwd(), "../..", relative)];
+  const dirs = cityStorageDirectories("event-images");
   for (const dir of dirs) {
     try {
       const bytes = await readFile(resolve(dir, `${hash}.webp`));

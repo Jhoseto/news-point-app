@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArticleSummary } from "../queries";
 import { CITY_CATEGORIES, OUT_TOPICS } from "./catalog";
-import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine, cityTopicStories, cityAgendaContextStories } from "./news";
+import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine, cityTopicStories, cityAgendaContextStories, cityTransitLineStories, cityRecordStories } from "./news";
 
 const article = (id: string, title: string): ArticleSummary => ({
   id, path: `/news/${id}/`, title, excerpt: "", authorName: "NewsPoint.bg",
@@ -9,6 +9,21 @@ const article = (id: string, title: string): ArticleSummary => ({
 });
 
 describe("city guide news links", () => {
+  it("always prefers the newest eligible topic story even when an older headline repeats more query words", () => {
+    const now = new Date("2026-10-26T10:00:00Z");
+    const older = { ...article("old", "Билети, карти и тарифи за градски транспорт с автобуси в Пловдив"), publishedAt: new Date("2026-10-25T10:00:00Z") };
+    const newer = { ...article("new", "Нова цена на билетите за автобус в Пловдив"), publishedAt: new Date("2026-10-26T09:00:00Z") };
+    expect(cityTopicStories(["Билети и карти"], [older, newer], now).map(story => story.path)).toEqual(["/news/new/", "/news/old/"]);
+    expect(cityStoryForTopic("Билети и карти", [older, newer], now)?.path).toBe("/news/new/");
+  });
+  it("follows the exact bus line and the named procedure without unrelated fallback", () => {
+    const now = new Date("2026-10-26T10:00:00Z");
+    const pool = [article("20", "Автобусна линия №20 в Пловдив с нов маршрут"), article("200", "Автобусна линия 200 в Пловдив с нов маршрут"), article("clinic", "Община Пловдив търси управител за Психодиспансера"), article("other", "Община Пловдив обяви конкурс за управител на друго дружество")];
+    expect(cityTransitLineStories("20", pool, now).map(story => story.path)).toEqual(["/news/20/"]);
+    expect(cityTransitLineStories("24", pool, now)).toEqual([]);
+    expect(cityRecordStories("Работа в общината", "Психодиспансер", pool, now).map(story => story.path)).toEqual(["/news/clinic/"]);
+  });
+
   it("selects several local topic cards, deduplicates and never fills from another topic", () => {
     const now = new Date("2026-10-26T10:00:00Z");
     const pool = [article("one", "Нови цени за синя зона в Пловдив"), article("duplicate", "Нови цени за синя зона в Пловдив"), article("two", "Платено паркиране в Пловдив с нови правила"), article("foreign", "Синя зона в София"), article("wrong", "Нов театър в Пловдив")];
@@ -96,9 +111,9 @@ describe("city guide news links", () => {
 
   it("keeps incidental locations and general school stories out of practical topics", () => {
     expect(cityStoryForTopic("Пазарите на Пловдив", [article("geyser", "Воден гейзер край Понеделник пазара в Пловдив")])).toBeNull();
-    expect(cityStoryForTopic("Пазарите на Пловдив", [article("hours", "Ново работно време на общинските пазари")])?.path).toBe("/news/hours/");
+    expect(cityStoryForTopic("Пазарите на Пловдив", [article("hours", "Ново работно време на общинските пазари в Пловдив")])?.path).toBe("/news/hours/");
     expect(cityStoryForTopic("Детски градини и ясли", [article("renovation", "Модернизират детска градина Родина")])).toBeNull();
-    expect(cityStoryForTopic("Детски градини и ясли", [article("admission", "Обявиха свободните места за прием в детските градини")])?.path).toBe("/news/admission/");
+    expect(cityStoryForTopic("Детски градини и ясли", [article("admission", "Обявиха свободните места за прием в детските градини в Пловдив")])?.path).toBe("/news/admission/");
     expect(cityStoryForTopic("Училища и градини", [article("games", "58 училища участват в Ученическите игри")])).toBeNull();
     expect(cityStoryForTopic("Училища и градини", [article("fire", "Автомобил пламна до училище в Пловдив и стресна района")])).toBeNull();
     expect(cityStoryForTopic("Училища и градини", [article("new-school", "Откриват ново училище в Пловдив")])?.path).toBe("/news/new-school/");
@@ -108,14 +123,14 @@ describe("city guide news links", () => {
     const now = new Date("2026-10-24T10:00:00Z");
     expect(cityStoryForTopic("Мобилни пунктове", [article("expired", "Събират опасни отпадъци на 22 октомври")], now)).toBeNull();
     expect(cityStoryForTopic("Къде да изхвърля?", [article("expired", "Събират опасни отпадъци на 22 октомври")], now)).toBeNull();
-    expect(cityStoryForTopic("Мобилни пунктове", [article("upcoming", "Мобилен пункт за опасни отпадъци на 29 октомври")], now)?.path).toBe("/news/upcoming/");
+    expect(cityStoryForTopic("Мобилни пунктове", [article("upcoming", "Мобилен пункт за опасни отпадъци в Пловдив на 29 октомври")], now)?.path).toBe("/news/upcoming/");
     const oldConcert = { ...article("concert", "Концерт на Моби в Пловдив"), publishedAt: new Date("2026-07-12T10:00:00Z") };
     expect(cityStoryForTopic("Концерти", [oldConcert], now)).toBeNull();
     expect(cityOutStories([oldConcert], 3, now)).toEqual([]);
   });
 
   it("reselects a newer, more specific article regardless of input order", () => {
-    const older = { ...article("older", "Промени в платено паркиране"), publishedAt: new Date("2026-10-20T10:00:00Z") };
+    const older = { ...article("older", "Промени в платено паркиране в Пловдив"), publishedAt: new Date("2026-10-20T10:00:00Z") };
     const newer = { ...article("newer", "Синя зона в Пловдив с нови правила"), publishedAt: new Date("2026-10-24T09:00:00Z") };
     const now = new Date("2026-10-24T10:00:00Z");
     expect(cityStoryForTopic("Синя и зелена зона", [older], now)?.path).toBe("/news/older/");

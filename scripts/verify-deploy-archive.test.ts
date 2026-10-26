@@ -11,7 +11,7 @@ const files = ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "tsconfi
   "apps/worker/src/facebook-post-image.ts", "apps/worker/assets/social/Manrope.ttf", "apps/worker/assets/social/OFL.txt", "apps/worker/assets/social/Montserrat.ttf", "apps/worker/assets/social/Montserrat-OFL.txt", "apps/web/public/brand/newspoint-logo-dark.webp"];
 beforeAll(() => {
   directory = mkdtempSync(join(tmpdir(), "np-deploy-archive-qa-"));
-  for (const file of [...files, "logs/web.pid", "logs/private.log", ".codex-remote-attachments/private.jpg", "AGENTS.md", "apps/web/AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
+  for (const file of [...files, "logs/web.pid", "logs/private.log", "out/export.html", "apps/web/app/moyat-plovdiv/out/page.tsx", ".codex-remote-attachments/private.jpg", "AGENTS.md", "apps/web/AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md"]) { const target = join(directory, file); mkdirSync(resolve(target, ".."), { recursive: true }); writeFileSync(target, "QA archive fixture"); }
 });
 afterAll(() => { const target = resolve(directory); if (target.startsWith(join(tmpdir(), "np-deploy-archive-qa-"))) rmSync(target, { recursive: true, force: true }); });
 function pack(exclusion: string) {
@@ -30,6 +30,8 @@ describe("Actual deployment tar exclusions", () => {
     expect(listing.status).toBe(0);
     const report = verifyDeployArchive(listing.stdout.split(/\r?\n/).filter(Boolean), directory);
     expect(report.missing).toEqual([]); expect(report.forbidden).toEqual([]);
+    expect(listing.stdout).toMatch(/apps\/web\/app\/moyat-plovdiv\/out\/page\.tsx/);
+    expect(listing.stdout).not.toMatch(/(^|\/)out\/export\.html/);
     expect(listing.stdout).not.toMatch(/AGENTS\.md|docs\/PLAN\.md|NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN/);
   });
   it("catches the old broad exclusion before uploading a broken release", () => {

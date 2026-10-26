@@ -125,8 +125,8 @@ function storyScore(article: ArticleSummary, query: string, now: Date): number {
 }
 
 function rankStories(articles: ArticleSummary[], query: string, now: Date): ArticleSummary[] {
-  return [...articles].sort((a, b) => storyScore(b, query, now) - storyScore(a, query, now)
-    || b.publishedAt.getTime() - a.publishedAt.getTime() || a.id.localeCompare(b.id));
+  return [...articles].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime()
+    || storyScore(b, query, now) - storyScore(a, query, now) || a.id.localeCompare(b.id));
 }
 
 export function cityNewsUrl(topic: string): string {
@@ -136,8 +136,7 @@ export function cityNewsUrl(topic: string): string {
 export function cityStoryForTopic(topic: string, articles: ArticleSummary[], now = new Date()): CityStory | null {
   const rule = TOPIC_RULES[topic];
   if (!rule) return null;
-  const article = rankStories(articles.filter(candidate => rule.title.test(candidate.title) && eligibleStory(candidate, now, topic)), rule.query, now)[0];
-  return article ? toCityStory(article) : null;
+  return cityTopicStories([topic], articles, now, 1)[0] ?? null;
 }
 
 export function toCityStory(article: ArticleSummary): CityStory {
@@ -172,7 +171,7 @@ export function cityTopicStories(topics: readonly string[], articles: ArticleSum
   });
   const seen = new Set<string>();
   const signatures: Set<string>[] = [];
-  return scored.sort((a, b) => b.score - a.score || b.article.publishedAt.getTime() - a.article.publishedAt.getTime()).filter(({ article }) => {
+  return scored.sort((a, b) => b.article.publishedAt.getTime() - a.article.publishedAt.getTime() || b.score - a.score || a.article.id.localeCompare(b.article.id)).filter(({ article }) => {
     const title = article.title.toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]/gu, "");
     if (seen.has(article.path) || seen.has(title)) return false;
     const terms = new Set((article.title.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(term => term.length > 3 && term !== "пловдив").map(term => term.slice(0, 6)));
@@ -186,14 +185,26 @@ export function cityTopicStories(topics: readonly string[], articles: ArticleSum
 }
 
 export function cityStoryForCategory(topics: readonly string[], articles: ArticleSummary[], now = new Date()): CityStory | null {
-  const candidates = topics.flatMap(topic => {
-    const rule = TOPIC_RULES[topic];
-    return rule ? articles.filter(article => rule.title.test(article.title) && eligibleStory(article, now, topic))
-      .map(article => ({ article, score: storyScore(article, rule.query, now) })) : [];
-  });
-  candidates.sort((a, b) => b.score - a.score || b.article.publishedAt.getTime() - a.article.publishedAt.getTime()
-    || a.article.id.localeCompare(b.article.id));
-  return candidates[0] ? toCityStory(candidates[0].article) : null;
+  return cityTopicStories(topics, articles, now, 1)[0] ?? null;
+}
+
+/** Exact line context follows the selected timetable; never another line's headline. */
+export function cityTransitLineStories(line: string, articles: ArticleSummary[], now = new Date()): CityStory[] {
+  if (!/^\d{1,3}$/u.test(line)) return [];
+  const number = new RegExp(`(?:линия|линии|маршрут|маршрути)\\s*(?:№\\s*)?${line}(?!\\d)`, "iu");
+  return cityTopicStories(["Градски автобуси"], articles.filter(article => number.test(article.title)), now);
+}
+
+/** Restrict an expanded procedure to its named company, institution or distinctive subject. */
+export function cityRecordStories(topic: string, title: string, articles: ArticleSummary[], now = new Date()): CityStory[] {
+  const generic = /^(?:пловдив|общин|конкурс|управ|обяв|проект|наредб|кандидат|услов|документ|измен|допъл|правил|търг|имот|дейност|предлож|решен|дружеств|еоод|еад|техните|общите|за|на|от|при)/u;
+  const stems = (value: string) => (value.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(word => word.length >= 4 && !generic.test(word)).map(word => word.slice(0, 6));
+  const terms = [...new Set(stems(title))];
+  if (!terms.length) return [];
+  return cityTopicStories([topic], articles.filter(article => {
+    const headline = new Set(stems(article.title));
+    return terms.filter(term => headline.has(term)).length >= Math.min(2, terms.length);
+  }), now);
 }
 
 /** Link a programme row to a story only when its distinctive title is in the headline. */

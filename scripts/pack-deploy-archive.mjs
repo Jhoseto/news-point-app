@@ -4,13 +4,15 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const exclusions = ["node_modules", ".next", ".git", ".turbo", ".pnpm-store", ".env.local", ".env.tunnel", ".cursor", ".claude", ".codex", ".codex-remote-attachments", ".gemini", "AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md", ".playwright-mcp", ".tts-cache", ".tts-voices", ".shots", "coverage", "playwright-report", "test-results", "blob-report", "out", "tests/reports", "docs/references", "docs/review", "*.tsbuildinfo"];
+const exclusions = ["node_modules", ".next", ".git", ".turbo", ".pnpm-store", ".env.local", ".env.tunnel", ".cursor", ".claude", ".codex", ".codex-remote-attachments", ".gemini", "AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md", ".playwright-mcp", ".tts-cache", ".tts-voices", ".shots", "coverage", "playwright-report", "test-results", "blob-report", "tests/reports", "docs/references", "docs/review", "*.tsbuildinfo"];
+// libarchive applies --exclude=out to every directory of that name, which drops apps/web/app/moyat-plovdiv/out.
+const rootOmissions = new Set(["logs", "out"]);
 
 export function packDeployArchive(archive, root = repository) {
   const target = resolve(archive);
   // libarchive treats even --exclude=./logs as an unanchored directory exclusion.
   // Select root entries explicitly: omit only runtime ./logs, keep app/**/logs.
-  const entries = readdirSync(root).filter(name => name !== "logs" && resolve(root, name) !== target && !exclusions.includes(name)).map(name => `./${name}`);
+  const entries = readdirSync(root).filter(name => !rootOmissions.has(name) && resolve(root, name) !== target && !exclusions.includes(name)).map(name => `./${name}`);
   const result = spawnSync("tar", ["-czf", target, ...exclusions.map(name => `--exclude=${name}`), "-C", root, ...entries], { encoding: "utf8", windowsHide: true, maxBuffer: 20 * 1024 * 1024 });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(result.stderr || "Archive packing failed.");

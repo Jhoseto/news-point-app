@@ -1,3 +1,5 @@
+import { cityGuideEnabled } from "./access";
+import { CITY_CATEGORY_SOURCES, CITY_SOURCE_POLICY } from "@newspoint/content/city-sources";
 import "server-only";
 import { NIGHT_PROGRAMME_SOURCES, programmeKind } from "./night-programmes";
 import { readFile } from "node:fs/promises";
@@ -20,57 +22,9 @@ const sourceSchema = z.object({
 });
 const previewSchema = z.object({ version: z.literal(1), sources: z.record(z.string(), sourceSchema) });
 
-const CATEGORY_SOURCES: Record<string, readonly string[]> = {
-  transport: ["plovdiv-livetransport-gtfs", "plovdiv-airport-flights", "plovdiv-low-emission", "plovdiv-low-emission-permit", "plovdiv-transit"],
-  parking: ["plovdiv-parking-rules", "plovdiv-parking-operator"],
-  outages: ["vik-outages", "evn-heating-outages"],
-  municipality: ["plovdiv-management-competitions", "plovdiv-public-consultations", "plovdiv-auction-list", "plovdiv-tax-notices", "plovdiv-taxes", "plovdiv-housing", "plovdiv-contacts", "plovdiv-social-services", "plovdiv-eco-signals", "plovdiv-transport-signals", "plovdiv-council"],
-  education: ["dz-admission-calendar", "first-grade-vacancies", "dz-vacancies", "plovdiv-municipal-schools", "dz-institutions"],
-  environment: ["chistota-bulky-waste", "ecomap-collection-events", "ecomap-containers", "plovdiv-eco-signals"],
-  culture: ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-youth-centre", "epaygo-plovdiv-explicit"],
-  nightlife: ["club-code-upcoming", "epaygo-plovdiv-explicit", ...NIGHT_PROGRAMME_SOURCES],
-  adopt: ["plovdiv-adoption-guide", "plovdiv-dog-shelter"],
-};
+const CATEGORY_SOURCES = CITY_CATEGORY_SOURCES;
 
-const FRESH_MS: Record<string, number> = {
-  ...Object.fromEntries(NIGHT_PROGRAMME_SOURCES.map(id => [id, 8 * 60 * 60_000])),
-  "plovdiv-transit": 30 * 60 * 60_000,
-  "plovdiv-livetransport-gtfs": 8 * 60 * 60_000,
-  "plovdiv-airport-flights": 90 * 60_000,
-  "plovdiv-low-emission-permit": 30 * 60 * 60_000,
-  "plovdiv-low-emission": 30 * 60 * 60_000,
-  "vik-outages": 2 * 60 * 60_000,
-  "evn-heating-outages": 2 * 60 * 60_000,
-  "plovdiv-parking-rules": 30 * 60 * 60_000,
-  "plovdiv-parking-operator": 30 * 60 * 60_000,
-  "plovdiv-council": 30 * 60 * 60_000,
-  "dz-vacancies": 8 * 60 * 60_000,
-  "dz-admission-calendar": 30 * 60 * 60_000,
-  "dz-institutions": 30 * 60 * 60_000,
-  "first-grade-vacancies": 30 * 60 * 60_000,
-  "plovdiv-municipal-schools": 30 * 60 * 60_000,
-  "plovdiv-social-services": 30 * 60 * 60_000,
-  "plovdiv-contacts": 30 * 60 * 60_000,
-  "plovdiv-tax-notices": 30 * 60 * 60_000,
-  "plovdiv-auction-list": 30 * 60 * 60_000,
-  "plovdiv-housing": 30 * 60 * 60_000,
-  "plovdiv-public-consultations": 30 * 60 * 60_000,
-  "plovdiv-management-competitions": 30 * 60 * 60_000,
-  "plovdiv-taxes": 30 * 60 * 60_000,
-  "chistota-bulky-waste": 30 * 60 * 60_000,
-  "ecomap-containers": 30 * 60 * 60_000,
-  "ecomap-collection-events": 30 * 60 * 60_000,
-  "plovdiv-eco-signals": 30 * 60 * 60_000,
-  "plovdiv-transport-signals": 30 * 60 * 60_000,
-  "plovdiv-theatre": 8 * 60 * 60_000,
-  "plovdiv-opera": 8 * 60 * 60_000,
-  "plovdiv-gallery-current": 8 * 60 * 60_000,
-  "club-code-upcoming": 8 * 60 * 60_000,
-  "plovdiv-youth-centre": 8 * 60 * 60_000,
-  "epaygo-plovdiv-explicit": 8 * 60 * 60_000,
-  "plovdiv-dog-shelter": 30 * 60 * 60_000,
-  "plovdiv-adoption-guide": 30 * 60 * 60_000,
-};
+const FRESH_MS = Object.fromEntries(Object.entries(CITY_SOURCE_POLICY).map(([id, policy]) => [id, policy.staleSeconds * 1000]));
 
 const PLOVDIV_OPERA_VENUES = new Set([
   "Античен театър",
@@ -225,8 +179,8 @@ export function selectCityObservations(
   });
 }
 
-const loadDbPilotPreview = cache(async () => {
-  const snapshots = await readCitySnapshots({ includeHidden: true });
+const loadDbPreview = cache(async () => {
+  const snapshots = await readCitySnapshots({ includeHidden: process.env.NODE_ENV === "development" });
   return previewSchema.parse({
     version: 1,
     sources: Object.fromEntries(snapshots.map(snapshot => [snapshot.sourceId, {
@@ -240,9 +194,10 @@ const loadDbPilotPreview = cache(async () => {
 });
 
 export async function loadCityObservations(categorySlug: string): Promise<CityObservation[]> {
-  if (process.env.NODE_ENV !== "development") return [];
-  if (process.env.CITY_GUIDE_USE_DB_PREVIEW === "1") {
-    return selectCityObservations(categorySlug, await loadDbPilotPreview());
+  if (!cityGuideEnabled()) return [];
+  if (process.env.NODE_ENV !== "development" || process.env.CITY_GUIDE_USE_DB_PREVIEW === "1") {
+    try { return selectCityObservations(categorySlug, await loadDbPreview()); }
+    catch { return []; }
   }
   const relativePath = "tests/reports/city-preview-live/preview.json";
   const paths = [resolve(process.cwd(), relativePath), resolve(process.cwd(), "../..", relativePath)];

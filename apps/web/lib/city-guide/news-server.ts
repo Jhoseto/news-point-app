@@ -1,8 +1,8 @@
 import "server-only";
 import { getByCategory, getCityEventContext, getCityGuideContext, getLatest, getMenuCategories, type ArticleSummary } from "@/lib/queries";
 
-/** Re-evaluate published NewsPoint headlines at most every four hours per Web process. */
-export const CITY_NEWS_REFRESH_MS = 4 * 60 * 60 * 1000;
+/** New publications enter the reading selection within fifteen minutes on an active page. */
+export const CITY_NEWS_REFRESH_MS = 15 * 60 * 1000;
 let snapshot: { articles: ArticleSummary[]; expiresAt: number } | null = null;
 let pending: Promise<ArticleSummary[]> | null = null;
 
@@ -30,7 +30,7 @@ async function fetchCityArticlePool(): Promise<ArticleSummary[]> {
   return [...byId.values()].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime());
 }
 
-/** A request after the four-hour boundary starts one shared refresh; failures show no stale claims. */
+/** A request after expiry starts one shared refresh; failures show no stale claims. */
 export async function loadCityArticlePool(): Promise<ArticleSummary[]> {
   if (snapshot && Date.now() < snapshot.expiresAt) return snapshot.articles;
   if (pending) return pending;

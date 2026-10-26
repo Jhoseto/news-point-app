@@ -4,7 +4,7 @@ import { explicitNightEventKind } from "./event-kind";
 import type { CityObservation } from "./local-observations";
 import { CITY_PRESENTATION, readerCityGroups } from "./presentation";
 
-const TOPIC_SOURCES: Record<string, Record<string, readonly string[]>> = {
+export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]>> = {
   transport: {
     "Градски автобуси": ["plovdiv-livetransport-gtfs"],
     "Пропуск за нискоемисионната зона": ["plovdiv-low-emission-permit"],
@@ -68,7 +68,7 @@ export function cityAvailableTopics(categorySlug: string, groups: CityObservatio
   if (!category) return [];
   const observed = new Set(readerCityGroups(groups).filter(group => !CITY_PRESENTATION[group.sourceId]?.utility).map(group => group.sourceId));
   return category.topics.flatMap(topic => {
-    const sourceId = TOPIC_SOURCES[categorySlug]?.[topic.title]?.find(id => {
+    const sourceId = CITY_TOPIC_SOURCES[categorySlug]?.[topic.title]?.find(id => {
       if (!observed.has(id)) return false;
       if (categorySlug === "nightlife" && NIGHT_PROGRAMME_SOURCES.includes(id)) {
         const desired = ({ "Музика на живо": "live", "Партита": "party", "Стендъп": "standup" } as Record<string, string>)[topic.title];

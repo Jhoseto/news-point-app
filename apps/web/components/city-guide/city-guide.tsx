@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CITY_CATEGORIES, type CityCategory } from "@/lib/city-guide/catalog";
 import { cityReaderTopicLabel } from "@/lib/city-guide/presentation";
 import { type CityStory } from "@/lib/city-guide/news";
-import { nightEventStatusLabel, nightPeriodMatches, type CityNightEvent } from "@/lib/city-guide/night-events";
 import { CityRelatedNews } from "./city-related-news";
 import "./city-home.css";
 import { ArticleImage } from "@/components/ui";
@@ -102,9 +101,6 @@ function CityMark({ slug }: { slug: string }) {
   return <svg className="city-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[slug]}</svg>;
 }
 
-function PreviewBadge() {
-  return <span className="city-preview-badge"><span className="city-preview-dot" /> Локален визуален преглед</span>;
-}
 
 export function CityGuideHome({ newsByCategory, featuredStories, today, availableSlugs, activeTopicsByCategory, topicHrefByCategory }: { newsByCategory: Record<string, CityStory | null>; featuredStories: CityStory[]; today?: React.ReactNode; availableSlugs: string[]; activeTopicsByCategory: Record<string, string[]>; topicHrefByCategory: Record<string, Record<string, string>> }) {
   const motionRoot = useCityReveals();
@@ -156,9 +152,8 @@ export function CityTransportView({ category, stories, observations, activeTopic
   return <div className="city-page city-transport-page city-accent-blue" ref={motionRoot}><div className="np-container city-container">
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={ROOT + "/"}>Моят Пловдив</Link><span>/</span><span aria-current="page">{category.title}</span></nav>
     <header className="city-transport-hero" data-city-reveal><div className="city-transport-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 01</p><h1>Транспорт <em>и движение.</em></h1><p>Автобусни линии и посоки, билети и карти, полети от и до Пловдив.</p><a href={hasRouteData ? "#nablyudavani-plovdiv-livetransport-gtfs" : hasFareData ? "#nablyudavani-plovdiv-transit" : "#city-observed-title"}>Към справките <Arrow /></a></div><div className="city-transport-hero-photo" role="img" aria-label="Снимка от въздуха на Пловдив"><span>ПЛОВДИВ / В ДВИЖЕНИЕ</span></div></header>
-    <div className="city-transport-note" role="note"><span aria-hidden="true">✳</span><p>{hasRouteData ? "Избери линия, посока и спирка за планираните часове днес. Разписанието не отчита закъснения или временни отклонения." : hasFareData ? "По-долу са последно наблюдаваните цени за билети и карти. Разписания, движение на автобуси и текущи затваряния още не се показват автоматично." : "Проверените транспортни справки се показват по-долу."}</p></div>
+    <div className="city-transport-note" role="note"><span aria-hidden="true">✳</span><p>{hasRouteData ? "Избери линия, посока и спирка за планираните часове днес. Разписанието не отчита закъснения или временни отклонения." : hasFareData ? "Виж цените на билетите и картите за градския транспорт." : "Избери транспортна справка."}</p></div>
     {observations}
-    <p className="city-proof-note">Часовете са планирани, а не измерени пристигания. Движение в реално време и временни затваряния още не са включени.</p>
   </div></div>;
 }
 
@@ -168,9 +163,8 @@ export function CityParkingView({ category, stories, observations, hasObservedDa
   return <div className="city-page city-parking-page city-accent-cyan" ref={motionRoot}><div className="np-container city-container">
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={`${ROOT}/`}>Моят Пловдив</Link><span>/</span><span aria-current="page">{category.title}</span></nav>
     <header className="city-parking-hero" data-city-reveal><div className="city-parking-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 02</p><h1>Паркиране<span>.</span></h1><p>Проверени правила за зоните и контакти при репатриране — на едно място.</p><a href="#city-observed-title">Към справките <Arrow /></a></div><div className="city-parking-hero-photo" role="img" aria-label="Изглед от въздуха към Пловдив"><div className="city-parking-photo-frame"><span>ГРАДСКИ ОРИЕНТИР / ПЛОВДИВ</span><strong aria-hidden="true">P</strong><span>02 / НА МЯСТО</span></div></div></header>
-    <div className="city-parking-status" role="note"><span aria-hidden="true">✳</span><p>{hasObservedData ? "Наблюдаваните правила и контакти са по-долу. Свободни места, карта и временни изключения още не са потвърдени." : "Картите, правилата и наличностите ще се виждат тук след проверка на източниците. NewsPoint още не показва свободни места, текущи тарифи или автоматично обновени ограничения."}</p></div>
+    <div className="city-parking-status" role="note"><span aria-hidden="true">✳</span><p>{hasObservedData ? "Виж кога се плаща за паркиране, каква е цената и как да платиш." : "Правила за зоните и помощ при репатриран автомобил."}</p></div>
     {observations}
-    <p className="city-proof-note">Локален пилот. Наблюдаваните правила не включват свободни места или всички временни изключения.</p>
   </div></div>;
 }
 
@@ -181,33 +175,9 @@ export function CityOutagesView({ category, stories, observations }: { category:
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={`${ROOT}/`}>Моят Пловдив</Link><span>/</span><span aria-current="page">{category.title}</span></nav>
     <header className="city-outages-header" data-city-reveal>
       <div className="city-outages-heading"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 03</p><h1>Аварии <em>и ремонти.</em></h1><p>Проверените справки за прекъсвания в Пловдив — с час на последната проверка.</p></div>
-      <div className="city-outages-notice" role="note"><span aria-hidden="true">✳</span><div><strong>Последните наблюдения са по-долу.</strong><p>Посоченият срок не доказва приключване. При неуспешна или просрочена проверка записите се скриват.</p></div></div>
+      <div className="city-outages-notice" role="note"><span aria-hidden="true">✳</span><div><strong>Засегнати адреси и очаквано възстановяване.</strong><p>Часът за възстановяване е ориентировъчен и може да се промени.</p></div></div>
     </header>
     {observations}
-    <p className="city-proof-note">Локален визуален преглед. Тази страница не представя непроверени прекъсвания или ремонти като текущи.</p>
   </div></div>;
 }
 
-const nightDate = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" });
-const nightTime = new Intl.DateTimeFormat("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" });
-
-export function CityOutView({ stories, observations, events = [], checkedAt, nowIso }: { stories: CityStory[]; observations?: React.ReactNode; events?: CityNightEvent[]; checkedAt?: string; nowIso: string }) {
-  const motionRoot = useCityReveals();
-  const [period, setPeriod] = useState("Сега и после");
-  const [nowMs, setNowMs] = useState(() => Date.parse(nowIso));
-  useEffect(() => {
-    setNowMs(Date.now());
-    const timer = window.setInterval(() => setNowMs(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, [nowIso]);
-  const visibleEvents = events.filter(event => nightPeriodMatches(event, period, new Date(nowMs))).sort((a, b) => Date.parse(a.startDate) - Date.parse(b.startDate));
-  const periodOptions = ["Сега и после", "Днес", "Тази вечер", "Уикенд", "7 дни", "Безплатно"].filter(option => events.some(event => nightPeriodMatches(event, option, new Date(nowMs))));
-  return <div className={`city-page city-out-page${events.length ? " city-out-has-events" : ""}`} ref={motionRoot}><div className="np-container city-container">
-    <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={`${ROOT}/`}>Моят Пловдив</Link><span>/</span><span aria-current="page">Нощен Пловдив</span></nav>
-    <div className="city-out-hero" data-city-reveal><div className="city-out-hero-image" role="img" aria-label="Реална нощна снимка на Пловдив от Небет тепе" /><div className="city-out-hero-vignette" /><div className="city-out-hero-sheen" aria-hidden="true" /><div className="city-out-hero-content"><p className="city-out-hero-kicker">МОЯТ ПЛОВДИВ / 09 / ПЛОВДИВ OUT</p><h1>Нощен <em>Пловдив.</em></h1><p className="city-out-hero-tagline">Градът след залез.</p><p className="city-out-hero-desc">{events.length ? "Наблюдавани дати, часове и места от клубната програма. Промените и отмените още се проверяват." : "Музика, сцени, идеи и срещи. Програмата ще се появи тук след проверка на датите и промените."}</p><a href="#city-agenda-title" className="city-out-hero-button">Към афиша <Arrow /></a></div><div className="city-out-hero-footer"><span>Снимка: Kostadin Kamburov / CC BY-SA 4.0</span><span>09 / МОЯТ ПЛОВДИВ</span></div></div>
-    {observations}
-    <section className="city-out-agenda" aria-labelledby="city-agenda-title"><div className="city-out-agenda-head"><div><p className="city-eyebrow">КЛУБЕН АФИШ / ЛОКАЛЕН ПИЛОТ</p><h2 id="city-agenda-title">Събития <em>след залез.</em></h2>{checkedAt && events.length ? <p className="city-night-checked">Клубна програма · проверено {new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }).format(new Date(checkedAt))}. Пълнотата и отмените още се проверяват.</p> : null}</div><div className="city-filter-list city-period-filters" role="group" aria-label="Период на афиша">{periodOptions.map(option => <button type="button" key={option} aria-pressed={period === option} onClick={() => setPeriod(option)}>{option}</button>)}</div></div>{visibleEvents.length ? <div className="city-night-event-grid" aria-live="polite">{visibleEvents.map((event, index) => <article key={event.key} className={`city-night-event${index === 0 ? " city-night-event-featured" : ""}`}><div className="city-night-event-date"><time dateTime={event.startDate}>{nightDate.format(new Date(event.startDate))}</time><strong>{nightTime.format(new Date(event.startDate))}</strong></div><div className="city-night-event-body"><span>{nightEventStatusLabel(event, new Date(nowMs))}</span><h3>{event.title}</h3><p>{event.place}</p></div><div className="city-night-event-side"><span>{event.price ? `${event.price} евро · посочена цена` : "Цена не е потвърдена"}</span></div></article>)}</div> : <div className="city-night-empty" role="status"><strong>Няма проверени записи за „{period}“.</strong><p>{events.length ? "Проверете друг период или изчакайте следващата проверка на програмата." : "Не представяме непълни дати като предстоящи събития."}</p></div>}</section>
-    {stories.length ? <CityNewsRail stories={stories} title="Нощта в новините" /> : null}
-    <p className="city-proof-note">Локален пилот. Наблюдаваните събития не са преминали седемдневната проверка за пълнота и отмени; цените се показват само когато са посочени в източника.</p>
-  </div></div>;
-}

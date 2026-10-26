@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-/** Keep an open local pilot page aligned with the latest checked snapshot. */
+/** Keep a visible city page aligned with updated data and new published articles. */
 export function CityPreviewRefresh() {
   const router = useRouter();
 
