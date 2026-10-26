@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
+import { studioSessionEnded } from "@/lib/session-probe";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
 function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; "data-help"?: string | undefined }) {
@@ -71,6 +72,42 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [collapsed, setCollapsed] = useState(wide);
+  const [sessionEnded, setSessionEnded] = useState(false);
+  const signingOut = useRef(false);
+
+  useEffect(() => {
+    let active = true;
+    let checking = false;
+    let ended = false;
+    const loginUrl = withBase("/login/?session=changed");
+    const checkSession = async () => {
+      if (!active || checking || ended || signingOut.current || document.visibilityState === "hidden") return;
+      checking = true;
+      try {
+        const revoked = await studioSessionEnded();
+        if (active && !signingOut.current && revoked) {
+          ended = true;
+          setSessionEnded(true);
+          // The editor's beforeunload warning still protects unsaved text.
+          window.location.replace(loginUrl);
+        }
+      } finally {
+        checking = false;
+      }
+    };
+    void checkSession();
+    const timer = window.setInterval(() => void checkSession(), 15_000);
+    const onFocus = () => void checkSession();
+    const onVisibility = () => { if (document.visibilityState === "visible") void checkSession(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -95,6 +132,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   }
 
   async function signOut() {
+    signingOut.current = true;
     await authClient.signOut();
     router.replace("/login");
     router.refresh();
@@ -109,6 +147,9 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
 
   return (
     <div className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-[4.25rem]" : "lg:pl-64"}`}>
+      {sessionEnded ? <div role="alert" className="fixed inset-x-3 top-3 z-50 rounded-xl border border-warning/40 bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-xl sm:left-auto sm:max-w-md">
+        Сесията приключи или профилът е отворен от друго място. Ако останахте тук заради незаписан текст, копирайте го; записването вече не е възможно. <button type="button" className="ml-1 text-link underline" onClick={() => window.location.replace(withBase("/login/?session=changed"))}>Влезте отново</button>
+      </div> : null}
       <aside className={`fixed inset-y-0 left-0 z-30 hidden flex-col bg-shell text-white/80 transition-[width] duration-200 lg:flex ${collapsed ? "w-[4.25rem]" : "w-64"}`}>
         <div className={`flex h-14 shrink-0 items-center border-b border-line bg-surface ${collapsed ? "justify-center px-1.5" : "gap-2.5 px-3"}`}>
           <BrandLogoImg

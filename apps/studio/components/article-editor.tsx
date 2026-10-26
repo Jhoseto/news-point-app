@@ -268,7 +268,8 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           return result.data.revision;
         }
 
-        if (!sameDraft(snapshot, saved)) {
+        // Imported articles may have public content but no Studio revision yet.
+        if (!sameDraft(snapshot, saved) || revision === 0) {
           const result = await callApi<{ revision: number; publishedAt?: string }>("POST", `/api/editor/articles/${idRef.current}/revisions/`, { expectedRevision: expected, draft: payload });
           if (!result.ok) {
             if (result.status === 409 && result.error.code === "conflict") setConflict(result.error.details as Conflict);
@@ -307,7 +308,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
       return;
     }
     let toPublish = revision;
-    if (dirty || !idRef.current) {
+    if (dirty || !idRef.current || revision === 0) {
       const next = await save();
       if (next === null) return;
       toPublish = next;

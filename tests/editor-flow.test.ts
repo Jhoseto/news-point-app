@@ -99,6 +99,28 @@ describe("editor API permissions and validation", () => {
 });
 
 describe("article editor transactions", () => {
+  it("creates the first Studio revision before updating an unchanged imported article", async () => {
+    const input = draft();
+    const id = randomUUID();
+    const publishedAt = new Date("2026-10-01T10:00:00Z");
+    await db.insert(schema.articles).values({
+      id, sourceSystem: "wordpress", legacyId: 123456, slug: input.slug, path: `/${input.slug}/`,
+      title: input.title, excerpt: input.excerpt, body: input.body!,
+      primaryCategoryId: categoryId, heroMediaId: imageId,
+      authorKind: "staff", authorUserId: staff.id, authorName: staff.name,
+      isPublic: true, publishedAt, publishedRevision: null,
+    });
+    const loaded = await getEditorArticle(id);
+    expect(loaded).toMatchObject({ sourceSystem: "wordpress", revision: 0, isPublic: true, publishedRevision: null });
+    const { bodyText, ...payload } = loaded!.draft;
+    const saved = await saveRevision(staff, id, 0, payload);
+    expect(saved.revision).toBe(1);
+    const outcome = await publishRevision(staff, id, saved.revision, randomUUID(), true);
+    expect(outcome).toMatchObject({ type: "article.updated", revision: 1 });
+    const [article] = await db.select().from(schema.articles).where(eq(schema.articles.id, id));
+    expect(article).toMatchObject({ sourceSystem: "wordpress", legacyId: 123456, publishedRevision: 1, body: input.body });
+    expect(article?.publishedAt).toEqual(publishedAt);
+  });
   it("captures exact committed revision content and view/listening settings for employee history", async () => {
     const input = draft({ viewSeed: 15, viewEvery: 1, viewUnit: "minutes", viewTarget: 20 });
     const created = await createArticle(staff, input);

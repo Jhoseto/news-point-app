@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import { authClient } from "@/lib/auth-client";
 import { authFormRequest, authOperationalError, AUTH_CONNECTION_ERROR } from "../lib/auth-form-request";
 
@@ -23,6 +23,11 @@ export function LoginForm() {
   const [pending, setPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
+  const [sessionChanged, setSessionChanged] = useState(false);
+
+  useEffect(() => {
+    setSessionChanged(new URLSearchParams(window.location.search).get("session") === "changed");
+  }, []);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,6 +134,8 @@ export function LoginForm() {
           {error}
         </p>
       ) : null}
+
+      {sessionChanged && !error ? <p role="status" className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 text-sm font-semibold text-ink">Сесията ви е приключила. Възможно е профилът да е отворен от друго място. Влезте отново, ако това сте вие.</p> : null}
 
       <button data-help="Влиза в Studio с посочения имейл и парола." type="submit" disabled={pending} className="np-btn np-btn-primary w-full py-3.5 text-[0.9375rem]">
         {pending ? (

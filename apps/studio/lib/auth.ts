@@ -9,6 +9,7 @@ import { LoginGuard } from "./login-guard";
 import { sendPasswordResetEmail } from "./password-reset-mail";
 import { PASSWORD_MAX, PASSWORD_MIN, passwordProblems } from "./password-policy";
 import { BASE_PATH, normalizePasswordResetUrl, readStudioPublicBaseUrl, studioTrustedOrigins } from "./paths";
+import { keepNewestStaffSession } from "./single-session";
 
 // DEC-110. No public sign-up: accounts are created by the master admin.
 // Studio is reached through the public host at /admin, so its cookies carry
@@ -65,7 +66,18 @@ function createAuth() {
         role: { type: [...staffRoles], required: true, defaultValue: "editor", input: false },
       },
     },
-    session: { expiresIn: 60 * 60 * 12, updateAge: 60 * 60 },
+    session: { expiresIn: 60 * 60 * 12, updateAge: 60 * 60, cookieCache: { enabled: false } },
+    databaseHooks: {
+      session: {
+        create: {
+          after: async (session) => {
+            if (!await keepNewestStaffSession(session.userId, session.id)) {
+              throw new APIError("CONFLICT", { message: "Профилът току-що е отворен от друго място. Влезте отново." });
+            }
+          },
+        },
+      },
+    },
     rateLimit: {
       enabled: true,
       window: 60,
