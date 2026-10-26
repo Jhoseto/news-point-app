@@ -27,7 +27,9 @@ export function CityEventAgenda({ category, events, news, today }: { category: "
   const [period, setPeriod] = useState("all"), [query, setQuery] = useState(""), [limit, setLimit] = useState(12);
   const [place, setPlace] = useState("all");
   const places = [...new Set(events.map(event => event.place))].sort((a, b) => a.localeCompare(b, "bg"));
-  const [selected, setSelected] = useState<AgendaEvent | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = events.find(event => event.id === selectedId) ?? null;
+  const setSelected = (event: AgendaEvent | null) => setSelectedId(event?.id ?? null);
   const dialog = useRef<HTMLDialogElement>(null);
   const openedBookmark = useRef("");
   const kinds = (Object.keys(AGENDA_KINDS) as AgendaKind[]).filter(key => events.some(event => event.kind === key));
@@ -50,7 +52,9 @@ export function CityEventAgenda({ category, events, news, today }: { category: "
   useEffect(() => { if (selected) dialog.current?.showModal(); else dialog.current?.close(); }, [selected]);
   const filtered = events.filter(event => (place === "all" || event.place === place) && (kind === "all" || kind === event.kind) && agendaPeriodMatches(event, period, today) && `${event.title} ${event.place}`.toLocaleLowerCase("bg").includes(query.toLocaleLowerCase("bg")));
   const lead = filtered[0];
-  const stories = news[place !== "all" ? `place:${place}:${kind}` : kind] ?? [];
+  const contextual = news[place !== "all" ? `place:${place}:${kind}` : kind] ?? [];
+  const queryWords = query.trim().toLocaleLowerCase("bg").split(/\s+/u).filter(Boolean);
+  const stories = filtered.length ? contextual.filter(story => queryWords.every(word => story.title.toLocaleLowerCase("bg").includes(word))) : [];
   const eventStories = selected ? news[`event:${selected.id}`] ?? [] : [];
   const chooseKind = (value: AgendaKind | "all") => { setKind(value); setLimit(12); };
   return <div className={`city-agenda city-agenda-${category}`}>

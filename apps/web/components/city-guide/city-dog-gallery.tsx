@@ -27,6 +27,7 @@ export function CityDogGallery({ items, story }: { items: CityObservation["items
     </div>
     <p className="city-dog-count" role="status">{matching.length} {matching.length === 1 ? "публикуван профил" : "публикувани профила"} по избраните условия</p>
     {visible.length ? <div className="city-observed-grid">{visible.map(item => <article className="city-observed-item" key={item.key}>
+      {typeof item.fields.imageHash === "string" && /^[a-f0-9]{64}$/u.test(item.fields.imageHash) ? <div className="city-dog-photo"><img src={`/api/city-guide/event-image?${new URLSearchParams({ category: "adopt", sourceId: "plovdiv-dog-shelter", recordKey: item.key, hash: item.fields.imageHash })}`} alt={`Профил №${item.fields.dogId} · ${item.fields.breed}`} loading="lazy" /></div> : null}
       <strong>Профил №{item.fields.dogId}</strong><p>{item.fields.description}</p>
       <dl><div><dt>Порода</dt><dd>{item.fields.breed}</dd></div><div><dt>Пол</dt><dd>{item.fields.sex}</dd></div><div><dt>Размер</dt><dd>{item.fields.size}</dd></div><div><dt>Цвят</dt><dd>{item.fields.color}</dd></div></dl>
     </article>)}</div> : <p className="city-dog-empty">Няма профил с тези условия. Променете търсенето или филтрите.</p>}

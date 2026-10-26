@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
 import { CityProcedureDocuments, CityProcedureSection } from "./city-procedure-documents";
 import { CityRecordActions } from "./city-record-actions";
@@ -17,9 +20,8 @@ function consultationTitle(title: string): string {
   return title;
 }
 
-export const MUNICIPAL_RECORD_SOURCES = new Set(["plovdiv-tax-notices", "plovdiv-public-consultations", "plovdiv-management-competitions", "plovdiv-auction-list", "plovdiv-housing"]);
-
-export function CityMunicipalRecords({ group, news = {} }: { group: CityObservation; news?: Record<string, CityStory[]> }) {
+export function CityMunicipalRecords({ group, news = {}, topicStories = [] }: { group: CityObservation; news?: Record<string, CityStory[]>; topicStories?: CityStory[] }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
   const source = group.sourceId;
   const rows = [...group.items].sort((a, b) => field(a.fields, "dueDate").localeCompare(field(b.fields, "dueDate")) || field(a.fields, "deadline").localeCompare(field(b.fields, "deadline")));
   return <div className="city-municipal-records">{rows.map(item => {
@@ -32,7 +34,7 @@ export function CityMunicipalRecords({ group, news = {} }: { group: CityObservat
     const auctionTitle = field(f, "title").replace(/^Обява за търг с тайно наддаване за /u, "");
     const title = isTax ? field(f, "label") : isConsultation ? consultationTitle(field(f, "title")) : isCompetition ? `Управител · ${field(f, "company")}` : isHousing ? field(f, "title") : auctionTitle.charAt(0).toLocaleUpperCase("bg") + auctionTitle.slice(1);
     const action = isTax ? "Срок за плащане" : isConsultation ? "Изпрати становище до" : isHousing ? "Условия за кандидатстване" : "Документи до";
-    return <details className={`city-action-row${isTax ? " city-action-row-tax" : ""}`} key={item.key} id={`city-record-${source}-${item.key}`}>
+    return <details className={`city-action-row${isTax ? " city-action-row-tax" : ""}`} key={item.key} id={`city-record-${source}-${item.key}`} open={expanded === item.key} onToggle={event => { const open = event.currentTarget.open; setExpanded(current => open ? item.key : current === item.key ? null : current); }}>
       <summary>
         {deadline ? <span className="city-date-stamp"><strong>{Number(deadline.slice(8, 10))}</strong><small>{months[Number(deadline.slice(5, 7)) - 1]}</small></span> : <span className="city-date-stamp city-date-stamp-icon" aria-hidden="true">⌂</span>}
         <span className="city-action-row-copy"><small>{isConsultation ? "ОБЩЕСТВЕНО ОБСЪЖДАНЕ" : isCompetition ? "ОТВОРЕН КОНКУРС" : isHousing ? "ЖИЛИЩЕН ФОНД" : isTax ? "ПРЕДСТОЯЩА ВНОСКА" : "ТЪРГ С ТАЙНО НАДДАВАНЕ"}</small><strong>{title}</strong><span>{action}{deadline ? ` ${date(deadline)}${f.time ? ` · ${f.time}` : ""}` : ""}</span></span>
@@ -45,6 +47,6 @@ export function CityMunicipalRecords({ group, news = {} }: { group: CityObservat
         <CityRelatedNews stories={news[item.key] ?? []} topic="Свързани публикации" />
       </div>
     </details>;
-  })}</div>;
+  })}{expanded === null ? <CityRelatedNews stories={topicStories} topic="Свързани публикации" /> : null}</div>;
 }
 

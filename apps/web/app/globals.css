@@ -396,7 +396,7 @@
   .np-latest-preview-shell::before {
     content: "";
     position: absolute;
-    inset: 0.3rem -0.65rem -0.85rem;
+    inset: 0.35rem 0.5rem -0.85rem -0.65rem;
     border-radius: 1.75rem;
     background: rgb(5 11 34 / 0.58);
     box-shadow: 0 16px 38px color-mix(in oklab, var(--np-category-accent) 26%, transparent);
@@ -448,11 +448,26 @@
   }
 
   .np-latest-connector::before { left: -4px; }
-  .np-latest-connector::after { right: -4px; }
+  .np-latest-connector::after { right: 0; }
+
+  .np-latest-panel-list > li > a {
+    position: relative;
+    padding-left: 1.15rem;
+  }
 
   .np-latest-row-active > a {
     background: linear-gradient(90deg, color-mix(in oklab, var(--np-category-accent) 11%, var(--np-surface)), var(--np-surface-2));
-    box-shadow: inset 3px 0 var(--np-category-accent);
+  }
+
+  .np-latest-row-active > a::before {
+    content: "";
+    position: absolute;
+    top: 0.2rem;
+    bottom: 0.2rem;
+    left: 0;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--np-category-accent);
   }
 
   .np-latest-row-active > time {

@@ -14,12 +14,12 @@ describe("latest news hover card", () => {
       viewportHeight: 900,
     });
     expect(flyout).toMatchObject({
-      cardLeft: 684,
+      cardLeft: 660,
       cardTop: 120,
       cardWidth: 240,
       cardHeight: 480,
       anchorY: 224,
-      connectorWidth: 12,
+      connectorWidth: 36,
       backdropLeft: 640,
       backdropWidth: 280,
       backdropHeight: 480,
@@ -36,7 +36,7 @@ describe("latest news hover card", () => {
     expect(flyout).toMatchObject({
       cardWidth: 300,
       cardHeight: 544,
-      cardLeft: 688,
+      cardLeft: 664,
       cardTop: 228,
       backdropLeft: 80,
       backdropTop: 160,

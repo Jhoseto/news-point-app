@@ -23,7 +23,8 @@ export type LatestFlyout = {
   backdropHeight: number;
 };
 
-const GAP = 12;
+/** Clear space between the flyout and the list, so the card and its shadow stay off the headline. */
+const GAP = 36;
 const MIN_STAGE = 220;
 const MIN_CARD = 240;
 const MAX_CARD = 320;

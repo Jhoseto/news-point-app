@@ -2,6 +2,8 @@ import type { CityObservation } from "./local-observations";
 
 type Presentation = { title: string; description: string; note: string; utility?: boolean; order?: number };
 
+export const MUNICIPAL_RECORD_SOURCES = new Set(["plovdiv-tax-notices", "plovdiv-public-consultations", "plovdiv-management-competitions", "plovdiv-auction-list", "plovdiv-housing"]);
+
 export const CITY_PRESENTATION: Record<string, Presentation> = {
   "plovdiv-tax-notices": { title: "Срокове за местни данъци", description: "Коя вноска предстои и до кога се плаща.", note: "Сроковете са общи. Тук не се проверяват лични задължения или платени суми.", order: 1 },
   "plovdiv-public-consultations": { title: "Проекти за обсъждане", description: "Какво се предлага да се промени и до кога можеш да изпратиш мнение.", note: "Това са проекти, които още не са приети. Виж условията и документите, преди да изпратиш становище.", order: 2 },

@@ -1,4 +1,14 @@
 /** One explicit collection and expiry policy shared by the collector and reader. Seconds. */
+// Temporarily deferred by Koce: municipal administration, procedures and permits.
+// Keep collection evidence and implementations so this scope can be resumed later.
+export const CITY_DEFERRED_CATEGORIES = ["municipality"];
+export const CITY_DEFERRED_SOURCES = new Set([
+  "plovdiv-management-competitions", "plovdiv-public-consultations", "plovdiv-auction-list",
+  "plovdiv-tax-notices", "plovdiv-taxes", "plovdiv-housing", "plovdiv-contacts",
+  "plovdiv-social-services", "plovdiv-council", "plovdiv-transport-signals", "plovdiv-low-emission-permit",
+]);
+export const citySourceInRelease = (id: string) => !CITY_DEFERRED_SOURCES.has(id);
+
 export const CITY_SOURCE_POLICY: Record<string, { refreshSeconds: number; staleSeconds: number }> = {
   "plovdiv-transit": { refreshSeconds: 86400, staleSeconds: 108000 },
   "plovdiv-livetransport-gtfs": { refreshSeconds: 21600, staleSeconds: 28800 },

@@ -22,3 +22,19 @@ it("refuses path traversal, wrong hashes, stale records and production", async (
   expect(mocks.read).not.toHaveBeenCalled();
 });
 it("rejects corrupted archive bytes", async () => { mocks.read.mockResolvedValue(Buffer.from("bad image")); expect((await GET(request())).status).toBe(404); });
+it("serves a shelter photograph only for its own current profile", async () => {
+  mocks.load.mockResolvedValue([{ ...group, sourceId: "plovdiv-dog-shelter" }]);
+  const url = request().url.replace("category=culture", "category=adopt").replace("sourceId=plovdiv-theatre", "sourceId=plovdiv-dog-shelter");
+  expect((await GET(new Request(url))).status).toBe(200);
+  expect(mocks.load).toHaveBeenCalledWith("adopt");
+  expect((await GET(new Request(url.replace("recordKey=fixture", "recordKey=another")))).status).toBe(404);
+});
+it("enabled production requires explicit storage and still refuses unassociated images", async () => {
+  vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("CITY_GUIDE_ENABLED", "1"); vi.stubEnv("CITY_GUIDE_STORAGE_DIR", "");
+  expect((await GET(request())).status).toBe(404);
+  expect(mocks.read).not.toHaveBeenCalled();
+  vi.stubEnv("CITY_GUIDE_STORAGE_DIR", "production-fixture-storage");
+  expect((await GET(request())).status).toBe(200);
+  mocks.load.mockResolvedValue([]);
+  expect((await GET(request())).status).toBe(404);
+});

@@ -1,5 +1,5 @@
-import { cityStorageDirectories } from "@/lib/city-guide/storage";
-import { cityGuideEnabled } from "@/lib/city-guide/access";
+import { cityStorageDirectories } from "../../../../lib/city-guide/storage";
+import { cityGuideEnabled } from "../../../../lib/city-guide/access";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const missing = () => new Response(null, { status: 404, headers });
   if (!cityGuideEnabled()) return missing();
   const p = new URL(request.url).searchParams, category = p.get("category") ?? "", hash = p.get("hash") ?? "";
-  if (!["culture", "nightlife"].includes(category) || !/^[a-f0-9]{64}$/u.test(hash) || (p.get("recordKey")?.length ?? 0) > 1000) return missing();
+  if (!["culture", "nightlife", "adopt"].includes(category) || !/^[a-f0-9]{64}$/u.test(hash) || (p.get("recordKey")?.length ?? 0) > 1000) return missing();
   const group = (await loadCityObservations(category)).find(g => g.sourceId === p.get("sourceId") && g.status === "observed");
   if (!group?.items.some(item => item.key === p.get("recordKey") && item.fields.imageHash === hash)) return missing();
   const dirs = cityStorageDirectories("event-images");

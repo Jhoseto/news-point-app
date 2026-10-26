@@ -22,6 +22,7 @@ describe("city guide news links", () => {
     expect(cityTransitLineStories("20", pool, now).map(story => story.path)).toEqual(["/news/20/"]);
     expect(cityTransitLineStories("24", pool, now)).toEqual([]);
     expect(cityRecordStories("Работа в общината", "Психодиспансер", pool, now).map(story => story.path)).toEqual(["/news/clinic/"]);
+    expect(cityRecordStories("Работа в общината", "Център за психично здраве – Пловдив", pool, now).map(story => story.path)).toEqual(["/news/clinic/"]);
   });
 
   it("selects several local topic cards, deduplicates and never fills from another topic", () => {

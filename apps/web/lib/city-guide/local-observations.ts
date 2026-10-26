@@ -1,5 +1,5 @@
 import { cityGuideEnabled } from "./access";
-import { CITY_CATEGORY_SOURCES, CITY_SOURCE_POLICY } from "@newspoint/content/city-sources";
+import { CITY_CATEGORY_SOURCES, CITY_SOURCE_POLICY, CITY_DEFERRED_CATEGORIES, citySourceInRelease } from "@newspoint/content/city-sources";
 import "server-only";
 import { NIGHT_PROGRAMME_SOURCES, programmeKind } from "./night-programmes";
 import { readFile } from "node:fs/promises";
@@ -194,9 +194,10 @@ const loadDbPreview = cache(async () => {
 });
 
 export async function loadCityObservations(categorySlug: string): Promise<CityObservation[]> {
+  if (CITY_DEFERRED_CATEGORIES.includes(categorySlug)) return [];
   if (!cityGuideEnabled()) return [];
   if (process.env.NODE_ENV !== "development" || process.env.CITY_GUIDE_USE_DB_PREVIEW === "1") {
-    try { return selectCityObservations(categorySlug, await loadDbPreview()); }
+    try { return selectCityObservations(categorySlug, await loadDbPreview()).filter(group => citySourceInRelease(group.sourceId)); }
     catch { return []; }
   }
   const relativePath = "tests/reports/city-preview-live/preview.json";
@@ -204,7 +205,7 @@ export async function loadCityObservations(categorySlug: string): Promise<CityOb
   for (const path of paths) {
     try {
       const parsed = previewSchema.safeParse(JSON.parse(await readFile(path, "utf8")));
-      return parsed.success ? selectCityObservations(categorySlug, parsed.data) : [];
+      return parsed.success ? selectCityObservations(categorySlug, parsed.data).filter(group => citySourceInRelease(group.sourceId)) : [];
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") return [];
     }

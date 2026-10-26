@@ -1,8 +1,9 @@
-import { citySourcePolicy } from "@newspoint/content/city-sources";
+import { cityCollectionHealth } from "@newspoint/content/city-health";
+import { citySourcePolicy, citySourceInRelease } from "@newspoint/content/city-sources";
 import { VENUE_PROGRAMMES, collectVenueProgramme } from "./venue-programmes";
 import { createHash } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, isAbsolute } from "node:path";
 import { pilotSources, type CandidateSource } from "./catalog";
 import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEpayGoEventDetail, parsePilotPage, type PilotSnapshot } from "./parse";
 import { previewAfterCheck, type LocalPreview } from "./preview";
@@ -159,7 +160,7 @@ function differences(before: Record<string, string>, after: Record<string, strin
 export async function runPilotSource(source: CandidateSource, previous: SourceState, now = Date.now(), requireSnapshot = false): Promise<{ state: SourceState; journal: Record<string, unknown>; snapshot?: PilotSnapshot }> {
   const started = Date.now();
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
@@ -355,10 +356,13 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
 
 export async function run(): Promise<void> {
   const watch = process.argv.includes("--watch");
+  const release = process.argv.includes("--release");
+  if (release && (!process.env.CITY_GUIDE_STORAGE_DIR || !isAbsolute(process.env.CITY_GUIDE_STORAGE_DIR) || process.env.CITY_PILOT_PERSIST_DB !== "1")) throw new Error("Release collection requires absolute CITY_GUIDE_STORAGE_DIR and DB persistence");
   const selection = process.argv.find(arg => arg.startsWith("--sources="))?.slice("--sources=".length).split(",");
   const refresh = process.argv.includes("--refresh");
   if (selection?.some(id => !pilotSources.some(source => source.id === id)) || (refresh && (!selection || watch))) throw new Error("Explicit valid --sources are required for a one-off --refresh");
-  const selectedSources = selection ? pilotSources.filter(source => selection.includes(source.id)) : pilotSources;
+  const selectedSources = pilotSources.filter(source => (!selection || selection.includes(source.id)) && (!release || citySourceInRelease(source.id)));
+  if (!selectedSources.length) throw new Error("No sources in the selected collection scope");
   const writer = process.env.CITY_PILOT_PERSIST_DB === "1" ? createCityPilotWriter() : null;
   await mkdir(outputDir, { recursive: true });
   const state = await loadState();
@@ -407,6 +411,10 @@ export async function run(): Promise<void> {
       });
       process.stdout.write(`${source.id}: ${result.journal.outcome} (${result.journal.httpStatus ?? "network"})\n`);
     }
+    const health = cityCollectionHealth(state.sources);
+    const healthFile = resolve(outputDir, "collector-health.json");
+    await writeFile(`${healthFile}.tmp`, JSON.stringify(health) + "\n", "utf8");
+    await replaceSnapshot(`${healthFile}.tmp`, healthFile);
     if (!watch) break;
     const next = Math.min(...selectedSources.map((source) => Date.parse(state.sources[source.id]?.nextDueAt ?? ""))).valueOf();
     await new Promise((done) => setTimeout(done, Math.max(1000, Math.min(60_000, next - Date.now()))));

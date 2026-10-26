@@ -39,7 +39,7 @@ const TOPIC_RULES: Record<string, NewsRule> = {
   "Контакти и приемно време": { query: "община Пловдив", title: /приемно време|приемн.*общин|общинск.*контакт/i },
   "Социални услуги": { query: "социални услуги", title: /социалн.*услуг|социалн.*подкреп/i },
   "Общински жилища": { query: "общински жилища", title: /общинск.*жилищ/i },
-  "Работа в общината": { query: "работа община", title: /общин.*(конкурс|свободн.*позици|обяв.*работа|назначава)|работа.*общин/i },
+  "Работа в общината": { query: "работа община", title: /общин.*(конкурс|свободн.*позици|обяв.*работа|назначава|търси.*управител)|работа.*общин/i },
   "Обществени поръчки": { query: "обществени поръчки", title: /обществен.*поръчк/i },
   "Бюджет и отчети": { query: "бюджет Пловдив", title: /бюджет.*Пловдив|общинск.*бюджет/i },
   "Дарения": { query: "дарения Пловдив", title: /дарени[ея].*Пловдив|Пловдив.*дарени/i },
@@ -171,7 +171,7 @@ export function cityTopicStories(topics: readonly string[], articles: ArticleSum
   });
   const seen = new Set<string>();
   const signatures: Set<string>[] = [];
-  return scored.sort((a, b) => b.article.publishedAt.getTime() - a.article.publishedAt.getTime() || b.score - a.score || a.article.id.localeCompare(b.article.id)).filter(({ article }) => {
+  return scored.sort((a, b) => b.article.publishedAt.getTime() - a.article.publishedAt.getTime() || b.score - a.score).filter(({ article }) => {
     const title = article.title.toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]/gu, "");
     if (seen.has(article.path) || seen.has(title)) return false;
     const terms = new Set((article.title.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(term => term.length > 3 && term !== "пловдив").map(term => term.slice(0, 6)));
@@ -197,11 +197,12 @@ export function cityTransitLineStories(line: string, articles: ArticleSummary[],
 
 /** Restrict an expanded procedure to its named company, institution or distinctive subject. */
 export function cityRecordStories(topic: string, title: string, articles: ArticleSummary[], now = new Date()): CityStory[] {
-  const generic = /^(?:пловдив|общин|конкурс|управ|обяв|проект|наредб|кандидат|услов|документ|измен|допъл|правил|търг|имот|дейност|предлож|решен|дружеств|еоод|еад|техните|общите|за|на|от|при)/u;
+  const generic = /^(?:пловдив|общин|конкурс|управ|обяв|проект|наредб|кандидат|услов|документ|измен|допъл|правил|търг|имот|дейност|предлож|решен|дружеств|център|еоод|еад|техните|общите|за|на|от|при)/u;
   const stems = (value: string) => (value.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(word => word.length >= 4 && !generic.test(word)).map(word => word.slice(0, 6));
   const terms = [...new Set(stems(title))];
   if (!terms.length) return [];
   return cityTopicStories([topic], articles.filter(article => {
+    if (/център за психично здраве/iu.test(title) && /психодиспансер/iu.test(article.title)) return true;
     const headline = new Set(stems(article.title));
     return terms.filter(term => headline.has(term)).length >= Math.min(2, terms.length);
   }), now);

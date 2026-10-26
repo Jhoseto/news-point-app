@@ -1,5 +1,5 @@
 import "server-only";
-import { getByCategory, getCityEventContext, getCityGuideContext, getLatest, getMenuCategories, type ArticleSummary } from "@/lib/queries";
+import { getByCategory, getCityEventContext, getCityGuideContext, getLatest, getMenuCategories, type ArticleSummary } from "../queries";
 
 /** New publications enter the reading selection within fifteen minutes on an active page. */
 export const CITY_NEWS_REFRESH_MS = 15 * 60 * 1000;

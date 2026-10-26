@@ -1,4 +1,5 @@
 import { cityGuideEnabled } from "@/lib/city-guide/access";
+import { CITY_DEFERRED_CATEGORIES } from "@newspoint/content/city-sources";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityCategoryView, CityOutagesView, CityParkingView, CityTransportView } from "@/components/city-guide/city-guide";
@@ -16,6 +17,7 @@ type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
+  if (CITY_DEFERRED_CATEGORIES.includes(slug)) notFound();
   const category = CITY_CATEGORIES.find(item => item.slug === slug);
   return { title: category ? `${category.title} — Моят Пловдив` : "Моят Пловдив", robots: { index: false, follow: false } };
 }
@@ -24,7 +26,7 @@ export default async function CityCategoryPage({ params }: Props) {
   if (!cityGuideEnabled()) notFound();
   const { slug } = await params;
   const category = CITY_CATEGORIES.find(item => item.slug === slug);
-  if (!category) notFound();
+  if (!category || CITY_DEFERRED_CATEGORIES.includes(slug)) notFound();
   const [articles, observationGroups, categoryGroups] = await Promise.all([
     loadCityArticlePool(),
     loadCityObservations(slug),

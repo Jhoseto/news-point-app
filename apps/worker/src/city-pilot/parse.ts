@@ -892,12 +892,13 @@ function parseDogShelter(dom: Root): PilotSnapshot {
     const size = values.get("Размер");
     const color = values.get("Цвят");
     if (!dogId || !breed || !sex || !size || !color || !description) throw new Error("plovdiv-dog-shelter: incomplete dog profile");
-    items.push(item(dogId, "https://dogshelter.plovdiv.bg/dogs-for-adoption", { dogId, breed, sex, size, color, description }));
+    const photo = eventImageUrl(sourceImage, "https://dogshelter.plovdiv.bg/");
+    items.push(item(dogId, "https://dogshelter.plovdiv.bg/dogs-for-adoption", { dogId, breed, sex, size, color, description, ...(photo ? { imageUrl: photo } : {}) }));
   }
   return unique("plovdiv-dog-shelter", items, [
     "Profile ID is derived from the image directory; there are no individual profile URLs on this listing.",
     "Disappearance from the listing does not prove adoption; publication lag and status changes require repeated observation.",
-    "Photographs and adoption availability are not copied into this preview.",
+    "Adoption availability is not confirmed by presence in this listing.",
   ], "uncertain");
 }
 

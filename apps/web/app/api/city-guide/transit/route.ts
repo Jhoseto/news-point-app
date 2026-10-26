@@ -1,4 +1,4 @@
-import { cityGuideEnabled } from "@/lib/city-guide/access";
+import { cityGuideEnabled } from "../../../../lib/city-guide/access";
 import { loadCityObservations } from "../../../../lib/city-guide/local-observations";
 import { cityTimetable } from "../../../../lib/city-guide/timetable";
 const headers = { "Cache-Control": "private, no-store" };

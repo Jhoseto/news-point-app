@@ -7,6 +7,8 @@ import { archiveEventImage, eventImageUrl, normalizeEventTitle, theatreDetailPho
 
 describe("event photographs", () => {
   it("allows publisher image paths without permitting arbitrary fetch targets", () => {
+    expect(eventImageUrl("https://register-dogs.com/shelter/uploads/plovdivd_shelter/11899/DSC03697[1].JPG", "https://dogshelter.plovdiv.bg/")).toContain("/11899/");
+    expect(eventImageUrl("https://register-dogs.com/shelter/uploads/other_shelter/11899/a.jpg", "https://dogshelter.plovdiv.bg/")).toBeNull();
     expect(eventImageUrl("/media/images/photo.jpg", "https://operaplovdiv.bg")).toBe("https://operaplovdiv.bg/media/images/photo.jpg");
     for (const url of ["http://operaplovdiv.bg/media/images/a.jpg", "https://localhost/a.jpg", "https://storage.googleapis.com/other/file.jpg", "https://operaplovdiv.bg/timthumb.php?src=https://elsewhere.bg/a.jpg", "https://user:secret@operaplovdiv.bg/media/images/a.jpg"]) expect(eventImageUrl(url, "https://operaplovdiv.bg")).toBeNull();
   });
