@@ -14,7 +14,8 @@
     "./push-configuration": "./src/push-configuration.ts",
     "./media-uploads": "./src/media-uploads.ts",
     "./social-publishing": "./src/social-publishing.ts",
-    "./city": "./src/city.ts"
+    "./city": "./src/city.ts",
+    "./city-admin": "./src/city-admin.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

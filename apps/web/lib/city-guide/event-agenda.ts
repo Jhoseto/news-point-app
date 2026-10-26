@@ -2,7 +2,7 @@ import { programmeKind } from "./night-programmes";
 import type { CityObservation } from "./local-observations";
 import { explicitNightEventKind } from "./event-kind";
 
-export const AGENDA_KINDS = { party: "Партита", live: "Музика на живо", standup: "Стендъп", theatre: "Театър", opera: "Опера и балет", exhibition: "Изложби", community: "Срещи и работилници" } as const;
+export const AGENDA_KINDS = { quiz: "Куизове", party: "Партита", live: "Музика на живо", standup: "Стендъп", theatre: "Театър", opera: "Опера и балет", exhibition: "Изложби", community: "Срещи и работилници" } as const;
 export type AgendaKind = keyof typeof AGENDA_KINDS;
 export const AGENDA_EXTRA_FILTERS = { free: "Безплатен вход", student: "Студентски вечери", electronic: "DJ и електронна музика", rap: "Рап и хип-хоп", folk: "Попфолк и балканска музика", quiz: "Куизове", games: "Настолни игри", jazz: "Джаз", rock: "Рок" } as const;
 export type AgendaExtra = keyof typeof AGENDA_EXTRA_FILTERS;
@@ -28,7 +28,7 @@ export function cityAgenda(groups: CityObservation[], category: "culture" | "nig
   return groups.filter(group => group.status === "observed").flatMap(group => group.items.flatMap(item => {
     const f = item.fields, source = group.sourceId;
     let kind: AgendaKind = programmeKind(source, f) ?? (source === "club-code-upcoming" ? "party" : source === "plovdiv-theatre" ? "theatre" : source === "plovdiv-opera" ? "opera" : source === "plovdiv-gallery-current" ? "exhibition" : explicitNightEventKind(f) ?? "community");
-    if ((category === "nightlife") !== ["party", "live", "standup"].includes(kind)) return [];
+    if ((category === "nightlife") !== ["party", "live", "standup", "quiz"].includes(kind)) return [];
     let date = String(f.date ?? f.startDate ?? ""), time = String(f.time ?? ""), endDate = String(f.endDate ?? date);
     if (source === "plovdiv-theatre") {
       const match = String(f.dateTime).match(/^(\d{2})-(\d{2})-(\d{4}).*?(\d{2}:\d{2})/u);

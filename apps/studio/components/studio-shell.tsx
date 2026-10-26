@@ -21,11 +21,13 @@ const NAV = [
   { href: "/my-news", label: "Моята новина", icon: "M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h11l5 4V6a2 2 0 0 0-2-2zM7 9h10M7 13h6" },
   { href: "/podcasts", label: "Подкасти", icon: "M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" },
   { href: "/stories", label: "Теми с продължение", icon: "M4 7h16M4 12h12M4 17h8" },
+  { href: "/moyat-plovdiv", label: "Моят Пловдив", icon: "M3 21h18M5 21V9l7-6 7 6v12M9 21v-7h6v7" },
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 const LOGS_LINK = { href: "/logs", label: "Logs", icon: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01" };
 
 const NAV_HELP: Record<string, string> = {
+  "/moyat-plovdiv": "Градските справки, източниците, обновяването и видимостта им за читателите.",
   "/arrange": "Подрежда новините по местата в сайта и управлява извънредната лента.",
   "/": "Списък с материали. Търсете, филтрирайте и отваряйте новини за редакция.",
   "/articles/new": "Отваря нова чернова за написване на новина.",
@@ -65,7 +67,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   const mobileNav = [...(canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV), ...(canManageSocial ? [{ href: "/settings/social/", label: "Facebook", icon: "M14 4h-2a3 3 0 0 0-3 3v13M6 11h9" }] : [])];
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
-  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs";
+  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs" || pathname === "/moyat-plovdiv";
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [collapsed, setCollapsed] = useState(wide);

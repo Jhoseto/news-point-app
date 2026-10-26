@@ -1,3 +1,5 @@
+import { LOHI_URL } from "./lohi-programme";
+import { PARKING_VENUES } from "./parking-venues";
 import { VENUE_PROGRAMMES } from "./venue-programmes";
 import { PLOVDIV_AIR_URL } from "./air-quality";
 export type CityCategory = "transport" | "parking" | "outages" | "municipality" | "education" | "environment" | "events" | "adoption";
@@ -14,6 +16,9 @@ export type CandidateSource = {
 // Inventory from the two 2026-10-24 concept documents plus explicitly probed
 // alternatives. A URL here is not evidence of approved extraction or freshness.
 export const candidateSources: CandidateSource[] = [
+  { id: "vivacom-plovdiv-parking", category: "parking", url: "https://www.vivacom.bg/dopalnitelni-uslugi/zabavlenie/sms-parkirane", format: "html", pilot: true },
+  { id: "lohi-programme", category: "events", url: LOHI_URL, format: "html", pilot: true },
+  ...Object.entries(PARKING_VENUES).map(([id, config]) => ({ id, category: "parking" as const, url: config.url, format: "html" as const, pilot: true as const })),
   { id: "plovdiv-community-air", category: "environment", url: PLOVDIV_AIR_URL, format: "json", pilot: true },
   { id: "plovdiv-transit", category: "transport", url: "https://www.plovdiv.bg/item/transport/mass-public-transport/", format: "html", pilot: true },
   { id: "plovdiv-transport-news", category: "transport", url: "https://www.plovdiv.bg/category/transport/", format: "html" },

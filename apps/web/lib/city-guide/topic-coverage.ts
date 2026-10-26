@@ -13,7 +13,8 @@ export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]
     "Билети и карти": ["plovdiv-transit"],
   },
   parking: {
-    "Синя и зелена зона": ["plovdiv-parking-rules"],
+    "Паркинги": ["mall-plovdiv-parking", "markovo-tepe-parking"],
+    "Синя и зелена зона": ["plovdiv-parking-rules", "vivacom-plovdiv-parking"],
     "Репатриране": ["plovdiv-parking-operator"],
   },
   outages: {

@@ -245,6 +245,7 @@ export function cityOutStories(articles: ArticleSummary[], limit = 3, now = new 
 }
 
 const AGENDA_NEWS: Record<AgendaKind, RegExp> = {
+  quiz: /куиз|quiz|викторин/iu,
   party: /(?:^|[^а-я])парти(?:то|та)?(?=[^а-я]|$)|диджей|\bDJ\b|клубна.*музика/iu,
   live: /концерт|музика на живо|джаз|рок груп/iu,
   standup: /стенд[ -]?ъп|stand[ -]?up/iu,
@@ -281,4 +282,10 @@ export function cityAgendaContextStories(articles: ArticleSummary[], kinds: Agen
     return place.length > 3 && headline.includes(place);
   });
   return cityAgendaStories(scoped, kinds, now);
+}
+
+/** A named parking venue must never inherit headlines about unrelated car parks. */
+export function cityParkingVenueStories(sourceId:string,articles:ArticleSummary[],now=new Date()):CityStory[]{
+ const name=sourceId==="mall-plovdiv-parking"?/мол\s+пловдив|mall\s+plovdiv/iu:sourceId==="markovo-tepe-parking"?/марково\s+тепе|markovo\s+tepe/iu:null;
+ return name?cityTopicStories(["Паркинги"],articles.filter(a=>name.test(a.title)),now):[];
 }

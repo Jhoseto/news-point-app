@@ -1,0 +1,20 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+const mocks=vi.hoisted(()=>({staff:vi.fn(),read:vi.fn(),detail:vi.fn(),change:vi.fn(),evidence:vi.fn()}));
+vi.mock("../../../lib/city-collector-health",()=>({readCityCollectorHealth:async()=>({status:"ok",checkedAt:null})}));
+vi.mock("../../../lib/session",()=>({staffFromRequest:mocks.staff}));
+vi.mock("@newspoint/db/city-admin",()=>({readCityManagement:mocks.read,readCityManagementDetail:mocks.detail,changeCityManagement:mocks.change}));
+vi.mock("../../../lib/auth",()=>({studioOrigins:()=>({trusted:["http://localhost:3001"]})}));
+vi.mock("../../../lib/audit",()=>({withStaffAudit:(handler:unknown)=>handler}));
+vi.mock("../../../lib/audit-context",()=>({auditEvidence:mocks.evidence}));
+import { GET,POST } from "./route";
+const body={id:"vik-outages",expectedVersion:"a".repeat(32),action:"hide",note:"Източникът е проверен ръчно."};
+const post=(payload:unknown=body,origin="http://localhost:3001")=>new Request("http://localhost:3001/api/city-guide",{method:"POST",headers:{origin,"content-type":"application/json"},body:JSON.stringify(payload)});
+beforeEach(()=>{vi.clearAllMocks();mocks.staff.mockResolvedValue({id:"staff",role:"editor"});mocks.read.mockResolvedValue([]);mocks.change.mockResolvedValue({before:{publicationState:"visible"},after:{publicationState:"hidden"},note:body.note})});
+describe("Studio city guide API",()=>{
+ it("requires a staff session before reading",async()=>{mocks.staff.mockResolvedValue(null);expect((await GET(new Request("http://localhost:3001/api/city-guide"))).status).toBe(401);expect(mocks.read).not.toHaveBeenCalled()});
+ it("rejects cross-origin writes and invalid input",async()=>{expect((await POST(post(body,"https://evil.example"))).status).toBe(403);expect((await POST(post({...body,id:"../x"}))).status).toBe(400);expect(mocks.change).not.toHaveBeenCalled()});
+ it("checks role before mutating",async()=>{mocks.staff.mockResolvedValue({id:"x",role:"reader"});expect((await POST(post())).status).toBe(403);expect(mocks.change).not.toHaveBeenCalled()});
+ it("returns private real summaries and bounds detail pagination",async()=>{const r=await GET(new Request("http://localhost:3001/api/city-guide"));expect(r.status).toBe(200);expect(r.headers.get("cache-control")).toBe("private, no-store");expect((await GET(new Request("http://localhost:3001/api/city-guide?id=vik-outages&offset=-1"))).status).toBe(400);expect(mocks.detail).not.toHaveBeenCalled()});
+ it("records before/after evidence and maps version conflicts",async()=>{expect((await POST(post())).status).toBe(200);expect(mocks.evidence).toHaveBeenCalledWith({publicationState:"visible"},{publicationState:"hidden",note:body.note});mocks.change.mockRejectedValue(new Error("conflict"));expect((await POST(post())).status).toBe(409)});
+ it("fails closed when the database cannot be read",async()=>{mocks.read.mockRejectedValue(new Error("db"));expect((await GET(new Request("http://localhost:3001/api/city-guide"))).status).toBe(503)});
+});

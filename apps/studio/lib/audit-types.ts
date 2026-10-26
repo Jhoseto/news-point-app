@@ -1,4 +1,5 @@
 export const AUDIT_AREAS = {
+  city: "Моят Пловдив",
   breaking: "Извънредно",
   social: "Социални мрежи",
   articles: "Материали", arrangements: "Подреждане", media: "Медия", stories: "Теми",

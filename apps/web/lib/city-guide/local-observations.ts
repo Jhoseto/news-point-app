@@ -45,6 +45,13 @@ function localDay(date: Date): string {
 }
 
 function isRelevantRow(sourceId: string, fields: Record<string, string | number>, today: string, now: Date): boolean {
+  if (sourceId === "vivacom-plovdiv-parking") return ["label", "value", "detail"].every(key => typeof fields[key] === "string" && String(fields[key]).trim().length > 0)
+    && (fields.price === undefined || typeof fields.price === "number" && fields.price > 0 && fields.price <= 20 && fields.currency === "EUR");
+  if (["mall-plovdiv-parking", "markovo-tepe-parking"].includes(sourceId)) return typeof fields.title === "string" && typeof fields.address === "string" && fields.address.includes("Пловдив")
+    && fields.currency === "EUR" && typeof fields.hourPrice === "number" && fields.hourPrice > 0 && fields.hourPrice <= 100
+    && typeof fields.freeHours === "number" && fields.freeHours >= 0 && fields.freeHours <= 24
+    && typeof fields.exitMinutes === "number" && fields.exitMinutes > 0 && fields.exitMinutes <= 60
+    && [fields.opens, fields.closes].every(v => typeof v === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(v));
   if (sourceId === "elyug-planned-plovdiv-region") {
     const dates = [fields.startDate, fields.endDate];
     const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Sofia" });

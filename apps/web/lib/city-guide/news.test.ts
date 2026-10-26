@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArticleSummary } from "../queries";
 import { CITY_CATEGORIES, OUT_TOPICS } from "./catalog";
-import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine, cityTopicStories, cityAgendaContextStories, cityTransitLineStories, cityRecordStories } from "./news";
+import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine, cityTopicStories, cityAgendaContextStories, cityTransitLineStories, cityRecordStories, cityParkingVenueStories } from "./news";
 
 const article = (id: string, title: string): ArticleSummary => ({
   id, path: `/news/${id}/`, title, excerpt: "", authorName: "NewsPoint.bg",
@@ -9,6 +9,11 @@ const article = (id: string, title: string): ArticleSummary => ({
 });
 
 describe("city guide news links", () => {
+  it("does not attach another car park's story to a named mall",()=>{
+    const pool=[article("mall","Нови цени за паркинга на Mall Plovdiv в Пловдив"),article("other","Ботев продава паркоместа на общинския стадион в Пловдив")];
+    expect(cityParkingVenueStories("mall-plovdiv-parking",pool,new Date("2026-10-26T12:00:00Z")).map(x=>x.path)).toEqual(["/news/mall/"]);
+    expect(cityParkingVenueStories("markovo-tepe-parking",pool,new Date("2026-10-26T12:00:00Z"))).toEqual([]);
+  });
   it("always prefers the newest eligible topic story even when an older headline repeats more query words", () => {
     const now = new Date("2026-10-26T10:00:00Z");
     const older = { ...article("old", "Билети, карти и тарифи за градски транспорт с автобуси в Пловдив"), publishedAt: new Date("2026-10-25T10:00:00Z") };

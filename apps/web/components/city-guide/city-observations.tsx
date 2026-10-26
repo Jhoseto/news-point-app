@@ -1,3 +1,4 @@
+import { CityParkingVenue } from "./city-parking-venue";
 import { CityAirQuality } from "./city-air-quality";
 import { CityLowEmissionPermit } from "./city-low-emission-permit";
 import { CityAdmissionCalendar } from "./city-admission-calendar";
@@ -5,7 +6,7 @@ import { CityTransitTimetable } from "./city-transit-timetable";
 import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
 import type { ArticleSummary } from "@/lib/queries";
-import { cityTopicStories, cityTransitLineStories, cityRecordStories, type CityStory } from "@/lib/city-guide/news";
+import { cityTopicStories, cityParkingVenueStories, cityTransitLineStories, cityRecordStories, type CityStory } from "@/lib/city-guide/news";
 import { nightEventStatusLabel } from "@/lib/city-guide/night-events";
 import { CityDogGallery } from "./city-dog-gallery";
 import { CitySocialServices } from "./city-social-services";
@@ -13,10 +14,11 @@ import { CitySchoolDirectory } from "./city-school-directory";
 import { CityEcoPoints } from "./city-eco-points";
 import { CITY_PRESENTATION, readerCityGroups, MUNICIPAL_RECORD_SOURCES } from "@/lib/city-guide/presentation";
 import { CityRelatedNews } from "./city-related-news";
-import { CityWorkspace } from "./city-workspace";
+import { CityWorkspace, type CityWorkspaceSection } from "./city-workspace";
 import { CityMunicipalRecords } from "./city-municipal-records";
 
 const SOURCE_NAMES: Record<string, string> = {
+  "vivacom-plovdiv-parking": "SMS паркиране · Vivacom",
   "plovdiv-transit": "Посочени цени за градски транспорт",
   "plovdiv-livetransport-gtfs": "Автобусни линии за днешния ден",
   "plovdiv-airport-flights": "Пристигащи и заминаващи полети",
@@ -53,6 +55,8 @@ const SOURCE_NAMES: Record<string, string> = {
   "plovdiv-housing": "Общински жилища · публикуван ред",
 };
 const SOURCE_TOPICS: Record<string, string> = {
+  "vivacom-plovdiv-parking": "Синя и зелена зона",
+  "mall-plovdiv-parking": "Паркинги", "markovo-tepe-parking": "Паркинги",
   "elyug-planned-plovdiv-region": "Без ток",
   "plovdiv-community-air": "Въздухът в Пловдив",
   "plovdiv-low-emission-permit": "Пропуск за нискоемисионната зона",
@@ -116,7 +120,7 @@ function flightStatus(status: string): string {
 
 function ObservationItem({ sourceId, itemKey, fields, story, articles }: { sourceId: string; itemKey: string; fields: Record<string, string | number>; story: CityStory | null; articles: ArticleSummary[] }) {
   let content: React.ReactNode;
-  if (sourceId === "plovdiv-parking-rules") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "value")}</p><p>{value(fields, "detail")}</p></>;
+  if (["plovdiv-parking-rules", "vivacom-plovdiv-parking"].includes(sourceId)) content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "value")}</p><p>{value(fields, "detail")}</p></>;
   else if (sourceId === "plovdiv-parking-operator") content = <><strong>{value(fields, "label")}</strong>{fields.phone ? <p className="city-observed-value">{value(fields, "phone")}</p> : null}{fields.address ? <p className="city-observed-value">{value(fields, "address")}</p> : null}{fields.note ? <p>{value(fields, "note")}</p> : null}</>;
   else if (sourceId === "plovdiv-transit") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "price")}</p></>;
   else if (sourceId === "plovdiv-low-emission") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "value")}</p><details className="city-observed-detail"><summary>Формулировка от общината</summary><p>{value(fields, "detail")}</p></details></>;
@@ -155,8 +159,8 @@ function ObservationGroup({ group, story, articles }: { group: CityObservation; 
   const meta = CITY_PRESENTATION[group.sourceId];
   const name = meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка';
   return <article className="city-observed-group" id={`nablyudavani-${group.sourceId}`} data-source={group.sourceId}>
-    <div className="city-observed-group-head"><div><p className="city-panel-eyebrow">{meta?.utility ? 'ПОЛЕЗЕН КОНТАКТ' : 'В ТВОЯ ГРАД'}</p><h3>{name}</h3><p className="city-panel-description">{meta?.description}</p></div><span className="city-panel-total" title="Брой записи в тази справка">{group.items.length}</span></div>
-    {group.sourceId === 'plovdiv-community-air' ? <CityAirQuality items={group.items} /> : group.sourceId === 'plovdiv-low-emission-permit' ? <CityLowEmissionPermit group={group} /> : group.sourceId === 'dz-admission-calendar' ? <CityAdmissionCalendar group={group} /> : group.sourceId === 'plovdiv-livetransport-gtfs' ? <CityTransitTimetable lines={group.items.map(item => ({ key: item.key, line: String(item.fields.line), destinations: String(item.fields.destinations) }))} checkedAt={group.checkedAt} news={Object.fromEntries(group.items.map(item => [item.key, cityTransitLineStories(String(item.fields.line), articles)]))} /> : MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityMunicipalRecords group={group} topicStories={cityTopicStories([SOURCE_TOPICS[group.sourceId] ?? ""], articles)} news={Object.fromEntries(group.items.map(item => [item.key, cityRecordStories(SOURCE_TOPICS[group.sourceId] ?? "", String(item.fields.company ?? item.fields.title ?? item.fields.label ?? ""), articles)]))} /> : group.sourceId === 'plovdiv-dog-shelter' ? <CityDogGallery items={group.items} story={story} /> : group.sourceId === 'plovdiv-social-services' ? <CitySocialServices items={group.items} /> : group.sourceId === 'plovdiv-municipal-schools' ? <CitySchoolDirectory items={group.items} /> : group.sourceId === 'dz-institutions' ? <CitySchoolDirectory items={group.items} kind="childcare" /> : group.sourceId === 'ecomap-containers' ? <CityEcoPoints items={group.items} /> : <>
+    <div className="city-observed-group-head"><div><p className="city-panel-eyebrow">{meta?.utility ? 'ПОЛЕЗЕН КОНТАКТ' : 'В ТВОЯ ГРАД'}</p><h3>{name}</h3><p className="city-panel-description">{meta?.description}</p></div>{!["mall-plovdiv-parking", "markovo-tepe-parking"].includes(group.sourceId) ? <span className="city-panel-total" title="Брой записи в тази справка">{group.items.length}</span> : null}</div>
+    {['mall-plovdiv-parking', 'markovo-tepe-parking'].includes(group.sourceId) ? <CityParkingVenue group={group} /> : group.sourceId === 'plovdiv-community-air' ? <CityAirQuality items={group.items} /> : group.sourceId === 'plovdiv-low-emission-permit' ? <CityLowEmissionPermit group={group} /> : group.sourceId === 'dz-admission-calendar' ? <CityAdmissionCalendar group={group} /> : group.sourceId === 'plovdiv-livetransport-gtfs' ? <CityTransitTimetable lines={group.items.map(item => ({ key: item.key, line: String(item.fields.line), destinations: String(item.fields.destinations) }))} checkedAt={group.checkedAt} news={Object.fromEntries(group.items.map(item => [item.key, cityTransitLineStories(String(item.fields.line), articles)]))} /> : MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityMunicipalRecords group={group} topicStories={cityTopicStories([SOURCE_TOPICS[group.sourceId] ?? ""], articles)} news={Object.fromEntries(group.items.map(item => [item.key, cityRecordStories(SOURCE_TOPICS[group.sourceId] ?? "", String(item.fields.company ?? item.fields.title ?? item.fields.label ?? ""), articles)]))} /> : group.sourceId === 'plovdiv-dog-shelter' ? <CityDogGallery items={group.items} story={story} /> : group.sourceId === 'plovdiv-social-services' ? <CitySocialServices items={group.items} /> : group.sourceId === 'plovdiv-municipal-schools' ? <CitySchoolDirectory items={group.items} /> : group.sourceId === 'dz-institutions' ? <CitySchoolDirectory items={group.items} kind="childcare" /> : group.sourceId === 'ecomap-containers' ? <CityEcoPoints items={group.items} /> : <>
       <div className="city-observed-grid">{group.items.slice(0, 8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div>
       {group.items.length > 8 ? <details className="city-observed-more"><summary>Покажи още {group.items.length - 8}</summary><div className="city-observed-grid">{group.items.slice(8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div></details> : null}
     </>}
@@ -164,11 +168,11 @@ function ObservationGroup({ group, story, articles }: { group: CityObservation; 
   </article>;
 }
 
-export function CityObservedData({ categorySlug, groups, stories, articles }: { categorySlug: string; groups: CityObservation[]; stories: Record<string, CityStory | null>; articles: ArticleSummary[] }) {
+export function CityObservedData({ categorySlug, groups, stories, articles, extraSections = [] }: { extraSections?: CityWorkspaceSection[]; categorySlug: string; groups: CityObservation[]; stories: Record<string, CityStory | null>; articles: ArticleSummary[] }) {
   const visible = readerCityGroups(groups);
-  if (!visible.length) return <section className="city-empty" role="status"><h2>Справката временно не е достъпна.</h2><p>Опитай отново след малко.</p></section>;
-  return <CityWorkspace sections={visible.map(group => {
+  if (!visible.length && !extraSections.length) return <section className="city-empty" role="status"><h2>Справката временно не е достъпна.</h2><p>Опитай отново след малко.</p></section>;
+  return <CityWorkspace sections={[...visible.map(group => {
     const meta = CITY_PRESENTATION[group.sourceId];
-    return { id: group.sourceId, title: meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка', description: meta?.description ?? '', utility: !!meta?.utility, count: group.items.length, content: <><ObservationGroup group={group} story={stories[categorySlug === 'municipality' && group.sourceId === 'plovdiv-eco-signals' ? 'Къде да подам сигнал?' : SOURCE_TOPICS[group.sourceId] ?? ''] ?? null} articles={articles} />{group.sourceId !== "plovdiv-livetransport-gtfs" && !MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityRelatedNews topic={meta?.title ?? SOURCE_TOPICS[group.sourceId] ?? "Градът в новините"} stories={cityTopicStories([SOURCE_TOPICS[group.sourceId] ?? ""], articles)} /> : null}</> };
-  })} />;
+    return { id: group.sourceId, title: meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка', description: meta?.description ?? '', utility: !!meta?.utility, count: group.items.length, content: <><ObservationGroup group={group} story={stories[categorySlug === 'municipality' && group.sourceId === 'plovdiv-eco-signals' ? 'Къде да подам сигнал?' : SOURCE_TOPICS[group.sourceId] ?? ''] ?? null} articles={articles} />{group.sourceId !== "plovdiv-livetransport-gtfs" && !MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityRelatedNews topic={meta?.title ?? SOURCE_TOPICS[group.sourceId] ?? "Градът в новините"} stories={["mall-plovdiv-parking", "markovo-tepe-parking"].includes(group.sourceId) ? cityParkingVenueStories(group.sourceId, articles) : cityTopicStories([SOURCE_TOPICS[group.sourceId] ?? ""], articles)} /> : null}</> };
+  }), ...extraSections]} />;
 }

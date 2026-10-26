@@ -1,3 +1,4 @@
+import { loadRootEnv } from "@newspoint/db/node";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -34,10 +35,11 @@ export function cityReadiness(state: Record<string, CheckState>, snapshots: Reco
       const ids = CITY_TOPIC_SOURCES[category.slug]?.[topic.title] ?? [];
       const implementedFilter = category.slug === "nightlife" && ["Тази вечер", "Уикенда"].includes(topic.title);
       const interestFilter = category.slug === "nightlife" && ["Безплатно", "DJ и електронна музика", "Рап и хип-хоп", "Попфолк, балканска и турска музика", "Студентски вечери", "Куизове", "Настолни игри"].includes(topic.title);
-      const elsewhere = topic.title === "Концерти" ? "nightlife / live" : category.slug === "nightlife" && topic.title === "Творчески работилници" ? "culture / community" : null;
+      const sharedTraffic = category.slug === "transport" && topic.title === "Затворени улици";
+      const elsewhere = category.slug === "outages" && topic.title === "Улични ремонти" ? "transport / shared LivePoint traffic" : topic.title === "Концерти" ? "nightlife / live" : category.slug === "nightlife" && topic.title === "Творчески работилници" ? "culture / community" : null;
       return { title: topic.title, sourceIds: ids,
         ...(elsewhere ? { coveredElsewhere: elsewhere } : {}),
-        status: CITY_DEFERRED_CATEGORIES.includes(category.slug) || ids.length > 0 && ids.every(id => !citySourceInRelease(id)) ? "deferred" : implementedFilter ? "date-filter" : interestFilter ? "interest-filter-needs-matching-events" : elsewhere ? "covered-elsewhere" : !ids.length ? "not-implemented" : ids.every(id => CITY_PRESENTATION[id]?.utility) ? "supporting-contact-only"
+        status: sharedTraffic ? "shared-livepoint-integration" : CITY_DEFERRED_CATEGORIES.includes(category.slug) || ids.length > 0 && ids.every(id => !citySourceInRelease(id)) ? "deferred" : implementedFilter ? "date-filter" : interestFilter ? "interest-filter-needs-matching-events" : elsewhere ? "covered-elsewhere" : !ids.length ? "not-implemented" : ids.every(id => CITY_PRESENTATION[id]?.utility) ? "supporting-contact-only"
           : ids.every(id => id === "plovdiv-council") ? "insufficient-content"
           : ids.some(id => sources.some(source => source.id === id && source.status === "healthy")) ? "has-healthy-source" : "unavailable",
       };
@@ -52,6 +54,7 @@ export function cityReadiness(state: Record<string, CheckState>, snapshots: Reco
 }
 
 async function main() {
+  loadRootEnv();
   const dir = resolve(process.env.CITY_GUIDE_STORAGE_DIR || process.env.CITY_PILOT_OUTPUT_DIR || resolve(import.meta.dirname, "../../../../tests/reports/city-preview-live"));
   const state = JSON.parse(await readFile(resolve(dir, "state.json"), "utf8"));
   const preview = JSON.parse(await readFile(resolve(dir, "preview.json"), "utf8"));

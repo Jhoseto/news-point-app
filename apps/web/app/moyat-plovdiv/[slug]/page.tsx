@@ -1,3 +1,5 @@
+import { CityRoadRestrictions } from "@/components/city-guide/city-road-restrictions";
+import { isTomTomConfigured } from "@/lib/livepoint/config";
 import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { CITY_DEFERRED_CATEGORIES } from "@newspoint/content/city-sources";
 import type { Metadata } from "next";
@@ -8,7 +10,7 @@ import { CityLocalNav } from "@/components/city-guide/city-local-nav";
 import { CITY_CATEGORIES } from "@/lib/city-guide/catalog";
 import { loadCityObservations } from "@/lib/city-guide/local-observations";
 import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
-import { cityAgendaStories, cityAgendaContextStories, cityStoriesForTopics } from "@/lib/city-guide/news";
+import { cityAgendaStories, cityAgendaContextStories, cityStoriesForTopics, cityTopicStories } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
 import { CityEventAgenda } from "@/components/city-guide/city-event-agenda";
@@ -33,9 +35,10 @@ export default async function CityCategoryPage({ params }: Props) {
     Promise.all(CITY_CATEGORIES.map(async entry => ({ slug: entry.slug, groups: await loadCityObservations(entry.slug) }))),
   ]);
   const activeGroups = observationGroups.filter(group => group.status === "observed" && group.items.length > 0);
-  const availableTopics = cityAvailableTopics(slug, activeGroups);
+  const roadEnabled = slug === "transport" && isTomTomConfigured();
+  const availableTopics = [...cityAvailableTopics(slug, activeGroups), ...(roadEnabled ? [{ title: "Затворени улици", href: "#nablyudavani-livepoint-roads" }] : slug === "outages" && isTomTomConfigured() ? [{ title: "Улични ремонти", href: "/moyat-plovdiv/transport/#nablyudavani-livepoint-roads" }] : [])];
   const stories = cityStoriesForTopics(availableTopics.map(topic => topic.title), articles);
-  const observations = <CityObservedData categorySlug={slug} groups={activeGroups} stories={stories} articles={articles} />;
+  const observations = <CityObservedData categorySlug={slug} groups={activeGroups} stories={stories} articles={articles} extraSections={roadEnabled ? [{ id: "livepoint-roads", title: "Затворени улици и ремонти", description: "Текущи ограничения и засегнати участъци с карта.", count: 0, utility: false, content: <CityRoadRestrictions stories={cityTopicStories(["Затворени улици", "Улични ремонти"], articles)} /> }] : []} />;
   const availableSlugs = categoryGroups.filter(entry => cityAvailableTopics(entry.slug, entry.groups).length > 0).map(entry => entry.slug);
   const withNav = (content: React.ReactNode) => <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={availableTopics} />{content}</>;
   if (slug === "nightlife" || slug === "culture") {

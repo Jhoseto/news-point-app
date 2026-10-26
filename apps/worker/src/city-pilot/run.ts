@@ -1,3 +1,7 @@
+import { parseLoHi } from "./lohi-programme";
+import { parseVivacomParking } from "./sms-parking";
+import { guardCityResponse, CityResponseError } from "./response-guard";
+import { PARKING_VENUES, collectParkingVenue } from "./parking-venues";
 import { cityCollectionHealth } from "@newspoint/content/city-health";
 import { parsePlovdivAir } from "./air-quality";
 import { parsePlannedPower } from "./planned-power";
@@ -165,7 +169,7 @@ function differences(before: Record<string, string>, after: Record<string, strin
 export async function runPilotSource(source: CandidateSource, previous: SourceState, now = Date.now(), requireSnapshot = false): Promise<{ state: SourceState; journal: Record<string, unknown>; snapshot?: PilotSnapshot }> {
   const started = Date.now();
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
@@ -174,6 +178,8 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
     const { response, finalUrl } = await requestSource(source, previous, requireSnapshot || detailDriven || daySensitive || partitioned || alwaysParse);
     httpStatus = response.status;
     retryAfter = response.headers.get("retry-after");
+    try { guardCityResponse(response); }
+    catch (error) { await response.body?.cancel(); throw error; }
     const checkedAt = new Date(now).toISOString();
     if (response.status === 304) {
       if (!previous.bodyHash || !previous.lastParsedAt) throw new Error("304 without a prior valid snapshot");
@@ -202,7 +208,15 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       procedureDocuments.set(url, document);
       return document;
     };
-    let snapshot = source.id === "elyug-planned-plovdiv-region" ? parsePlannedPower(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : source.id === "plovdiv-community-air" ? parsePlovdivAir(JSON.parse(new TextDecoder().decode(body)), new Date(now)) : VENUE_PROGRAMMES[source.id] ? await collectVenueProgramme(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
+    let snapshot = source.id === "vivacom-plovdiv-parking" ? parseVivacomParking(decodeHtml(body, response.headers.get("content-type"))) : source.id === "lohi-programme" ? parseLoHi(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : PARKING_VENUES[source.id] ? await collectParkingVenue(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
+      await new Promise(done => setTimeout(done, 1200));
+      const contact = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
+      if (!contact.response.ok || !contact.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        retryAfter = contact.response.headers.get("retry-after") ?? retryAfter;
+        await contact.response.body?.cancel(); throw new Error(`parking contact request failed (HTTP ${contact.response.status})`);
+      }
+      return decodeHtml(await bodyWithinLimit(contact.response), contact.response.headers.get("content-type"));
+    }) : source.id === "elyug-planned-plovdiv-region" ? parsePlannedPower(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : source.id === "plovdiv-community-air" ? parsePlovdivAir(JSON.parse(new TextDecoder().decode(body)), new Date(now)) : VENUE_PROGRAMMES[source.id] ? await collectVenueProgramme(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       if (!detail.response.ok || !detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
@@ -355,7 +369,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
     const failures = (previous.failures || 0) + 1;
     const checkedAt = new Date(now).toISOString();
     const state: SourceState = { ...previous, failures, lastCheckedAt: checkedAt, nextDueAt: dueAfter(source, failures, retryAfter, now) };
-    return { state, journal: { sourceId: source.id, checkedAt, httpStatus, outcome: "failed", durationMs: Date.now() - started, error: errorText(error), failures, nextDueAt: state.nextDueAt } };
+    return { state, journal: { sourceId: source.id, checkedAt, httpStatus, outcome: "failed", durationMs: Date.now() - started, error: errorText(error), ...(error instanceof CityResponseError ? { failureReason: error.reason } : {}), failures, nextDueAt: state.nextDueAt } };
   }
 }
 

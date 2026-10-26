@@ -1,0 +1,10 @@
+"use client";
+import { TrafficMap } from "../livepoint/traffic-map";
+import { useState, useMemo } from "react";
+import type { CityObservation } from "../../lib/city-guide/local-observations";
+export function CityParkingVenue({group}:{group:CityObservation}){
+ const [hours,setHours]=useState(2),[map,setMap]=useState(false),f=group.items[0]?.fields;
+ const point=useMemo(()=>f&&typeof f.mapLat==="number"&&typeof f.mapLon==="number"?{lat:f.mapLat,lon:f.mapLon}:null,[f]);if(!f)return null;
+ const price=Number(f.hourPrice),free=Number(f.freeHours),cost=Math.max(0,Math.ceil(hours-free))*price;
+ return <div className="city-parking-venue"><div className="city-parking-head"><div><small>ТАРИФА И ДОСТЪП</small><p>{String(f.address)}</p></div><div className="city-parking-rate"><strong>{price.toFixed(2)} €</strong><span>за започнат час след безплатния престой</span></div></div><div className="city-parking-facts"><div><span>Безплатно</span><strong>Първите {free*60} мин.</strong></div><div><span>Работно време</span><strong>{String(f.opens)}–{String(f.closes)}</strong></div><div><span>След плащане</span><strong>{Number(f.exitMinutes)} мин. за изход</strong></div></div><div className="city-parking-calculator"><label>Планиран престой<select value={hours} onChange={e=>setHours(Number(e.target.value))}>{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n} {n===1?"час":"часа"}</option>)}</select></label><div><small>Основна дневна тарифа</small><strong>{cost.toFixed(2)} €</strong></div><p>Сметката е за престой в работното време, без отстъпки и специални такси. Не показва свободни места.</p></div>{point?<div className="city-parking-location"><button onClick={()=>setMap(value=>!value)} aria-expanded={map}>{map?"Прибери картата":"Виж района на картата"}</button>{map?<TrafficMap className="city-road-map" focusPosition={point} showFlow={false} showMarkers={false} showMotion={false}/>:null}</div>:null}{f.conditions?<details><summary>Удължаване на безплатния престой</summary><p className="city-parking-conditions">{String(f.conditions)}</p></details>:null}</div>;
+}

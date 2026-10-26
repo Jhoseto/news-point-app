@@ -15,7 +15,8 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   const clean = path.replace(/^\/admin(?=\/|$)/, "").replace(/(\/auth\/reset-password)\/[^/]+/g, "$1/[redacted]").replace(/\/+$/, "") || "/";
   const isRead = method === "GET" || method === "HEAD";
   let area: AuditArea = "navigation";
-  if (clean.includes("/articles")) area = "articles";
+  if (clean.includes("/city-guide") || clean === "/moyat-plovdiv") area = "city";
+  else if (clean.includes("/articles")) area = "articles";
   else if (clean.includes("/breaking")) area = "breaking";
   else if (clean.includes("/social")) area = "social";
   else if (clean.includes("/arrangements") || clean === "/arrange") area = "arrangements";

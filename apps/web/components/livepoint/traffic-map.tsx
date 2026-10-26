@@ -112,7 +112,7 @@ export function TrafficMap({ className = "", focusPosition, incidents = [], onSe
       .then((data) => {
         if (cancelled) return;
         if (!data.key) throw new Error("map key missing");
-        if (data.center) setCenter(data.center);
+        if (data.center && !focusPosition) setCenter(data.center);
         setKey(data.key);
       })
       .catch(() => { if (!cancelled) setError("Картата не е достъпна в момента."); });
