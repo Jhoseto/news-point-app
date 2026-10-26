@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+const CityMobileDock = dynamic(() => import("./city-guide/city-mobile-dock").then(m => m.CityMobileDock), { ssr: false });
 
 const BottomNav = dynamic(() => import("./nav").then((m) => m.BottomNav), {
   ssr: false,
@@ -31,7 +33,8 @@ export type MobileRubricItem = { slug: string; name: string; path: string };
  * Phone chrome only. Mount after idle so LCP is not charged for bottom nav,
  * search sheet, pager and push prompt JS.
  */
-export function MobileChromeIsland({ rubrics }: { rubrics: MobileRubricItem[] }) {
+export function MobileChromeIsland({ rubrics, cityEnabled = false }: { rubrics: MobileRubricItem[]; cityEnabled?: boolean }) {
+  const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [latestOpen, setLatestOpen] = useState(false);
 
@@ -74,6 +77,7 @@ export function MobileChromeIsland({ rubrics }: { rubrics: MobileRubricItem[] })
   const closeLatest = useCallback(() => setLatestOpen(false), []);
 
   if (!ready) return null;
+  if (cityEnabled && (pathname === "/moyat-plovdiv" || pathname.startsWith("/moyat-plovdiv/"))) return <><MobileSearch showHeaderTrigger={false} /><MobileRubricsSheet items={rubrics} /><CityMobileDock /></>;
   return (
     <>
       <MobileSearch showHeaderTrigger={false} />

@@ -1,6 +1,6 @@
 import sharp, { type Sharp } from "sharp";
 
-export const UPLOADED_PHOTO_MAX_BYTES = 25 * 1024 * 1024;
+export { UPLOADED_PHOTO_MAX_BYTES } from "./upload-photo-limit";
 
 /**
  * Width ladder for responsive variants. The reader picks the smallest that

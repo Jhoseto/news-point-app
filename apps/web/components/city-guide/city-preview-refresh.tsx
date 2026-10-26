@@ -15,9 +15,12 @@ export function CityPreviewRefresh() {
       router.refresh();
     };
     const timer = window.setInterval(refreshIfDue, 60_000);
+    const reconnect = () => { lastRefresh = 0; refreshIfDue(); };
+    window.addEventListener("online", reconnect);
     document.addEventListener("visibilitychange", refreshIfDue);
     return () => {
       window.clearInterval(timer);
+      window.removeEventListener("online", reconnect);
       document.removeEventListener("visibilitychange", refreshIfDue);
     };
   }, [router]);

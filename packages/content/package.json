@@ -14,6 +14,7 @@
     "./disk": "./src/remote-disk.ts",
     "./audio": "./src/audio-processing.ts",
     "./upload-media": "./src/upload-media.ts",
+    "./upload-photo-limit": "./src/upload-photo-limit.ts",
     "./facebook": "./src/facebook-api.ts",
     "./make-social": "./src/make-social-api.ts",
     "./social-secrets": "./src/social-secrets.ts",

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MediaOption } from "@/lib/articles";
 import { browserMediaSrc } from "@/lib/media-src";
+import { acceptedDevicePhotos, uploadDevicePhoto } from "@/lib/device-photo-upload";
 import { withBase } from "@/lib/paths";
 import { imageFilesFromDataTransfer } from "./media-picker-paste";
 
@@ -48,6 +49,7 @@ export function MediaPicker({
   const [libraryError, setLibraryError] = useState("");
   const [libraryRetry, setLibraryRetry] = useState(0);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [optimizing, setOptimizing] = useState(false);
   const [error, setError] = useState("");
   const [uploadNames, setUploadNames] = useState<string[]>([]);
@@ -66,8 +68,12 @@ export function MediaPicker({
   const defaultUploadName = (file: File) => file.name.replace(/\.[^.]+$/, "").trim().slice(0, 240) || "Снимка";
 
   const setUploadFileList = (files: File[]) => {
-    setUploadFiles(files);
-    setUploadNames(files.map(defaultUploadName));
+    const { accepted, rejected } = acceptedDevicePhotos(files);
+    setUploadFiles(accepted);
+    setUploadNames(accepted.map(defaultUploadName));
+    setError(rejected.length === 1
+      ? `„${rejected[0]!.name}“ е над допустимите 25 MB и няма да бъде качена. Изберете по-малка снимка.`
+      : rejected.length > 1 ? `${rejected.length} снимки са над допустимите 25 MB и няма да бъдат качени.` : "");
   };
 
   /** Archive picks go through the same width-ladder pipeline as new uploads. */
@@ -93,16 +99,13 @@ export function MediaPicker({
     }
     uploadBusy.current = true;
     setUploading(true);
+    setUploadProgress(1);
     setError("");
     let completed = 0;
     try {
       for (const [index, file] of uploadFiles.entries()) {
-        const form = new FormData();
-        form.append("file", file);
-        form.append("alt", (uploadNames[index] ?? defaultUploadName(file)).trim().slice(0, 240));
-        const response = await fetch(withBase("/api/editor/media/upload/"), { method: "POST", body: form });
-        if (!response.ok) { const result = await response.json().catch(() => null); throw new Error(result?.error?.message ?? "Качването не беше успешно."); }
-        const item = await response.json() as MediaOption;
+        setUploadProgress(index + 1);
+        const item = await uploadDevicePhoto(file, uploadNames[index] ?? defaultUploadName(file));
         uploadedItems.current.push(item);
         completed++;
       }
@@ -115,7 +118,7 @@ export function MediaPicker({
       setUploadFiles((files) => files.slice(completed));
       setUploadNames((names) => names.slice(completed));
       setError(`${problem instanceof Error ? problem.message : "Качването не беше успешно."}${uploadedItems.current.length ? ` ${uploadedItems.current.length} снимки вече са качени; повторете само останалите.` : ""}`);
-    } finally { uploadBusy.current = false; setUploading(false); }
+    } finally { uploadBusy.current = false; setUploading(false); setUploadProgress(0); }
   };
 
   const saveRename = async (item: LibraryImage) => {
@@ -224,7 +227,6 @@ export function MediaPicker({
     if (!files.length || uploading) return;
     setMode("upload");
     setUploadFileList(multiple ? [...uploadFiles, ...files] : files.slice(0, 1));
-    setError("");
   };
 
   const insertMany = () => {
@@ -288,8 +290,8 @@ export function MediaPicker({
           }}
         >
         <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
-          <input data-help="Качва нов файл в медийната библиотека. След качване можете да го изберете за материала." id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => { setUploadFileList(Array.from(event.target.files ?? [])); setError(""); }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
-          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
+          <input data-help="Качва нов файл до 25 MB в медийната библиотека. След качване можете да го изберете за материала." id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => setUploadFileList(Array.from(event.target.files ?? []))} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
+          {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки до 25 MB, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
           {uploadPreviews.length ? (
             <div className="mt-4 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
               {uploadPreviews.map(({ file, url }, index) => (
@@ -327,7 +329,13 @@ export function MediaPicker({
           ) : null}
           <p className="mt-2 text-[0.6875rem] text-faint">Файлът се оптимизира на сървъра и се добавя в медийната библиотека с това име (търсене в архива).</p>
           {uploadedItems.current.length && !uploading ? <button data-help="Добавя избраната снимка или снимки в материала." type="button" className="np-btn np-btn-secondary mt-4 mr-2" onClick={() => { const items = uploadedItems.current; uploadedItems.current = []; if (multiple && onSelectMany) onSelectMany(items); else if (items[0]) (onUpload ?? onSelect)(items[0]); }}>Вмъкни вече качените</button> : null}
-          <button data-help="Качва и оптимизира избраните снимки, след което ги добавя към материала." type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 px-4 py-2 text-xs">{uploading ? "Качване…" : "Качи и избери"}</button>
+          <button data-help="Качва и оптимизира избраните снимки, след което ги добавя към материала." type="button" disabled={!uploadFiles.length || uploading} onClick={() => void upload()} className="np-btn np-btn-primary mt-4 inline-flex items-center justify-center gap-2 px-4 py-2 text-xs">
+            {uploading ? <span aria-hidden="true" className="size-4 shrink-0 rounded-full border-2 border-white/40 border-t-white motion-safe:animate-spin" /> : null}
+            {uploading ? "Качване…" : "Качи и избери"}
+          </button>
+          {uploading ? <div role="status" aria-live="polite" className="mt-4 rounded-xl border border-accent/30 bg-surface px-4 py-3 text-sm text-ink">
+            <strong>Качване и обработка{uploadFiles.length > 1 ? ` · снимка ${uploadProgress} от ${uploadFiles.length}` : ""}</strong><br />Моля, изчакайте потвърждението, преди да затворите страницата.
+          </div> : null}
         </div>
         </div>
       ) : null}

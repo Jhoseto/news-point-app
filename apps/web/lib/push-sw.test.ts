@@ -21,6 +21,18 @@ function worker() {
   return { self, caches, cache, fetch, fire };
 }
 describe("reader service worker", () => {
+  it.each(["transit", "calendar", "event-image"])("does not cache city API %s", async path => {
+    const w = worker();
+    const response = await w.fire("fetch", { request: { method: "GET", url: `https://reader.test/api/city-guide/${path}/`, mode: "cors" } });
+    expect(response).not.toHaveBeenCalled(); expect(w.caches.open).not.toHaveBeenCalled();
+  });
+  it("offline city navigation shows the offline screen instead of a cached current-looking guide", async () => {
+    const w = worker(); const offline = new Response("No connection");
+    w.fetch.mockRejectedValue(new Error("offline")); w.cache.match.mockResolvedValue(offline);
+    const response = await w.fire("fetch", { request: { method: "GET", url: "https://reader.test/moyat-plovdiv/saved/", mode: "navigate" } });
+    expect(await response.mock.calls[0]![0]).toBe(offline);
+    expect(w.cache.match).toHaveBeenCalledExactlyOnceWith("/offline/"); expect(w.cache.put).not.toHaveBeenCalled();
+  });
   it.each([null, { title: "legacy", url: "/article/", tag: "same" }, { web_push: 8030, notification: { title: "declarative", navigate: "/article/" } }, { title: 42, url: "javascript:alert(1)" }])("always displays a visible notification for %j", async (payload) => {
     const w = worker(); await w.fire("push", { data: { json: () => payload } });
     expect(w.self.registration.showNotification).toHaveBeenCalledOnce();

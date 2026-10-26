@@ -64,6 +64,7 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
           if (closing) setHoverReady(false);
           if (window.matchMedia("(max-width: 1350px)").matches) event.currentTarget.parentElement?.scrollIntoView({ inline: "center", block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
         }} />
+        {expanded ? <button type="button" className="city-photo-collapse" aria-label={`Прибери ${category.title}`} onClick={() => { setOpenSlug(null); setHoverReady(false); }}>−</button> : null}
         <div className="city-photo-panel-content">
           <div className="city-photo-panel-label"><small>{category.eyebrow}</small><h2>{category.title}</h2></div>
           <div className="city-photo-panel-details" id={detailsId}>
@@ -118,6 +119,7 @@ export function CityGuideHome({ newsByCategory, featuredStories, today, availabl
       <section id="temi" className="city-directory" aria-labelledby="city-topics-title">
         <div className="city-home-masthead"><div className="city-home-header"><h1 id="city-topics-title">Моят <em>Пловдив.</em></h1><p>Намери нужното. Избери къде да отидеш.</p></div>
         <div className="city-toolbar"><label className="city-search"><span aria-hidden="true">⌕</span><span className="sr-only">Търси тема</span><input ref={searchRef} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Търси например автобус, градина, театър..." /></label><span className="city-result-count" aria-live="polite">{visible.length} {visible.length === 1 ? "област" : "области"}</span></div></div>
+        {!normalized ? <div className="city-home-shortcuts" aria-label="Бърз достъп">{[{ slug: "transport", title: "Разписания", icon: "↗" }, { slug: "outages", title: "Аварии", icon: "ϟ" }, { slug: "nightlife", title: "Тази вечер", icon: "☾" }].filter(item => availableSlugs.includes(item.slug)).map(item => <Link href={`${ROOT}/${item.slug}/`} key={item.slug}><span aria-hidden="true">{item.icon}</span>{item.title}</Link>)}</div> : null}
         {visible.length ? <CityPhotoAccordion categories={visible} stories={newsByCategory} query={normalized} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} /> : <div className="city-empty"><strong>Няма справка с данни за това търсене.</strong><p>Опитай друга дума.</p><button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>Покажи наличните справки <Arrow /></button></div>}
         <p className="city-photo-credit">Нощна снимка: Kostadin Kamburov / CC BY-SA 4.0</p>
       </section>

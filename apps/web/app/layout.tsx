@@ -5,6 +5,7 @@ import "./globals.css";
 import { SiteBody, SiteHeader } from "@/components/site-chrome";
 import { JsonLd } from "@/components/json-ld";
 import { MobileChromeIsland } from "@/components/mobile-chrome-island";
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { DeferredChrome } from "@/components/deferred-chrome";
 import { ViewportShellGate } from "@/components/viewport-shell-gate";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
@@ -127,7 +128,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           >
             <SiteHeader />
             <SiteBody>{children}</SiteBody>
-            <MobileChromeIsland rubrics={mobileRubrics} />
+            <MobileChromeIsland rubrics={mobileRubrics} cityEnabled={cityGuideEnabled()} />
           </LivePointProvider>
         </PodcastRoot>
         <DeferredChrome />
