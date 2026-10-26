@@ -1,3 +1,6 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import { FOOTER_SOCIAL_LINKS, type SocialNetwork } from "@/lib/footer-social-links";
 import { FacebookIcon } from "./icons";
 import "./footer-social-links.css";
@@ -11,6 +14,8 @@ function SocialIcon({ network }: { network: SocialNetwork }) {
 }
 
 export function FooterSocialLinks() {
+  const pathname = usePathname();
+  if (pathname === "/moyat-plovdiv" || pathname.startsWith("/moyat-plovdiv/")) return null;
   return <section className="np-footer-social" aria-label="Социални мрежи">
     <h2>Социални мрежи</h2>
     <ul>{FOOTER_SOCIAL_LINKS.map(profile => {

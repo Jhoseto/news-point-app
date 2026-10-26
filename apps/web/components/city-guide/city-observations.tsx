@@ -1,0 +1,227 @@
+import Link from "next/link";
+import type { CityObservation } from "@/lib/city-guide/local-observations";
+import type { ArticleSummary } from "@/lib/queries";
+import { cityNewsUrl, cityStoryForEventTitle, cityStoryForTransitLine, type CityStory } from "@/lib/city-guide/news";
+import { nightEventStatusLabel } from "@/lib/city-guide/night-events";
+import { CityDogGallery } from "./city-dog-gallery";
+import { CitySocialServices } from "./city-social-services";
+import { CitySchoolDirectory } from "./city-school-directory";
+import { CityEcoPoints } from "./city-eco-points";
+import { CITY_PRESENTATION, readerCityGroups } from "@/lib/city-guide/presentation";
+import { CityWorkspace } from "./city-workspace";
+import { CityMunicipalRecords, MUNICIPAL_RECORD_SOURCES } from "./city-municipal-records";
+
+const SOURCE_NAMES: Record<string, string> = {
+  "plovdiv-transit": "Посочени цени за градски транспорт",
+  "plovdiv-livetransport-gtfs": "Автобусни линии за днешния ден",
+  "plovdiv-airport-flights": "Пристигащи и заминаващи полети",
+  "plovdiv-low-emission": "Нискоемисионна зона „Малък ринг“",
+  "plovdiv-parking-rules": "Правила за паркиране в Пловдив",
+  "plovdiv-parking-operator": "Контакти · паркиране и репатриране",
+  "vik-outages": "Водоснабдяване в Пловдив",
+  "evn-heating-outages": "Топлоподаване · аварии и ремонти",
+  "plovdiv-council": "Дневен ред на Общинския съвет",
+  "dz-vacancies": "Места в детски градини и ясли",
+  "dz-institutions": "Детски градини и ясли · общински каталог",
+  "first-grade-vacancies": "Първи клас · публикувани места",
+  "plovdiv-municipal-schools": "Общински училища · публикуван каталог",
+  "plovdiv-social-services": "Социални услуги · общински каталог",
+  "chistota-bulky-waste": "Едрогабаритни отпадъци и площадки",
+  "ecomap-containers": "Контейнери за разделно събиране",
+  "ecomap-collection-events": "Мобилни пунктове · публикуван календар",
+  "plovdiv-eco-signals": "Къде да подадем сигнал · общински контакти",
+  "plovdiv-transport-signals": "Транспорт, светофари и осветление · телефони за сигнали",
+  "plovdiv-theatre": "Програма на Драматичния театър",
+  "plovdiv-opera": "Програма на Опера Пловдив",
+  "club-code-upcoming": "Клубна програма",
+  "plovdiv-youth-centre": "Предстоящи дейности · Младежки център",
+  "epaygo-plovdiv-explicit": "Още събития с потвърден пловдивски адрес",
+  "plovdiv-dog-shelter": "Профили в общинския приют",
+  "plovdiv-adoption-guide": "Как да осиновя куче?",
+  "plovdiv-gallery-current": "Изложби в градската галерия",
+  "plovdiv-contacts": "Община и районни администрации",
+  "plovdiv-tax-notices": "Местни данъци · публикувани срокове",
+  "plovdiv-taxes": "Общински каси · адреси и работно време",
+  "plovdiv-auction-list": "Общински търгове · срокове от обявите",
+  "plovdiv-public-consultations": "Отворени обществени консултации",
+  "plovdiv-management-competitions": "Конкурси за управление · общински дружества",
+  "plovdiv-housing": "Общински жилища · публикуван ред",
+};
+const SOURCE_TOPICS: Record<string, string> = {
+  "plovdiv-transit": "Билети и карти",
+  "plovdiv-livetransport-gtfs": "Градски автобуси",
+  "plovdiv-airport-flights": "Извън града",
+  "plovdiv-low-emission": "Влизане в центъра",
+  "plovdiv-parking-rules": "Синя и зелена зона",
+  "plovdiv-parking-operator": "Репатриране",
+  "vik-outages": "Без вода",
+  "evn-heating-outages": "Парно и топла вода",
+  "plovdiv-council": "Общински съвет",
+  "dz-vacancies": "Детски градини и ясли",
+  "dz-institutions": "Училища и градини",
+  "first-grade-vacancies": "Първи клас",
+  "plovdiv-municipal-schools": "Училища и градини",
+  "plovdiv-social-services": "Социални услуги",
+  "chistota-bulky-waste": "Къде да изхвърля?",
+  "ecomap-containers": "Чистота и сметосъбиране",
+  "ecomap-collection-events": "Мобилни пунктове",
+  "plovdiv-eco-signals": "Комари и кърлежи",
+  "plovdiv-transport-signals": "Къде да подам сигнал?",
+  "plovdiv-theatre": "Театър",
+  "plovdiv-opera": "Опера и балет",
+  "club-code-upcoming": "Партита",
+  "plovdiv-youth-centre": "Младежки инициативи",
+  "epaygo-plovdiv-explicit": "Културен афиш",
+  "plovdiv-dog-shelter": "Осиновяване",
+  "plovdiv-adoption-guide": "Как да осиновя?",
+  "plovdiv-gallery-current": "Изложби",
+  "plovdiv-contacts": "Контакти и приемно време",
+  "plovdiv-tax-notices": "Местни данъци и такси",
+  "plovdiv-taxes": "Местни данъци и такси",
+  "plovdiv-auction-list": "Търгове и общински имоти",
+  "plovdiv-management-competitions": "Работа в общината",
+  "plovdiv-public-consultations": "Обществени обсъждания",
+  "plovdiv-housing": "Общински жилища",
+};
+
+const checkedFormat = new Intl.DateTimeFormat("bg-BG", {
+  day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia",
+});
+const eventDateFormat = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" });
+const eventTimeFormat = new Intl.DateTimeFormat("bg-BG", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" });
+
+function value(fields: Record<string, string | number>, key: string): string {
+  return String(fields[key] ?? "");
+}
+
+function clubStatus(fields: Record<string, string | number>): string {
+  return nightEventStatusLabel({
+    key: "", title: value(fields, "title"), startDate: value(fields, "startDate"),
+    endDate: value(fields, "endDate"), place: value(fields, "place"), status: value(fields, "status"),
+  }, new Date());
+}
+
+function flightStatus(status: string): string {
+  return ({ Scheduled: "По разписание", Arrived: "Пристигнал", Departed: "Излетял", Delayed: "Закъснява", Cancelled: "Отменен", Canceled: "Отменен" } as Record<string, string>)[status] ?? status;
+}
+
+const HOME_GROUPS = [
+  { sourceId: "plovdiv-livetransport-gtfs", title: "Автобусни линии днес", category: "transport", field: "line" },
+  { sourceId: "plovdiv-low-emission", title: "Малък ринг", category: "transport", field: "label" },
+  { sourceId: "plovdiv-transit", title: "Билети и карти", category: "transport", field: "label" },
+  { sourceId: "vik-outages", title: "Без вода", category: "outages", field: "place" },
+  { sourceId: "evn-heating-outages", title: "Топлоподаване", category: "outages", field: "address" },
+  { sourceId: "plovdiv-parking-rules", title: "Паркиране", category: "parking", field: "label" },
+  { sourceId: "plovdiv-parking-operator", title: "Паркиране · контакти", category: "parking", field: "label" },
+  { sourceId: "dz-vacancies", title: "Места в градини", category: "education", field: "school" },
+  { sourceId: "first-grade-vacancies", title: "Първи клас", category: "education", field: "school" },
+  { sourceId: "plovdiv-social-services", title: "Социални услуги", category: "municipality", field: "name" },
+  { sourceId: "chistota-bulky-waste", title: "Извозване и площадки", category: "environment", field: "label" },
+  { sourceId: "plovdiv-theatre", title: "На сцената", category: "culture", field: "title" },
+  { sourceId: "plovdiv-opera", title: "Опера и балет", category: "culture", field: "title" },
+  { sourceId: "epaygo-plovdiv-explicit", title: "Още събития", category: "culture", field: "title" },
+  { sourceId: "plovdiv-dog-shelter", title: "В приюта", category: "adopt", field: "dogId" },
+  { sourceId: "club-code-upcoming", title: "След залез", category: "nightlife", field: "title" },
+] as const;
+
+function homeRowDetails(sourceId: string, fields: Record<string, string | number>): string {
+  if (sourceId === "plovdiv-livetransport-gtfs") return value(fields, "destinations");
+  if (sourceId === "plovdiv-low-emission") return value(fields, "value");
+  if (sourceId === "vik-outages") return `${value(fields, "kind")} · ${value(fields, "restoration")}`;
+  if (sourceId === "evn-heating-outages") return `${value(fields, "issue")} · до ${value(fields, "deadline")}`;
+  if (sourceId === "plovdiv-parking-rules") return value(fields, "value");
+  if (sourceId === "plovdiv-parking-operator") return value(fields, "phone") || value(fields, "address");
+  if (sourceId === "plovdiv-transit") return value(fields, "price");
+  if (sourceId === "dz-vacancies") return `${value(fields, "ageGroup")} · ${value(fields, "total")} места`;
+  if (sourceId === "first-grade-vacancies") return `${value(fields, "district")} · ${value(fields, "places")} места след ${value(fields, "ranking")} класиране`;
+  if (sourceId === "plovdiv-municipal-schools") return `${value(fields, "district")} · ${value(fields, "address")}`;
+  if (sourceId === "plovdiv-social-services") return value(fields, "address") || "Адресът не е посочен";
+  if (sourceId === "chistota-bulky-waste") return fields.kind === "pickup" ? `Заявка: ${value(fields, "phone")}` : value(fields, "address");
+  if (sourceId === "plovdiv-opera") return `${eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · ${value(fields, "time")}`;
+  if (sourceId === "epaygo-plovdiv-explicit") return `${eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · ${value(fields, "time")} · ${value(fields, "place")}`;
+  if (sourceId === "plovdiv-dog-shelter") return `${value(fields, "sex")} · ${value(fields, "size")} · ${value(fields, "color")}`;
+  if (sourceId === "club-code-upcoming") {
+    const status = clubStatus(fields);
+    return `${status === "В ПРОГРАМАТА" ? "" : `${status} · `}${eventDateFormat.format(new Date(value(fields, "startDate")))} · ${eventTimeFormat.format(new Date(value(fields, "startDate")))}`;
+  }
+  return value(fields, "dateTime");
+}
+
+export function CityTodayBoard({ groups }: { groups: CityObservation[] }) {
+  const lanes = HOME_GROUPS.map(config => ({ ...config, group: groups.find(group => group.sourceId === config.sourceId) }))
+    .filter(({ group }) => group?.status === "observed" && group.items.length > 0);
+  if (!lanes.length) return null;
+  return <section className="city-today" aria-labelledby="city-today-title">
+    <div className="city-today-head"><div><p>ПЛОВДИВ / ПОСЛЕДНО НАБЛЮДАВАНО</p><h2 id="city-today-title">Конкретното <em>в града.</em></h2></div><span>Данните са от локален пилот; статусът им още се проверява.</span></div>
+    <div className="city-today-grid">{lanes.map(({ sourceId, title, category, field, group }) => <section className="city-today-lane" key={sourceId} aria-label={title}>
+      <div className="city-today-lane-head"><h3>{title}</h3><time dateTime={group!.checkedAt}>{checkedFormat.format(new Date(group!.checkedAt))}</time></div>
+      <div className="city-today-rows">{group!.items.slice(0, 3).map(item => <Link href={`/moyat-plovdiv/${category}/#${sourceId === "club-code-upcoming" ? "city-agenda-title" : `nablyudavani-${sourceId}`}`} key={item.key}><strong>{sourceId === "plovdiv-dog-shelter" ? `Профил №${value(item.fields, field)}` : sourceId === "plovdiv-livetransport-gtfs" ? `Линия ${value(item.fields, field)}` : value(item.fields, field)}</strong><span>{homeRowDetails(sourceId, item.fields)}</span></Link>)}</div>
+      <Link className="city-today-all" href={`/moyat-plovdiv/${category}/#${sourceId === "club-code-upcoming" ? "city-agenda-title" : `nablyudavani-${sourceId}`}`}>Всички наблюдавани записи <span aria-hidden="true">↗</span></Link>
+    </section>)}</div>
+  </section>;
+}
+
+function ObservationItem({ sourceId, itemKey, fields, story, articles }: { sourceId: string; itemKey: string; fields: Record<string, string | number>; story: CityStory | null; articles: ArticleSummary[] }) {
+  const eventTopic = sourceId === "plovdiv-theatre" ? "Театър" : sourceId === "plovdiv-opera" ? "Опера и балет" : sourceId === "plovdiv-gallery-current" ? "Изложби" : sourceId === "club-code-upcoming" ? "Пловдив OUT" : sourceId === "plovdiv-youth-centre" ? "Младежки инициативи" : sourceId === "epaygo-plovdiv-explicit" ? "Културен афиш" : null;
+  const eventStory = eventTopic ? cityStoryForEventTitle(value(fields, "title"), eventTopic, articles) : null;
+  const schoolRecord = sourceId === "first-grade-vacancies" || sourceId === "dz-vacancies" || sourceId === "plovdiv-municipal-schools";
+  const namedRecord = schoolRecord || sourceId === "plovdiv-management-competitions" || sourceId === "plovdiv-auction-list" || sourceId === "plovdiv-council" || sourceId === "vik-outages" || sourceId === "evn-heating-outages" || sourceId === "chistota-bulky-waste" || sourceId === "ecomap-collection-events" || sourceId === "plovdiv-eco-signals" || sourceId === "plovdiv-transport-signals" || sourceId === "plovdiv-airport-flights" || sourceId === "plovdiv-parking-operator";
+  const relatedStory = eventTopic ? eventStory : sourceId === "plovdiv-livetransport-gtfs" ? cityStoryForTransitLine(value(fields, "line"), articles) : namedRecord ? null : story;
+  const newsPath = relatedStory?.path ?? cityNewsUrl(sourceId === "plovdiv-livetransport-gtfs" ? `автобус ${value(fields, "line")} Пловдив` : eventTopic ? `${value(fields, "title")} Пловдив` : sourceId === "plovdiv-auction-list" ? `${value(fields, "title")} общински търг Пловдив` : schoolRecord ? `${value(fields, sourceId === "plovdiv-municipal-schools" ? "name" : "school")} ${sourceId === "first-grade-vacancies" ? "първи клас" : sourceId === "dz-vacancies" ? "детска градина" : "училище"} Пловдив` : sourceId === "plovdiv-council" ? `общински съвет ${value(fields, "docket")}` : sourceId === "vik-outages" ? `без вода ${value(fields, "place")} Пловдив` : sourceId === "evn-heating-outages" ? `топлоподаване ${value(fields, "address")} Пловдив` : sourceId === "chistota-bulky-waste" ? fields.kind === "pickup" ? "извозване едрогабаритни отпадъци Пловдив" : `площадка отпадъци ${value(fields, "district")} Пловдив` : sourceId === "plovdiv-parking-operator" ? `паркиране ${value(fields, "label")} Пловдив` : SOURCE_TOPICS[sourceId] ?? "Пловдив");
+  let content: React.ReactNode;
+  if (sourceId === "plovdiv-parking-rules") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "value")}</p><p>{value(fields, "detail")}</p></>;
+  else if (sourceId === "plovdiv-parking-operator") content = <><strong>{value(fields, "label")}</strong>{fields.phone ? <p className="city-observed-value">{value(fields, "phone")}</p> : null}{fields.address ? <p className="city-observed-value">{value(fields, "address")}</p> : null}{fields.note ? <p>{value(fields, "note")}</p> : null}</>;
+  else if (sourceId === "plovdiv-transit") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "price")}</p></>;
+  else if (sourceId === "plovdiv-low-emission") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">{value(fields, "value")}</p><details className="city-observed-detail"><summary>Формулировка от общината</summary><p>{value(fields, "detail")}</p></details></>;
+  else if (sourceId === "plovdiv-livetransport-gtfs") content = <><strong>Линия {value(fields, "line")}</strong>{value(fields, "name") !== `Линия ${value(fields, "line")}` ? <p>{value(fields, "name")}</p> : null}<dl><div><dt>Посочени посоки</dt><dd>{value(fields, "destinations")}</dd></div><div><dt>Ден от архива</dt><dd>{value(fields, "serviceDate")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-airport-flights") content = <><strong>{fields.direction === "arrival" ? "Пристигащ" : "Заминаващ"} полет {value(fields, "flight")}</strong><p className="city-observed-value">{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · {value(fields, "time")}</p><dl><div><dt>{fields.direction === "arrival" ? "От" : "За"}</dt><dd>{value(fields, "route")}</dd></div><div><dt>Статус</dt><dd>{flightStatus(value(fields, "status"))}</dd></div>{fields.note ? <div><dt>Уточнение</dt><dd>{value(fields, "note")}</dd></div> : null}</dl></>;
+  else if (sourceId === "vik-outages") content = <><strong>{value(fields, "place")}</strong><p>{value(fields, "kind")}</p><dl><div><dt>Засегнати</dt><dd>{value(fields, "affected")}</dd></div><div><dt>Посочено време</dt><dd>{value(fields, "restoration")}</dd></div></dl></>;
+  else if (sourceId === "evn-heating-outages") content = <><strong>{value(fields, "address")}</strong><p>{value(fields, "issue")}</p><dl><div><dt>Вид</dt><dd>{fields.kind === "planned" ? "Планирано прекъсване" : "Повреда"}</dd></div><div><dt>От</dt><dd>{value(fields, "start")}</dd></div><div><dt>Публикувано до</dt><dd>{value(fields, "end")}</dd></div><div><dt>Посочен срок</dt><dd>{value(fields, "deadline")}</dd></div></dl></>;
+  else if (sourceId === "dz-vacancies") content = <><strong>{value(fields, "school")}</strong><p>{value(fields, "ageGroup")}</p><dl><div><dt>Публикувани места</dt><dd>{value(fields, "total")}</dd></div><div><dt>Класиране</dt><dd>{value(fields, "rankingId")}</dd></div></dl></>;
+  else if (sourceId === "first-grade-vacancies") content = <><strong>{value(fields, "school")}</strong><p>{value(fields, "district")} · {value(fields, "schoolType")}</p><dl><div><dt>Публикувани места</dt><dd>{value(fields, "places")}</dd></div><div><dt>От тях със СОП</dt><dd>{value(fields, "sopPlaces")}</dd></div><div><dt>Паралелки с места</dt><dd>{value(fields, "classes")}</dd></div><div><dt>Класиране</dt><dd>{value(fields, "ranking")} · {value(fields, "year")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-municipal-schools") content = <><strong>{value(fields, "name")}</strong><p>{value(fields, "type")} · район {value(fields, "district")}</p><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div><div><dt>Публикуван телефон</dt><dd>{value(fields, "phone")}</dd></div></dl></>;
+  else if (sourceId === "chistota-bulky-waste") content = fields.kind === "pickup" ? <><strong>{value(fields, "label")}</strong><dl><div><dt>Телефон за заявка</dt><dd>{value(fields, "phone")}</dd></div><div><dt>Публикувано</dt><dd>{value(fields, "published")}</dd></div></dl><details className="city-observed-detail"><summary>Условия за извозване</summary><p>{value(fields, "instruction")}</p><p>{value(fields, "exclusions")}</p></details></> : <><strong>{value(fields, "label")}</strong><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div><div><dt>Посещение и контакт</dt><dd>{value(fields, "contact")}</dd></div><div><dt>Публикувано</dt><dd>{value(fields, "published")}</dd></div></dl><details className="city-observed-detail"><summary>Посочени отпадъци</summary><p>{value(fields, "accepted")}</p></details></>;
+  else if (sourceId === "ecomap-collection-events") content = <><strong>{value(fields, "title")}</strong><p className="city-observed-value">{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))}</p><p>{value(fields, "details")}</p></>;
+  else if (sourceId === "plovdiv-eco-signals" || sourceId === "plovdiv-transport-signals") content = <><strong>{value(fields, "label")}</strong><p>{value(fields, "reason")}</p><p className="city-observed-value">{value(fields, "phone")}</p></>;
+  else if (sourceId === "plovdiv-council") content = <><strong>Точка {value(fields, "docket")}</strong><p>Публикувана в дневния ред; това не е прието решение.</p></>;
+  else if (sourceId === "plovdiv-opera") content = <><strong>{value(fields, "title")}</strong><p>{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · {value(fields, "time")}</p><dl><div><dt>Място</dt><dd>{value(fields, "location")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-theatre") content = <><strong>{value(fields, "title")}</strong><p>{value(fields, "dateTime")}</p></>;
+  else if (sourceId === "epaygo-plovdiv-explicit") content = <><strong>{value(fields, "title")}</strong><p>{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · {value(fields, "time")}</p><dl><div><dt>Място</dt><dd>{value(fields, "place")}</dd></div><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div></dl></>;
+  else if (sourceId === "club-code-upcoming") content = <><strong>{value(fields, "title")}</strong><p>{eventDateFormat.format(new Date(value(fields, "startDate")))} · {eventTimeFormat.format(new Date(value(fields, "startDate")))}</p><dl><div><dt>Място</dt><dd>{value(fields, "place")}</dd></div>{fields.price ? <div><dt>Посочена цена</dt><dd>{value(fields, "price")} евро</dd></div> : null}<div><dt>Статус</dt><dd>{clubStatus(fields)}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-youth-centre") content = <><strong>{value(fields, "title")}</strong><p className="city-observed-value">{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))}{fields.endDate !== fields.date ? ` – ${eventDateFormat.format(new Date(`${value(fields, "endDate")}T12:00:00Z`))}` : ""}{fields.time ? ` · ${value(fields, "time")}` : ""}</p><dl><div><dt>Място</dt><dd>{value(fields, "place")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-dog-shelter") content = <><strong>Профил №{value(fields, "dogId")}</strong><p>{value(fields, "description")}</p><dl><div><dt>Порода</dt><dd>{value(fields, "breed")}</dd></div><div><dt>Пол</dt><dd>{value(fields, "sex")}</dd></div><div><dt>Размер</dt><dd>{value(fields, "size")}</dd></div><div><dt>Цвят</dt><dd>{value(fields, "color")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-adoption-guide") content = <><strong>{value(fields, "label")}</strong><p>{value(fields, "detail")}</p></>;
+  else if (sourceId === "plovdiv-gallery-current") content = <><strong>{value(fields, "title")}</strong><p>{eventDateFormat.format(new Date(`${value(fields, "startDate")}T12:00:00Z`))} – {eventDateFormat.format(new Date(`${value(fields, "endDate")}T12:00:00Z`))}</p><dl><div><dt>Зала</dt><dd>{value(fields, "venue")}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-contacts") content = <><strong>{value(fields, "label")}</strong><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div>{fields.phone ? <div><dt>Телефони</dt><dd>{value(fields, "phone")} · {value(fields, "secondPhone")}</dd></div> : null}</dl></>;
+  else if (sourceId === "plovdiv-tax-notices") content = <><strong>{value(fields, "label")}</strong><p className="city-observed-value">До {eventDateFormat.format(new Date(`${value(fields, "dueDate")}T12:00:00Z`))}</p></>;
+  else if (sourceId === "plovdiv-auction-list") content = <><strong>{value(fields, "title")}</strong><dl><div><dt>Документи до</dt><dd>{eventDateFormat.format(new Date(`${value(fields, "deadline")}T12:00:00Z`))}</dd></div><div><dt>Търг на</dt><dd>{eventDateFormat.format(new Date(`${value(fields, "auctionDate")}T12:00:00Z`))}</dd></div><div><dt>Обявено</dt><dd>{eventDateFormat.format(new Date(`${value(fields, "published")}T12:00:00Z`))}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-management-competitions") content = <><strong>{value(fields, "company")}</strong><p>Конкурс за управление</p><p className="city-observed-value">Кандидатстване до {eventDateFormat.format(new Date(`${value(fields, "deadline")}T12:00:00Z`))} · {value(fields, "time")}</p><dl><div><dt>Подаване на документи</dt><dd>{value(fields, "place")}</dd></div><div><dt>Обявено</dt><dd>{eventDateFormat.format(new Date(`${value(fields, "published")}T12:00:00Z`))}</dd></div></dl></>;
+  else if (sourceId === "plovdiv-public-consultations") content = <><strong>{value(fields, "title")}</strong><p className="city-observed-value">Становища до {eventDateFormat.format(new Date(`${value(fields, "deadline")}T12:00:00Z`))}</p><dl><div><dt>Открита</dt><dd>{eventDateFormat.format(new Date(`${value(fields, "opened")}T12:00:00Z`))}</dd></div><div><dt>Номер</dt><dd>{value(fields, "number")}</dd></div><div><dt>Посочен имейл</dt><dd>{value(fields, "email")}</dd></div></dl><details className="city-observed-detail"><summary>Начини за изпращане на становище</summary>{value(fields, "ways").split("\n").map((way, index) => <p key={index}>{way}</p>)}</details></>;
+  else if (sourceId === "plovdiv-housing") content = <><strong>{value(fields, "title")}</strong><p>{value(fields, "intro")}</p><details className="city-observed-detail"><summary>Условия и ред за кандидатстване</summary>{value(fields, "body").split("\n").slice(1).map((paragraph, index) => <p key={index}>{paragraph}</p>)}</details></>;
+  else if (sourceId === "plovdiv-taxes") content = <><strong>{value(fields, "label")}</strong><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div><div><dt>Публикувано работно време</dt><dd>{value(fields, "hours")}</dd></div></dl></>;
+  else return null;
+  const itemNewsPath = sourceId === "plovdiv-management-competitions" ? cityNewsUrl(`${value(fields, "company")} конкурс управление Пловдив`) : sourceId === "plovdiv-public-consultations" ? cityNewsUrl(`${value(fields, "title")} Пловдив`) : sourceId === "ecomap-collection-events" ? cityNewsUrl(`${value(fields, "title")} Пловдив`) : sourceId === "plovdiv-eco-signals" || sourceId === "plovdiv-transport-signals" ? cityNewsUrl(`${value(fields, "reason")} Пловдив`) : sourceId === "plovdiv-airport-flights" ? cityNewsUrl(`летище Пловдив ${value(fields, "route")}`) : newsPath;
+  return <article className="city-observed-item" id={`city-record-${sourceId}-${itemKey}`}>{content}<Link href={itemNewsPath} prefetch={false} className="city-observed-news">{eventStory ? `За събитието: ${eventStory.title}` : eventTopic ? "Търси новини за събитието" : sourceId === "plovdiv-livetransport-gtfs" ? relatedStory ? `По линията: ${relatedStory.title}` : `Търси новини за линия ${value(fields, "line")}` : relatedStory ? `По темата: ${relatedStory.title}` : "Новини по темата в NewsPoint"}<span aria-hidden="true">↗</span></Link></article>;
+}
+
+function ObservationGroup({ group, story, articles }: { group: CityObservation; story: CityStory | null; articles: ArticleSummary[] }) {
+  const meta = CITY_PRESENTATION[group.sourceId];
+  const name = meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка';
+  return <article className="city-observed-group" id={`nablyudavani-${group.sourceId}`} data-source={group.sourceId}>
+    <div className="city-observed-group-head"><div><p className="city-panel-eyebrow">{meta?.utility ? 'ПОЛЕЗЕН КОНТАКТ' : 'В ТВОЯ ГРАД'}</p><h3>{name}</h3><p className="city-panel-description">{meta?.description}</p></div><span className="city-panel-total" title="Брой записи в тази справка">{group.items.length}</span></div>
+    {MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityMunicipalRecords group={group} /> : group.sourceId === 'plovdiv-dog-shelter' ? <CityDogGallery items={group.items} story={story} /> : group.sourceId === 'plovdiv-social-services' ? <CitySocialServices items={group.items} /> : group.sourceId === 'plovdiv-municipal-schools' ? <CitySchoolDirectory items={group.items} /> : group.sourceId === 'dz-institutions' ? <CitySchoolDirectory items={group.items} kind="childcare" /> : group.sourceId === 'ecomap-containers' ? <CityEcoPoints items={group.items} /> : <>
+      <div className="city-observed-grid">{group.items.slice(0, 8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div>
+      {group.items.length > 8 ? <details className="city-observed-more"><summary>Покажи още {group.items.length - 8}</summary><div className="city-observed-grid">{group.items.slice(8).map(item => <ObservationItem key={item.key} sourceId={group.sourceId} itemKey={item.key} fields={item.fields} story={story} articles={articles} />)}</div></details> : null}
+    </>}
+    <div className="city-panel-footer"><time dateTime={group.checkedAt}>Обновено {checkedFormat.format(new Date(group.checkedAt))}</time><details className="city-data-note"><summary>Какво обхваща справката?</summary><p>{meta?.note ?? 'Показани са данните от последната успешна проверка. Няма потвърждение, че са обхванати всички промени.'}</p></details></div>
+  </article>;
+}
+
+export function CityObservedData({ categorySlug, groups, stories, articles }: { categorySlug: string; groups: CityObservation[]; stories: Record<string, CityStory | null>; articles: ArticleSummary[] }) {
+  const visible = readerCityGroups(groups);
+  if (!visible.length) return null;
+  return <CityWorkspace sections={visible.map(group => {
+    const meta = CITY_PRESENTATION[group.sourceId];
+    return { id: group.sourceId, title: meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка', description: meta?.description ?? '', utility: !!meta?.utility, count: group.items.length, content: <ObservationGroup group={group} story={stories[categorySlug === 'municipality' && group.sourceId === 'plovdiv-eco-signals' ? 'Къде да подам сигнал?' : SOURCE_TOPICS[group.sourceId] ?? ''] ?? null} articles={articles} /> };
+  })} />;
+}

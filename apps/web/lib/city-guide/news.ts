@@ -90,7 +90,7 @@ const OUT_QUERIES: Record<string, string> = {
 
 const OUT_STORY_TITLE = /концерт|(?:^|[^а-я])опера(?:та)?(?=[^а-я]|$)|балет|постановк|спектак|фестивал|изложб|театралн|джаз|музикалн.*събит|музика на живо|диджей|\bDJ\b/i;
 const TIME_BOUND_TITLE = /днес|тази вечер|утре|този уикенд/i;
-const EVENT_TOPICS = new Set(["Къде да изхвърля?", "Мобилни пунктове", "Занимания за деца", "Студентски общности", "Театър", "Опера и балет", "Концерти", "Фестивали", "Изложби", "За деца", "Литература", "Спорт", "Пловдив OUT"]);
+const EVENT_TOPICS = new Set(["Къде да изхвърля?", "Мобилни пунктове", "Занимания за деца", "Студентски общности", "Театър", "Опера и балет", "Концерти", "Фестивали", "Изложби", "За деца", "Литература", "Спорт", "Младежки инициативи", "Пловдив OUT", "Културен афиш"]);
 const EVENT_MONTHS: Record<string, number> = { януари: 1, февруари: 2, март: 3, април: 4, май: 5, юни: 6, юли: 7, август: 8, септември: 9, октомври: 10, ноември: 11, декември: 12 };
 const EVENT_DATE_TITLE = /(?:^|\D)(\d{1,2})\s+(януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)(?:\s+(20\d{2}))?/i;
 const EVENT_NEWS_MAX_AGE_MS = 30 * 86_400_000;
@@ -157,6 +157,36 @@ export function cityStoryForCategory(topics: readonly string[], articles: Articl
   candidates.sort((a, b) => b.score - a.score || b.article.publishedAt.getTime() - a.article.publishedAt.getTime()
     || a.article.id.localeCompare(b.article.id));
   return candidates[0] ? toCityStory(candidates[0].article) : null;
+}
+
+/** Link a programme row to a story only when its distinctive title is in the headline. */
+export function cityStoryForEventTitle(title: string, topic: "Театър" | "Опера и балет" | "Изложби" | "Младежки инициативи" | "Пловдив OUT" | "Културен афиш", articles: ArticleSummary[], now = new Date()): CityStory | null {
+  const terms = [...new Set((title.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(term => term.length >= 5))];
+  if (!terms.length) return null;
+  const context = topic === "Театър" ? /театър|театралн|постановк|спектак/u : topic === "Опера и балет" ? /опера|балет/u : topic === "Изложби" ? /изложб|галери/u : null;
+  const candidates = articles.filter(article => {
+    if (!eligibleStory(article, now, topic)) return false;
+    if (context && !context.test(article.title.toLocaleLowerCase("bg"))) return false;
+    const headline = new Set(article.title.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []);
+    return terms.every(term => headline.has(term));
+  });
+  const match = rankStories(candidates, title, now)[0];
+  return match ? toCityStory(match) : null;
+}
+
+/** Require both the exact route number and bus context in a recent local headline. */
+export function cityStoryForTransitLine(line: string, articles: ArticleSummary[], now = new Date()): CityStory | null {
+  if (!/^\d{1,3}$/u.test(line)) return null;
+  const routeNumber = new RegExp(`(?:^|[^\\p{L}\\p{N}])${line}(?!\\d)`, "u");
+  const candidates = articles.filter(article => {
+    const title = article.title.toLocaleLowerCase("bg");
+    const local = /пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`);
+    return local && /автобус|градски транспорт/iu.test(title) && /линия|маршрут/iu.test(title)
+      && routeNumber.test(title) && now.getTime() - article.publishedAt.getTime() <= 45 * 86_400_000
+      && eligibleStory(article, now);
+  });
+  const match = rankStories(candidates, `автобус линия ${line} Пловдив`, now)[0];
+  return match ? toCityStory(match) : null;
 }
 
 export function cityOutStories(articles: ArticleSummary[], limit = 3, now = new Date()): CityStory[] {

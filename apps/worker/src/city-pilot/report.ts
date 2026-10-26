@@ -10,6 +10,7 @@ type Run = {
   error?: string;
   itemCount?: number;
   changes?: { added: string[]; changed: string[]; missing: string[] };
+  expired?: string[];
 };
 
 const outputDir = resolve(process.env.CITY_PILOT_OUTPUT_DIR || resolve(import.meta.dirname, "../../../../tests/reports/city-source-pilot"));
@@ -36,7 +37,8 @@ function summarize(runs: Run[]) {
     lastItemCount: [...successes].at(-1)?.itemCount ?? null,
     editsObserved: sorted.reduce((sum, run) => sum + (run.changes?.changed.length ?? 0), 0),
     provisionalMissingObserved: sorted.reduce((sum, run) => sum + (run.changes?.missing.length ?? 0), 0),
-    decision: recentBlock ? "blocked_on_source_access" : spanHours < 168 ? "collecting" : "manual_lifecycle_review_required",
+    datedExpirationsObserved: sorted.reduce((sum, run) => sum + (run.expired?.length ?? 0), 0),
+    decision: !first ? "not_started" : recentBlock ? "blocked_on_source_access" : spanHours < 168 ? "collecting" : "manual_lifecycle_review_required",
   };
 }
 

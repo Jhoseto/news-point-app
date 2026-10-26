@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArticleSummary } from "../queries";
 import { CITY_CATEGORIES, OUT_TOPICS } from "./catalog";
-import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForTopic } from "./news";
+import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine } from "./news";
 
 const article = (id: string, title: string): ArticleSummary => ({
   id, path: `/news/${id}/`, title, excerpt: "", authorName: "NewsPoint.bg",
@@ -9,6 +9,16 @@ const article = (id: string, title: string): ArticleSummary => ({
 });
 
 describe("city guide news links", () => {
+  it("links a bus line only to a recent local story naming that exact line", () => {
+    const now = new Date("2026-10-25T10:00:00Z");
+    const pool = [
+      article("other", "Автобусна линия 124 променя маршрута си в Пловдив"),
+      article("unrelated", "Тролейбусна линия 24 в София"),
+      article("match", "Автобусна линия 24 с нов маршрут в Пловдив"),
+    ];
+    expect(cityStoryForTransitLine("24", pool, now)?.path).toBe("/news/match/");
+    expect(cityStoryForTransitLine("25", pool, now)).toBeNull();
+  });
   it("links a topic to a published headline with a specific subject signal", () => {
     const result = cityStoryForTopic("Синя и зелена зона", [
       article("unrelated", "Нови светлини в Пловдив"),
@@ -84,6 +94,19 @@ describe("city guide news links", () => {
     expect(cityStoryForTopic("Синя и зелена зона", [older], now)?.path).toBe("/news/older/");
     expect(cityStoryForTopic("Синя и зелена зона", [older, newer], now)?.path).toBe("/news/newer/");
     expect(cityStoryForCategory(["Синя и зелена зона", "Паркинги"], [older, newer], now)?.path).toBe("/news/newer/");
+  });
+
+  it("links an individual performance only to a headline naming that performance", () => {
+    const now = new Date("2026-10-25T10:00:00Z");
+    const articles = [
+      article("other", "Премиера на друга постановка в театъра"),
+      article("event", "Театърът в Пловдив представя Елизабет или Кралицата Девственица"),
+      article("restaurant", "Ресторант Турандот отваря в Пловдив"),
+      article("opera", "Опера Пловдив представя Турандот"),
+    ];
+    expect(cityStoryForEventTitle("ЕЛИЗАБЕТ или КРАЛИЦАТА ДЕВСТВЕНИЦА", "Театър", articles, now)?.path).toBe("/news/event/");
+    expect(cityStoryForEventTitle("Турандот", "Опера и балет", articles, now)?.path).toBe("/news/opera/");
+    expect(cityStoryForEventTitle("Несъществуващ спектакъл", "Театър", articles, now)).toBeNull();
   });
 
   it("keeps Night Plovdiv in the same category catalog", () => {

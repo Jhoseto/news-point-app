@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityGuideHome } from "@/components/city-guide/city-guide";
+import { CityTodayBoard } from "@/components/city-guide/city-observations";
+import { CityLocalNav } from "@/components/city-guide/city-local-nav";
 import { CITY_CATEGORIES } from "@/lib/city-guide/catalog";
+import { loadCityObservations } from "@/lib/city-guide/local-observations";
+import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
 import { cityStoryForCategory, type CityStory } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
@@ -12,13 +16,29 @@ export const metadata: Metadata = {
 
 export default async function CityGuidePage() {
   if (process.env.NODE_ENV !== "development") notFound();
-  const articles = await loadCityArticlePool();
+  const [articles, transport, outages, parking, municipality, education, environment, culture, adoption, nightlife] = await Promise.all([
+    loadCityArticlePool(),
+    loadCityObservations("transport"),
+    loadCityObservations("outages"),
+    loadCityObservations("parking"),
+    loadCityObservations("municipality"),
+    loadCityObservations("education"),
+    loadCityObservations("environment"),
+    loadCityObservations("culture"),
+    loadCityObservations("adopt"),
+    loadCityObservations("nightlife"),
+  ]);
   const newsByCategory: Record<string, CityStory | null> = {};
+  const groupsByCategory = { transport, parking, outages, municipality, education, environment, culture, adopt: adoption, nightlife };
+  const availableTopicsByCategory = Object.fromEntries(CITY_CATEGORIES.map(category => [category.slug, cityAvailableTopics(category.slug, groupsByCategory[category.slug as keyof typeof groupsByCategory])]));
+  const activeTopicsByCategory = Object.fromEntries(CITY_CATEGORIES.map(category => [category.slug, (availableTopicsByCategory[category.slug] ?? []).map(topic => topic.title)]));
+  const topicHrefByCategory = Object.fromEntries(CITY_CATEGORIES.map(category => [category.slug, Object.fromEntries((availableTopicsByCategory[category.slug] ?? []).map(topic => [topic.title, topic.href]))]));
+  const availableSlugs = CITY_CATEGORIES.filter(category => activeTopicsByCategory[category.slug]?.length).map(category => category.slug);
   for (const category of CITY_CATEGORIES) {
-    newsByCategory[category.slug] = cityStoryForCategory(category.topics.map(topic => topic.title), articles);
+    newsByCategory[category.slug] = cityStoryForCategory(activeTopicsByCategory[category.slug] ?? [], articles);
   }
   const featuredOrder = ["transport", "parking", "environment", "outages", "culture", "education", "municipality", "adopt"];
   const featuredStories = [...new Map(featuredOrder.map(slug => newsByCategory[slug]).filter((story): story is CityStory => !!story)
     .map(story => [story.path, story])).values()].slice(0, 3);
-  return <CityGuideHome newsByCategory={newsByCategory} featuredStories={featuredStories} />;
+  return <><CityLocalNav availableSlugs={availableSlugs} /><CityGuideHome availableSlugs={availableSlugs} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} newsByCategory={newsByCategory} featuredStories={featuredStories} today={<CityTodayBoard groups={[...transport, ...outages, ...parking, ...municipality, ...education, ...environment, ...culture, ...adoption, ...nightlife]} />} /></>;
 }

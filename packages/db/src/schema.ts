@@ -634,7 +634,58 @@ export const storyThemeSlugs = pgTable("story_theme_slugs", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => [index("story_theme_slugs_theme_idx").on(table.themeId)]);
 
+/** City-guide collection stays hidden until each source passes its review gate. */
+export const citySources = pgTable("city_sources", {
+  id: text("id").primaryKey(),
+  category: text("category").notNull(),
+  sourceUrl: text("source_url").notNull(),
+  format: text("format").notNull(),
+  refreshSeconds: integer("refresh_seconds").notNull().default(86400),
+  reviewState: text("review_state", { enum: ["candidate", "pilot", "accepted", "rejected"] }).notNull().default("pilot"),
+  publicationState: text("publication_state", { enum: ["hidden", "visible"] }).notNull().default("hidden"),
+  lastCheckAt: timestamp("last_check_at", { withTimezone: true }),
+  lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+export const citySourceChecks = pgTable("city_source_checks", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  sourceId: text("source_id").notNull().references(() => citySources.id, { onDelete: "restrict" }),
+  checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
+  outcome: text("outcome", { enum: ["parsed", "unchanged", "unavailable"] }).notNull(),
+  httpStatus: smallint("http_status"),
+  itemCount: integer("item_count").notNull().default(0),
+  addedCount: integer("added_count").notNull().default(0),
+  changedCount: integer("changed_count").notNull().default(0),
+  missingCount: integer("missing_count").notNull().default(0),
+  detail: text("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [index("city_source_checks_recent_idx").on(table.sourceId, table.checkedAt)]);
+
+export const cityRecords = pgTable("city_records", {
+  sourceId: text("source_id").notNull().references(() => citySources.id, { onDelete: "restrict" }),
+  recordKey: text("record_key").notNull(),
+  fields: jsonb("fields").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  state: text("state", { enum: ["current", "missing"] }).notNull().default("current"),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull(),
+  missingSince: timestamp("missing_since", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, table => [primaryKey({ columns: [table.sourceId, table.recordKey] }), index("city_records_current_idx").on(table.sourceId, table.lastSeenAt)]);
+
+export const cityRecordVersions = pgTable("city_record_versions", {
+  id: bigint("id", { mode: "number" }).primaryKey().generatedAlwaysAsIdentity(),
+  sourceId: text("source_id").notNull(),
+  recordKey: text("record_key").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  fields: jsonb("fields").notNull(),
+  changeKind: text("change_kind", { enum: ["first", "changed", "missing", "returned"] }).notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
+});
+
 export const schemaTables = {
+  citySources, citySourceChecks, cityRecords, cityRecordVersions,
   breakingBulletins,
   articleRevisionSocial, socialConnections, socialPublications, socialOauthStates, socialDeletionReceipts,
   studioAuditLogs,
