@@ -18,6 +18,7 @@ import { CityWorkspace, type CityWorkspaceSection } from "./city-workspace";
 import { CityMunicipalRecords } from "./city-municipal-records";
 
 const SOURCE_NAMES: Record<string, string> = {
+  "balbok-plovdiv-campaigns": "Мобилни пунктове за опасни отпадъци",
   "vivacom-plovdiv-parking": "SMS паркиране · Vivacom",
   "plovdiv-transit": "Посочени цени за градски транспорт",
   "plovdiv-livetransport-gtfs": "Автобусни линии за днешния ден",
@@ -55,6 +56,7 @@ const SOURCE_NAMES: Record<string, string> = {
   "plovdiv-housing": "Общински жилища · публикуван ред",
 };
 const SOURCE_TOPICS: Record<string, string> = {
+  "balbok-plovdiv-campaigns": "Мобилни пунктове",
   "vivacom-plovdiv-parking": "Синя и зелена зона",
   "mall-plovdiv-parking": "Паркинги", "markovo-tepe-parking": "Паркинги",
   "elyug-planned-plovdiv-region": "Без ток",
@@ -133,6 +135,7 @@ function ObservationItem({ sourceId, itemKey, fields, story, articles }: { sourc
   else if (sourceId === "first-grade-vacancies") content = <><strong>{value(fields, "school")}</strong><p>{value(fields, "district")} · {value(fields, "schoolType")}</p><dl><div><dt>Публикувани места</dt><dd>{value(fields, "places")}</dd></div><div><dt>От тях със СОП</dt><dd>{value(fields, "sopPlaces")}</dd></div><div><dt>Паралелки с места</dt><dd>{value(fields, "classes")}</dd></div><div><dt>Класиране</dt><dd>{value(fields, "ranking")} · {value(fields, "year")}</dd></div></dl></>;
   else if (sourceId === "plovdiv-municipal-schools") content = <><strong>{value(fields, "name")}</strong><p>{value(fields, "type")} · район {value(fields, "district")}</p><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div><div><dt>Публикуван телефон</dt><dd>{value(fields, "phone")}</dd></div></dl></>;
   else if (sourceId === "chistota-bulky-waste") content = fields.kind === "pickup" ? <><strong>{value(fields, "label")}</strong><dl><div><dt>Телефон за заявка</dt><dd>{value(fields, "phone")}</dd></div><div><dt>Публикувано</dt><dd>{value(fields, "published")}</dd></div></dl><details className="city-observed-detail"><summary>Условия за извозване</summary><p>{value(fields, "instruction")}</p><p>{value(fields, "exclusions")}</p></details></> : <><strong>{value(fields, "label")}</strong><dl><div><dt>Адрес</dt><dd>{value(fields, "address")}</dd></div><div><dt>Посещение и контакт</dt><dd>{value(fields, "contact")}</dd></div><div><dt>Публикувано</dt><dd>{value(fields, "published")}</dd></div></dl><details className="city-observed-detail"><summary>Посочени отпадъци</summary><p>{value(fields, "accepted")}</p></details></>;
+  else if (sourceId === "balbok-plovdiv-campaigns") content = <><strong>{value(fields, "title")}</strong><p className="city-observed-value">{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))} · {value(fields, "startTime")}–{value(fields, "endTime")}</p>{fields.status !== "scheduled" ? <p role="status">{fields.status === "cancelled" ? "Отменена кампания" : "Отложена кампания"}</p> : null}<p>{value(fields, "address")}</p><p><strong>Приемат се:</strong> {value(fields, "accepted")}</p></>;
   else if (sourceId === "ecomap-collection-events") content = <><strong>{value(fields, "title")}</strong><p className="city-observed-value">{eventDateFormat.format(new Date(`${value(fields, "date")}T12:00:00Z`))}</p><p>{value(fields, "details")}</p></>;
   else if (sourceId === "plovdiv-eco-signals" || sourceId === "plovdiv-transport-signals") content = <><strong>{value(fields, "label")}</strong><p>{value(fields, "reason")}</p><p className="city-observed-value">{value(fields, "phone")}</p></>;
   else if (sourceId === "plovdiv-council") content = <><strong>Точка {value(fields, "docket")}</strong><p>Публикувана в дневния ред; това не е прието решение.</p></>;

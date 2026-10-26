@@ -10,6 +10,26 @@ const detail = (change = {}, description = "Врати: 20:00 · Начало: 2
 const listing = (date = "22 ноември 2026") => `<article><a href="/bg/events/fixture-123">Fixture</a><span>${date}</span></article>`;
 
 describe("venue programmes", () => {
+  it("reads the id24 venue format without losing entity decoding or crossing venue identity", () => {
+    const listingHtml = '<article><a href="/spravochnik/events/123.html">Контролен афиш</a><span>22.11.2026 20:00</span></article>';
+    const listed = venueListing("goliamata-maritsa-programme", listingHtml)[0]!;
+    expect(listed).toEqual({ url: "https://www.plovdiv24.bg/spravochnik/events/123.html", date: "2026-11-22" });
+    const data = { ...event, url: listed.url, name: "А &amp; Б", description: "Сръбски хитове и купон.", location: { ...event.location, name: "Клуб Ресторант Голямата Марица" } };
+    const html = `<script type="application/ld+json">${JSON.stringify({ "@graph": [data] })}</script><div class="event-details"><span class="brief"><a>Клуб Ресторант Голямата Марица</a></span><span class="brief">22.11.2026г.</span><span class="brief">20:00 ч.</span></div>`;
+    expect(venueDetail("goliamata-maritsa-programme", html, listed)?.fields).toMatchObject({ title: "А & Б", eventKind: "party" });
+    expect(() => venueDetail("bushido-programme", html, listed)).toThrow(/venue/u);
+    const placeholder = html.replace("2026-11-22T20:00", "1970-01-01T02:00:00+02:00");
+    expect(venueDetail("goliamata-maritsa-programme", placeholder, listed)?.fields).toMatchObject({ date: "2026-11-22", time: "20:00", scheduleOrigin: "visible-details" });
+    for (const invalid of [placeholder.replace("22.11.2026г.", "23.11.2026г."), placeholder.replace("20:00 ч.", "Очаквайте"), html.replace("2026-11-22T20:00", "2026-11-23T20:00"), html.replace("2026-11-22T20:00", "2026-11-22T20:00+03:00")]) expect(() => venueDetail("goliamata-maritsa-programme", invalid, listed)).toThrow();
+  });
+  it("preserves nested programme paragraphs and only extracts an explicit fixed euro admission", () => {
+    const render = (price: string) => detail({ name: "Литературно-музикална вечер", location: { ...event.location, name: "Пиано бар Синатра Пловдив" } }, `</p><div><h2>Музика на живо</h2><p>Пловдивска програма.</p><div>💶 Вход ${price}</div><p>Условия за местата.</p></div><p>`);
+    const fields = venueDetail("bilet-sinatra", render("20 €"), entry)!.fields;
+    expect(fields.price).toBe(20); expect(fields.eventKind).toBe("live");
+    expect(fields.description).toContain("Пловдивска програма.\n\n💶 Вход 20 €\n\nУсловия за местата.");
+    expect(venueDetail("bilet-sinatra", render("0 €"), entry)!.fields.price).toBe(0);
+    for (const price of ["от 20 €", "20–30 €", "20 лв.", "20 € за маса", "20 €</div><div>Вход 30 €"]) expect(venueDetail("bilet-sinatra", render(price), entry)!.fields.price).toBeUndefined();
+  });
   it("links a dated venue card to its exact detail and keeps doors separate from show time", () => {
     expect(venueListing("bilet-beebop", listing())).toEqual([entry]);
     expect(venueDetail("bilet-beebop", detail(), entry)?.fields).toMatchObject({ date: "2026-11-22", time: "20:00", doorsTime: "20:00", performanceTime: "21:00", eventKind: "live" });
@@ -36,6 +56,7 @@ describe("venue programmes", () => {
   it("does not classify a venue description as a concert, or rock playlists as a live band", () => {
     const generic = detail({ name: "Business meeting" }, "Бизнес среща.") + '<section><div class="rich-text">Залата предлага концерти.</div></section>';
     expect(venueDetail("bilet-beebop", generic, entry)).toBeNull();
+    expect(venueDetail("bilet-beebop", detail({ name: "Business meeting" }, "Получете купон за отстъпка."), entry)).toBeNull();
     expect(venueDetail("bilet-beebop", detail({ name: "EMO/ROCK party" }, "Парти със стикери на групите и DJ."), entry)?.fields.eventKind).toBe("party");
     const tour = detail({}, "Концерт в Пловдив.</p><p>Шоуто в София е различно.</p><p>Вратите отварят в 19:00");
     const local = venueDetail("bilet-beebop", tour, entry)!;

@@ -1,5 +1,6 @@
 import { parseLoHi } from "./lohi-programme";
 import { parseVivacomParking } from "./sms-parking";
+import { collectBalbokCampaigns } from "./balbok-campaigns";
 import { guardCityResponse, CityResponseError } from "./response-guard";
 import { PARKING_VENUES, collectParkingVenue } from "./parking-venues";
 import { cityCollectionHealth } from "@newspoint/content/city-health";
@@ -169,7 +170,7 @@ function differences(before: Record<string, string>, after: Record<string, strin
 export async function runPilotSource(source: CandidateSource, previous: SourceState, now = Date.now(), requireSnapshot = false): Promise<{ state: SourceState; journal: Record<string, unknown>; snapshot?: PilotSnapshot }> {
   const started = Date.now();
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = source.id === "balbok-plovdiv-campaigns" || !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
@@ -208,7 +209,18 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       procedureDocuments.set(url, document);
       return document;
     };
-    let snapshot = source.id === "vivacom-plovdiv-parking" ? parseVivacomParking(decodeHtml(body, response.headers.get("content-type"))) : source.id === "lohi-programme" ? parseLoHi(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : PARKING_VENUES[source.id] ? await collectParkingVenue(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
+    let snapshot = source.id === "balbok-plovdiv-campaigns" ? await collectBalbokCampaigns(decodeHtml(body, response.headers.get("content-type")), async url => {
+      await new Promise(done => setTimeout(done, 1200));
+      const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
+      httpStatus = detail.response.status;
+      retryAfter = detail.response.headers.get("retry-after") ?? retryAfter;
+      try { guardCityResponse(detail.response); }
+      catch (error) { await detail.response.body?.cancel(); throw error; }
+      if (!detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        await detail.response.body?.cancel(); throw new Error("BalBok: unexpected article content type");
+      }
+      return decodeHtml(await bodyWithinLimit(detail.response), detail.response.headers.get("content-type"));
+    }, new Date(now)) : source.id === "vivacom-plovdiv-parking" ? parseVivacomParking(decodeHtml(body, response.headers.get("content-type"))) : source.id === "lohi-programme" ? parseLoHi(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : PARKING_VENUES[source.id] ? await collectParkingVenue(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
       await new Promise(done => setTimeout(done, 1200));
       const contact = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       if (!contact.response.ok || !contact.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {

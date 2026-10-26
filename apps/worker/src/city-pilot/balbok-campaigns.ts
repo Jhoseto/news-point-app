@@ -35,7 +35,9 @@ export function parseBalbokCampaign(html: string, url: string): PilotItem[] {
   const heading = clean(D.textContent(D.getElementsByTagName("h3", article)[0] ?? root));
   if (!calendarDate(published) || !/Пловдив/iu.test(heading)) throw new Error("BalBok: publication identity missing");
   const paragraphs = D.getElementsByTagName("p", article).map(p => clean(D.textContent(p))).filter(Boolean);
-  const acceptedList = D.getElementsByTagName("ul", article).find(ul => /живак|лекарства|бояджийски/iu.test(D.textContent(ul)));
+  const acceptedLists = D.getElementsByTagName("ul", article).filter(ul => /живак|лекарства|бояджийски/iu.test(D.textContent(ul)));
+  if (acceptedLists.length !== 1) throw new Error("BalBok: accepted waste categories ambiguous");
+  const acceptedList = acceptedLists[0];
   const accepted = acceptedList ? D.getElementsByTagName("li", acceptedList).map(li => clean(D.textContent(li))).filter(Boolean) : [];
   if (!accepted.length || accepted.length > 15) throw new Error("BalBok: accepted waste categories missing");
   const items: PilotItem[] = [];
@@ -53,7 +55,9 @@ export function parseBalbokCampaign(html: string, url: string): PilotItem[] {
     for (let next = index + 1; next < paragraphs.length && !/^Община\s+[^,]+,/iu.test(paragraphs[next]!); next++) section.push(paragraphs[next]!);
     const addresses = section.filter(p => /мобилни(ят|я)\s+(?:събирателен\s+)?пункт/iu.test(p) && /гр\.?\s*Пловдив/iu.test(p) && /ул\.|бул\.|пл\./iu.test(p));
     if (addresses.length !== 1) throw new Error("BalBok: unambiguous Plovdiv location missing");
-    const status = /отменен[аио]?|няма да се (?:проведе|състои)/iu.test(`${heading} ${section.join(" ")}`) ? "cancelled" : /отложен[аио]?/iu.test(`${heading} ${section.join(" ")}`) ? "postponed" : "scheduled";
+    const statusLines = [heading, ...section];
+    const explicitStatus = (word: string) => statusLines.some(line => new RegExp(`^(?:(?:кампанията|мобилният пункт)(?: в Пловдив)? (?:е )?)?${word}(?:[.!,:\\s]|$)`, "iu").test(line));
+    const status = explicitStatus("отменен[аио]?") || explicitStatus("няма да се (?:проведе|състои)") ? "cancelled" : explicitStatus("отложен[аио]?") ? "postponed" : "scheduled";
     const address = addresses[0]!;
     const fields = { title: "Мобилен пункт за опасни отпадъци", date, startTime, endTime, address, accepted: accepted.join("; "), published, status,
       details: `${startTime}–${endTime} ч. ${address}`, ...(status === "cancelled" ? { statusLabel: "Отменена кампания" } : status === "postponed" ? { statusLabel: "Отложена кампания" } : {}) };
@@ -69,6 +73,7 @@ export async function collectBalbokCampaigns(html: string, read: (url: string) =
   const identities = items.map(item => `${item.fields.date}|${item.fields.address}`);
   if (new Set(identities).size !== items.length) throw new Error("BalBok: duplicate campaign across announcements");
   const today = now.toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });
+  if (items.some(item => String(item.fields.published) > today)) throw new Error("BalBok: publication date is in the future");
   const clock = now.toLocaleTimeString("en-GB", { timeZone: "Europe/Sofia", hourCycle: "h23", hour: "2-digit", minute: "2-digit" });
   return { sourceId: "balbok-plovdiv-campaigns", completeness: "uncertain", limitations: ["Only Plovdiv-named announcements in the operator's current news listing. A valid empty result is not proof that no other collection campaigns exist. Removed records are not automatically cancelled."],
     items: items.filter(item => String(item.fields.date) > today || item.fields.date === today && String(item.fields.endTime) > clock) };

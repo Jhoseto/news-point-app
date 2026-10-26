@@ -20,6 +20,15 @@ function preview(sourceId: string, source: {
 }
 
 describe("local city observations", () => {
+  it("expires mobile campaigns in Sofia time and never hides an explicit cancellation as a scheduled campaign", () => {
+    const fields = { title: "Контролна кампания", address: "гр. Пловдив, бул. Тестов", accepted: "Лекарства", date: "2026-10-24", startTime: "08:30", endTime: "19:01", status: "cancelled" };
+    const select = (overrides = {}, at = now) => selectCityObservations("environment", preview("balbok-plovdiv-campaigns", { items: [{ key: "fixture", fields: { ...fields, ...overrides } }] }), at).find(group => group.sourceId === "balbok-plovdiv-campaigns")?.items ?? [];
+    expect(select()[0]?.fields.status).toBe("cancelled");
+    expect(select({}, new Date("2026-10-24T16:01:00Z"))).toEqual([]);
+    expect(select({ date: "2026-02-30" })).toEqual([]);
+    expect(select({ address: "гр. Сливен, бул. Тестов" })).toEqual([]);
+    expect(select({ accepted: "" })).toEqual([]);
+  });
   it("shows only published city power windows that have not expired, never county neighbours", () => {
     const row = { key: "fixture", fields: { address: "ГР. ПЛОВДИВ — ул. Тестова", startDate: "2026-10-24", endDate: "2026-10-24", startTime: "09:00", endTime: "20:00", kind: "planned" } };
     const read = (fields = row.fields) => selectCityObservations("outages", preview("elyug-planned-plovdiv-region", { items: [{ ...row, fields }] }), now)[0]?.items;

@@ -16,6 +16,7 @@ export type CandidateSource = {
 // Inventory from the two 2026-10-24 concept documents plus explicitly probed
 // alternatives. A URL here is not evidence of approved extraction or freshness.
 export const candidateSources: CandidateSource[] = [
+  { id: "balbok-plovdiv-campaigns", category: "environment", url: "https://www.balbok.com/bg/news", format: "html", pilot: true },
   { id: "vivacom-plovdiv-parking", category: "parking", url: "https://www.vivacom.bg/dopalnitelni-uslugi/zabavlenie/sms-parkirane", format: "html", pilot: true },
   { id: "lohi-programme", category: "events", url: LOHI_URL, format: "html", pilot: true },
   ...Object.entries(PARKING_VENUES).map(([id, config]) => ({ id, category: "parking" as const, url: config.url, format: "html" as const, pilot: true as const })),

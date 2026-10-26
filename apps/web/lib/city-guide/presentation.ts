@@ -6,6 +6,7 @@ type Presentation = { title: string; description: string; note: string; utility?
 export const MUNICIPAL_RECORD_SOURCES = new Set(["plovdiv-tax-notices", "plovdiv-public-consultations", "plovdiv-management-competitions", "plovdiv-auction-list", "plovdiv-housing"]);
 
 export const CITY_PRESENTATION: Record<string, Presentation> = {
+  "balbok-plovdiv-campaigns": { title: "Мобилни пунктове за опасни отпадъци", description: "Обявени дати, адреси, часове и какво можеш да предадеш.", note: "Показани са предстоящите кампании от проверените обяви. Не се приемат всички видове отпадъци.", order: 2 },
   "vivacom-plovdiv-parking": { title: "SMS паркиране · Vivacom", description: "Номер за заявка, цена за един час и потвърждение на плащането.", note: "Условия за клиенти на Vivacom. Справката не определя обхвата и работното време на зоната.", order: 1 },
   "mall-plovdiv-parking": { title: "Паркинг Mall Plovdiv", description: "Цена, безплатен престой, работно време и сметка за посещението.", note: "Основна тарифа на оператора; няма данни за свободни места. Нощувки, дълъг престой и специални такси са извън калкулатора.", order: 2 },
   "markovo-tepe-parking": { title: "Паркинг Марково Тепе", description: "Цена, безплатен престой, работно време и сметка за посещението.", note: "Основна тарифа на оператора; няма данни за свободни места. Престой след края на работното време се таксува отделно.", order: 3 },

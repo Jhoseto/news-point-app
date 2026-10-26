@@ -45,6 +45,14 @@ function localDay(date: Date): string {
 }
 
 function isRelevantRow(sourceId: string, fields: Record<string, string | number>, today: string, now: Date): boolean {
+  if (sourceId === "balbok-plovdiv-campaigns") {
+    const date = String(fields.date ?? ""), parsed = new Date(`${date}T12:00:00Z`);
+    const clock = now.toLocaleTimeString("en-GB", { timeZone: "Europe/Sofia", hourCycle: "h23", hour: "2-digit", minute: "2-digit" });
+    return ["title", "address", "accepted"].every(key => typeof fields[key] === "string" && String(fields[key]).trim().length > 0)
+      && /гр\.?\s*Пловдив/iu.test(String(fields.address)) && /^20\d{2}-\d{2}-\d{2}$/u.test(date) && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date
+      && [fields.startTime, fields.endTime].every(t => /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(String(t))) && String(fields.startTime) < String(fields.endTime)
+      && ["scheduled", "cancelled", "postponed"].includes(String(fields.status)) && (date > today || date === today && String(fields.endTime) > clock);
+  }
   if (sourceId === "vivacom-plovdiv-parking") return ["label", "value", "detail"].every(key => typeof fields[key] === "string" && String(fields[key]).trim().length > 0)
     && (fields.price === undefined || typeof fields.price === "number" && fields.price > 0 && fields.price <= 20 && fields.currency === "EUR");
   if (["mall-plovdiv-parking", "markovo-tepe-parking"].includes(sourceId)) return typeof fields.title === "string" && typeof fields.address === "string" && fields.address.includes("Пловдив")

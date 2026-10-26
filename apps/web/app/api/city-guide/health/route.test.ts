@@ -23,3 +23,11 @@ it("reports a stopped collector, failed source or malformed health file as unava
   read.mockResolvedValue("{}"); expect((await GET(request())).status).toBe(503);
   vi.stubEnv("CITY_GUIDE_STORAGE_DIR", ""); expect((await GET(request())).status).toBe(503);
 });
+it("never reports healthy for duplicated identities or contradictory aggregate status", async () => {
+  const duplicate = report(); duplicate.sources[1]!.id = duplicate.sources[0]!.id;
+  read.mockResolvedValue(JSON.stringify(duplicate)); expect((await GET(request())).status).toBe(503);
+  const unknown = report(); unknown.sources[0]!.id = "unknown-source";
+  read.mockResolvedValue(JSON.stringify(unknown)); expect((await GET(request())).status).toBe(503);
+  const inconsistent = report(); inconsistent.sources[0]!.status = "failed"; inconsistent.healthySources--;
+  read.mockResolvedValue(JSON.stringify(inconsistent)); expect((await GET(request())).status).toBe(503);
+});
