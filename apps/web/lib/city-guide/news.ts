@@ -14,6 +14,8 @@ type NewsRule = { query: string; title: RegExp };
 
 /** A match must be visible in a published headline. A broad shared city word is never enough. */
 const TOPIC_RULES: Record<string, NewsRule> = {
+  "Билети и карти": { query: "билети карти градски транспорт", title: /(?:билет|карт|тариф).*(?:градск.*транспорт|автобус)|(?:градск.*транспорт|автобус).*(?:билет|карт|тариф)/iu },
+  "Пропуск за нискоемисионната зона": { query: "нискоемисионна зона пропуски", title: /нискоемисион|пропуск.*малък ринг/iu },
   "Градски автобуси": { query: "автобуси", title: /автобусн.*(линия|маршрут|разписани|спирк)|автобус.*(линия|маршрут|разписани|спирк)|градски транспорт.*(линия|маршрут|разписани|спирк)|нов[аио]? (линия|маршрут|спирк).*автобус/i },
   "Къде е автобусът?": { query: "автобуси", title: /автобус.*(реално време|GPS|проследяван|местоположени)|(?:реално време|GPS|проследяван).*автобус/i },
   "Затворени улици": { query: "затворена улица", title: /затворен[аио]? улиц|ограничен[ио]е на движени|затваря.*улиц|обходен маршрут/i },
@@ -149,6 +151,40 @@ export function cityStoriesForTopics(topics: readonly string[], articles: Articl
   return Object.fromEntries(topics.map(topic => [topic, cityStoryForTopic(topic, articles, now)]));
 }
 
+/** Small, dated reading selection for the active screen; never a search fallback. */
+export function cityTopicStories(topics: readonly string[], articles: ArticleSummary[], now = new Date(), limit = 3): CityStory[] {
+  const scored = articles.flatMap(article => {
+    const age = now.getTime() - article.publishedAt.getTime();
+    if (!Number.isFinite(age) || age < 0 || age > 120 * 86_400_000 || !/пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`)) return [];
+    if (age > 30 * 86_400_000 && /свободн.*мест.*(?:градин|ясл)|(?:градин|ясл).*свободн.*мест|автобусн.*лини.*заради ремонт/iu.test(article.title)) return [];
+    const scores = topics.flatMap(topic => {
+      const rule = TOPIC_RULES[topic];
+      if (!rule || !rule.title.test(article.title) || !eligibleStory(article, now, topic)) return [];
+      // Outage headlines are useful for today's situation, not an old incident.
+      if (["Без вода", "Без ток", "Парно и топла вода"].includes(topic) && age > 2 * 86_400_000) return [];
+      if (age > 30 * 86_400_000 && (
+        topic === "Градски автобуси" && /заради ремонт|времен.*маршрут/iu.test(article.title)
+        || topic === "Детски градини и ясли" && /свободн.*мест|прием|класиран/iu.test(article.title)
+      )) return [];
+      return [storyScore(article, rule.query, now)];
+    });
+    return scores.length ? [{ article, score: Math.max(...scores) }] : [];
+  });
+  const seen = new Set<string>();
+  const signatures: Set<string>[] = [];
+  return scored.sort((a, b) => b.score - a.score || b.article.publishedAt.getTime() - a.article.publishedAt.getTime()).filter(({ article }) => {
+    const title = article.title.toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]/gu, "");
+    if (seen.has(article.path) || seen.has(title)) return false;
+    const terms = new Set((article.title.toLocaleLowerCase("bg").match(/[\p{L}\p{N}]+/gu) ?? []).filter(term => term.length > 3 && term !== "пловдив").map(term => term.slice(0, 6)));
+    if (signatures.some(previous => {
+      const shared = [...terms].filter(term => previous.has(term)).length;
+      return shared >= 5 && shared / Math.min(previous.size, terms.size) >= .75;
+    })) return false;
+    signatures.push(terms);
+    seen.add(article.path); seen.add(title); return true;
+  }).slice(0, limit).map(({ article }) => toCityStory(article));
+}
+
 export function cityStoryForCategory(topics: readonly string[], articles: ArticleSummary[], now = new Date()): CityStory | null {
   const candidates = topics.flatMap(topic => {
     const rule = TOPIC_RULES[topic];
@@ -218,4 +254,18 @@ export function cityAgendaStories(articles: ArticleSummary[], kinds: AgendaKind[
     if (seen.has(key) || seen.has(article.path)) return false;
     seen.add(key); seen.add(article.path); return true;
   }).slice(0, 4).map(toCityStory);
+}
+
+export function cityAgendaContextStories(articles: ArticleSummary[], kinds: AgendaKind[], context: { place?: string; title?: string }, now = new Date()): CityStory[] {
+  const normalize = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const place = normalize(context.place ?? "");
+  const generic = new Set(["live", "concert", "концерт", "пловдив", "plovdiv", "club", "cafe", "рок", "rock", "bar", "party", "night", "event", "center", "tribute", "band", "stand", "стендъп", "halloween"]);
+  const placeWords = new Set(place.split(" "));
+  const words = [...new Set(normalize(context.title ?? "").split(" ").filter(word => word.length >= 4 && !/^\d+$/u.test(word) && !generic.has(word) && !placeWords.has(word)))];
+  const scoped = articles.filter(article => {
+    const headline = normalize(article.title);
+    if (context.title) return words.length > 0 && words.slice(0, 3).every(word => headline.split(" ").includes(word));
+    return place.length > 3 && headline.includes(place);
+  });
+  return cityAgendaStories(scoped, kinds, now);
 }

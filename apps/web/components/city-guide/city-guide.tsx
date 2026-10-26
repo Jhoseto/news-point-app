@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CITY_CATEGORIES, type CityCategory } from "@/lib/city-guide/catalog";
 import { cityReaderTopicLabel } from "@/lib/city-guide/presentation";
-import { cityNewsUrl, type CityStory } from "@/lib/city-guide/news";
+import { type CityStory } from "@/lib/city-guide/news";
 import { nightEventStatusLabel, nightPeriodMatches, type CityNightEvent } from "@/lib/city-guide/night-events";
+import { CityRelatedNews } from "./city-related-news";
+import "./city-home.css";
 import { ArticleImage } from "@/components/ui";
 import "./city-guide.css";
 import "./city-workspace.css";
@@ -34,7 +36,7 @@ function useCityReveals() {
 }
 
 function CityNewsRail({ stories, title }: { stories: CityStory[]; title: string }) {
-  return <aside className="city-news-rail" aria-label={title}><div className="city-news-rail-head"><span>NEWSPOINT / КОНТЕКСТ</span><h2>{title}</h2><p>Новините допълват справките и се подбират отново при обновяване на публикациите.</p></div><div className="city-news-rail-list">{stories.map(story => <Link key={story.path} href={story.path} prefetch={false} className="city-news-rail-story"><span className="city-news-rail-photo"><ArticleImage media={story.hero ? { ...story.hero, alt: "" } : null} sizes="96px" className="city-news-rail-image" /></span><span className="city-news-rail-copy"><time dateTime={story.publishedAt}>{storyDate.format(new Date(story.publishedAt))}</time><strong>{story.title}</strong></span><Arrow diagonal /></Link>)}</div><Link href="/plovdiv/" className="city-news-rail-more">Всички новини от Пловдив <Arrow diagonal /></Link></aside>;
+  return <CityRelatedNews stories={stories} topic={title} />;
 }
 
 function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory, topicHrefByCategory }: { categories: CityCategory[]; stories: Record<string, CityStory | null>; query: string; activeTopicsByCategory: Record<string, string[]>; topicHrefByCategory: Record<string, Record<string, string>> }) {
@@ -55,7 +57,7 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
       const expanded = openSlug === category.slug;
       const detailsId = `city-photo-details-${category.slug}`;
       return <article id={`category-${category.slug}`} className={`city-photo-panel city-accent-${category.accent}${expanded ? " is-active" : ""}`} key={category.slug}>
-        <span className="city-photo-panel-media" aria-hidden="true">{category.slug === "nightlife" ? <img src="/brand/plovdiv-night-kamburov.jpg" alt="" loading="lazy" decoding="async" /> : category.slug === "transport" ? <img src="/brand/plovdiv-aerial.webp" alt="" decoding="async" /> : category.slug === "education" ? <img src="/brand/plovdiv-school-public-domain.webp" alt="" loading="lazy" decoding="async" /> : category.slug === "culture" ? <img src="/brand/plovdiv-theatre-public-domain.webp" alt="" loading="lazy" decoding="async" /> : story?.hero ? <ArticleImage media={{ ...story.hero, alt: "" }} sizes="(min-width: 900px) 600px, 80vw" className="city-photo-panel-image" /> : <span className="city-photo-panel-graphic"><CityMark slug={category.slug} /></span>}</span>
+        <span className="city-photo-panel-media" aria-hidden="true">{category.slug === "nightlife" ? <img src="/brand/plovdiv-night-kamburov.jpg" alt="" loading="lazy" decoding="async" /> : ["transport", "environment"].includes(category.slug) ? <img src="/brand/plovdiv-aerial.webp" alt="" decoding="async" /> : category.slug === "education" ? <img src="/brand/plovdiv-school-public-domain.webp" alt="" loading="lazy" decoding="async" /> : category.slug === "culture" ? <img src="/brand/plovdiv-theatre-public-domain.webp" alt="" loading="lazy" decoding="async" /> : story?.hero ? <ArticleImage media={{ ...story.hero, alt: "" }} sizes="(min-width: 900px) 600px, 80vw" className="city-photo-panel-image" /> : <span className="city-photo-panel-graphic"><CityMark slug={category.slug} /></span>}</span>
         <span className="city-photo-panel-shade" aria-hidden="true" />
         <button type="button" className="city-photo-panel-trigger" aria-expanded={expanded} aria-controls={detailsId} aria-label={`${expanded ? "Скрий" : "Покажи"} темите за ${category.title}`} onClick={event => {
           const closing = openSlug === category.slug;
@@ -67,8 +69,8 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
           <div className="city-photo-panel-label"><small>{category.eyebrow}</small><h2>{category.title}</h2></div>
           <div className="city-photo-panel-details" id={detailsId}>
             <p>{category.lead}</p>
-            <div className="city-photo-panel-topics" aria-label={`Теми в ${category.title}`}>{topics.slice(0, 4).map(topic => <Link key={topic.title} href={`${ROOT}/${category.slug}/${topicHrefByCategory[category.slug]?.[topic.title] ?? ""}`}>{cityReaderTopicLabel(topic.title)} <Arrow diagonal /></Link>)}</div>
-            <div className="city-photo-panel-bottom"><Link href={`${ROOT}/${category.slug}/`} className="city-photo-panel-all" aria-label={`${activeTopics.length} справки с данни в ${category.title}`}>{activeTopics.length} справки с данни <Arrow /></Link>{story ? <Link href={story.path} prefetch={false} className="city-photo-panel-news"><small>СВЪРЗАНА НОВИНА</small><span>{story.title}</span><Arrow diagonal /></Link> : null}</div>
+            <div className="city-photo-panel-topics" aria-label={`Теми в ${category.title}`}>{topics.slice(0, 3).map(topic => <Link key={topic.title} href={`${ROOT}/${category.slug}/${topicHrefByCategory[category.slug]?.[topic.title] ?? ""}`}>{cityReaderTopicLabel(topic.title)} <Arrow diagonal /></Link>)}</div>
+            <div className="city-photo-panel-bottom"><Link href={`${ROOT}/${category.slug}/`} className="city-photo-panel-all" aria-label={`${activeTopics.length} справки с данни в ${category.title}`}>Всички {activeTopics.length} теми <Arrow /></Link></div>
           </div>
         </div>
       </article>;
@@ -115,17 +117,17 @@ export function CityGuideHome({ newsByCategory, featuredStories, today, availabl
     return matchesCityQuery(`${category.title} ${category.lead} ${category.topics.filter(topic => activeTopicsByCategory[category.slug]?.includes(topic.title)).map(topic => `${topic.title} ${topic.detail}`).join(" ")}`, normalized);
   }), [normalized, available, activeTopicsByCategory]);
 
-  return <div className="city-page" ref={motionRoot}>
+  return <div className="city-page city-home-page" ref={motionRoot}>
     <div className="np-container city-container">
       <section id="temi" className="city-directory" aria-labelledby="city-topics-title">
-        <div className="city-home-header"><h1 id="city-topics-title">Моят <em>Пловдив.</em></h1></div>
-        <div className="city-toolbar"><label className="city-search"><span aria-hidden="true">⌕</span><span className="sr-only">Търси тема</span><input ref={searchRef} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Търси например автобус, градина, театър..." /></label><span className="city-result-count" aria-live="polite">{visible.length} {visible.length === 1 ? "област" : "области"}</span></div>
+        <div className="city-home-masthead"><div className="city-home-header"><h1 id="city-topics-title">Моят <em>Пловдив.</em></h1><p>Намери нужното. Избери къде да отидеш.</p></div>
+        <div className="city-toolbar"><label className="city-search"><span aria-hidden="true">⌕</span><span className="sr-only">Търси тема</span><input ref={searchRef} type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Търси например автобус, градина, театър..." /></label><span className="city-result-count" aria-live="polite">{visible.length} {visible.length === 1 ? "област" : "области"}</span></div></div>
         {visible.length ? <CityPhotoAccordion categories={visible} stories={newsByCategory} query={normalized} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} /> : <div className="city-empty"><strong>Няма справка с данни за това търсене.</strong><p>Опитай друга дума.</p><button type="button" onClick={() => { setQuery(""); searchRef.current?.focus(); }}>Покажи наличните справки <Arrow /></button></div>}
         <p className="city-photo-credit">Нощна снимка: Kostadin Kamburov / CC BY-SA 4.0</p>
       </section>
-      {today}
-      {featuredStories.length ? <div className="city-home-news"><CityNewsRail stories={featuredStories} title="Новини край теб" /></div> : null}
-      <p className="city-proof-note">Локален преглед на справки от текущия пилот. Данните се публикуват едва след проверка на точността и обновяването им.</p>
+      {!normalized ? today : null}
+      {!normalized && featuredStories.length ? <div className="city-home-news"><CityNewsRail stories={featuredStories} title="Градът в новините" /></div> : null}
+
     </div>
   </div>;
 }
@@ -145,7 +147,6 @@ export function CityCategoryView({ category, stories, observations }: { category
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={`${ROOT}/`}>Моят Пловдив</Link><span>/</span><span aria-current="page">{category.title}</span></nav>
     <header className="city-editorial-hero"><img src={photo} alt="" decoding="async" /><div className="city-editorial-hero-copy"><span>МОЯТ ПЛОВДИВ / {category.eyebrow.toLocaleUpperCase("bg")}</span><h1>{category.title}</h1><p>{intro[category.slug] ?? category.lead}</p><a href="#city-observed-title">Намери нужната информация <Arrow /></a></div><span className="city-editorial-hero-label">ПЛОВДИВ / ТВОЯТ ГРАД</span></header>
     {observations}
-    {related.length ? <aside className="city-context-stories" aria-label="Новини към справките"><header><h2>Историите зад темите</h2><span>Още контекст от NewsPoint</span></header><div>{related.map(story => <Link className="city-context-story" key={story.path} href={story.path} prefetch={false}><span className="city-context-story-photo"><ArticleImage media={story.hero ? { ...story.hero, alt: "" } : null} sizes="160px" className="city-context-story-image" /></span><span><time dateTime={story.publishedAt}>{storyDate.format(new Date(story.publishedAt))}</time><strong>{story.title}</strong></span></Link>)}</div></aside> : null}
   </div></div>;
 }
 
@@ -157,7 +158,6 @@ export function CityTransportView({ category, stories, observations, activeTopic
     <header className="city-transport-hero" data-city-reveal><div className="city-transport-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 01</p><h1>Транспорт <em>и движение.</em></h1><p>Автобусни линии и посоки, билети и карти, полети от и до Пловдив.</p><a href={hasRouteData ? "#nablyudavani-plovdiv-livetransport-gtfs" : hasFareData ? "#nablyudavani-plovdiv-transit" : "#city-observed-title"}>Към справките <Arrow /></a></div><div className="city-transport-hero-photo" role="img" aria-label="Снимка от въздуха на Пловдив"><span>ПЛОВДИВ / В ДВИЖЕНИЕ</span></div></header>
     <div className="city-transport-note" role="note"><span aria-hidden="true">✳</span><p>{hasRouteData ? "Избери линия, посока и спирка за планираните часове днес. Разписанието не отчита закъснения или временни отклонения." : hasFareData ? "По-долу са последно наблюдаваните цени за билети и карти. Разписания, движение на автобуси и текущи затваряния още не се показват автоматично." : "Проверените транспортни справки се показват по-долу."}</p></div>
     {observations}
-    {related.length ? <CityNewsRail stories={related} title="Новини по темите" /> : null}
     <p className="city-proof-note">Часовете са планирани, а не измерени пристигания. Движение в реално време и временни затваряния още не са включени.</p>
   </div></div>;
 }
@@ -170,7 +170,6 @@ export function CityParkingView({ category, stories, observations, hasObservedDa
     <header className="city-parking-hero" data-city-reveal><div className="city-parking-hero-copy"><p className="city-eyebrow">МОЯТ ПЛОВДИВ / 02</p><h1>Паркиране<span>.</span></h1><p>Проверени правила за зоните и контакти при репатриране — на едно място.</p><a href="#city-observed-title">Към справките <Arrow /></a></div><div className="city-parking-hero-photo" role="img" aria-label="Изглед от въздуха към Пловдив"><div className="city-parking-photo-frame"><span>ГРАДСКИ ОРИЕНТИР / ПЛОВДИВ</span><strong aria-hidden="true">P</strong><span>02 / НА МЯСТО</span></div></div></header>
     <div className="city-parking-status" role="note"><span aria-hidden="true">✳</span><p>{hasObservedData ? "Наблюдаваните правила и контакти са по-долу. Свободни места, карта и временни изключения още не са потвърдени." : "Картите, правилата и наличностите ще се виждат тук след проверка на източниците. NewsPoint още не показва свободни места, текущи тарифи или автоматично обновени ограничения."}</p></div>
     {observations}
-    {related.length ? <CityNewsRail stories={related} title="Новини по темите" /> : null}
     <p className="city-proof-note">Локален пилот. Наблюдаваните правила не включват свободни места или всички временни изключения.</p>
   </div></div>;
 }
@@ -185,7 +184,6 @@ export function CityOutagesView({ category, stories, observations }: { category:
       <div className="city-outages-notice" role="note"><span aria-hidden="true">✳</span><div><strong>Последните наблюдения са по-долу.</strong><p>Посоченият срок не доказва приключване. При неуспешна или просрочена проверка записите се скриват.</p></div></div>
     </header>
     {observations}
-    {related.length ? <CityNewsRail stories={related} title="Новини по темите" /> : null}
     <p className="city-proof-note">Локален визуален преглед. Тази страница не представя непроверени прекъсвания или ремонти като текущи.</p>
   </div></div>;
 }
@@ -208,7 +206,7 @@ export function CityOutView({ stories, observations, events = [], checkedAt, now
     <nav className="city-breadcrumb" aria-label="Навигационна пътека"><Link href="/">Начало</Link><span>/</span><Link href={`${ROOT}/`}>Моят Пловдив</Link><span>/</span><span aria-current="page">Нощен Пловдив</span></nav>
     <div className="city-out-hero" data-city-reveal><div className="city-out-hero-image" role="img" aria-label="Реална нощна снимка на Пловдив от Небет тепе" /><div className="city-out-hero-vignette" /><div className="city-out-hero-sheen" aria-hidden="true" /><div className="city-out-hero-content"><p className="city-out-hero-kicker">МОЯТ ПЛОВДИВ / 09 / ПЛОВДИВ OUT</p><h1>Нощен <em>Пловдив.</em></h1><p className="city-out-hero-tagline">Градът след залез.</p><p className="city-out-hero-desc">{events.length ? "Наблюдавани дати, часове и места от клубната програма. Промените и отмените още се проверяват." : "Музика, сцени, идеи и срещи. Програмата ще се появи тук след проверка на датите и промените."}</p><a href="#city-agenda-title" className="city-out-hero-button">Към афиша <Arrow /></a></div><div className="city-out-hero-footer"><span>Снимка: Kostadin Kamburov / CC BY-SA 4.0</span><span>09 / МОЯТ ПЛОВДИВ</span></div></div>
     {observations}
-    <section className="city-out-agenda" aria-labelledby="city-agenda-title"><div className="city-out-agenda-head"><div><p className="city-eyebrow">КЛУБЕН АФИШ / ЛОКАЛЕН ПИЛОТ</p><h2 id="city-agenda-title">Събития <em>след залез.</em></h2>{checkedAt && events.length ? <p className="city-night-checked">Клубна програма · проверено {new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }).format(new Date(checkedAt))}. Пълнотата и отмените още се проверяват.</p> : null}</div><div className="city-filter-list city-period-filters" role="group" aria-label="Период на афиша">{periodOptions.map(option => <button type="button" key={option} aria-pressed={period === option} onClick={() => setPeriod(option)}>{option}</button>)}</div></div>{visibleEvents.length ? <div className="city-night-event-grid" aria-live="polite">{visibleEvents.map((event, index) => <article key={event.key} className={`city-night-event${index === 0 ? " city-night-event-featured" : ""}`}><div className="city-night-event-date"><time dateTime={event.startDate}>{nightDate.format(new Date(event.startDate))}</time><strong>{nightTime.format(new Date(event.startDate))}</strong></div><div className="city-night-event-body"><span>{nightEventStatusLabel(event, new Date(nowMs))}</span><h3>{event.title}</h3><p>{event.place}</p></div><div className="city-night-event-side"><span>{event.price ? `${event.price} евро · посочена цена` : "Цена не е потвърдена"}</span><Link href={cityNewsUrl("Партита")}>Новини по темата <Arrow diagonal /></Link></div></article>)}</div> : <div className="city-night-empty" role="status"><strong>Няма проверени записи за „{period}“.</strong><p>{events.length ? "Проверете друг период или изчакайте следващата проверка на програмата." : "Не представяме непълни дати като предстоящи събития."}</p></div>}</section>
+    <section className="city-out-agenda" aria-labelledby="city-agenda-title"><div className="city-out-agenda-head"><div><p className="city-eyebrow">КЛУБЕН АФИШ / ЛОКАЛЕН ПИЛОТ</p><h2 id="city-agenda-title">Събития <em>след залез.</em></h2>{checkedAt && events.length ? <p className="city-night-checked">Клубна програма · проверено {new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }).format(new Date(checkedAt))}. Пълнотата и отмените още се проверяват.</p> : null}</div><div className="city-filter-list city-period-filters" role="group" aria-label="Период на афиша">{periodOptions.map(option => <button type="button" key={option} aria-pressed={period === option} onClick={() => setPeriod(option)}>{option}</button>)}</div></div>{visibleEvents.length ? <div className="city-night-event-grid" aria-live="polite">{visibleEvents.map((event, index) => <article key={event.key} className={`city-night-event${index === 0 ? " city-night-event-featured" : ""}`}><div className="city-night-event-date"><time dateTime={event.startDate}>{nightDate.format(new Date(event.startDate))}</time><strong>{nightTime.format(new Date(event.startDate))}</strong></div><div className="city-night-event-body"><span>{nightEventStatusLabel(event, new Date(nowMs))}</span><h3>{event.title}</h3><p>{event.place}</p></div><div className="city-night-event-side"><span>{event.price ? `${event.price} евро · посочена цена` : "Цена не е потвърдена"}</span></div></article>)}</div> : <div className="city-night-empty" role="status"><strong>Няма проверени записи за „{period}“.</strong><p>{events.length ? "Проверете друг период или изчакайте следващата проверка на програмата." : "Не представяме непълни дати като предстоящи събития."}</p></div>}</section>
     {stories.length ? <CityNewsRail stories={stories} title="Нощта в новините" /> : null}
     <p className="city-proof-note">Локален пилот. Наблюдаваните събития не са преминали седемдневната проверка за пълнота и отмени; цените се показват само когато са посочени в източника.</p>
   </div></div>;

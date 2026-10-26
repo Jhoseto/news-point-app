@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { articleBody, homeHeroPositionSchema, embedFrameUrl, videoSourceUrl, publicationProblems, socialInput } from "@newspoint/content";
-import { SLUG_PATTERN, SLUG_STORED_MAX } from "./slug";
+import { articleBody, homeHeroPositionSchema, embedFrameUrl, isArticleSlug, videoSourceUrl, publicationProblems, socialInput } from "@newspoint/content";
+import { SLUG_STORED_MAX } from "./slug";
 
 // Shared by the editor form and the API; the API always re-validates.
 
@@ -23,7 +23,7 @@ export const draftInput = z
       .string()
       .trim()
       .max(SLUG_STORED_MAX, `Адресът е до ${SLUG_STORED_MAX} знака`)
-      .refine((value) => value === "" || SLUG_PATTERN.test(value), "Невалиден адрес"),
+      .refine((value) => value === "" || isArticleSlug(value), "Невалиден адрес"),
     excerpt: z.string().trim().max(EXCERPT_MAX),
     bodyText: z.string().max(BODY_TEXT_MAX).optional(),
     body: articleBody.refine(value => JSON.stringify(value).length <= BODY_TEXT_MAX, "Материалът е твърде голям").optional(),

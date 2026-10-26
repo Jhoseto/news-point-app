@@ -6,7 +6,7 @@ import { CityLocalNav } from "@/components/city-guide/city-local-nav";
 import { CITY_CATEGORIES } from "@/lib/city-guide/catalog";
 import { loadCityObservations } from "@/lib/city-guide/local-observations";
 import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
-import { cityAgendaStories, cityStoriesForTopics } from "@/lib/city-guide/news";
+import { cityAgendaStories, cityAgendaContextStories, cityStoriesForTopics } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
 import { CityEventAgenda } from "@/components/city-guide/city-event-agenda";
@@ -39,6 +39,10 @@ export default async function CityCategoryPage({ params }: Props) {
     const events = cityAgenda(activeGroups, slug);
     const kinds = [...new Set(events.map(event => event.kind))];
     const news = Object.fromEntries(["all", ...kinds].map(kind => [kind, cityAgendaStories(articles, kind === "all" ? kinds : [kind as AgendaKind])]));
+    for (const place of new Set(events.map(event => event.place))) {
+      for (const kind of ["all", ...kinds]) news[`place:${place}:${kind}`] = cityAgendaContextStories(articles, kind === "all" ? kinds : [kind as AgendaKind], { place });
+    }
+    for (const event of events) news['event:' + event.id] = cityAgendaContextStories(articles, [event.kind], { place: event.place, title: event.title });
     return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` }))} /><CityEventAgenda category={slug} events={events} news={news} today={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" })} /></>;
   }
   if (slug === "outages") return withNav(<CityOutagesView category={category} stories={stories} observations={observations} />);

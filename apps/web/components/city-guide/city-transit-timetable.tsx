@@ -1,8 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { departureLabel, type CityTimetable } from "@/lib/city-guide/timetable";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 
 type Line = { key: string; line: string; destinations: string };
 type Schedule = { serviceDate: string; checkedAt: string; timetable: CityTimetable };
@@ -38,7 +36,6 @@ export function CityTransitTimetable({ lines, checkedAt }: { lines: Line[]; chec
         {stop ? <div className="city-transit-departures"><h4>{stop.name}</h4><p>Планирани тръгвания от тази спирка</p>{stop.times.length ? <div>{stop.times.map(time => <span key={time}>{departureLabel(time)}</span>)}</div> : <p>Няма посочени тръгвания за качване от тази спирка.</p>}</div> : null}
         <details className="city-procedure-document"><summary>Всички спирки по маршрута <span aria-hidden="true">+</span></summary><ol className="city-transit-stop-list">{pattern?.stops.map((stop, index) => <li key={`${stop.id}-${index}`}><button type="button" aria-pressed={stopIndex === index} onClick={() => setStopIndex(index)}>{stop.name}{stop.code ? ` · № ${stop.code}` : ""}</button></li>)}</ol></details>
       </>}
-      <Link className="city-action-news" href={cityNewsUrl(`автобус ${line?.line ?? ""} Пловдив`)}>Новини за линия {line?.line} →</Link>
     </div>
   </div>;
 }

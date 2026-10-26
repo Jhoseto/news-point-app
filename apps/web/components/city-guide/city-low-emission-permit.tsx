@@ -1,6 +1,4 @@
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 import { CityProcedureDocuments, CityProcedureSection } from "./city-procedure-documents";
 
 export function CityLowEmissionPermit({ group }: { group: CityObservation }) {
@@ -10,6 +8,5 @@ export function CityLowEmissionPermit({ group }: { group: CityObservation }) {
     <CityProcedureSection title="Срок на пропуска и промяна на обстоятелствата" value={`${item.fields.validity}\n${item.fields.changes}`} />
     <h4>Подаване</h4><p>{String(item.fields.submission)}</p>
     <CityProcedureDocuments raw={item.fields.documents} sourceId={group.sourceId} recordKey={item.key} />
-    <Link className="city-action-inline" href={cityNewsUrl("нискоемисионна зона пропуски Пловдив")}>Новини по темата →</Link>
   </div>)}</>;
 }

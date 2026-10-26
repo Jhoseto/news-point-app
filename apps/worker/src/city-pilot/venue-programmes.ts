@@ -77,7 +77,11 @@ export function venueDetail(sourceId: string, html: string, entry: Entry): Pilot
   const dom = parseDocument(html);
   const about = D.getElementsByTagName("h3", dom).find(n => clean(D.textContent(n)) === "За събитието");
   const body = about?.parent ? D.findOne(n => n.attribs.class?.split(/\s/u).includes("rich-text") ?? false, about.parent) : null;
-  const description = (body ? body.children.map(n => clean(D.textContent(n))).filter(Boolean).join("\n\n") : clean( typeof e.description === "string" ? D.textContent(parseDocument(e.description)) : "")).replace(/https?:\/\/\S+/gu, "").slice(0, 12000);
+  const description = (body ? body.children.map(n => clean(D.textContent(n))).filter(Boolean)
+    // Multi-city tour copy can contain a paragraph for a different stop. Keep the
+    // verified local programme and shared conditions, never rewrite that city.
+    .filter(text => !/(?:София|Sofia|Варна|Varna|Бургас|Burgas)/iu.test(text) || /Пловдив|Plovdiv/iu.test(text))
+    .filter(text => !/^Чуйте (?:ги|го) тук:/iu.test(text)).join("\n\n") : clean(typeof e.description === "string" ? D.textContent(parseDocument(e.description)) : "")).replace(/https?:\/\/\S+/gu, "").slice(0, 12000);
   // Venue alone does not turn a lecture, sports match or business meeting into nightlife.
   const music = /концерт|\bconcert\b|\blive\b|tribute|на живо|рок груп|лайфове|сценично присъствие|\bband\b/iu.test(`${title} ${description}`);
   const party = /party|парти|\bdj\b|диджей|techno|house|танц|halloween|showcase|pop.dance|hot pop|wonder girls/iu.test(`${title} ${description}`);
@@ -86,7 +90,7 @@ export function venueDetail(sourceId: string, html: string, entry: Entry): Pilot
   const eventKind = standup ? "standup" : music ? "live" : sourceId === "bushido-programme" ? "live" : "party";
   const images = Array.isArray(e.image) ? e.image : [e.image];
   const imageUrl = images.map(v => eventImageUrl(v, entry.url)).find(Boolean);
-  const doors = description.match(/(?:Врати|Doors)\s*:\s*([01]?\d|2[0-3]):([0-5]\d)/iu);
+  const doors = description.match(/(?:Врати(?:те)?(?:\s+отварят\s+в)?|Doors)\s*:?\s*([01]?\d|2[0-3]):([0-5]\d)/iu);
   const performance = description.match(/(?:Начало|Show starts)\s*:\s*([01]?\d|2[0-3]):([0-5]\d)/iu);
   return item(`event:${entry.url.match(/(?:-|\/)(\d+)(?:\.html)?$/u)![1]}`, entry.url, {
     title, date, endDate: date, time: `${start[2]}:${start[3]}`, place: config.venue, address: clean(address.streetAddress), status, eventKind, description,

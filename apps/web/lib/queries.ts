@@ -230,6 +230,16 @@ export const getCityEventContext = cache(async (): Promise<ArticleSummary[]> => 
   return rows.map(toSummary);
 });
 
+/** Published civic coverage only; the date range bounds the archive scan. */
+export const getCityGuideContext = cache(async (): Promise<ArticleSummary[]> => {
+  const rows = await (await summaryQuery()).query.where(and(isPublished(),
+    gt(articles.publishedAt, new Date(Date.now() - 120 * 86_400_000)),
+    or(ilike(articles.title, "%пловдив%"), ilike(articles.excerpt, "%пловдив%")),
+    sql`${articles.title} ~* ${"автобус|разписани|градски транспорт|нискоемисион|паркиран|синя зона|репатрира|без вода|без ток|топлоподаван|детск.*градин|ясл|първи клас|първоклас|общин|социалн.*услуг|сметосъбиран|отпадъц|озеленяван|осиновяван"}`,
+  )).orderBy(desc(articles.publishedAt)).limit(180);
+  return rows.map(toSummary);
+});
+
 const readLatest24Hours = unstable_cache(async (minute: number): Promise<ArticleSummary[]> => {
   const asOfMs = minute * 60_000;
   const rows = await (await summaryQuery()).query

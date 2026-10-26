@@ -154,6 +154,15 @@ export function parseEmbedInput(raw: string): { url: string; provider: EmbedProv
   } catch { return null; }
 }
 
+const ARTICLE_SLUG_PART = "(?:[a-z0-9_]|%[0-9a-fA-F]{2})";
+const ARTICLE_SLUG = new RegExp(`^${ARTICLE_SLUG_PART}+(?:-${ARTICLE_SLUG_PART}+)*$`);
+const UNSAFE_SLUG_BYTE = /%(?:2f|5c|00|2e)/i;
+
+/** Stored article address. WordPress kept some letters as percent-encoding, such as %d1%9d. */
+export function isArticleSlug(value: string): boolean {
+  return ARTICLE_SLUG.test(value) && !UNSAFE_SLUG_BYTE.test(value);
+}
+
 export const RESERVED_ARTICLE_SLUGS = new Set([
   "privacy-policy", "personal-data-policy", "cookies-policy",
   "api", "_next", "brand", "draft", "login", "search", "tag", "author", "page", "feed", "share",
@@ -166,7 +175,7 @@ export function publicationProblems(draft: {
 }): string[] {
   const problems: string[] = [];
   if (draft.title.trim().length < 5) problems.push("Заглавието е твърде кратко.");
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(draft.slug)) problems.push("Липсва адрес на статията.");
+  if (!isArticleSlug(draft.slug)) problems.push("Липсва адрес на статията.");
   else if (RESERVED_ARTICLE_SLUGS.has(draft.slug)) problems.push("Този адрес е запазен. Изберете друг.");
   if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
   if (!draft.excerpt.trim()) problems.push("Добавете кратко резюме на новината.");

@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 
 const LABELS: Record<string, string> = {
   yellow: "Пластмаса и метал",
@@ -38,7 +36,6 @@ export function CityEcoPoints({ items }: { items: CityObservation["items"] }) {
       const label = LABELS[String(fields.type)] ?? String(fields.type);
       return <article className="city-eco-row" key={item.key} data-type={String(fields.type)}>
         <div><small>{label} · №{item.key}</small><strong>{fields.address}</strong>{fields.description ? <p>{fields.description}</p> : null}</div>
-        <Link href={cityNewsUrl(`${label} разделно събиране ${fields.address} Пловдив`)} prefetch={false}>Новини по темата <span aria-hidden="true">↗</span></Link>
       </article>;
     })}</div> : <p className="city-dog-empty">Няма точка с тези условия в последния получен списък.</p>}
     {matching.length > limit ? <button className="city-dog-more" type="button" onClick={() => setLimit(current => current + PAGE_SIZE)}>Покажи още точки</button> : null}

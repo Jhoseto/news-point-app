@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 
 const PAGE_SIZE = 12;
 
@@ -31,7 +29,6 @@ export function CitySchoolDirectory({ items, kind = "schools" }: { items: CityOb
       return <article className="city-observed-item" key={item.key}>
         <strong>{name}</strong><p>{fields.type} · район {fields.district}</p>
         <dl><div><dt>Адрес</dt><dd>{fields.address}</dd></div><div><dt>Публикуван телефон</dt><dd>{fields.phone}</dd></div></dl>
-        <Link href={cityNewsUrl(`${name} ${kind === "childcare" ? "детска градина ясла" : "училище"} Пловдив`)} prefetch={false} className="city-observed-news">Новини по темата в NewsPoint<span aria-hidden="true">↗</span></Link>
       </article>;
     })}</div> : <p className="city-dog-empty">Няма заведение с тези условия в публикувания каталог.</p>}
     {matching.length > limit ? <button className="city-dog-more" type="button" onClick={() => setLimit(current => current + PAGE_SIZE)}>Покажи още записи</button> : null}

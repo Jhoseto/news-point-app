@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 
 const PAGE_SIZE = 12;
 
@@ -24,7 +22,6 @@ export function CitySocialServices({ items }: { items: CityObservation["items"] 
         <strong>{name}</strong>
         <p>{fields.services}</p>
         <details className="city-observed-detail"><summary>Каква помощ предлага и как да се свържа</summary><p>{fields.description}</p><dl>{fields.address ? <div><dt>Адрес</dt><dd>{fields.address}</dd></div> : null}{fields.phone ? <div><dt>Телефон</dt><dd>{fields.phone}</dd></div> : null}</dl></details>
-        <Link href={cityNewsUrl(`${name} Пловдив`)} prefetch={false} className="city-observed-news">Новини по темата в NewsPoint<span aria-hidden="true">↗</span></Link>
       </article>;
     })}</div> : <p className="city-dog-empty">Няма услуга с тези думи в публикувания каталог.</p>}
     {matching.length > limit ? <button className="city-dog-more" type="button" onClick={() => setLimit(current => current + PAGE_SIZE)}>Покажи още услуги</button> : null}

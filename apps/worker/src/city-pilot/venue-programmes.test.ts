@@ -37,6 +37,10 @@ describe("venue programmes", () => {
     const generic = detail({ name: "Business meeting" }, "Бизнес среща.") + '<section><div class="rich-text">Залата предлага концерти.</div></section>';
     expect(venueDetail("bilet-beebop", generic, entry)).toBeNull();
     expect(venueDetail("bilet-beebop", detail({ name: "EMO/ROCK party" }, "Парти със стикери на групите и DJ."), entry)?.fields.eventKind).toBe("party");
+    const tour = detail({}, "Концерт в Пловдив.</p><p>Шоуто в София е различно.</p><p>Вратите отварят в 19:00");
+    const local = venueDetail("bilet-beebop", tour, entry)!;
+    expect(local.fields.description).not.toContain("София");
+    expect(local.fields.doorsTime).toBe("19:00");
   });
   it("retains weekly programme wording without inventing a time or individually confirmed dates", () => {
     const html = '<article class="event-card" id="weekly"><div class="event-meta">Всеки четвъртък</div><h3>Fixture weekly</h3><p>Fixture band на живо.</p></article>';

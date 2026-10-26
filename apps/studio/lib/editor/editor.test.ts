@@ -196,6 +196,23 @@ describe("draft input", () => {
     expect(draftInput.safeParse({ ...draft, slug: `${"a".repeat(201)}` }).success).toBe(false);
   });
 
+  it("keeps a WordPress address that still contains a percent-encoded letter", () => {
+    const slug = "radina-andreeva-i-ekipat-%d1%9d-prevarna-plovdiv";
+    expect(draftInput.safeParse({ ...draft, slug }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, slug: slug.replace("%d1%9d", "%D1%9D") }).success).toBe(true);
+    expect(draftInput.safeParse({ ...draft, slug: "radina-%2f-secret" }).success).toBe(false);
+    expect(publishProblems({
+      title: "Нормално заглавие",
+      slug,
+      excerpt: "Конкретно кратко резюме на новината.",
+      bodyBlocks: 1,
+      primaryCategoryId: "category",
+      heroMediaId: "media",
+      authorKind: "newsroom",
+      authorName: "NewsPoint.bg",
+    })).not.toContain("Липсва адрес на статията.");
+  });
+
   it("validates the three author modes without accepting markup or mismatched profile data", () => {
     expect(draftInput.safeParse({ ...draft, authorKind: "newsroom", authorUserId: null, authorName: "NewsPoint.bg" }).success).toBe(true);
     expect(draftInput.safeParse({ ...draft, authorKind: "manual", authorUserId: null, authorName: "Мария Петрова" }).success).toBe(true);

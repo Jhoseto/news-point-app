@@ -1,6 +1,4 @@
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl } from "@/lib/city-guide/news";
 import { CityProcedureDocuments } from "./city-procedure-documents";
 
 const dateFormat = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long" });
@@ -22,6 +20,5 @@ export function CityAdmissionCalendar({ group }: { group: CityObservation }) {
       <p className="city-action-small">След класиране документите за записване се подават при директора на детското заведение. Записването е отделна стъпка от заявлението за участие.</p></div>
     </details>)}
     {first ? <CityProcedureDocuments raw={first.fields.documents} sourceId={group.sourceId} recordKey={first.key} /> : null}
-    <Link className="city-action-inline" href={cityNewsUrl("прием детски градини ясли Пловдив")}>Новини за приема →</Link>
   </div>;
 }

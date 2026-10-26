@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ArticleSummary } from "../queries";
 import { CITY_CATEGORIES, OUT_TOPICS } from "./catalog";
-import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine } from "./news";
+import { cityNewsUrl, cityOutStories, cityStoriesForTopics, cityStoryForCategory, cityStoryForEventTitle, cityStoryForTopic, cityStoryForTransitLine, cityTopicStories, cityAgendaContextStories } from "./news";
 
 const article = (id: string, title: string): ArticleSummary => ({
   id, path: `/news/${id}/`, title, excerpt: "", authorName: "NewsPoint.bg",
@@ -9,6 +9,33 @@ const article = (id: string, title: string): ArticleSummary => ({
 });
 
 describe("city guide news links", () => {
+  it("selects several local topic cards, deduplicates and never fills from another topic", () => {
+    const now = new Date("2026-10-26T10:00:00Z");
+    const pool = [article("one", "Нови цени за синя зона в Пловдив"), article("duplicate", "Нови цени за синя зона в Пловдив"), article("two", "Платено паркиране в Пловдив с нови правила"), article("foreign", "Синя зона в София"), article("wrong", "Нов театър в Пловдив")];
+    expect(cityTopicStories(["Синя и зелена зона"], pool, now).map(s => s.path)).toEqual(["/news/one/", "/news/two/"]);
+    expect(cityTopicStories(["Детски градини и ясли"], pool, now)).toEqual([]);
+    expect(cityTopicStories(["Синя и зелена зона"], [{ ...pool[0]!, publishedAt: new Date("2025-10-24") }, { ...pool[1]!, publishedAt: new Date("2026-10-27") }], now)).toEqual([]);
+  });
+  it("does not revive a past water outage as current context", () => {
+    expect(cityTopicStories(["Без вода"], [article("old", "Авария остави Пловдив без вода")], new Date("2026-10-27T10:00:00Z"))).toEqual([]);
+  });
+  it("avoids repeated stories and obsolete temporary route or vacancy announcements", () => {
+    const now = new Date("2026-10-26T10:00:00Z");
+    const old = (id: string, title: string) => ({ ...article(id, title), publishedAt: new Date("2026-09-01") });
+    expect(cityTopicStories(["Градски автобуси"], [old("temporary", "Пет автобусни линии в Пловдив сменят маршрутите си заради ремонт")], now)).toEqual([]);
+    expect(cityTopicStories(["Детски градини и ясли"], [old("vacancies", "Свободни места в детските градини в Пловдив")], now)).toEqual([]);
+    expect(cityTopicStories(["Детски градини и ясли", "Училища и градини"], [old("bypass", "348 свободни места в ясли и детски градини в Пловдив преди новата учебна година")], now)).toEqual([]);
+    const variants = [article("one", "Пет автобусни линии в Пловдив сменят маршрутите си заради ремонт в Прослав"), article("two", "Пет автобусни линии в Пловдив с променени маршрути заради ремонт в Прослав")];
+    expect(cityTopicStories(["Градски автобуси"], variants, now)).toHaveLength(1);
+  });
+  it("scopes the event cards to the selected venue or distinctive performer", () => {
+    const now = new Date("2026-10-26T10:00:00Z");
+    const pool = [article("bee", "Концерт на Potochkine в Bee Bop Cafe, Пловдив"), article("other", "Нов концерт в Пловдив"), article("party", "DJ парти в Bee Bop Cafe, Пловдив")];
+    expect(cityAgendaContextStories(pool, ["live"], { place: "Bee Bop Café" }, now).map(s => s.path)).toEqual(["/news/bee/"]);
+    expect(cityAgendaContextStories(pool, ["party"], { place: "Bee Bop Café" }, now).map(s => s.path)).toEqual(["/news/party/"]);
+    expect(cityAgendaContextStories(pool, ["live"], { place: "Bee Bop Café", title: "Potochkine Live" }, now).map(s => s.path)).toEqual(["/news/bee/"]);
+    expect(cityAgendaContextStories(pool, ["live"], { place: "Bushido Club" }, now)).toEqual([]);
+  });
   it("links a bus line only to a recent local story naming that exact line", () => {
     const now = new Date("2026-10-25T10:00:00Z");
     const pool = [

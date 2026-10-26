@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityGuideHome } from "@/components/city-guide/city-guide";
-import { CityTodayBoard } from "@/components/city-guide/city-observations";
+import { CityHomeHighlights } from "@/components/city-guide/city-home-highlights";
 import { CityLocalNav } from "@/components/city-guide/city-local-nav";
 import { CITY_CATEGORIES } from "@/lib/city-guide/catalog";
 import { loadCityObservations } from "@/lib/city-guide/local-observations";
 import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
-import { cityStoryForCategory, type CityStory } from "@/lib/city-guide/news";
+import { cityStoryForCategory, cityTopicStories, type CityStory } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
 export const metadata: Metadata = {
-  title: "Моят Пловдив — визуален преглед",
+  title: "Моят Пловдив",
   robots: { index: false, follow: false },
 };
 
@@ -37,8 +37,6 @@ export default async function CityGuidePage() {
   for (const category of CITY_CATEGORIES) {
     newsByCategory[category.slug] = cityStoryForCategory(activeTopicsByCategory[category.slug] ?? [], articles);
   }
-  const featuredOrder = ["transport", "parking", "environment", "outages", "culture", "education", "municipality", "adopt"];
-  const featuredStories = [...new Map(featuredOrder.map(slug => newsByCategory[slug]).filter((story): story is CityStory => !!story)
-    .map(story => [story.path, story])).values()].slice(0, 3);
-  return <><CityLocalNav availableSlugs={availableSlugs} /><CityGuideHome availableSlugs={availableSlugs} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} newsByCategory={newsByCategory} featuredStories={featuredStories} today={<CityTodayBoard groups={[...transport, ...outages, ...parking, ...municipality, ...education, ...environment, ...culture, ...adoption, ...nightlife]} />} /></>;
+  const featuredStories = cityTopicStories(Object.values(activeTopicsByCategory).flat(), articles, new Date(), 6).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3);
+  return <><CityLocalNav availableSlugs={availableSlugs} /><CityGuideHome availableSlugs={availableSlugs} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} newsByCategory={newsByCategory} featuredStories={featuredStories} today={<CityHomeHighlights groups={[...transport, ...outages, ...parking, ...municipality, ...education, ...environment]} culture={culture} nightlife={nightlife} />} /></>;
 }

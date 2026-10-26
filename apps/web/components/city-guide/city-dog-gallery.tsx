@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { CityObservation } from "@/lib/city-guide/local-observations";
-import { cityNewsUrl, type CityStory } from "@/lib/city-guide/news";
+import { type CityStory } from "@/lib/city-guide/news";
 
 const PAGE_SIZE = 12;
 
@@ -30,7 +29,6 @@ export function CityDogGallery({ items, story }: { items: CityObservation["items
     {visible.length ? <div className="city-observed-grid">{visible.map(item => <article className="city-observed-item" key={item.key}>
       <strong>Профил №{item.fields.dogId}</strong><p>{item.fields.description}</p>
       <dl><div><dt>Порода</dt><dd>{item.fields.breed}</dd></div><div><dt>Пол</dt><dd>{item.fields.sex}</dd></div><div><dt>Размер</dt><dd>{item.fields.size}</dd></div><div><dt>Цвят</dt><dd>{item.fields.color}</dd></div></dl>
-      <Link href={story?.path ?? cityNewsUrl("Осиновяване")} prefetch={false} className="city-observed-news">{story ? `По темата: ${story.title}` : "Новини по темата в NewsPoint"}<span aria-hidden="true">↗</span></Link>
     </article>)}</div> : <p className="city-dog-empty">Няма профил с тези условия. Променете търсенето или филтрите.</p>}
     {matching.length > limit ? <button className="city-dog-more" type="button" onClick={() => setLimit(current => current + PAGE_SIZE)}>Покажи още профили</button> : null}
   </div>;
