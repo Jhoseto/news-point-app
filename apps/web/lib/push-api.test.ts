@@ -61,6 +61,14 @@ describe("device push API", () => {
     expect((await handlePushRequest(request(proof, "https://evil.test"))).status).toBe(403);
     expect((await handlePushRequest(request(proof, "http://localhost", { "sec-fetch-site": "cross-site" }))).status).toBe(403);
   });
+  it("accepts the configured public origin when Next sees the internal reverse-proxy URL", () => {
+    vi.stubEnv("WEB_URL", "https://newspoint.bg");
+    const proxied = new Request("http://127.0.0.1:3100/api/push/subscribe/", { method: "POST",
+      headers: { origin: "https://newspoint.bg", "content-type": "application/json", "sec-fetch-site": "same-origin" }, body: "{}" });
+    expect(pushRequestAllowed(proxied)).toBe(true);
+    expect(pushRequestAllowed(new Request(proxied, { headers: { origin: "https://evil.test", "content-type": "application/json" } }))).toBe(false);
+    vi.stubEnv("WEB_URL", "http://localhost");
+  });
   it("does not silently overwrite preferences or opt-out on stale revision", async () => {
     const { revision } = await subscribe();
     expect((await act("disable", { revision })).status).toBe(200);

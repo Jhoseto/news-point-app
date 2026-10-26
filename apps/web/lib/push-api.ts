@@ -23,9 +23,8 @@ function response(body: unknown, status = 200) {
 export function pushRequestAllowed(request: Request): boolean {
   try {
     const origin = request.headers.get("origin");
-    const requestUrl = new URL(request.url);
-    const local = ["localhost", "127.0.0.1"].includes(requestUrl.hostname);
-    const expected = local ? requestUrl.origin : publicPushOrigin(process.env.WEB_URL);
+    // Next sees the internal HTTP URL behind Apache; the browser uses WEB_URL.
+    const expected = publicPushOrigin(process.env.WEB_URL);
     return Boolean(origin && origin === expected && request.headers.get("sec-fetch-site") !== "cross-site"
       && request.headers.get("content-type")?.split(";")[0]?.trim() === "application/json");
   } catch { return false; }
