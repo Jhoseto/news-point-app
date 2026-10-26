@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   if (!cityGuideEnabled()) return missing();
   const p = new URL(request.url).searchParams, category = p.get("category") ?? "", hash = p.get("hash") ?? "";
   if (!["culture", "nightlife", "adopt"].includes(category) || !/^[a-f0-9]{64}$/u.test(hash) || (p.get("recordKey")?.length ?? 0) > 1000) return missing();
-  const group = (await loadCityObservations(category)).find(g => g.sourceId === p.get("sourceId") && g.status === "observed");
+  const group = (await loadCityObservations(category, p.get("sourceId") ?? "")).find(g => g.sourceId === p.get("sourceId") && g.status === "observed");
   if (!group?.items.some(item => item.key === p.get("recordKey") && item.fields.imageHash === hash)) return missing();
   const dirs = cityStorageDirectories("event-images");
   for (const dir of dirs) {

@@ -26,7 +26,7 @@ it("serves a shelter photograph only for its own current profile", async () => {
   mocks.load.mockResolvedValue([{ ...group, sourceId: "plovdiv-dog-shelter" }]);
   const url = request().url.replace("category=culture", "category=adopt").replace("sourceId=plovdiv-theatre", "sourceId=plovdiv-dog-shelter");
   expect((await GET(new Request(url))).status).toBe(200);
-  expect(mocks.load).toHaveBeenCalledWith("adopt");
+  expect(mocks.load).toHaveBeenCalledWith("adopt", "plovdiv-dog-shelter");
   expect((await GET(new Request(url.replace("recordKey=fixture", "recordKey=another")))).status).toBe(404);
 });
 it("enabled production requires explicit storage and still refuses unassociated images", async () => {

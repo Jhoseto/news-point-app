@@ -892,7 +892,8 @@ function parseDogShelter(dom: Root): PilotSnapshot {
     const size = values.get("Размер");
     const color = values.get("Цвят");
     if (!dogId || !breed || !sex || !size || !color || !description) throw new Error("plovdiv-dog-shelter: incomplete dog profile");
-    const photo = eventImageUrl(sourceImage, "https://dogshelter.plovdiv.bg/");
+    const candidatePhoto = eventImageUrl(sourceImage, "https://dogshelter.plovdiv.bg/");
+    const photo = candidatePhoto && new URL(candidatePhoto).pathname.startsWith(`/shelter/uploads/plovdivd_shelter/${dogId}/`) ? candidatePhoto : null;
     items.push(item(dogId, "https://dogshelter.plovdiv.bg/dogs-for-adoption", { dogId, breed, sex, size, color, description, ...(photo ? { imageUrl: photo } : {}) }));
   }
   return unique("plovdiv-dog-shelter", items, [

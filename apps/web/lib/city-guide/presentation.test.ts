@@ -6,7 +6,7 @@ const group = (sourceId: string, status: CityObservation["status"] = "observed")
 
 it("puts useful deadlines before reference contacts and never promotes empty docket evidence", () => {
   const groups = readerCityGroups([group("plovdiv-contacts"), group("plovdiv-council"), group("plovdiv-management-competitions"), group("plovdiv-tax-notices"), group("plovdiv-housing", "stale")]);
-  expect(groups.map(entry => entry.sourceId)).toEqual(["plovdiv-tax-notices", "plovdiv-management-competitions", "plovdiv-contacts"]);
+  expect(groups.map(entry => entry.sourceId)).toEqual([]);
   expect(CITY_PRESENTATION["plovdiv-contacts"]?.utility).toBe(true);
   expect(readerCityGroups([{ ...group("plovdiv-tax-notices"), items: [] }])).toEqual([]);
 });

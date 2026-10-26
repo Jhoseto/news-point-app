@@ -159,6 +159,7 @@ export function cityTopicStories(topics: readonly string[], articles: ArticleSum
     const scores = topics.flatMap(topic => {
       const rule = TOPIC_RULES[topic];
       if (!rule || !rule.title.test(article.title) || !eligibleStory(article, now, topic)) return [];
+      if (topic === "Въздухът в Пловдив" && !/пловдив/iu.test(article.title)) return [];
       // Outage headlines are useful for today's situation, not an old incident.
       if (["Без вода", "Без ток", "Парно и топла вода"].includes(topic) && age > 2 * 86_400_000) return [];
       if (age > 30 * 86_400_000 && (

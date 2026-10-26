@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { z } from "zod";
+import { CITY_SOURCE_POLICY, citySourceInRelease } from "@newspoint/content/city-sources";
 
 const headers = { "Cache-Control": "private, no-store" };
 const healthSchema = z.object({ version: z.literal(1), checkedAt: z.iso.datetime(), status: z.enum(["ok", "degraded"]), expectedSources: z.number().int().positive(), healthySources: z.number().int().nonnegative(), sources: z.array(z.object({ id: z.string().max(150), status: z.enum(["missing", "stale", "failed", "overdue", "healthy"]) })).max(100) });
@@ -14,6 +15,8 @@ export async function GET(request: Request) {
     const raw = await readFile(resolve(storage, "collector-health.json"), "utf8");
     if (raw.length > 100_000) throw new Error("oversized health file");
     const health = healthSchema.parse(JSON.parse(raw));
+    const expectedSources = Object.keys(CITY_SOURCE_POLICY).filter(citySourceInRelease).length;
+    if (health.expectedSources !== expectedSources || health.sources.length !== expectedSources || health.healthySources !== health.sources.filter(source => source.status === "healthy").length) return Response.json({ status: "collector-version-mismatch" }, { status: 503, headers });
     const age = Date.now() - Date.parse(health.checkedAt);
     if (age < 0 || age > 10 * 60_000) return Response.json({ status: "collector-stopped", checkedAt: health.checkedAt }, { status: 503, headers });
     return Response.json(health, { status: health.status === "ok" ? 200 : 503, headers });

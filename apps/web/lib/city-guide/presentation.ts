@@ -1,10 +1,13 @@
 import type { CityObservation } from "./local-observations";
+import { citySourceInRelease } from "@newspoint/content/city-sources";
 
 type Presentation = { title: string; description: string; note: string; utility?: boolean; order?: number };
 
 export const MUNICIPAL_RECORD_SOURCES = new Set(["plovdiv-tax-notices", "plovdiv-public-consultations", "plovdiv-management-competitions", "plovdiv-auction-list", "plovdiv-housing"]);
 
 export const CITY_PRESENTATION: Record<string, Presentation> = {
+  "elyug-planned-plovdiv-region": { title: "Планирани спирания на тока", description: "Публикувани адреси в град Пловдив и обявени часови интервали.", note: "Справката е за планирани изключвания. Не обхваща аварийни прекъсвания. Изтекъл срок или изчезнал запис не потвърждава възстановяване.", order: 1 },
+  "plovdiv-community-air": { title: "Фини прахови частици в Пловдив", description: "Последни PM10 и PM2.5 показания от граждански сензори.", note: "Ориентировъчни измервания от отделни точки. Не са официална оценка за целия град или средноденонощни стойности. Липсващо показание не означава чист въздух.", order: 0 },
   "plovdiv-tax-notices": { title: "Срокове за местни данъци", description: "Коя вноска предстои и до кога се плаща.", note: "Сроковете са общи. Тук не се проверяват лични задължения или платени суми.", order: 1 },
   "plovdiv-public-consultations": { title: "Проекти за обсъждане", description: "Какво се предлага да се промени и до кога можеш да изпратиш мнение.", note: "Това са проекти, които още не са приети. Виж условията и документите, преди да изпратиш становище.", order: 2 },
   "plovdiv-management-competitions": { title: "Конкурси за ръководители", description: "За кое общинско дружество се търси управител и до кога се кандидатства.", note: "Виж изискванията, документите и крайния срок преди кандидатстване.", order: 3 },
@@ -37,17 +40,17 @@ export const CITY_PRESENTATION: Record<string, Presentation> = {
   "plovdiv-gallery-current": { title: "Изложби, които можеш да посетиш", description: "Зали и обявени периоди на изложбите.", note: "Провери работното време на залата преди посещение." },
   "epaygo-plovdiv-explicit": { title: "Още в програмата на града", description: "Събития с конкретна дата и адрес в Пловдив.", note: "Достъпът зависи от наличните билети и условията на организатора." },
   "plovdiv-youth-centre": { title: "Младежки дейности", description: "Датирани покани за участие и място на провеждане.", note: "Участието може да изисква предварително записване." },
-  "plovdiv-dog-shelter": { title: "Запознай се с животните", description: "Снимки и описания на публикуваните профили.", note: "Профилът не гарантира, че животното все още чака осиновяване." },
-  "plovdiv-adoption-guide": { title: "Как протича осиновяването", description: "Стъпките и необходимите вещи при посещение.", note: "Условията за конкретното животно се потвърждават в приюта." },
+  "plovdiv-dog-shelter": { title: "Запознай се с животните", description: "Снимки и описания на публикуваните профили.", note: "Профилът не гарантира, че животното все още чака осиновяване.", order: 0 },
+  "plovdiv-adoption-guide": { title: "Как протича осиновяването", description: "Стъпките и необходимите вещи при посещение.", note: "Условията за конкретното животно се потвърждават в приюта.", order: 1 },
 };
 
 /** A docket number alone is evidence for the collector, not useful reader content. */
 export function readerCityGroups(groups: CityObservation[]): CityObservation[] {
-  return groups.filter(group => group.status === "observed" && group.items.length > 0
+  return groups.filter(group => citySourceInRelease(group.sourceId) && group.status === "observed" && group.items.length > 0
     && group.sourceId !== "plovdiv-council")
     .sort((a, b) => (CITY_PRESENTATION[a.sourceId]?.order ?? 20) - (CITY_PRESENTATION[b.sourceId]?.order ?? 20));
 }
 
 export function cityReaderTopicLabel(title: string): string {
-  return ({ "Градски автобуси": "Спирки и разписания", "Извън града": "Полети", "Работа в общината": "Конкурси за ръководители", "Общински жилища": "Условия за жилище", "Чистота и сметосъбиране": "Контейнери за рециклиране", "Контакти и приемно време": "Община и райони" } as Record<string, string>)[title] ?? title;
+  return ({ "Без ток": "Планирани спирания на тока", "Градски автобуси": "Спирки и разписания", "Извън града": "Полети", "Работа в общината": "Конкурси за ръководители", "Общински жилища": "Условия за жилище", "Чистота и сметосъбиране": "Контейнери за рециклиране", "Контакти и приемно време": "Община и райони" } as Record<string, string>)[title] ?? title;
 }

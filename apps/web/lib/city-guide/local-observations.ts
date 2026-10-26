@@ -45,6 +45,20 @@ function localDay(date: Date): string {
 }
 
 function isRelevantRow(sourceId: string, fields: Record<string, string | number>, today: string, now: Date): boolean {
+  if (sourceId === "elyug-planned-plovdiv-region") {
+    const dates = [fields.startDate, fields.endDate];
+    const time = now.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Europe/Sofia" });
+    return typeof fields.address === "string" && /(?:гр\.?|град)\s*пловдив(?:[^\p{L}]|$)/iu.test(fields.address)
+      && dates.every(value => typeof value === "string" && /^20\d{2}-\d{2}-\d{2}$/u.test(value) && Number.isFinite(Date.parse(`${value}T12:00:00Z`)) && new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) === value)
+      && [fields.startTime, fields.endTime].every(value => typeof value === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(value))
+      && String(fields.endDate) >= String(fields.startDate) && (String(fields.endDate) > today || fields.endDate === today && String(fields.endTime) > time);
+  }
+  if (sourceId === "plovdiv-community-air") {
+    const age = now.getTime() - Date.parse(String(fields.measuredAt));
+    return typeof fields.sensorId === "string" && /^\d+$/u.test(fields.sensorId) && Number.isFinite(age) && age >= 0 && age <= 20 * 60_000
+      && [fields.pm10, fields.pm25].every(value => typeof value === "number" && Number.isFinite(value) && value >= 0)
+      && Number(fields.pm10) < 1000 && Number(fields.pm25) < 500;
+  }
   if (sourceId === "plovdiv-low-emission-permit") return ["title", "eligibility", "requiredDocuments", "validity", "changes", "submission", "documents"].every(key => typeof fields[key] === "string" && String(fields[key]).length > 10);
   if (sourceId === "dz-admission-calendar") return typeof fields.title === "string" && fields.year === today.slice(0, 4)
     && ["vacanciesDate", "inPersonDeadline", "onlineDeadline", "resultsDate", "enrollmentDeadline", "registrationDate"].every((key, index, keys) => {
@@ -155,7 +169,7 @@ function isRelevantRow(sourceId: string, fields: Record<string, string | number>
   return true;
 }
 
-/** Dev-only observations; never infer that a missing or failed row is resolved. */
+/** Fresh observations; never infer that a missing or failed row is resolved. */
 export function selectCityObservations(
   categorySlug: string,
   preview: z.infer<typeof previewSchema>,
@@ -179,8 +193,8 @@ export function selectCityObservations(
   });
 }
 
-const loadDbPreview = cache(async () => {
-  const snapshots = await readCitySnapshots({ includeHidden: process.env.NODE_ENV === "development" });
+const loadDbPreview = cache(async (sourceId: string | null) => {
+  const snapshots = await readCitySnapshots({ includeHidden: process.env.NODE_ENV === "development", ...(sourceId ? { sourceId } : {}) });
   return previewSchema.parse({
     version: 1,
     sources: Object.fromEntries(snapshots.map(snapshot => [snapshot.sourceId, {
@@ -193,11 +207,13 @@ const loadDbPreview = cache(async () => {
   });
 });
 
-export async function loadCityObservations(categorySlug: string): Promise<CityObservation[]> {
+export async function loadCityObservations(categorySlug: string, sourceId?: string): Promise<CityObservation[]> {
   if (CITY_DEFERRED_CATEGORIES.includes(categorySlug)) return [];
+  if (sourceId !== undefined && (!(CATEGORY_SOURCES[categorySlug] ?? []).includes(sourceId) || !citySourceInRelease(sourceId))) return [];
   if (!cityGuideEnabled()) return [];
+  const select = (data: z.infer<typeof previewSchema>) => selectCityObservations(categorySlug, data).filter(group => citySourceInRelease(group.sourceId) && (sourceId === undefined || group.sourceId === sourceId));
   if (process.env.NODE_ENV !== "development" || process.env.CITY_GUIDE_USE_DB_PREVIEW === "1") {
-    try { return selectCityObservations(categorySlug, await loadDbPreview()).filter(group => citySourceInRelease(group.sourceId)); }
+    try { return select(await loadDbPreview(sourceId ?? null)); }
     catch { return []; }
   }
   const relativePath = "tests/reports/city-preview-live/preview.json";
@@ -205,7 +221,7 @@ export async function loadCityObservations(categorySlug: string): Promise<CityOb
   for (const path of paths) {
     try {
       const parsed = previewSchema.safeParse(JSON.parse(await readFile(path, "utf8")));
-      return parsed.success ? selectCityObservations(categorySlug, parsed.data).filter(group => citySourceInRelease(group.sourceId)) : [];
+      return parsed.success ? select(parsed.data) : [];
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") return [];
     }

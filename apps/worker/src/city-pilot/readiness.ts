@@ -33,10 +33,11 @@ export function cityReadiness(state: Record<string, CheckState>, snapshots: Reco
     topics: category.topics.map(topic => {
       const ids = CITY_TOPIC_SOURCES[category.slug]?.[topic.title] ?? [];
       const implementedFilter = category.slug === "nightlife" && ["Тази вечер", "Уикенда"].includes(topic.title);
+      const interestFilter = category.slug === "nightlife" && ["Безплатно", "DJ и електронна музика", "Рап и хип-хоп", "Попфолк, балканска и турска музика", "Студентски вечери", "Куизове", "Настолни игри"].includes(topic.title);
       const elsewhere = topic.title === "Концерти" ? "nightlife / live" : category.slug === "nightlife" && topic.title === "Творчески работилници" ? "culture / community" : null;
       return { title: topic.title, sourceIds: ids,
         ...(elsewhere ? { coveredElsewhere: elsewhere } : {}),
-        status: CITY_DEFERRED_CATEGORIES.includes(category.slug) || ids.length > 0 && ids.every(id => !citySourceInRelease(id)) ? "deferred" : implementedFilter ? "date-filter" : elsewhere ? "covered-elsewhere" : !ids.length ? "not-implemented" : ids.every(id => CITY_PRESENTATION[id]?.utility) ? "supporting-contact-only"
+        status: CITY_DEFERRED_CATEGORIES.includes(category.slug) || ids.length > 0 && ids.every(id => !citySourceInRelease(id)) ? "deferred" : implementedFilter ? "date-filter" : interestFilter ? "interest-filter-needs-matching-events" : elsewhere ? "covered-elsewhere" : !ids.length ? "not-implemented" : ids.every(id => CITY_PRESENTATION[id]?.utility) ? "supporting-contact-only"
           : ids.every(id => id === "plovdiv-council") ? "insufficient-content"
           : ids.some(id => sources.some(source => source.id === id && source.status === "healthy")) ? "has-healthy-source" : "unavailable",
       };
@@ -63,7 +64,8 @@ async function main() {
       firstCheck: checks[0]?.checkedAt ?? null, lastCheck: checks.at(-1)?.checkedAt ?? null };
   });
   await writeFile(resolve(dir, "readiness.json"), JSON.stringify({ ...report, evidence }, null, 2) + "\n");
-  console.log(JSON.stringify({ sources: report.sources.length, status: report.sources.reduce<Record<string, number>>((counts, source) => { counts[source.status] = (counts[source.status] ?? 0) + 1; return counts; }, {}), policyErrors: report.policyErrors, missingReaderSources: report.missingReaderSources }));
+  const releaseSources = report.sources.filter(source => source.inRelease);
+  console.log(JSON.stringify({ releaseSources: releaseSources.length, deferredSources: report.sources.length - releaseSources.length, status: releaseSources.reduce<Record<string, number>>((counts, source) => { counts[source.status] = (counts[source.status] ?? 0) + 1; return counts; }, {}), policyErrors: report.policyErrors, missingReaderSources: report.missingReaderSources }));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) main().catch(error => { console.error(error); process.exitCode = 1; });

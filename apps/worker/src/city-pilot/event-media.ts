@@ -9,11 +9,13 @@ export function eventImageUrl(raw: unknown, base: string): string | null {
   try {
     const u = new URL(raw, base);
     if (u.protocol !== "https:" || u.username || u.password || u.port || u.hash) return null;
+    // The shelter's published host redirects to this observed canonical host.
+    if (u.hostname === "register-dogs.com") u.hostname = "www.register-dogs.com";
     const paths: Record<string, RegExp> = {
       "panel.bilet.bg": /^\/media\/events\/[a-zA-Z0-9_.-]+$/u,
       "i.id24.bg": /^\/im\/ev\/[a-zA-Z0-9_.-]+$/u,
       "liveclubplovdiv.com": /^\/images\/[a-zA-Z0-9_.-]+$/u,
-      "register-dogs.com": /^\/shelter\/uploads\/plovdivd_shelter\/\d+\/[a-zA-Z0-9_%.[\]-]+\.(?:jpg|jpeg|png|webp)$/iu,
+      "www.register-dogs.com": /^\/shelter\/uploads\/plovdivd_shelter\/\d+\/[a-zA-Z0-9_%.[\]-]+\.(?:jpg|jpeg|png|webp)$/iu,
       "www.clubcode.bg": /^\/website_files\//u,
       "operaplovdiv.bg": /^\/(?:media\/images\/|timthumb\.php$)/u,
       "galleryplovdiv.com": /^\/storage\//u,

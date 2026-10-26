@@ -12,7 +12,7 @@ import { cityAgendaStories, cityAgendaContextStories, cityStoriesForTopics } fro
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
 
 import { CityEventAgenda } from "@/components/city-guide/city-event-agenda";
-import { cityAgenda, AGENDA_KINDS, type AgendaKind } from "@/lib/city-guide/event-agenda";
+import { cityAgenda, AGENDA_KINDS, AGENDA_EXTRA_FILTERS, agendaExtraMatches, type AgendaKind, type AgendaExtra } from "@/lib/city-guide/event-agenda";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -46,7 +46,7 @@ export default async function CityCategoryPage({ params }: Props) {
       for (const kind of ["all", ...kinds]) news[`place:${place}:${kind}`] = cityAgendaContextStories(articles, kind === "all" ? kinds : [kind as AgendaKind], { place });
     }
     for (const event of events) news['event:' + event.id] = cityAgendaContextStories(articles, [event.kind], { place: event.place, title: event.title });
-    return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` }))} /><CityEventAgenda category={slug} events={events} news={news} today={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" })} /></>;
+    return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={[...kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` })), ...(Object.keys(AGENDA_EXTRA_FILTERS) as AgendaExtra[]).filter(key => events.some(event => agendaExtraMatches(event, key))).map(key => ({ title: AGENDA_EXTRA_FILTERS[key], href: `#agenda-extra-${key}` }))]} /><CityEventAgenda category={slug} events={events} news={news} today={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" })} /></>;
   }
   if (slug === "outages") return withNav(<CityOutagesView category={category} stories={stories} observations={observations} />);
   if (slug === "transport") return withNav(<CityTransportView category={category} stories={stories} observations={observations} activeTopics={availableTopics.map(topic => topic.title)} hasFareData={activeGroups.some(group => group.sourceId === "plovdiv-transit")} hasRouteData={activeGroups.some(group => group.sourceId === "plovdiv-livetransport-gtfs")} />);

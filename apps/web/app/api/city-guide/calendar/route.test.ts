@@ -10,12 +10,11 @@ const fixture = { sourceId: "plovdiv-tax-notices", status: "observed", items: [{
 beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); load.mockReset(); load.mockResolvedValue([fixture]); });
 afterEach(() => vi.unstubAllEnvs());
 
-it("downloads only the current record with private cache headers", async () => {
+it("defers municipal calendar downloads without loading their records", async () => {
   const response = await GET(request());
-  expect(response.status).toBe(200);
+  expect(response.status).toBe(404);
   expect(response.headers.get("cache-control")).toBe("private, no-store");
-  expect(response.headers.get("content-disposition")).toContain("attachment;");
-  expect(await response.text()).toContain("DTSTART;VALUE=DATE:20261102");
+  expect(load).not.toHaveBeenCalled();
 });
 
 it("does not expose development preview records in production", async () => {

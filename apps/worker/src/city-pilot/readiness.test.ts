@@ -25,5 +25,5 @@ it("distinguishes an overdue collector, a backed-off failure, stale data and a h
   expect(status["plovdiv-transit"]).toBe("healthy");
   expect(status["dz-vacancies"]).toBe("stale");
   expect(status["plovdiv-council"]).toBe("never-checked");
-  expect(report.categories.find(category => category.slug === "outages")?.topics.find(topic => topic.title === "Без ток")?.status).toBe("not-implemented");
+  expect(report.categories.find(category => category.slug === "outages")?.topics.find(topic => topic.title === "Без ток")?.status).toBe("unavailable");
 });

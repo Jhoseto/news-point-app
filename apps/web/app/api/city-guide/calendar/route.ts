@@ -1,4 +1,5 @@
 import { cityGuideEnabled } from "../../../../lib/city-guide/access";
+import { citySourceInRelease } from "@newspoint/content/city-sources";
 import { loadCityObservations } from "../../../../lib/city-guide/local-observations";
 import { cityDeadlineCalendar } from "../../../../lib/city-guide/calendar";
 
@@ -10,8 +11,8 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const sourceId = params.get("sourceId") ?? "";
   const recordKey = params.get("recordKey") ?? "";
-  if (!allowed.has(sourceId) || !recordKey || recordKey.length > 500) return new Response(null, { status: 404, headers });
-  const group = (await loadCityObservations("municipality")).find(entry => entry.sourceId === sourceId && entry.status === "observed");
+  if (!citySourceInRelease(sourceId) || !allowed.has(sourceId) || !recordKey || recordKey.length > 500) return new Response(null, { status: 404, headers });
+  const group = (await loadCityObservations("municipality", sourceId)).find(entry => entry.sourceId === sourceId && entry.status === "observed");
   const record = group?.items.find(item => item.key === recordKey);
   if (!record) return new Response(null, { status: 404, headers });
   const { fields } = record;

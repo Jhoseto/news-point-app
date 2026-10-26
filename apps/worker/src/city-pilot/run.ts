@@ -1,4 +1,6 @@
 import { cityCollectionHealth } from "@newspoint/content/city-health";
+import { parsePlovdivAir } from "./air-quality";
+import { parsePlannedPower } from "./planned-power";
 import { citySourcePolicy, citySourceInRelease } from "@newspoint/content/city-sources";
 import { VENUE_PROGRAMMES, collectVenueProgramme } from "./venue-programmes";
 import { createHash } from "node:crypto";
@@ -40,7 +42,7 @@ const statePath = resolve(outputDir, "state.json");
 const journalPath = resolve(outputDir, "runs.jsonl");
 const previewPath = process.env.CITY_PILOT_STORE_PREVIEW === "1" ? resolve(outputDir, "preview.json") : null;
 const maxBodyBytes = 4_000_000;
-const agent = process.env.CITY_PILOT_USER_AGENT || "NewsPointCityPilot/0.1 (+https://newspoint.bg/)";
+const agent = process.env.CITY_PILOT_USER_AGENT || (process.argv.includes("--release") ? "NewsPointCity/1.0 (+https://newspoint.bg/)" : "NewsPointCityPilot/0.1 (+https://newspoint.bg/)");
 
 
 export function pilotRefreshSeconds(sourceId: string): number {
@@ -105,7 +107,10 @@ async function requestSource(source: CandidateSource, previous: SourceState, req
 }
 
 function decodeHtml(body: Uint8Array, contentType: string | null): string {
-  const charset = contentType?.match(/charset=([^;\s]+)/iu)?.[1]?.replace(/["']/gu, "") || "utf-8";
+  const declaration = contentType?.match(/charset\s*=\s*["']?([a-z0-9_-]+)/iu)?.[1];
+  const head = new TextDecoder("windows-1252").decode(body.subarray(0, 2048));
+  const meta = head.match(/<meta\b[^>]*charset\s*=\s*["']?([a-z0-9_-]+)/iu)?.[1];
+  const charset = declaration || meta || "utf-8";
   return new TextDecoder(charset, { fatal: true }).decode(body);
 }
 
@@ -197,7 +202,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       procedureDocuments.set(url, document);
       return document;
     };
-    let snapshot = VENUE_PROGRAMMES[source.id] ? await collectVenueProgramme(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
+    let snapshot = source.id === "elyug-planned-plovdiv-region" ? parsePlannedPower(decodeHtml(body, response.headers.get("content-type")), new Date(now)) : source.id === "plovdiv-community-air" ? parsePlovdivAir(JSON.parse(new TextDecoder().decode(body)), new Date(now)) : VENUE_PROGRAMMES[source.id] ? await collectVenueProgramme(source.id, decodeHtml(body, response.headers.get("content-type")), async url => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       if (!detail.response.ok || !detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
@@ -364,60 +369,64 @@ export async function run(): Promise<void> {
   const selectedSources = pilotSources.filter(source => (!selection || selection.includes(source.id)) && (!release || citySourceInRelease(source.id)));
   if (!selectedSources.length) throw new Error("No sources in the selected collection scope");
   const writer = process.env.CITY_PILOT_PERSIST_DB === "1" ? createCityPilotWriter() : null;
-  await mkdir(outputDir, { recursive: true });
-  const state = await loadState();
-  let preview: LocalPreview = { version: 1, sources: {} };
-  if (previewPath) {
-    try {
-      const parsed = JSON.parse(await readFile(previewPath, "utf8")) as LocalPreview;
-      if (parsed.version !== 1 || !parsed.sources || typeof parsed.sources !== "object") throw new Error("unsupported preview state");
-      preview = parsed;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  try {
+    await mkdir(outputDir, { recursive: true });
+    const state = await loadState();
+    let preview: LocalPreview = { version: 1, sources: {} };
+    if (previewPath) {
+      try {
+        const parsed = JSON.parse(await readFile(previewPath, "utf8")) as LocalPreview;
+        if (parsed.version !== 1 || !parsed.sources || typeof parsed.sources !== "object") throw new Error("unsupported preview state");
+        preview = parsed;
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
     }
+    do {
+      for (const source of selectedSources) {
+        const previous = state.sources[source.id] ?? { failures: 0, items: {} };
+        if (!refresh && previous.nextDueAt && Date.parse(previous.nextDueAt) > Date.now()) {
+          if (!watch && process.env.CITY_PILOT_QUIET_SKIPS !== "1") process.stdout.write(`${source.id}: skipped until ${previous.nextDueAt}\n`);
+          continue;
+        }
+        // All requests are serial, including sources on the same host.
+        // Hide rows before a due request, so a crash during fetch or journal/state
+        // persistence cannot leave the previous observation visible as current.
+        const priorPreview = preview.sources[source.id];
+        const requireSnapshot = !!previewPath && priorPreview?.outcome !== "observed";
+        if (previewPath) {
+          preview.sources[source.id] = previewAfterCheck(priorPreview, new Date().toISOString(), "checking");
+          await savePreview(preview);
+        }
+        const result = await runPilotSource(source, previous, Date.now(), requireSnapshot);
+        if (writer) await writer.write({
+          source,
+          checkedAt: String(result.journal.checkedAt),
+          outcome: result.journal.outcome as "parsed" | "unchanged" | "failed",
+          httpStatus: typeof result.journal.httpStatus === "number" ? result.journal.httpStatus : null,
+          ...(typeof result.journal.error === "string" ? { error: result.journal.error.slice(0, 2000) } : {}),
+          refreshSeconds: pilotRefreshSeconds(source.id),
+          ...(result.snapshot ? { items: result.snapshot.items.map(({ key, fingerprint, fields }) => ({ key, fingerprint, fields })) } : {}),
+        });
+        state.sources[source.id] = result.state;
+        await appendFile(journalPath, JSON.stringify(result.journal) + "\n", "utf8");
+        await saveState(state);
+        if (previewPath) {
+          preview.sources[source.id] = previewAfterCheck(priorPreview, String(result.journal.checkedAt), result.journal.outcome, result.snapshot);
+          await savePreview(preview);
+        }
+        process.stdout.write(`${source.id}: ${result.journal.outcome} (${result.journal.httpStatus ?? "network"})\n`);
+      }
+      const health = cityCollectionHealth(state.sources);
+      const healthFile = resolve(outputDir, "collector-health.json");
+      await writeFile(`${healthFile}.tmp`, JSON.stringify(health) + "\n", "utf8");
+      await replaceSnapshot(`${healthFile}.tmp`, healthFile);
+      if (release && !watch && health.status !== "ok") process.exitCode = 1;
+      if (!watch) break;
+      const next = Math.min(...selectedSources.map((source) => Date.parse(state.sources[source.id]?.nextDueAt ?? ""))).valueOf();
+      await new Promise((done) => setTimeout(done, Math.max(1000, Math.min(60_000, next - Date.now()))));
+    } while (watch);
+  } finally {
+    await writer?.close();
   }
-  do {
-    for (const source of selectedSources) {
-      const previous = state.sources[source.id] ?? { failures: 0, items: {} };
-      if (!refresh && previous.nextDueAt && Date.parse(previous.nextDueAt) > Date.now()) {
-        if (!watch && process.env.CITY_PILOT_QUIET_SKIPS !== "1") process.stdout.write(`${source.id}: skipped until ${previous.nextDueAt}\n`);
-        continue;
-      }
-      // All requests are serial, including sources on the same host.
-      // Hide rows before a due request, so a crash during fetch or journal/state
-      // persistence cannot leave the previous observation visible as current.
-      const priorPreview = preview.sources[source.id];
-      const requireSnapshot = !!previewPath && priorPreview?.outcome !== "observed";
-      if (previewPath) {
-        preview.sources[source.id] = previewAfterCheck(priorPreview, new Date().toISOString(), "checking");
-        await savePreview(preview);
-      }
-      const result = await runPilotSource(source, previous, Date.now(), requireSnapshot);
-      state.sources[source.id] = result.state;
-      await appendFile(journalPath, JSON.stringify(result.journal) + "\n", "utf8");
-      await saveState(state);
-      if (previewPath) {
-        preview.sources[source.id] = previewAfterCheck(priorPreview, String(result.journal.checkedAt), result.journal.outcome, result.snapshot);
-        await savePreview(preview);
-      }
-      if (writer) await writer.write({
-        source,
-        checkedAt: String(result.journal.checkedAt),
-        outcome: result.journal.outcome as "parsed" | "unchanged" | "failed",
-        httpStatus: typeof result.journal.httpStatus === "number" ? result.journal.httpStatus : null,
-        ...(typeof result.journal.error === "string" ? { error: result.journal.error.slice(0, 2000) } : {}),
-        refreshSeconds: pilotRefreshSeconds(source.id),
-        ...(result.snapshot ? { items: result.snapshot.items.map(({ key, fingerprint, fields }) => ({ key, fingerprint, fields })) } : {}),
-      });
-      process.stdout.write(`${source.id}: ${result.journal.outcome} (${result.journal.httpStatus ?? "network"})\n`);
-    }
-    const health = cityCollectionHealth(state.sources);
-    const healthFile = resolve(outputDir, "collector-health.json");
-    await writeFile(`${healthFile}.tmp`, JSON.stringify(health) + "\n", "utf8");
-    await replaceSnapshot(`${healthFile}.tmp`, healthFile);
-    if (!watch) break;
-    const next = Math.min(...selectedSources.map((source) => Date.parse(state.sources[source.id]?.nextDueAt ?? ""))).valueOf();
-    await new Promise((done) => setTimeout(done, Math.max(1000, Math.min(60_000, next - Date.now()))));
-  } while (watch);
-  await writer?.close();
 }

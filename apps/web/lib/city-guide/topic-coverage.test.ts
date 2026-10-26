@@ -34,15 +34,15 @@ describe("city navigation coverage", () => {
   });
 
   it("links municipal housing directly to verified guidance and hides a failed read", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-housing")])).toContainEqual({ title: "Общински жилища", href: "#nablyudavani-plovdiv-housing" });
+    expect(cityAvailableTopics("municipality", [group("plovdiv-housing")])).toEqual([]);
     expect(cityAvailableTopics("municipality", [group("plovdiv-housing", "unavailable")])).toEqual([]);
   });
   it("links public consultations only while an active dated record is present", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations")])).toContainEqual({ title: "Обществени обсъждания", href: "#nablyudavani-plovdiv-public-consultations" });
+    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations")])).toEqual([]);
     expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations", "observed", 0)])).toEqual([]);
   });
   it("links management competitions only while an open record exists", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions")])).toContainEqual({ title: "Работа в общината", href: "#nablyudavani-plovdiv-management-competitions" });
+    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions")])).toEqual([]);
     expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions", "observed", 0)])).toEqual([]);
   });
   it("does not advertise contact-only references or docket numbers as substantive topics", () => {

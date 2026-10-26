@@ -1,4 +1,5 @@
 import { cityGuideEnabled } from "../../../../lib/city-guide/access";
+import { citySourceInRelease } from "@newspoint/content/city-sources";
 import { loadCityObservations } from "../../../../lib/city-guide/local-observations";
 import { cityProcedureDocuments } from "../../../../lib/city-guide/procedure-documents";
 import { readProcedureFile } from "../../../../lib/city-guide/procedure-file";
@@ -10,8 +11,8 @@ export async function GET(request: Request) {
   if (!cityGuideEnabled()) return missing();
   const params = new URL(request.url).searchParams;
   const source = params.get("sourceId") ?? "", key = params.get("recordKey") ?? "", hash = params.get("hash") ?? "";
-  if (!sources.has(source) || !key || key.length > 500 || !/^[a-f0-9]{64}$/u.test(hash)) return missing();
-  const group = (await loadCityObservations(source === "dz-admission-calendar" ? "education" : source === "plovdiv-low-emission-permit" ? "transport" : "municipality")).find(item => item.sourceId === source && item.status === "observed");
+  if (!citySourceInRelease(source) || !sources.has(source) || !key || key.length > 500 || !/^[a-f0-9]{64}$/u.test(hash)) return missing();
+  const group = (await loadCityObservations(source === "dz-admission-calendar" ? "education" : source === "plovdiv-low-emission-permit" ? "transport" : "municipality", source)).find(item => item.sourceId === source && item.status === "observed");
   const record = group?.items.find(item => item.key === key);
   if (!record || !cityProcedureDocuments(record.fields.documents).some(document => document.hash === hash)) return missing();
   const bytes = await readProcedureFile(hash);

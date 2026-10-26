@@ -1,10 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { cityAgenda, agendaPeriodMatches, type AgendaEvent } from "./event-agenda";
+import { cityAgenda, agendaPeriodMatches, agendaExtraMatches, type AgendaEvent } from "./event-agenda";
 import { cityAgendaStories } from "./news";
 import type { CityObservation } from "./local-observations";
 import type { ArticleSummary } from "../queries";
 const group = (sourceId: string, fields: Record<string, string | number>): CityObservation => ({ sourceId, checkedAt: "2026-10-26T06:00:00Z", status: "observed", completeness: "uncertain", items: [{ key: "event", fields }] });
 describe("unified event agenda", () => {
+  it("uses only explicit title or published zero-price evidence for interests", () => {
+    expect(agendaExtraMatches({ title: "DJ Night", price: null }, "electronic")).toBe(true);
+    expect(agendaExtraMatches({ title: "Студентски празник", price: null }, "student")).toBe(true);
+    expect(agendaExtraMatches({ title: "Concert", price: 0 }, "free")).toBe(true);
+    expect(agendaExtraMatches({ title: "Concert", price: null }, "free")).toBe(false);
+    expect(agendaExtraMatches({ title: "Live at Rock Bar Download", price: null }, "rock")).toBe(false);
+    expect(agendaExtraMatches({ title: "Фики", price: null }, "folk")).toBe(false);
+    expect(agendaExtraMatches({ title: "Unknown", price: null }, "unknown")).toBe(false);
+  });
   it("uses verified venue programme types, recurrence and separate doors/show times", () => {
     const programme = group("bilet-beebop", { title: "Verified programme fixture", eventKind: "live", date: "2026-11-22", time: "20:00", doorsTime: "20:00", performanceTime: "21:00", description: "Programme detail", imageHash: "b".repeat(64) });
     expect(cityAgenda([programme], "culture")).toEqual([]);

@@ -27,7 +27,8 @@ export type CityDbSnapshot = {
 };
 
 /** Server-only read. Hidden pilot rows are available only in local development. */
-export async function readCitySnapshots(options: { includeHidden?: boolean } = {}): Promise<CityDbSnapshot[]> {
+export async function readCitySnapshots(options: { includeHidden?: boolean; sourceId?: string } = {}): Promise<CityDbSnapshot[]> {
+  if (options.sourceId !== undefined && !/^[a-z0-9-]{1,150}$/u.test(options.sourceId)) throw new Error("Invalid city source identifier");
   if (options.includeHidden && process.env.NODE_ENV !== "development") {
     throw new Error("Hidden city pilot rows may only be read in development");
   }
@@ -50,6 +51,7 @@ export async function readCitySnapshots(options: { includeHidden?: boolean } = {
       ) latest on true
       left join public.city_records r on r.source_id = s.id and r.state = 'current'
       where ${options.includeHidden ? sql`true` : sql`s.review_state = 'accepted' and s.publication_state = 'visible'`}
+        and ${options.sourceId ? sql`s.id = ${options.sourceId}` : sql`true`}
       order by s.id, r.record_key
     `;
     const snapshots = new Map<string, CityDbSnapshot>();

@@ -6,7 +6,7 @@ import { GET } from "./route";
 
 const hash = "a".repeat(64);
 const document = { hash, title: "Explicit QA fixture", pages: 1, text: "QA ".repeat(40) };
-const group = { sourceId: "plovdiv-management-competitions", status: "observed", items: [{ key: "fixture", fields: { documents: JSON.stringify([document]) } }] };
+const group = { sourceId: "dz-admission-calendar", status: "observed", items: [{ key: "fixture", fields: { documents: JSON.stringify([document]) } }] };
 const request = (digest = hash) => new Request(`http://localhost/api/city-guide/document?sourceId=${group.sourceId}&recordKey=fixture&hash=${digest}`);
 beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); mocks.load.mockReset().mockResolvedValue([group]); mocks.read.mockReset().mockResolvedValue(new TextEncoder().encode("%PDF-QA")); });
 afterEach(() => vi.unstubAllEnvs());
@@ -29,10 +29,10 @@ it("resolves a childcare calendar only within the education category", async () 
   mocks.load.mockResolvedValue([{ ...group, sourceId: "dz-admission-calendar" }]);
   const response = await GET(new Request(request().url.replace(group.sourceId, "dz-admission-calendar")));
   expect(response.status).toBe(200);
-  expect(mocks.load).toHaveBeenCalledWith("education");
+  expect(mocks.load).toHaveBeenCalledWith("education", "dz-admission-calendar");
 });
-it("resolves an entry-permit document only within transport", async () => {
+it("defers municipal entry-permit documents", async () => {
   mocks.load.mockResolvedValue([{ ...group, sourceId: "plovdiv-low-emission-permit" }]);
-  expect((await GET(new Request(request().url.replace(group.sourceId, "plovdiv-low-emission-permit")))).status).toBe(200);
-  expect(mocks.load).toHaveBeenCalledWith("transport");
+  expect((await GET(new Request(request().url.replace(group.sourceId, "plovdiv-low-emission-permit")))).status).toBe(404);
+  expect(mocks.load).not.toHaveBeenCalled();
 });

@@ -20,6 +20,19 @@ function preview(sourceId: string, source: {
 }
 
 describe("local city observations", () => {
+  it("shows only published city power windows that have not expired, never county neighbours", () => {
+    const row = { key: "fixture", fields: { address: "ГР. ПЛОВДИВ — ул. Тестова", startDate: "2026-10-24", endDate: "2026-10-24", startTime: "09:00", endTime: "20:00", kind: "planned" } };
+    const read = (fields = row.fields) => selectCityObservations("outages", preview("elyug-planned-plovdiv-region", { items: [{ ...row, fields }] }), now)[0]?.items;
+    expect(read()).toHaveLength(1);
+    expect(read({ ...row.fields, endTime: "18:00" })).toEqual([]);
+    expect(read({ ...row.fields, address: "ГР. АСЕНОВГРАД" })).toEqual([]);
+  });
+  it("hides expired and invalid air measurements independently of the source check time", () => {
+    const row = { key: "123", fields: { sensorId: "123", measuredAt: "2026-10-24T15:55:00Z", pm10: 15, pm25: 8 } };
+    expect(selectCityObservations("environment", preview("plovdiv-community-air", { items: [row] }), now)[0]?.items).toHaveLength(1);
+    expect(selectCityObservations("environment", preview("plovdiv-community-air", { items: [{ ...row, fields: { ...row.fields, measuredAt: "2026-10-24T15:30:00Z" } }] }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("environment", preview("plovdiv-community-air", { outcome: "unavailable", items: [row] }), now)[0]?.items).toEqual([]);
+  });
   it("hides stale, failed, invalid or expired venue programmes while keeping explicit cancellation", () => {
     const fields = { title: "Fixture concert", date: "2026-10-30", time: "20:00", place: "Fixture venue", eventKind: "live", status: "EventCancelled" };
     const select = (overrides = {}, checkedAt = "2026-10-24T15:50:00.000Z", outcome: "observed" | "unavailable" = "observed") => selectCityObservations("nightlife", preview("bilet-beebop", { checkedAt, outcome, items: [{ key: "fixture", fields: { ...fields, ...overrides } }] }), now)[0]?.items ?? [];

@@ -34,3 +34,13 @@ it("defers the municipal category and permit records even when their snapshots e
   expect(mocks.db).not.toHaveBeenCalled();
   expect(await loadCityObservations("transport")).toEqual([]);
 });
+it("reads only the requested allowed source for a media request and rejects a different category", async () => {
+  mocks.db.mockResolvedValue([]);
+  const { loadCityObservations } = await import("./local-observations");
+  expect(await loadCityObservations("adopt", "plovdiv-dog-shelter")).toEqual([]);
+  expect(mocks.db).toHaveBeenCalledWith({ includeHidden: false, sourceId: "plovdiv-dog-shelter" });
+  mocks.db.mockClear();
+  expect(await loadCityObservations("adopt", "plovdiv-opera")).toEqual([]);
+  expect(await loadCityObservations("adopt", "")).toEqual([]);
+  expect(mocks.db).not.toHaveBeenCalled();
+});

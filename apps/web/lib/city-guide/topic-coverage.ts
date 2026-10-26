@@ -17,6 +17,7 @@ export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]
     "Репатриране": ["plovdiv-parking-operator"],
   },
   outages: {
+    "Без ток": ["elyug-planned-plovdiv-region"],
     "Без вода": ["vik-outages"],
     "Парно и топла вода": ["evn-heating-outages"],
   },
@@ -38,6 +39,7 @@ export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]
     "Училища и градини": ["plovdiv-municipal-schools", "dz-institutions"],
   },
   environment: {
+    "Въздухът в Пловдив": ["plovdiv-community-air"],
     "Чистота и сметосъбиране": ["ecomap-containers"],
     "Паркове и зелени площи": ["plovdiv-eco-signals"],
     "Комари и кърлежи": ["plovdiv-eco-signals"],

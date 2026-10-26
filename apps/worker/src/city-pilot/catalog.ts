@@ -1,4 +1,5 @@
 import { VENUE_PROGRAMMES } from "./venue-programmes";
+import { PLOVDIV_AIR_URL } from "./air-quality";
 export type CityCategory = "transport" | "parking" | "outages" | "municipality" | "education" | "environment" | "events" | "adoption";
 export type SourceFormat = "html" | "json" | "map" | "gtfs" | "ical" | "pdf" | "unknown";
 
@@ -13,6 +14,7 @@ export type CandidateSource = {
 // Inventory from the two 2026-10-24 concept documents plus explicitly probed
 // alternatives. A URL here is not evidence of approved extraction or freshness.
 export const candidateSources: CandidateSource[] = [
+  { id: "plovdiv-community-air", category: "environment", url: PLOVDIV_AIR_URL, format: "json", pilot: true },
   { id: "plovdiv-transit", category: "transport", url: "https://www.plovdiv.bg/item/transport/mass-public-transport/", format: "html", pilot: true },
   { id: "plovdiv-transport-news", category: "transport", url: "https://www.plovdiv.bg/category/transport/", format: "html" },
   { id: "plovdiv-low-emission-permit", category: "transport", url: "https://www.plovdiv.bg/administration/municipal-enterprises/op_parking/form/", format: "html", pilot: true },
@@ -40,7 +42,7 @@ export const candidateSources: CandidateSource[] = [
   { id: "elyug-unplanned", category: "outages", url: "https://www.elyug.bg/Customers/Unscheduled-power-cuts.aspx", format: "map" },
   { id: "elyug-planned", category: "outages", url: "https://www.elyug.bg/Customers/Planned_shutdowns.aspx", format: "map" },
   // Region is Plovdiv province, not necessarily Plovdiv city; no city row on 2026-10-25.
-  { id: "elyug-planned-plovdiv-region", category: "outages", url: "https://www.elyug.bg/oldservices/ec_ep/abschaltung_bg/abschaltung4.asp", format: "html" },
+  { id: "elyug-planned-plovdiv-region", category: "outages", url: "https://www.elyug.bg/oldservices/ec_ep/abschaltung_bg/abschaltung4.asp", format: "html", pilot: true },
   { id: "evn-heating-outages", category: "outages", url: "https://www.evn.bg/Home/Heating.aspx", format: "html", pilot: true },
   { id: "plovdiv-services", category: "municipality", url: "https://www.plovdiv.bg/uslugi/administrative-services/", format: "html" },
   { id: "plovdiv-transport-signals", category: "municipality", url: "https://www.plovdiv.bg/administration/municipal-enterprises/transport/", format: "html", pilot: true },

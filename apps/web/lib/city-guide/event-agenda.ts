@@ -4,6 +4,23 @@ import { explicitNightEventKind } from "./event-kind";
 
 export const AGENDA_KINDS = { party: "Партита", live: "Музика на живо", standup: "Стендъп", theatre: "Театър", opera: "Опера и балет", exhibition: "Изложби", community: "Срещи и работилници" } as const;
 export type AgendaKind = keyof typeof AGENDA_KINDS;
+export const AGENDA_EXTRA_FILTERS = { free: "Безплатен вход", student: "Студентски вечери", electronic: "DJ и електронна музика", rap: "Рап и хип-хоп", folk: "Попфолк и балканска музика", quiz: "Куизове", games: "Настолни игри", jazz: "Джаз", rock: "Рок" } as const;
+export type AgendaExtra = keyof typeof AGENDA_EXTRA_FILTERS;
+/** Only explicit event titles or a published zero price establish these filters. */
+export function agendaExtraMatches(event: { title: string; price: number | null }, extra: string): boolean {
+  if (extra === "all") return true;
+  const title = event.title.replace(/rock bar/giu, "");
+  const rules: Record<AgendaExtra, RegExp> = {
+    free: /свободен вход|безплатен вход|вход свободен|free entry/iu,
+    student: /студент|student/iu,
+    electronic: /(?:^|[^\p{L}])dj(?:[^\p{L}]|$)|диджей|електронн.*музик|techno|техно|house|хаус/iu,
+    rap: /хип[ -]?хоп|hip[ -]?hop|(?:^|[^\p{L}])(?:рап|rap)(?:[^\p{L}]|$)/iu,
+    folk: /поп[ -]?фолк|pop[ -]?folk|балканск.*музик/iu,
+    quiz: /куиз|quiz/iu, games: /настолн.*игр|board games/iu,
+    jazz: /джаз|jazz/iu, rock: /(?:^|[^\p{L}])(?:рок|rock)(?:[^\p{L}]|$)/iu,
+  };
+  return extra === "free" && event.price === 0 || !!rules[extra as AgendaExtra]?.test(title);
+}
 export type AgendaEvent = { id: string; title: string; kind: AgendaKind; date: string; endDate: string; time: string; place: string; address: string; image: string | null; status: string; price: number | null; description?: string; recurrence?: string; doorsTime?: string; performanceTime?: string };
 const canonicalPlace = (place: string) => /^Bee Bop Caf[eé]$/iu.test(place) ? "Bee Bop Café" : place;
 const day = (date: Date) => date.toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });
