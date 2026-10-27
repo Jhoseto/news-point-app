@@ -37,6 +37,21 @@ stop_pid() {
     local pid
     pid="$(cat "$file")"
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      local role="${file##*/}"
+      role="${role%.pid}"
+      if [[ "$role" == web || "$role" == studio ]]; then
+        [[ "$(readlink "/proc/$pid/cwd")" == "$APP/apps/$role" ]] || return 1
+        kill -TERM "$pid" 2>/dev/null || true
+        for _ in {1..15}; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+        if kill -0 "$pid" 2>/dev/null; then
+          for child in $(pgrep -P "$pid" || true); do
+            [[ "$(readlink "/proc/$child/cwd")" == "$APP/apps/$role" ]] && kill -KILL "$child" 2>/dev/null || true
+          done
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+        rm -f "$file"
+        return 0
+      fi
       kill "$pid" 2>/dev/null || true
       sleep 1
       kill -9 "$pid" 2>/dev/null || true
@@ -59,11 +74,11 @@ if [[ -z "$NEXT_BIN" ]]; then
 fi
 
 cd "$APP/apps/studio"
-nohup "$HOME/node/bin/node" "$NEXT_BIN" start --hostname 127.0.0.1 --port 3101 > "$APP/logs/studio.log" 2>&1 &
+nohup bash "$APP/deploy/np2/run-diagnostics.sh" studio > "$APP/logs/studio.log" 2>&1 &
 echo $! > "$APP/logs/studio.pid"
 
 cd "$APP/apps/web"
-nohup "$HOME/node/bin/node" "$NEXT_BIN" start --hostname 127.0.0.1 --port 3100 > "$APP/logs/web.log" 2>&1 &
+nohup bash "$APP/deploy/np2/run-diagnostics.sh" web > "$APP/logs/web.log" 2>&1 &
 echo $! > "$APP/logs/web.pid"
 
 cd "$APP"

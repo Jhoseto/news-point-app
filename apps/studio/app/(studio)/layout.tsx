@@ -7,7 +7,7 @@ export default async function StudioLayout({ children }: { children: ReactNode }
   const staff = await requireStaff();
   return (
     <StudioShell
-      user={{ name: staff.name, role: ROLE_LABELS[staff.role] }}
+      user={{ id: staff.id, name: staff.name, role: ROLE_LABELS[staff.role] }}
       webUrl={process.env.WEB_URL ?? "http://localhost:3000"}
       canManageUsers={canManageRoles(staff.role)}
       canManageSocial={staff.role === "master_admin"}

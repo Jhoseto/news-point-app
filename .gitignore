@@ -79,3 +79,6 @@ docs/review/
 
 # Generated CesiumJS workers, widgets and assets (copied from the pinned package).
 /apps/web/public/cesium/
+
+# Private local availability-monitor journals and process metadata.
+/logs/availability-diagnostics/

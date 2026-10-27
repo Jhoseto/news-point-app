@@ -7,6 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 import { studioSessionEnded } from "@/lib/session-probe";
+import { needsMonitoringAttention, seenKey, useMonitoring, type MonitoringSummary } from "@/lib/error-monitoring-client";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
 function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; "data-help"?: string | undefined }) {
@@ -26,6 +27,7 @@ const NAV = [
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 const LOGS_LINK = { href: "/logs", label: "Logs", icon: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01" };
+const MONITORING_LINK = { href: "/error-monitoring", label: "Error monitoring", icon: "M3 12h4l3-8 4 16 3-8h4" };
 
 const NAV_HELP: Record<string, string> = {
   "/moyat-plovdiv": "Градските справки, източниците, обновяването и видимостта им за читателите.",
@@ -39,6 +41,7 @@ const NAV_HELP: Record<string, string> = {
   "/stories": "Обединява свързани статии в тема с продължение и хронология.",
   "/users": "Управлява служебни профили и права за достъп до Studio.",
   "/logs": "История на действията в Studio: служител, промяна, час и резултат.",
+  "/error-monitoring": "Работа на сайта, засечени прекъсвания и диагностика. Удивителната показва проблем, неполучени данни или непрегледан сигнал.",
   "/settings/social/": "Свързва Facebook страница и показва проблеми при изпращане на новини.",
 };
 
@@ -62,18 +65,29 @@ function navClass(collapsed: boolean) {
 }
 
 /** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
-export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = false, children }: { user: { name: string; role: string }; webUrl: string; canManageUsers: boolean; canManageSocial?: boolean; children: ReactNode }) {
+export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = false, children }: { user: { id?: string; name: string; role: string }; webUrl: string; canManageUsers: boolean; canManageSocial?: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
   const nav = NAV;
   const mobileNav = [...(canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV), ...(canManageSocial ? [{ href: "/settings/social/", label: "Facebook", icon: "M14 4h-2a3 3 0 0 0-3 3v13M6 11h9" }] : [])];
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
-  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs" || pathname === "/moyat-plovdiv";
+  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs" || pathname === "/moyat-plovdiv" || pathname === "/error-monitoring";
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [collapsed, setCollapsed] = useState(wide);
   const [sessionEnded, setSessionEnded] = useState(false);
   const signingOut = useRef(false);
+  const monitoring = useMonitoring<MonitoringSummary>(true, canManageUsers);
+  const [monitoringSeen, setMonitoringSeen] = useState<string | null>(null);
+  const monitoringKey = seenKey(user.id ?? user.name);
+  const monitoringAttention = needsMonitoringAttention(monitoring.data, monitoringSeen, monitoring.failed);
+  useEffect(() => {
+    const read = () => { try { setMonitoringSeen(localStorage.getItem(monitoringKey)); } catch {} };
+    read(); window.addEventListener("storage", read); window.addEventListener("np-error-monitoring-seen", read);
+    return () => { window.removeEventListener("storage", read); window.removeEventListener("np-error-monitoring-seen", read); };
+  }, [monitoringKey]);
+  const monitoringTitle = monitoring.failed ? "Няма връзка с диагностиката" : monitoring.data?.status === "unknown" ? "Няма актуални данни от всички наблюдатели" : monitoring.data?.activeProblem ? "Има активен проблем за проверка" : "Има непрегледан диагностичен сигнал";
+  const monitoringBadge = monitoringAttention ? <span title={monitoringTitle} className={`absolute right-0 top-0 flex size-4 items-center justify-center rounded-full text-[11px] font-black text-white ${monitoring.data?.activeProblem ? "bg-red-600" : "bg-amber-600"}`}><span aria-hidden="true">!</span><span className="sr-only">{monitoringTitle}</span></span> : null;
 
   useEffect(() => {
     let active = true;
@@ -211,6 +225,9 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
                 <Icon d={LOGS_LINK.icon} />
                 {collapsed ? <span className="sr-only">{LOGS_LINK.label}</span> : LOGS_LINK.label}
               </Link>
+              <Link href={MONITORING_LINK.href} data-help={NAV_HELP[MONITORING_LINK.href]} aria-label={`${MONITORING_LINK.label}${monitoringAttention ? ` — ${monitoringTitle}` : ""}`} aria-current={isActive(MONITORING_LINK.href) ? "page" : undefined} className={`${navClass(collapsed)} mb-2 w-full`}>
+                <Icon d={MONITORING_LINK.icon} />{collapsed ? <span className="sr-only">{MONITORING_LINK.label}</span> : MONITORING_LINK.label}{monitoringBadge}
+              </Link>
             </>
           ) : null}
           <Link
@@ -260,6 +277,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
 
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
         <BrandLogoImg className="h-7 w-auto max-w-[9rem] shrink-0 object-contain object-left" sizes="144px" />
+        {canManageUsers ? <StudioNavLink href={MONITORING_LINK.href} aria-label={`${MONITORING_LINK.label}${monitoringAttention ? ` — ${monitoringTitle}` : ""}`} aria-current={isActive(MONITORING_LINK.href) ? "page" : undefined} data-help={NAV_HELP[MONITORING_LINK.href]} className="relative flex size-9 shrink-0 items-center justify-center rounded-lg text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"><Icon d={MONITORING_LINK.icon} />{monitoringBadge}</StudioNavLink> : null}
         <nav className="relative ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
           {mobileNav.map((item) => (
             <StudioNavLink
@@ -268,7 +286,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               aria-current={isActive(item.href) ? "page" : undefined}
               aria-label={item.label}
               data-help={NAV_HELP[item.href]}
-              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
+              className="relative flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink sm:size-auto sm:gap-1.5 sm:px-2.5 sm:py-1.5"
             >
               <Icon d={item.icon} />
               <span className="sr-only sm:not-sr-only">{item.label}</span>

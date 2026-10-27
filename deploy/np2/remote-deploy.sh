@@ -88,6 +88,21 @@ stop_pid() {
     local pid
     pid="$(cat "$file")"
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      local role="${file##*/}"
+      role="${role%.pid}"
+      if [[ "$role" == web || "$role" == studio ]]; then
+        [[ "$(readlink "/proc/$pid/cwd")" == "$LIVE/apps/$role" ]] || return 1
+        kill -TERM "$pid" 2>/dev/null || true
+        for _ in {1..15}; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+        if kill -0 "$pid" 2>/dev/null; then
+          for child in $(pgrep -P "$pid" || true); do
+            [[ "$(readlink "/proc/$child/cwd")" == "$LIVE/apps/$role" ]] && kill -KILL "$child" 2>/dev/null || true
+          done
+          kill -KILL "$pid" 2>/dev/null || true
+        fi
+        rm -f "$file"
+        return 0
+      fi
       kill "$pid" 2>/dev/null || true
       sleep 1
       kill -9 "$pid" 2>/dev/null || true
