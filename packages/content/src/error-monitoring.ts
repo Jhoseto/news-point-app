@@ -101,6 +101,6 @@ export function monitoringView(origin: MonitorState | null, external: MonitorSta
   const fresh = (s: MonitorState | null) => s !== null && now - Date.parse(s.checkedAt) >= -30_000 && now - Date.parse(s.checkedAt) <= MONITOR_STALE_MS;
   const recordersFresh = !!origin && (["web", "studio"] as const).every(service => origin.latest.apps.some(a => a.service === service && a.at && now - Date.parse(a.at) >= -30000 && now - Date.parse(a.at) <= MONITOR_STALE_MS));
   const activeProblem = [origin, external].some(s => fresh(s) && s && (cycleKind(s.latest) !== null || s.latest.apps.some(a => (a.ioFailures ?? 0) > 0 || (a.dropped ?? 0) > 0 || (a.skipped ?? 0) > 0)));
-  const events = [origin, external].flatMap(s => s ? [...s.incidents.map(i => i.endedAt ?? i.lastSeenAt), ...s.requestIssues.map(i => i.at)] : []).sort();
+  const events = [origin, external].flatMap(s => s ? [...s.incidents.filter(i => i.kind !== "observation-gap").map(i => i.endedAt ?? i.lastSeenAt), ...s.requestIssues.map(i => i.at)] : []).sort();
   return { checkedAt: new Date(now).toISOString(), sources: { origin, external }, status: activeProblem ? "problem" : fresh(origin) && fresh(external) && recordersFresh ? "ok" : "unknown", attentionAt: events.at(-1) ?? null, activeProblem };
 }

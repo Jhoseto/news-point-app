@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { MONITOR_STALE_MS, type Cycle, type Incident, type MonitoringView, type MonitorState } from "@newspoint/content/error-monitoring";
-import { seenKey, useMonitoring } from "../lib/error-monitoring-client";
+import { markMonitoringSeen, useMonitoring } from "../lib/error-monitoring-client";
 import "./error-monitoring-desk.css";
 
 const labels: Record<string, string> = { "web-home": "Начална страница · вътрешно", "web-static": "Файлове · вътрешно", "web-login-rewrite": "Вход през Web", "studio-login": "Studio · директно", "public-home": "Начална страница", "public-login": "Вход в Studio", "public-static": "Файлове", "public-sse": "Live поток · първи байт", "public-home-h2": "Начална · HTTP/2", "public-static-h2": "Файлове · HTTP/2" };
@@ -25,8 +25,15 @@ function Evidence({ cycle }: { cycle: Cycle }) {
 
 export function ErrorMonitoringDesk({ userKey }: { userKey: string }) {
   const { data, failed, loading, refresh } = useMonitoring<MonitoringView>(false);
-  const [selected, select] = useState<string | null>(null), [period, setPeriod] = useState("all"), [copied, setCopied] = useState(false), [seen, setSeen] = useState<string | null>(null);
-  useEffect(() => { try { setSeen(localStorage.getItem(seenKey(userKey))); } catch {} }, [userKey]);
+  const [selected, select] = useState<string | null>(null), [period, setPeriod] = useState("all"), [copied, setCopied] = useState(false);
+  useEffect(() => {
+    const acknowledgeVisible = () => {
+      if (!failed && data?.attentionAt && document.visibilityState === "visible") markMonitoringSeen(userKey, data.attentionAt);
+    };
+    acknowledgeVisible();
+    document.addEventListener("visibilitychange", acknowledgeVisible);
+    return () => document.removeEventListener("visibilitychange", acknowledgeVisible);
+  }, [userKey, data?.attentionAt, failed]);
   const source = data?.sources;
   const incidents = [...(source?.origin?.incidents ?? []).map(i => ({ ...i, source: "Сървър" })), ...(source?.external?.incidents ?? []).map(i => ({ ...i, source: "Отвън" }))]
     .filter(i => period === "all" || Date.now() - Date.parse(i.lastSeenAt) <= (period === "24h" ? 86400000 : 7 * 86400000))
@@ -38,12 +45,8 @@ export function ErrorMonitoringDesk({ userKey }: { userKey: string }) {
   async function copy() {
     try { await navigator.clipboard.writeText(JSON.stringify(selectedIncident ?? data, null, 2)); setCopied(true); } catch { setCopied(false); }
   }
-  function acknowledge() {
-    if (!data?.attentionAt) return;
-    try { localStorage.setItem(seenKey(userKey), data.attentionAt); setSeen(data.attentionAt); window.dispatchEvent(new Event("np-error-monitoring-seen")); } catch {}
-  }
   return <div className="np-em">
-    <header className="np-em-header"><div><p className="np-em-eyebrow">Сайт и инфраструктура</p><h1>Error monitoring</h1><p>Работи ли сайтът, какво е прекъснало и какви данни са запазени.</p></div><div className="np-em-actions"><button type="button" onClick={refresh}>Обнови</button><button type="button" onClick={acknowledge} disabled={!data?.attentionAt || data.attentionAt === seen}>Отбележи като прегледани</button></div></header>
+    <header className="np-em-header"><div><p className="np-em-eyebrow">Сайт и инфраструктура</p><h1>Error monitoring</h1><p>Работи ли сайтът, какво е прекъснало и какви данни са запазени.</p></div><div className="np-em-actions"><button type="button" onClick={refresh}>Обнови</button></div></header>
     <section className={`np-em-status np-em-${status}`} aria-live="polite"><span className="np-em-status-icon" aria-hidden="true">{status === "ok" ? "✓" : "!"}</span><div><h2>{title}</h2><p>{failed ? "Studio не успя да получи диагностиката. Това само по себе си не доказва, че публичният сайт е спрял." : status === "unknown" ? "Наблюдател липсва, данните са остарели или записването не е потвърдено. Не приемаме липсата на данни за успешна проверка." : status === "problem" ? "Отвори последното събитие и сравни публичния достъп с вътрешните услуги." : "Потвърдено от сървърния и външния наблюдател; това не е гаранция за непрекъснат достъп от всяка мрежа."}</p><small>Екранът се обновява на 20 секунди · часове за България · {data ? `прочетено ${time(data.checkedAt)}` : "още няма прочетени данни"}</small></div></section>
     <div className="np-em-sources">{(["origin", "external"] as const).map(key => { const s = source?.[key] ?? null, current = fresh(s); return <section className="np-em-card" key={key}><div className="np-em-card-top"><h2>{key === "origin" ? "От сървъра" : "Отвън · читателски достъп"}</h2><span className={`np-em-pill ${current ? s?.latest.probes.every(p => p.outcome === "ok" && p.durationMs < 3000) ? "np-em-ok" : "np-em-problem" : "np-em-unknown"}`}>{!s ? "Няма данни" : !current ? "Остарели данни" : s.latest.probes.every(p => p.outcome === "ok" && p.durationMs < 3000) ? "Успешни проверки" : "За проверка"}</span></div><p>{key === "origin" ? "Сравнява Web, директния Studio, публичния адрес и Apache." : "Проверява публичния адрес по отделен мрежов път. Лаптопът трябва да е буден и свързан."}</p><p className="np-em-note">Последна проверка: <strong>{time(s?.checkedAt)}</strong><br />Наблюдение от: {time(s?.firstObservedAt)}</p>{s ? <details><summary>Текуща диагностика</summary><Evidence cycle={s.latest} /></details> : null}</section>; })}</div>
     <section className="np-em-card"><div className="np-em-card-top"><div><h2>Последни прекъсвания и сигнали</h2><p className="np-em-note">Запазени са до 100 събития от всеки наблюдател. Часовете показват кога проблемът и възстановяването са засечени, а не точната продължителност на прекъсването.</p></div><label>Период <select value={period} onChange={e => setPeriod(e.target.value)}><option value="all">Налична история</option><option value="24h">24 часа</option><option value="7d">7 дни</option></select></label></div>

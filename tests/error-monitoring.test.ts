@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PROBE_NAMES, safeCycle, advanceMonitor, safeState, monitoringView, safeIssue, type Cycle } from "../packages/content/src/error-monitoring";
 import { saveMonitorState, publishExternal } from "../scripts/diagnostics/state.mjs";
-import { needsMonitoringAttention } from "../apps/studio/lib/error-monitoring-client";
+import { markMonitoringSeen, MONITORING_SEEN_EVENT, needsMonitoringAttention, seenKey } from "../apps/studio/lib/error-monitoring-client";
 
 // Explicit fixtures, never used as live data in the Studio screen.
 const now = Date.parse("2026-10-27T10:00:00.000Z");
@@ -79,13 +79,44 @@ describe("observed monitoring history", () => {
       await expect(publishExternal(saved, { target: "np2@other.example", key: "/key" })).rejects.toThrow("configuration invalid");
     } finally { await rm(dir, { recursive: true, force: true }); }
   });
-  it("keeps the menu warning until explicit acknowledgement and never hides an active/unknown/connection problem", () => {
+  it("shows actual active or unread signals, without treating missing data or a failed API read as a new incident", () => {
     const summary = { status: "ok" as const, checkedAt: new Date(now).toISOString(), attentionAt: new Date(now - 1000).toISOString(), activeProblem: false };
     expect(needsMonitoringAttention(summary, null, false)).toBe(true);
     expect(needsMonitoringAttention(summary, summary.attentionAt, false)).toBe(false);
     expect(needsMonitoringAttention({ ...summary, activeProblem: true }, summary.attentionAt, false)).toBe(true);
-    expect(needsMonitoringAttention({ ...summary, status: "unknown" }, summary.attentionAt, false)).toBe(true);
-    expect(needsMonitoringAttention(summary, summary.attentionAt, true)).toBe(true);
+    expect(needsMonitoringAttention({ ...summary, status: "unknown" }, summary.attentionAt, false)).toBe(false);
+    expect(needsMonitoringAttention({ ...summary, status: "unknown", attentionAt: null }, null, false)).toBe(false);
+    expect(needsMonitoringAttention(null, null, true)).toBe(false);
+    expect(needsMonitoringAttention(summary, summary.attentionAt, true)).toBe(false);
+    expect(needsMonitoringAttention(summary, null, true)).toBe(true);
+    expect(needsMonitoringAttention({ ...summary, activeProblem: true }, summary.attentionAt, true)).toBe(false);
+    expect(needsMonitoringAttention({ ...summary, attentionAt: new Date(now).toISOString() }, summary.attentionAt, false)).toBe(true);
+  });
+  it("does not announce observation gaps as site incidents", () => {
+    const origin = advanceMonitor(advanceMonitor(null, cycle()), cycle(now + 600000));
+    expect(origin.incidents.some(i => i.kind === "observation-gap")).toBe(true);
+    expect(monitoringView(origin, null, now + 600000).attentionAt).toBeNull();
+  });
+  it("marks the displayed signal seen per user and notifies the menu without rolling back newer acknowledgements", () => {
+    const values = new Map<string, string>(), dispatchEvent = vi.fn();
+    vi.stubGlobal("localStorage", { getItem: (key: string) => values.get(key), setItem: (key: string, value: string) => values.set(key, value) });
+    vi.stubGlobal("window", { dispatchEvent });
+    try {
+      const at = new Date(now).toISOString(); markMonitoringSeen("admin-1", at);
+      expect(values.get(seenKey("admin-1"))).toBe(at);
+      expect(values.has(seenKey("admin-2"))).toBe(false);
+      expect(dispatchEvent.mock.calls[0][0].type).toBe(MONITORING_SEEN_EVENT);
+      expect(dispatchEvent.mock.calls[0][0].detail).toEqual({ key: seenKey("admin-1"), at });
+      markMonitoringSeen("admin-1", new Date(now - 1000).toISOString());
+      expect(values.get(seenKey("admin-1"))).toBe(at); expect(dispatchEvent).toHaveBeenCalledTimes(1);
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it("clears the current menu signal even when browser storage is blocked", () => {
+    const dispatchEvent = vi.fn();
+    vi.stubGlobal("localStorage", { getItem: () => { throw new Error("storage blocked"); } });
+    vi.stubGlobal("window", { dispatchEvent });
+    try { markMonitoringSeen("admin-1", new Date(now).toISOString()); expect(dispatchEvent).toHaveBeenCalledTimes(1); }
+    finally { vi.unstubAllGlobals(); }
   });
 });
 

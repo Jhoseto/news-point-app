@@ -7,7 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 import { studioSessionEnded } from "@/lib/session-probe";
-import { needsMonitoringAttention, seenKey, useMonitoring, type MonitoringSummary } from "@/lib/error-monitoring-client";
+import { MONITORING_SEEN_EVENT, needsMonitoringAttention, seenKey, useMonitoring, type MonitoringSummary } from "@/lib/error-monitoring-client";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
 function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; "data-help"?: string | undefined }) {
@@ -41,7 +41,7 @@ const NAV_HELP: Record<string, string> = {
   "/stories": "Обединява свързани статии в тема с продължение и хронология.",
   "/users": "Управлява служебни профили и права за достъп до Studio.",
   "/logs": "История на действията в Studio: служител, промяна, час и резултат.",
-  "/error-monitoring": "Работа на сайта, засечени прекъсвания и диагностика. Удивителната показва проблем, неполучени данни или непрегледан сигнал.",
+  "/error-monitoring": "Работа на сайта, засечени прекъсвания и диагностика. Удивителната показва активен проблем или нов сигнал и се изчиства при преглед след възстановяване.",
   "/settings/social/": "Свързва Facebook страница и показва проблеми при изпращане на новини.",
 };
 
@@ -83,11 +83,15 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   const monitoringAttention = needsMonitoringAttention(monitoring.data, monitoringSeen, monitoring.failed);
   useEffect(() => {
     const read = () => { try { setMonitoringSeen(localStorage.getItem(monitoringKey)); } catch {} };
-    read(); window.addEventListener("storage", read); window.addEventListener("np-error-monitoring-seen", read);
-    return () => { window.removeEventListener("storage", read); window.removeEventListener("np-error-monitoring-seen", read); };
+    const acknowledged = (event: Event) => {
+      const detail = (event as CustomEvent<{ key: string; at: string }>).detail;
+      if (detail?.key === monitoringKey && Number.isFinite(Date.parse(detail.at))) setMonitoringSeen(previous => previous && previous > detail.at ? previous : detail.at);
+    };
+    read(); window.addEventListener("storage", read); window.addEventListener(MONITORING_SEEN_EVENT, acknowledged);
+    return () => { window.removeEventListener("storage", read); window.removeEventListener(MONITORING_SEEN_EVENT, acknowledged); };
   }, [monitoringKey]);
-  const monitoringTitle = monitoring.failed ? "Няма връзка с диагностиката" : monitoring.data?.status === "unknown" ? "Няма актуални данни от всички наблюдатели" : monitoring.data?.activeProblem ? "Има активен проблем за проверка" : "Има непрегледан диагностичен сигнал";
-  const monitoringBadge = monitoringAttention ? <span title={monitoringTitle} className={`absolute right-0 top-0 flex size-4 items-center justify-center rounded-full text-[11px] font-black text-white ${monitoring.data?.activeProblem ? "bg-red-600" : "bg-amber-600"}`}><span aria-hidden="true">!</span><span className="sr-only">{monitoringTitle}</span></span> : null;
+  const monitoringTitle = !monitoring.failed && monitoring.data?.activeProblem ? "Има активен проблем за проверка" : "Има непрегледан диагностичен сигнал";
+  const monitoringBadge = monitoringAttention ? <span title={monitoringTitle} className={`absolute right-0 top-0 flex size-4 items-center justify-center rounded-full text-[11px] font-black text-white ${!monitoring.failed && monitoring.data?.activeProblem ? "bg-red-600" : "bg-amber-600"}`}><span aria-hidden="true">!</span><span className="sr-only">{monitoringTitle}</span></span> : null;
 
   useEffect(() => {
     let active = true;
