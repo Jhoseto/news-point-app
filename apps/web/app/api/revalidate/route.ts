@@ -2,6 +2,9 @@ import { timingSafeEqual } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { loadRootEnv } from "@newspoint/db";
+import { articleHtmlFlights } from "../../../lib/article-edge-render";
+import { purgeArticleEdgePaths } from "../../../lib/article-edge-purge";
+import { canonicalArticleCachePath } from "../../../../../packages/content/src/article-edge-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,10 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return Response.json({ error: "invalid body" }, { status: 400 });
   }
+  articleHtmlFlights.invalidate(parsed.data.paths.flatMap(path => {
+    const canonical = canonicalArticleCachePath(path);
+    return canonical ? [canonical] : [];
+  }));
   for (const path of parsed.data.paths) revalidatePath(path);
   // Article/rubric mutations also write into Data Cache entries tagged below.
   revalidateTag("public-listings", { expire: 0 });
@@ -37,5 +44,9 @@ export async function POST(request: Request) {
     revalidateTag("public-sitemaps", { expire: 0 });
     revalidatePath("/sitemaps", "layout");
   }
-  return Response.json({ revalidated: parsed.data.paths.length });
+  const edgeCache = await purgeArticleEdgePaths(parsed.data.paths);
+  return Response.json({ revalidated: parsed.data.paths.length, edgeCache }, {
+    status: edgeCache === "error" ? 503 : 200,
+    headers: { "cache-control": "private, no-store" },
+  });
 }

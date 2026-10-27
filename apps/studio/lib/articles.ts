@@ -715,7 +715,10 @@ export async function publishRevision(staff: Staff, id: string, revision: number
     return outcome;
   }).then(async outcome => {
     // Immediate refresh after commit; the durable layout outbox remains the retry path.
-    if (outcome.homeHeroPosition != null) await triggerRevalidate(["/"]);
+    const refreshPaths = process.env.NP_ARTICLE_EDGE_CACHE === "1"
+      ? [outcome.path, ...(outcome.homeHeroPosition != null ? ["/"] : [])]
+      : outcome.homeHeroPosition != null ? ["/"] : [];
+    if (refreshPaths.length) await triggerRevalidate([...new Set(refreshPaths)]);
     return outcome;
   });
 }

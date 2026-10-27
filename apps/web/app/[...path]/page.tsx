@@ -7,6 +7,7 @@ import { breadcrumbList, newsArticle } from "@/lib/jsonld";
 import { absoluteMedia, shareOrigin } from "@/lib/share-card";
 import { categorySeo, publicMetadata } from "@/lib/public-metadata";
 import { getArticleByPath, getCategoryByPath, getStoryThemesForArticle } from "@/lib/queries";
+import { ARTICLE_EDGE_MARKER, articleEdgeMarker } from "../../../../packages/content/src/article-edge-cache";
 
 export const revalidate = 60;
 
@@ -84,6 +85,7 @@ export default async function PathPage({ params }: Props) {
       : null;
     return (
       <>
+        <meta name={ARTICLE_EDGE_MARKER} content={articleEdgeMarker(article.path)} />
         <JsonLd data={[breadcrumbs, articleLd]} id="np-ld-article" />
         <ArticlePage article={article} storyThemes={storyThemes} storyThemeCompact={compact} />
       </>

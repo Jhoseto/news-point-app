@@ -20,6 +20,8 @@ Canonical URLs, sitemap/robots, RSS and share metadata derive from WEB_URL. Keep
 
 Do not enable a blanket Cache Everything rule for HTML. Keep origin private/no-store for dynamic reader HTML and bypass `/admin`, authenticated responses, `/api`, drafts and personal settings. Cache immutable static assets and public media according to their existing headers. Service worker and VAPID endpoints must retain no-store/no-cache behavior.
 
+The optional, default-off [article document cache](../cloudflare/README.md) uses a separate public render URL per viewport, a narrow Cloudflare Worker and global invalidation. Its public cache headers apply only after a canonical published-article check and a cookie-free render. Normal Next HTML and RSC requests retain the policy above. Do not activate it by changing the global HTML rule.
+
 If custom HTML caching is added later, its normalized key must respect effective mobile/desktop shell (cookie, client hints and UA fallback), document versus RSC/navigation responses, query parameters and content invalidation. `Vary` alone is not proof of correct Cloudflare key behavior. Test independent desktop/mobile/authenticated sessions before enabling.
 
 ## Release verification after an explicitly authorized apply

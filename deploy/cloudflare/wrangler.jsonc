@@ -1,0 +1,8 @@
+{
+  "name": "newspoint-article-cache",
+  "main": "article-cache-worker.ts",
+  "compatibility_date": "2026-10-27",
+  "workers_dev": false,
+  "vars": { "ENABLED": "0", "PUBLIC_ORIGIN": "https://newspoint.bg" }
+  // Intentionally no production route. Add only during an authorized activation.
+}

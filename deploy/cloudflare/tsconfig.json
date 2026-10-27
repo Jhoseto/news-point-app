@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": { "lib": ["ES2023", "DOM", "DOM.Iterable"] },
+  "include": ["article-cache-worker.ts", "../../packages/content/src/article-edge-cache.ts"]
+}

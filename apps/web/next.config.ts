@@ -111,8 +111,14 @@ const nextConfig: NextConfig = {
       source: "/fonts/:file*",
       headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
     };
+    const articleRenderVary = {
+      source: "/edge-article-cache/:path*",
+      // The render endpoint's URL already fixes the viewport; no caller cookies
+      // or navigation headers participate in this public document representation.
+      headers: [{ key: "Vary", value: "Accept-Encoding" }],
+    };
     // Catch-all first; explicit PWA/wordmark paths below override Cache-Control.
-    return [viewportHints, ...indexingHeaderRules(), brandHashed, ...brandRevalidate, fontCache, workerCache];
+    return [viewportHints, ...indexingHeaderRules(), brandHashed, ...brandRevalidate, fontCache, workerCache, articleRenderVary];
   },
 };
 

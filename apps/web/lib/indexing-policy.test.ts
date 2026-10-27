@@ -19,7 +19,7 @@ describe("public indexing launch gate", () => {
     expect(publicRobotsMetadata(env).index).toBe(false);
     expect(headerFor("/article/", env)).toBe("noindex, nofollow");
   });
-  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/draft/private-id/", "/settings/", "/search/", "/offline/", "/plovdiv/archive/page-token/"])("keeps excluded route %s noindex even at launch", path => {
+  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/edge-article-cache/v1/desktop/article/", "/edge-article-cache/v1/mobile/article/", "/draft/private-id/", "/settings/", "/search/", "/offline/", "/plovdiv/archive/page-token/"])("keeps excluded route %s noindex even at launch", path => {
     expect(headerFor(path, launch)).toBe("noindex, nofollow");
   });
 });

@@ -3,15 +3,16 @@
  *
  * Used by Studio mutations (publish, podcast, poll, page arrangement) and by the
  * live dispatcher to invalidate cache after the SSE outbox event lands. Editor
- * content drives ISR via the `Cache-Control: public, s-maxage=60, stale-while-
- * revalidate=...` headers that the public app attaches to non-private
- * responses; this call forces an immediate rebuild for the named paths.
+ * content invalidates Next's public Data Cache and route entries. Normal
+ * viewport-dependent HTML stays private. When the separate article edge cache
+ * is enabled, the endpoint also purges its two anonymous representations.
  *
  * Single source of truth for:
  *   - the URL of the revalidate endpoint (`/api/revalidate/`)
  *   - the secret header (`x-revalidate-secret`)
  *   - the fail-soft semantics: if `REVALIDATE_SECRET` is unset or the call
- *     fails, the surrounding cache (60 s + SWR) still refreshes on its own.
+ *     fails, the surrounding Data Cache still refreshes on its own. Enabled
+ *     article edge copies have a separate hard 30-second freshness limit.
  */
 
 const REVALIDATE_PATH = "/api/revalidate/";
@@ -49,7 +50,7 @@ export async function triggerRevalidate(paths: string[]): Promise<RevalidateResu
       method: "POST",
       headers: { "content-type": "application/json", "x-revalidate-secret": secret },
       body: JSON.stringify({ paths }),
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(process.env.NP_ARTICLE_EDGE_CACHE === "1" ? 8000 : 3000),
     });
     return { triggered: response.ok, reason: response.ok ? "ok" : "error" };
   } catch {
