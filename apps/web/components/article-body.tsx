@@ -30,7 +30,7 @@ function BlockView({ block, media, index, gallery }: { block: Block; media: Map<
       const credit = asset?.credit;
       const custom = block.widthPercent !== undefined || block.wrap !== undefined;
       const imageLayout = custom ? layout : { className: "", style: {} };
-      const image = <ArticleImage media={asset ? { ...asset, alt: block.alt ?? asset.alt } : null} sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} imageTransform={{ scale: (block.cropZoom ?? 100) / 100, origin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} />;
+      const image = <ArticleImage media={asset ? { ...asset, alt: block.alt ?? asset.alt } : null} resolution="content" sizes="(min-width: 1280px) 760px, (min-width: 768px) 80vw, 100vw" className="w-full rounded-xl" objectPosition={`${block.focalX ?? 50}% ${block.focalY ?? 50}%`} imageTransform={{ scale: (block.cropZoom ?? 100) / 100, origin: `${block.focalX ?? 50}% ${block.focalY ?? 50}%` }} />;
       const displayedImage = custom ? <div className={`np-media-canvas frame-${block.frame ?? "none"}`} style={{ aspectRatio: block.shape === "circle" ? "1" : { square: "1", portrait: "4/5", landscape: "16/9", original: asset?.width && asset?.height ? `${asset.width}/${asset.height}` : undefined }[block.crop ?? "original"], borderRadius: block.shape === "circle" ? "50%" : block.shape === "rounded" ? "1rem" : undefined }}>{image}</div> : image;
       const imageIndex = gallery.bodyIndices.get(index);
       return (

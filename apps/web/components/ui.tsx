@@ -96,6 +96,7 @@ export function ArticleImage({
   imageTransform,
   /** Skip srcset (carousel clones / decorative copies) to shrink HTML. */
   lite = false,
+  resolution,
 }: {
   media: Media | null;
   className?: string;
@@ -104,12 +105,15 @@ export function ArticleImage({
   objectPosition?: string;
   imageTransform?: { scale: number; origin: string };
   lite?: boolean;
+  /** Large editorial images retain all responsive widths, including the original. */
+  resolution?: "content";
 }) {
   if (!media) return <div className={`np-img np-img-empty ${className}`} aria-hidden="true" />;
   const presentation = imagePresentation(media);
   const { src, srcSet, sizes: resolvedSizes } = articleImageAttrs(media, {
     priority,
     lite,
+    ...(resolution ? { resolution } : {}),
     ...(sizes !== undefined ? { sizes } : {}),
   });
   return (

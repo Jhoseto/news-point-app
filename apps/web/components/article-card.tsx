@@ -58,6 +58,7 @@ export function HeroCard({
           <ArticleImage
             media={article.hero}
             priority={priority}
+            {...(lead ? { resolution: "content" as const } : {})}
             sizes={
               lead
                 ? "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw"

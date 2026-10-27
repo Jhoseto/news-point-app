@@ -35,6 +35,7 @@ export function ArticleHeroZoom({
           <ArticleImage
             media={hero}
             priority
+            resolution="content"
             sizes="(min-width: 1024px) calc(100vw - 40rem), 100vw"
             className="np-article-hero-image"
           />

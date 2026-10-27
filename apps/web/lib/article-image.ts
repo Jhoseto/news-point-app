@@ -67,13 +67,14 @@ export type ArticleImageAttrs = {
 /** Same attrs `ArticleImage` emits — used for LCP `<link rel=preload>`. */
 export function articleImageAttrs(
   media: Media,
-  opts: { priority?: boolean; sizes?: string; lite?: boolean } = {},
+  opts: { priority?: boolean; sizes?: string; lite?: boolean; resolution?: "content" } = {},
 ): ArticleImageAttrs {
-  const { priority = false, sizes, lite = false } = opts;
+  const { priority = false, sizes, lite = false, resolution } = opts;
   const presentation = imagePresentation(media);
-  // Mobile full-bleed leads stay ≤640 (display is height-capped ~16rem); desktop band may use 1280.
-  const maxWidth = priority ? (sizes?.includes("100vw") ? 640 : 1280) : 960;
-  const srcSet = lite ? undefined : compactSrcSet(presentation.srcSet, maxWidth);
+  // A mobile fallback inside responsive sizes must not cap desktop candidates.
+  // Main content keeps every available rung; the browser selects by sizes and DPR.
+  const maxWidth = priority ? (sizes?.trim() === "100vw" ? 640 : 1280) : 960;
+  const srcSet = lite ? undefined : resolution === "content" ? presentation.srcSet : compactSrcSet(presentation.srcSet, maxWidth);
   const prefer = preferWidthFromSizes(sizes, priority ? 960 : 640);
   const src = lite
     ? srcFromSet(presentation.srcSet, Math.min(640, prefer), media.url)

@@ -2,6 +2,33 @@ import { describe, expect, it } from "vitest";
 import { articleImageAttrs, compactSrcSet, preferWidthFromSizes } from "./article-image";
 
 describe("article-image", () => {
+  const largeMedia = {
+    url: "/media/news/2026/large.webp", width: 2400, height: 1200,
+    alt: "Responsive fixture", caption: "", credit: "",
+    variants: [320, 480, 768, 960, 1440, 1920].map(width => ({
+      url: `/media/news/2026/large-w${width}.webp`, width, height: width / 2,
+    })),
+  };
+  it("keeps desktop candidates when 100vw is only the mobile fallback", () => {
+    const attrs = articleImageAttrs(largeMedia, { priority: true, sizes: "(min-width: 1024px) calc(100vw - 40rem), 100vw" });
+    expect(attrs.srcSet).toContain("960w");
+    expect(attrs.srcSet).not.toContain("2400w");
+  });
+  it("lets article/desktop lead images select every available rung, including high-DPR sizes", () => {
+    for (const sizes of ["(min-width: 1024px) calc(100vw - 40rem), 100vw", "(min-width: 1536px) 42vw, (min-width: 1024px) 46vw, 100vw"]) {
+      const attrs = articleImageAttrs(largeMedia, { priority: true, resolution: "content", sizes });
+      for (const width of [320, 480, 768, 960, 1440, 1920, 2400]) expect(attrs.srcSet).toContain(`${width}w`);
+      expect(attrs.src).not.toBe(largeMedia.url);
+      expect(attrs.sizes).toBe(sizes);
+    }
+  });
+  it("retains middle sizes for body images without making thumbnails/lite copies fetch masters", () => {
+    const body = articleImageAttrs(largeMedia, { resolution: "content", sizes: "760px" });
+    expect(body.srcSet).toContain("1440w"); expect(body.srcSet).toContain("2400w");
+    expect(articleImageAttrs(largeMedia, { sizes: "112px" }).srcSet).not.toContain("1440w");
+    const lite = articleImageAttrs(largeMedia, { resolution: "content", lite: true, sizes: "112px" });
+    expect(lite.srcSet).toBeUndefined(); expect(lite.src).toContain("w320");
+  });
   it("caps mobile lead srcset at 640w and prefers ≤640 src", () => {
     const media = {
       url: "/media/news/2026/story.webp",
