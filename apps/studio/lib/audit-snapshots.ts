@@ -21,7 +21,7 @@ export async function auditSnapshot(area: AuditArea, id: string, input: AuditInp
     const [views] = await db.select().from(articleViewBoosts).where(eq(articleViewBoosts.articleId, id)).limit(1);
     return { article: pick(article, ["id", "title", "slug", "path", "isPublic", "publishedRevision", "publishedAt", "scheduledPublishAt", "listenEnabled"]),
       revision: pick(revision ?? article, ["id", "number", "title", "slug", "excerpt", "body", "primaryCategoryId", "heroMediaId", "heroEmbedUrl", "authorKind", "authorUserId", "authorName", "listenEnabled"]),
-      social: await readRevisionSocial(db, id, revision?.number ?? 0, revision?.title ?? article?.title ?? ""),
+      social: JSON.parse(JSON.stringify(await readRevisionSocial(db, id, revision?.number ?? 0, revision?.title ?? article?.title ?? ""))) as AuditValue,
       views: pick(views, ["seedCount", "targetCount", "intervalSeconds"]) };
   }
   if (area === "arrangements" && id) {

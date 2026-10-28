@@ -14,6 +14,7 @@
     "./push-configuration": "./src/push-configuration.ts",
     "./media-uploads": "./src/media-uploads.ts",
     "./social-publishing": "./src/social-publishing.ts",
+    "./instagram-publishing": "./src/instagram-publishing.ts",
     "./city": "./src/city.ts",
     "./city-admin": "./src/city-admin.ts"
   },

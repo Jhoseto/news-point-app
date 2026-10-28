@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     "./indexnow": "./src/indexnow.ts",
+    "./instagram": "./src/instagram-api.ts",
     ".": "./src/index.ts",
     "./image-presentation": "./src/image-presentation-runtime.ts",
     "./image-schemas": "./src/image-presentation.ts",

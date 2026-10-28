@@ -29,7 +29,7 @@ export function HomeCategorySection({
   const twoLists = wide && rest.length >= 6;
   return (
     <section className="min-w-0" aria-labelledby={`${idPrefix}sec-${category.slug}`}>
-      <SectionTitle id={`${idPrefix}sec-${category.slug}`} href={category.path} accentSlug={category.slug}>
+      <SectionTitle id={`${idPrefix}sec-${category.slug}`} href={category.path} linkHeading accentSlug={category.slug}>
         {category.name}
       </SectionTitle>
       {layout === "feature" ? (

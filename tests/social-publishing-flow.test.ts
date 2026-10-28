@@ -22,6 +22,9 @@ import { MakeSocialError, type MakeSocialClient } from "../packages/content/src/
 import { disconnectFacebook, facebookSettings, selectFacebookPage, startFacebookConnection, finishFacebookConnection, removeFacebookAuthorization } from "../apps/studio/lib/social-facebook";
 import { encryptSocialSecret } from "../packages/content/src/social-secrets";
 import { renderFacebookPostImage } from "../apps/worker/src/facebook-post-image";
+import { readInstagramStatus, retryInstagramPublication, type InstagramJob } from "../packages/db/src/instagram-publishing";
+import { claimInstagramJob, processInstagramJob, prepareInstagramPhoto } from "../apps/worker/src/instagram-publishing-worker";
+import { InstagramError } from "../packages/content/src/instagram-api";
 
 const holder = vi.hoisted(() => ({ db: null as ScriptDb | null }));
 vi.mock("@newspoint/db", async () => ({ ...await vi.importActual<typeof import("@newspoint/db")>("@newspoint/db"), getDb: () => holder.db }));
@@ -68,7 +71,7 @@ beforeAll(async () => {
   }
   holder.db = db;
   const migrationClient = client ? createSessionClient("postgres://social_qa@127.0.0.1:55439/social_publishing_qa", 1) : undefined;
-  const included = new Set([1,2,3,4,5,6,7,8,9,12,13,17,18,19,20,21,24,25,26,27,30,38,39]);
+  const included = new Set([1,2,3,4,5,6,7,8,9,12,13,17,18,19,20,21,24,25,26,27,30,38,39,43]);
   for (const file of readdirSync("packages/db/migrations").sort()) if (included.has(Number(file.slice(0,2)))) {
     const migration = readFileSync(`packages/db/migrations/${file}`, "utf8");
     if (pg) await pg.exec(migration); else await migrationClient!.unsafe(migration);
@@ -82,6 +85,7 @@ beforeAll(async () => {
   await writeFile(resolve(fixtureRoot, "media/news/2026/10/fixture.webp"), await sharp({ create: { width: 64, height: 48, channels: 3, background: "#789abc" } }).webp().toBuffer());
 }, 30000);
 beforeEach(async () => {
+  await db.execute(sql`delete from instagram_publications`);
   vi.unstubAllEnvs(); vi.unstubAllGlobals(); vi.stubEnv("WEB_URL", "https://site44159-izdo3c.scloudsite101.com"); vi.stubEnv("STUDIO_PUBLIC_URL", "https://site44159-izdo3c.scloudsite101.com/admin");
   vi.stubEnv("SOCIAL_PUBLISHING_ENABLED", "1"); vi.stubEnv("EDITOR_QA_RUN_ID", ""); vi.stubEnv("MEDIA_ROOT", resolve(fixtureRoot, "media"));
   vi.stubEnv("MEDIA_SSH_TARGET", ""); vi.stubEnv("SOCIAL_PUBLISHING_TEMP_ROOT", resolve(fixtureRoot, "private"));
@@ -374,5 +378,121 @@ describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database fl
     await Promise.all([publishRevision(actor, created.id, 1, randomUUID(), false), publishRevision(actor, created.id, 1, randomUUID(), false)]);
     expect(await db.select().from(schema.socialPublications)).toHaveLength(1);
     const claims = await Promise.all([claimSocialJob(db), claimSocialJob(db)]); expect(claims.filter(Boolean)).toHaveLength(1);
+  });
+});
+
+// Real domain operations in an isolated database; HTTP is explicitly simulated.
+describe("Instagram independent editorial delivery",()=>{
+  function configure(){
+    vi.stubEnv("INSTAGRAM_PUBLISHING_ENABLED","1");vi.stubEnv("MAKE_INSTAGRAM_WEBHOOK_URL","https://hook.eu1.make.com/fixture");
+    vi.stubEnv("MAKE_INSTAGRAM_WEBHOOK_API_KEY","private-fixture");vi.stubEnv("MAKE_INSTAGRAM_ACCOUNT_ID","123");vi.stubEnv("MAKE_INSTAGRAM_USERNAME","newspointbg");
+  }
+  const igInput=()=>({...input(),social:{facebook:{enabled:false,text:"",textMode:"auto" as const},instagram:{enabled:true,text:"Isolated Instagram fixture",textMode:"custom" as const}}});
+  const igJob=async(id:string)=>(await db.execute<InstagramJob>(sql`select * from instagram_publications where article_id=${id}::uuid`))[0]!;
+  const transport=()=>({publish:vi.fn().mockResolvedValue({postId:"456",permalink:"https://www.instagram.com/p/ExplicitFixture/"})});
+  const prepare=async(job:InstagramJob)=>({imageKey:`news/social-instagram/${job.id}-${"a".repeat(64)}.jpg`,imageHash:"a".repeat(64)});
+
+  it("rejects a mismatched derivative checkpoint before contacting Instagram",async()=>{
+    const {id}=await published(); const client=transport();
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare:async job=>({
+      imageKey:`news/social-instagram/${job.id}-${"a".repeat(64)}.jpg`,imageHash:"b".repeat(64),
+    })});
+    expect(client.publish).not.toHaveBeenCalled(); expect(await igJob(id)).toMatchObject({status:"failed",error_code:"image"});
+  });
+  async function published(){configure();const draft=igInput();const created=await createArticle(actor,draft);await publishRevision(actor,created.id,1,randomUUID(),false);return {id:created.id,draft};}
+  it("preserves custom Instagram text across revisions, history and older Facebook-only clients",async()=>{
+    configure();const draft=igInput();const created=await createArticle(actor,draft);
+    expect((await getEditorArticle(created.id))?.draft.social?.instagram).toEqual(draft.social.instagram);
+    const legacy={...draft,social:{facebook:draft.social.facebook}};await saveRevision(actor,created.id,1,legacy);
+    expect((await getEditorArticle(created.id))?.draft.social?.instagram).toEqual(draft.social.instagram);
+    expect((await listRevisionHistory(created.id)).revisions[0]?.draft.social?.instagram).toEqual(draft.social.instagram);
+    expect(await igJob(created.id)).toBeUndefined();
+  });
+  it("enqueues only Instagram, once, even on later edits and repeated publication",async()=>{
+    const {id,draft}=await published();expect(await igJob(id)).toMatchObject({status:"pending",revision:1,caption:draft.social.instagram.text});
+    expect(await db.select().from(schema.socialPublications)).toHaveLength(0);
+    await saveRevision(actor,id,1,{...draft,title:"Updated isolated title"});await publishRevision(actor,id,2,randomUUID(),false);
+    expect(await igJob(id)).toMatchObject({revision:1,title:draft.title});
+    const client=transport();await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});
+    expect(await igJob(id)).toMatchObject({status:"succeeded",post_id:"456"});expect(client.publish).toHaveBeenCalledTimes(1);
+    expect(await claimInstagramJob(db)).toBeNull();expect(await retryInstagramPublication(db,id)).toBe(false);
+  });
+  it("lets Facebook and Instagram succeed or fail independently",async()=>{
+    configure();const draft={...igInput(),social:{...igInput().social,facebook:input().social.facebook}};
+    const created=await createArticle(actor,draft);await publishRevision(actor,created.id,1,randomUUID(),false);
+    expect(await db.select().from(schema.socialPublications)).toHaveLength(1);
+    const client=transport();client.publish.mockRejectedValue(new InstagramError("lost_response",false,true));
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});
+    expect(await igJob(created.id)).toMatchObject({status:"uncertain"});expect((await jobFor(created.id)).status).toBe("pending");
+    expect(await retryInstagramPublication(db,created.id)).toBe(false);expect(await claimInstagramJob(db)).toBeNull();
+  });
+  it("retries only definite pre-publication failures and refreshes a failed input explicitly",async()=>{
+    const {id}=await published();const client=transport();client.publish.mockRejectedValueOnce(new InstagramError("rate_limit",true));
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});expect(await igJob(id)).toMatchObject({status:"retry",attempts:1});
+    await db.execute(sql`update instagram_publications set next_attempt_at=now()`);
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});expect(await igJob(id)).toMatchObject({status:"succeeded"});
+  });
+  it("holds expired in-flight requests and recovers preparation leases",async()=>{
+    const {id}=await published();const first=(await claimInstagramJob(db))!;
+    await db.execute(sql`update instagram_publications set lease_until=now()-interval '1 minute'`);
+    const second=(await claimInstagramJob(db))!;expect(second.lease_token).not.toBe(first.lease_token);
+    const client=transport();await processInstagramJob(db,first,{client,prepare});expect(client.publish).not.toHaveBeenCalled();
+    await db.execute(sql`update instagram_publications set status='sending',lease_until=now()-interval '1 minute'`);
+    expect(await claimInstagramJob(db)).toBeNull();expect(await igJob(id)).toMatchObject({status:"uncertain"});
+  });
+  it("cancels hidden/deleted articles and respects the independent switch",async()=>{
+    const {id}=await published();vi.stubEnv("INSTAGRAM_PUBLISHING_ENABLED","0");const client=transport();
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});expect(client.publish).not.toHaveBeenCalled();
+    vi.stubEnv("INSTAGRAM_PUBLISHING_ENABLED","1");await db.execute(sql`update instagram_publications set next_attempt_at=now()`);
+    await db.update(schema.articles).set({isPublic:false}).where(eq(schema.articles.id,id));
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare});expect(await igJob(id)).toMatchObject({status:"cancelled"});
+    expect(client.publish).not.toHaveBeenCalled();
+  });
+  it("renders a separate bounded JPEG and leaves the original unchanged",async()=>{
+    const {id}=await published();const job=await igJob(id);const original=await readFile(resolve(fixtureRoot,"media/news/2026/10/fixture.webp"));
+    const image=await prepareInstagramPhoto(job);const bytes=await readFile(resolve(fixtureRoot,"media",image.imageKey));
+    expect(await sharp(bytes).metadata()).toMatchObject({format:"jpeg",width:1080,height:810});expect(bytes.length).toBeLessThan(4*1024*1024);
+    expect(await readFile(resolve(fixtureRoot,"media/news/2026/10/fixture.webp"))).toEqual(original);
+    expect(image.imageKey).toMatch(/^news\/social-instagram\//);
+  });
+  it("fails unconfigured delivery clearly and recovers after connection without a second task",async()=>{
+    const draft=igInput();const created=await createArticle(actor,draft);await publishRevision(actor,created.id,1,randomUUID(),false);
+    expect(await igJob(created.id)).toMatchObject({status:"failed",error_code:"connection"});configure();
+    expect(await retryInstagramPublication(db,created.id)).toBe(true);expect(await igJob(created.id)).toMatchObject({status:"pending",account_id:"123"});
+    expect((await readInstagramStatus(db,created.id)).connected).toBe(true);
+  });
+  it("publishes the scheduled Instagram intent exactly once",async()=>{
+    configure();const created=await createArticle(actor,igInput());
+    await db.update(schema.articles).set({scheduledPublishAt:new Date(Date.now()-10000)}).where(eq(schema.articles.id,created.id));
+    expect(await publishDueScheduled(db,created.id)).toBe(1);expect(await igJob(created.id)).toMatchObject({status:"pending",revision:1});
+    expect(await publishDueScheduled(db,created.id)).toBe(0);
+  });
+  it("does not enqueue unchecked or registered QA articles",async()=>{
+    configure();const unchecked=igInput();unchecked.social.instagram.enabled=false;
+    const first=await createArticle(actor,unchecked);await publishRevision(actor,first.id,1,randomUUID(),false);
+    const second=await createArticle(actor,igInput());await db.insert(schema.editorQaArticles).values({articleId:second.id,runId:"isolated-instagram-qa"});
+    await publishRevision(actor,second.id,1,randomUUID(),false);
+    expect(await db.execute(sql`select id from instagram_publications`)).toHaveLength(0);
+  });
+  it("rolls publication back if its durable Instagram task cannot be saved",async()=>{
+    configure();const created=await createArticle(actor,igInput());
+    await db.execute(sql`create function reject_instagram_fixture() returns trigger language plpgsql as $$ begin raise exception 'Isolated queue failure'; end $$`);
+    await db.execute(sql`create trigger reject_instagram_fixture before insert on instagram_publications for each row execute function reject_instagram_fixture()`);
+    try{await expect(publishRevision(actor,created.id,1,randomUUID(),false)).rejects.toThrow();expect((await getEditorArticle(created.id))?.isPublic).toBe(false);expect(await igJob(created.id)).toBeUndefined();}
+    finally{await db.execute(sql`drop trigger reject_instagram_fixture on instagram_publications`);await db.execute(sql`drop function reject_instagram_fixture()`);}
+  });
+  it("checks visibility again after image preparation before any external write",async()=>{
+    const {id}=await published();const client=transport();
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare:async job=>{
+      await db.update(schema.articles).set({isPublic:false}).where(eq(schema.articles.id,id));return prepare(job);
+    }});
+    expect(client.publish).not.toHaveBeenCalled();
+  });
+  it("bounds repeated preparation failures and rejects account changes",async()=>{
+    const {id}=await published();const client=transport();
+    await db.execute(sql`update instagram_publications set attempts=4`);
+    await processInstagramJob(db,(await claimInstagramJob(db))!,{client,prepare:async()=>{throw new Error("isolated renderer failure");}});
+    expect(await igJob(id)).toMatchObject({status:"failed",attempts:5});
+    vi.stubEnv("MAKE_INSTAGRAM_ACCOUNT_ID","999");expect(await retryInstagramPublication(db,id)).toBe(false);expect(client.publish).not.toHaveBeenCalled();
   });
 });

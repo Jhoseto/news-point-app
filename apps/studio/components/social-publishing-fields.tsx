@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { FACEBOOK_TEXT_MAX, normalizeSocial, type SocialInput, type SocialStatus } from "@newspoint/content";
 import { callApi } from "@/lib/client-api";
+import { InstagramPublishingFields } from "./instagram-publishing-fields";
 
 export function SocialPublishingFields({ value, title, onChange, disabled, initialStatus, articleId, publishedRevision }: {
   value: SocialInput | undefined; title: string; onChange: (value: SocialInput) => void; disabled: boolean;
@@ -52,7 +53,7 @@ export function SocialPublishingFields({ value, title, onChange, disabled, initi
     <label data-help="Изпраща тази новина към свързаната Facebook страница след публикуването ѝ в сайта." className="studio-meta-field">
       <span id="social-publishing-label">Мрежа</span>
       <input type="checkbox" className="size-3.5 shrink-0" checked={fixed ? true : social.facebook.enabled} disabled={disabled || !status.ready || fixed}
-        onChange={event => onChange({ facebook: { ...social.facebook, enabled: event.target.checked } })} />
+        onChange={event => onChange({ ...social, facebook: { ...social.facebook, enabled: event.target.checked } })} />
       <span aria-live="polite" className="studio-meta-note">{hint ? `Facebook · ${hint}` : "Facebook"}</span>
       {status.job?.url ? <a href={status.job.url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-[10px] font-bold normal-case tracking-normal text-accent underline">Пост</a> : null}
       {status.job?.canRetry ? <button data-help="Повтаря неуспешната стъпка на изпращането. Следете показания резултат." type="button" className="shrink-0 text-[10px] font-bold normal-case tracking-normal underline" disabled={disabled || retrying} onClick={() => void retry()}>{retrying ? "…" : "Отново"}</button> : null}
@@ -62,8 +63,9 @@ export function SocialPublishingFields({ value, title, onChange, disabled, initi
       <input data-help="Текстът за Facebook поста. След първа ръчна промяна той вече не следва автоматично заглавието." aria-label="Текст за Facebook" maxLength={FACEBOOK_TEXT_MAX}
         className="np-input min-w-0 flex-1" disabled={disabled || fixed}
         value={fixed ? status.job!.text : social.facebook.text}
-        onChange={event => onChange({ facebook: { ...social.facebook, text: event.target.value, textMode: "custom" } })} />
+        onChange={event => onChange({ ...social, facebook: { ...social.facebook, text: event.target.value, textMode: "custom" } })} />
     </label> : null}
     {error ? <p role="alert" className="studio-meta-field-span text-[10px] text-danger">{error}</p> : null}
+    <InstagramPublishingFields value={social} title={title} onChange={onChange} disabled={disabled} articleId={articleId} publishedRevision={publishedRevision} initialStatus={initialStatus.instagram}/>
   </>;
 }

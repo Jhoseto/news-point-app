@@ -3,6 +3,7 @@ import { defaultSocial, normalizeSocial, socialArticleUrl, socialMessage, type S
 import { makeSocialConfiguration } from "@newspoint/content/make-social";
 import type { ScriptDb } from "./node";
 import { articles, articleRevisions, mediaAssets, socialConnections, socialPublications } from "./schema";
+import { enqueueInstagramPublication, readInstagramRevision, writeInstagramRevision, readInstagramStatus } from "./instagram-publishing";
 
 type Executor = Pick<ScriptDb, "execute">;
 type SocialPage = { pageId: string; name: string; connected: boolean; provider: "facebook" | "make" };
@@ -26,9 +27,12 @@ export async function readRevisionSocial(db: Executor, id: string, revision: num
   const rows = await db.execute<{ enabled: boolean; text: string; text_mode: "auto" | "custom" }>(sql`
     select enabled,text,text_mode from article_revision_social where article_id=${id}::uuid and revision=${revision} and provider='facebook'`);
   const row = rows[0];
-  return row ? normalizeSocial({ facebook: { enabled: row.enabled, text: row.text, textMode: row.text_mode } }, title) : defaultSocial(title);
+  const social = row ? normalizeSocial({ facebook: { enabled: row.enabled, text: row.text, textMode: row.text_mode } }, title) : defaultSocial(title);
+  const instagram = await readInstagramRevision(db, id, revision, title);
+  return instagram ? { ...social, instagram } : social;
 }
 export async function writeRevisionSocial(db: Executor, id: string, revision: number, title: string, input: SocialInput | undefined, previousRevision = 0): Promise<void> {
+  await writeInstagramRevision(db, id, revision, title, input?.instagram, previousRevision);
   if (!await hasSocialPublishing(db)) {
     if (input?.facebook.enabled || input?.facebook.textMode === "custom") throw new Error("Социалното публикуване изисква миграция 39.");
     return;
@@ -50,6 +54,7 @@ export async function enqueueSocialPublication(db: Pick<ScriptDb, "execute" | "s
     const excluded = await db.execute(sql`select 1 from editor_qa_articles where article_id=${id}::uuid`);
     if (excluded.length) return;
   }
+  await enqueueInstagramPublication(db, id, revision);
   const { facebook } = await readRevisionSocial(db, id, revision, article.title);
   if (!facebook.enabled) return;
   const [existing] = await db.select({ id: socialPublications.id }).from(socialPublications).where(eq(socialPublications.articleId, id)).limit(1);
@@ -69,7 +74,7 @@ export async function readSocialStatus(db: ScriptDb, id?: string): Promise<Socia
   if (!ready) return { ready: false, connected: false, enabled: false, job: null };
   const connection = await activeSocialPage(db);
   const [job] = id ? await db.select().from(socialPublications).where(eq(socialPublications.articleId, id)).orderBy(desc(socialPublications.createdAt)).limit(1) : [];
-  return { ready, connected: connection.connected, enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", job: job ? {
+  return { ready, connected: connection.connected, enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", instagram: await readInstagramStatus(db, id), job: job ? {
     id: job.id, status: job.status, step: job.step, text: job.text, url: job.permalink,
     message: socialMessage(job.status, job.step, job.errorCode), canRetry: job.status === "failed" && job.errorCode !== "connection",
   } : null };

@@ -55,7 +55,10 @@ export default async function NewArticlePage() {
         viewUnit: "seconds",
         viewTarget: null,
         publishAtSofia: null,
-        social: { facebook: { enabled: true, text: "", textMode: "auto" } },
+        social: {
+          facebook: { enabled: true, text: "", textMode: "auto" },
+          instagram: { enabled: true, text: "", textMode: "auto" },
+        },
       }}
       sections={sections}
       media={media}

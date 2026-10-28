@@ -1,15 +1,24 @@
 import { z } from "zod";
 
 export const FACEBOOK_TEXT_MAX = 60_000;
+export const INSTAGRAM_TEXT_MAX = 2200;
+const instagramInput = z.strictObject({ enabled: z.boolean(), text: z.string().max(INSTAGRAM_TEXT_MAX), textMode: z.enum(["auto", "custom"]) });
 export const socialInput = z.strictObject({ facebook: z.strictObject({
   enabled: z.boolean(), text: z.string().max(FACEBOOK_TEXT_MAX), textMode: z.enum(["auto", "custom"]),
-}) });
+}), instagram: instagramInput.optional() });
 export type SocialInput = z.infer<typeof socialInput>;
+export type InstagramInput = z.infer<typeof instagramInput>;
+export const instagramText = (title: string) => `${title}\n\nОще новини: newspoint.bg`;
+export function normalizeInstagram(value: InstagramInput | undefined, title: string): InstagramInput {
+  const input = value ?? { enabled: false, text: "", textMode: "auto" };
+  return { ...input, text: input.textMode === "auto" ? instagramText(title) : input.text };
+}
 export const facebookText = (title: string) => `${title}\n\n👇 Четете повече в първия коментар.`;
 export const defaultSocial = (title = ""): SocialInput => ({ facebook: { enabled: false, text: facebookText(title), textMode: "auto" } });
 export function normalizeSocial(value: SocialInput | undefined, title: string): SocialInput {
   const social = value ?? defaultSocial(title);
-  return { facebook: { ...social.facebook, text: social.facebook.textMode === "auto" ? facebookText(title) : social.facebook.text } };
+  return { facebook: { ...social.facebook, text: social.facebook.textMode === "auto" ? facebookText(title) : social.facebook.text },
+    ...(social.instagram ? { instagram: normalizeInstagram(social.instagram, title) } : {}) };
 }
 
 export const SOCIAL_ORIGINS = ["https://newspoint.bg", "https://www.newspoint.bg", "https://site44159-izdo3c.scloudsite101.com"] as const;
@@ -27,6 +36,7 @@ export function socialArticleUrl(origin: string | undefined, path: string): stri
 export type SocialStatus = {
   ready: boolean; connected: boolean; enabled: boolean;
   job: null | { id: string; status: string; step: string; text: string; message: string; canRetry: boolean; url: string | null };
+  instagram?: Omit<SocialStatus, "instagram">;
 };
 export function socialMessage(status: string, step: string, error: string | null): string {
   if (status === "succeeded") return "Facebook: публикувано.";

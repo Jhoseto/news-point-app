@@ -48,6 +48,7 @@ export function SectionTitle({
   children,
   href,
   linkLabel = "Всички",
+  linkHeading = false,
   as: Heading = "h2",
   id,
   accentSlug,
@@ -55,6 +56,8 @@ export function SectionTitle({
   children: ReactNode;
   href?: string | undefined;
   linkLabel?: string;
+  /** Reuse the visible rubric heading as a descriptive crawlable link. */
+  linkHeading?: boolean;
   as?: "h1" | "h2" | "h3";
   id?: string | undefined;
   accentSlug?: string | undefined;
@@ -63,11 +66,13 @@ export function SectionTitle({
     <div className="np-section-heading mb-5 flex items-center justify-between gap-4" style={categoryAccentStyle(accentSlug)}>
       <Heading id={id} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">
         <span className="np-ring" aria-hidden="true" />
-        {children}
+        {href && linkHeading ? <Link href={href} prefetch={false}>{children}</Link> : children}
       </Heading>
       {href ? (
         <Link
           href={href}
+          prefetch={false}
+          aria-label={typeof children === "string" && linkLabel === "Всички" ? `Всички — ${children}` : undefined}
           className="np-section-link group inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface/80 px-3 text-xs font-bold text-link shadow-[0_3px_12px_-8px_rgb(10_20_84/0.2)] transition-[border-color,background-color,box-shadow] hover:border-accent/30 hover:bg-surface hover:shadow-card sm:text-sm"
         >
           {linkLabel}

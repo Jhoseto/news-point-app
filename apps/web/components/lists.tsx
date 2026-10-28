@@ -21,7 +21,7 @@ export function CompactList({
   if (!articles.length) return null;
   return (
     <section className="np-card p-5">
-      <SectionTitle as="h2" accentSlug={accentSlug} {...(href ? { href } : {})}>
+      <SectionTitle as="h2" accentSlug={accentSlug} {...(href ? { href, linkHeading: true } : {})}>
         {title}
       </SectionTitle>
       <div className="flex flex-col gap-4">

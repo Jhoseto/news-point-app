@@ -44,7 +44,11 @@ export async function facebookHeadline(value: string) {
 
 // Fixed brand assets are rasterised once per worker, never fetched over HTTP.
 let footerAssets: Promise<{ logo: Buffer; label: Buffer; labelHeight: number }> | undefined;
-function footer() {
+let instagramFooterAssets: typeof footerAssets;
+function footer(instagram = false) {
+  if (instagram) return instagramFooterAssets ??= Promise.all([
+    sharp(logoFile).resize({ width: 260 }).png().toBuffer(), lettering("newspoint.bg", 26, 282),
+  ]).then(([logo, label]) => ({ logo, label: label.data, labelHeight: label.info.height }));
   return footerAssets ??= Promise.all([
     sharp(logoFile).resize({ width: 260 }).png().toBuffer(),
     lettering("Линк в коментарите", 26, 282),
@@ -74,8 +78,15 @@ const surfaces = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="120
 
 /** A derived social image only: originals and already-checkpointed uploads stay untouched. */
 export async function renderFacebookPostImage(source: Buffer, headline: string): Promise<Buffer> {
+  return renderPostImage(source, headline, false);
+}
+/** Instagram keeps the brand but does not promise a clickable comment link. */
+export async function renderInstagramPostImage(source: Buffer, headline: string): Promise<Buffer> {
+  return sharp(await renderPostImage(source, headline, true)).resize(1080, 810).jpeg({ quality: 88, mozjpeg: true }).toBuffer();
+}
+async function renderPostImage(source: Buffer, headline: string, instagram: boolean): Promise<Buffer> {
   const heading = await facebookHeadline(headline);
-  const assets = await footer();
+  const assets = await footer(instagram);
   return sharp(source, { limitInputPixels: 50_000_000, animated: false })
     .rotate().resize(1200, 900, { fit: "cover", position: "centre" })
     .flatten({ background: "#060b20" })
