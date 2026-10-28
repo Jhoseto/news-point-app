@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   async redirects() {
     const sitemaps = ["/sitemap_index.xml", "/post-sitemap.xml", "/category-sitemap.xml"].map(source => ({ source, destination: "/sitemap.xml", permanent: true }));
-    return [...sitemaps, ...(process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [])];
+    return [{ source: "/favicon.ico", destination: "/brand/favicon-32.png", permanent: true }, ...sitemaps, ...(process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [])];
   },
   // Studio (apps/studio, basePath /admin) is served through this host at /admin.
   // Pages keep the trailing slash; static files have none.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { renderIngress } from "../deploy/np2/render-ingress.mjs";
+import { renderIngress, trustedClientIpHeaders } from "../deploy/np2/render-ingress.mjs";
 
 describe("trusted TLS ingress", () => {
   it("redirects before forwarding using the TLS connection and a fixed canonical host", () => {
@@ -11,8 +11,16 @@ describe("trusted TLS ingress", () => {
     expect(config.indexOf("[R=308,L]")).toBeLessThan(config.indexOf("[P,L]"));
     expect(config).not.toContain("%{HTTP:X-Forwarded-Proto}");
     expect(config).toContain('RequestHeader set X-Forwarded-Proto "https"');
-    expect(config).toContain("RequestHeader set X-Forwarded-For %{NP_CLIENT_IP}e");
+    expect(config).toContain('RequestHeader set X-Forwarded-For "expr=%{req:X-Real-IP}"');
     expect(config).toContain("RequestHeader unset Forwarded");
+  });
+  it("trusts CF client identity only after matching the raw peer against the official networks", () => {
+    const config=trustedClientIpHeaders();
+    expect(config.indexOf('X-Real-IP "expr=%{CONN_REMOTE_ADDR}"')).toBeLessThan(config.indexOf('X-Real-IP "expr=%{req:CF-Connecting-IP}"'));
+    expect(config.match(/CONN_REMOTE_ADDR} -ipmatch/g)).toHaveLength(22);
+    expect(config).toContain("173.245.48.0/20");expect(config).toContain("2c0f:f248::/32");
+    expect(config).not.toContain("%{REMOTE_ADDR}");expect(config).not.toContain("0.0.0.0/0");
+    expect(config).toContain("req('CF-Connecting-IP') =~");
   });
   it.each([undefined, "http://newspoint.bg", "https://newspoint.bg/admin", "https://newspoint.bg:8443", "https://newspoint.bg?x=1", "https://user:secret@newspoint.bg", "https://newspoint.bg/#x", "https://localhost", "https://127.0.0.1", "https://[::1]"])("refuses unsafe deployment origin %s", (origin) => {
     expect(() => renderIngress(origin)).toThrow("WEB_URL");
@@ -22,5 +30,6 @@ describe("trusted TLS ingress", () => {
     expect(starter.indexOf('node "$APP/deploy/np2/render-ingress.mjs"')).toBeLessThan(starter.indexOf('stop_pid "$APP/logs/web.pid"'));
     expect(starter).not.toContain("cat > \"$HOME/public_html/.htaccess\"");
     expect(starter).toContain('mv "$APP/logs/ingress.htaccess.next" "$HOME/public_html/.htaccess"');
+    expect(starter.indexOf('chmod 644 "$APP/logs/ingress.htaccess.next"')).toBeLessThan(starter.indexOf('mv "$APP/logs/ingress.htaccess.next"'));
   });
 });

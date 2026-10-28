@@ -1,6 +1,6 @@
 # Copy to /etc/apache2/newspoint-cloudflare-proxies.txt (server admin).
 # Refresh from https://www.cloudflare.com/ips-v4 and /ips-v6 before cutover.
-# Snapshot 2026-10-17 — do not commit live server path with secrets.
+# Snapshot reverified 2026-10-27. Also used by the np2-only ingress renderer.
 
 173.245.48.0/20
 103.21.244.0/22

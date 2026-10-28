@@ -4,6 +4,21 @@ import { parseEnv } from "node:util";
 import { isIP } from "node:net";
 import { pathToFileURL } from "node:url";
 
+// Official Cloudflare ranges, rechecked 2026-10-27. Never trust a visitor's
+// forwarding headers unless the underlying connection peer is in this list.
+export function trustedClientIpHeaders() {
+  const ranges = readFileSync(new URL("./cloudflare-proxies.txt.example", import.meta.url), "utf8")
+    .split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith("#"));
+  if (ranges.length !== 22 || ranges.some(range => {
+    const [ip,bits] = range.split("/"); const family=isIP(ip); const prefix=Number(bits);
+    return !family || !Number.isInteger(prefix) || prefix < 8 || prefix > (family===4?32:128);
+  })) throw new Error("Invalid Cloudflare trusted proxy snapshot");
+  const peer = ranges.map(range => `%{CONN_REMOTE_ADDR} -ipmatch '${range}'`).join(" || ");
+  return `RequestHeader set X-Real-IP "expr=%{CONN_REMOTE_ADDR}"
+RequestHeader set X-Real-IP "expr=%{req:CF-Connecting-IP}" "expr=(${peer}) && req('CF-Connecting-IP') =~ m#^[0-9A-Fa-f:.]{3,45}$#"
+RequestHeader set X-Forwarded-For "expr=%{req:X-Real-IP}"`;
+}
+
 /** Render only: the caller decides when an explicitly authorized release installs the config. */
 export function renderIngress(publicUrl) {
   let url;
@@ -22,11 +37,9 @@ RewriteCond %{HTTP_HOST} !^${hostPattern}(?::443)?$ [NC]
 RewriteRule ^ https://${host}%{REQUEST_URI} [R=308,L]
 
 # RequestHeader runs before the local application proxy. Overwrite any caller values.
-# With Cloudflare, RemoteIPHeader must be configured with ONLY trusted proxy networks
-# at virtual-host level; otherwise this remains the socket peer rather than the visitor.
-SetEnvIf Remote_Addr "(.+)" NP_CLIENT_IP=$1
-RequestHeader set X-Real-IP %{NP_CLIENT_IP}e env=NP_CLIENT_IP
-RequestHeader set X-Forwarded-For %{NP_CLIENT_IP}e env=NP_CLIENT_IP
+# CONN_REMOTE_ADDR is the actual peer even when mod_remoteip rewrites Remote_Addr.
+# Preserve a safe peer fallback for direct requests; never trust their CF header.
+${trustedClientIpHeaders()}
 RequestHeader set X-Forwarded-Proto "https"
 RequestHeader set X-Forwarded-Host "${host}"
 RequestHeader unset Forwarded

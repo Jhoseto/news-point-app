@@ -30,6 +30,9 @@ ensure_poll_env
 # Validate/render before any running process is stopped. Do not trust forwarded
 # headers for TLS: the origin must have HTTPS and Cloudflare must use Full (strict).
 node "$APP/deploy/np2/render-ingress.mjs" "$APP/.env.local" > "$APP/logs/ingress.htaccess.next"
+# Apache must be able to read the published rules even when the deploy shell has
+# a private umask. This file contains public routing rules, never credentials.
+chmod 644 "$APP/logs/ingress.htaccess.next"
 
 stop_pid() {
   local file="$1"

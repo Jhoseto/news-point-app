@@ -1,4 +1,5 @@
 import { identifyAuditActor } from "./audit-context";
+import { studioClientIpOptions } from "./auth-client-ip";
 import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -113,7 +114,12 @@ function createAuth() {
         else guard.recordFailure(email);
       }),
     },
-    advanced: { cookiePrefix: "np_studio", skipTrailingSlashes: true },
+    advanced: {
+      cookiePrefix: "np_studio", skipTrailingSlashes: true,
+      // Studio binds to loopback. Apache overwrites this header and only accepts
+      // CF-Connecting-IP from verified Cloudflare connection peers.
+      ipAddress: studioClientIpOptions,
+    },
     plugins: [nextCookies()],
   });
 }

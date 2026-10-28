@@ -66,3 +66,36 @@ Production release, route changes and credential creation require the owner's co
 Disable/remove the Worker route first (or set its `ENABLED=0`): canonical requests immediately use the original Next site. Then disable the server flag/restart as appropriate. Existing render copies expire after 30 seconds; purge their URLs if immediate invalidation is needed. Do not stop unrelated websites or alter HTTP/2 as part of this rollback.
 
 Primary references checked: [native fetch cache and purging](https://developers.cloudflare.com/workers/reference/how-the-cache-works/), [request cache options](https://developers.cloudflare.com/workers/runtime-apis/request/), [single-file purge](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-by-single-file/), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/). Route Handler behavior was also checked against the bundled Next16.3.8 documentation.
+
+## Public static files and cookie bypass (28 October 2026)
+
+The existing `NewsPoint private Studio API and cookie requests` Cache Rule
+(`7ae738f475c04f528ffe232fc2da3de8`) remains a **Bypass cache** rule. Its expression
+now comes from `static-cache-policy.mjs`: cookie-independent CSS/JS/fonts under
+`/_next/static/` and `/admin/_next/static/`, font files under `/fonts/`, and image
+extensions under `/media/news/` are excluded from this bypass. The path and
+extension allowlist rejects traversal, backslashes and encoded routing. Other
+paths retain the original bypass behavior, including cookie-bearing article
+requests, Studio pages, APIs, search, preferences, profile files and service workers.
+
+This is a bypass-matching change only. It does **not** force caching of HTML,
+private/no-store responses, set new edge/browser TTLs, remove cookies, change cache
+keys, or create another Worker. Default static caching respects origin headers.
+Mutable brand files and podcast/profile paths are outside this exception. New
+photo uploads already allocate a fresh UUID path; archive optimization adds
+responsive siblings instead of replacing the original. Do not replace a cached
+file in place without purging its exact public URL; a CDN purge cannot invalidate
+copies already fresh in a visitor's browser.
+
+Live verification found anonymous static HIT but cookie-bearing DYNAMIC before
+the change. After saving and reopening the rule, CSS, JS, font, news image and
+Studio JS returned HIT for anonymous, reader and synthetic staff-cookie profiles,
+with identical SHA-256 body hashes and no Set-Cookie. Private paths remained
+DYNAMIC. A limited purge of one real CSS URL and one real image produced
+MISS → HIT without changing source files or article content.
+
+Rollback: replace this rule's expression with `originalPrivateBypassExpression`
+from `static-cache-policy.mjs`; keep Bypass cache and the other settings intact.
+The change requires no application restart or paid service. The meaningful
+boundary tests are in `scripts/static-cache-policy.test.ts`; private live evidence
+is kept under the ignored `tests/reports/static-cache-20261028/` directory.
