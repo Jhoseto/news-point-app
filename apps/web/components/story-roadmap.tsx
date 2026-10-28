@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import { formatTime, isoDate } from "@/lib/format";
 import { articleCountLabel, asDate } from "@/lib/story-route";
 import type { StoryThemeArticle, StoryThemeSummary } from "@/lib/queries";
+import { storyRailImageSizes, storyThemeImage } from "@/lib/story-theme-image";
 import { ArticleImage } from "./ui";
 import { StoryRoadmapScroll } from "./story-roadmap-scroll";
 import "./story-theme-premium.css";
@@ -85,19 +86,15 @@ export function StoryRoadmap({
 }
 
 function RailCardBody({ article }: { article: StoryThemeArticle }) {
+  const image = storyThemeImage(article);
   return (
     <>
-      {article.heroUrl ? (
+      {image ? (
         <span className="np-story-rail-thumb">
           <ArticleImage
-            media={{
-              url: article.heroUrl,
-              alt: "",
-              width: null,
-              height: null,
-              caption: "",
-              credit: "",
-            }}
+            media={image}
+            sizes={storyRailImageSizes(image)}
+            resolution="content"
             className="h-full w-full object-cover"
           />
         </span>

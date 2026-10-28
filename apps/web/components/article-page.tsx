@@ -28,6 +28,7 @@ import { RelatedStories } from "./related-stories";
 import { StoryRoadmap } from "./story-roadmap";
 import { StoryThemeLink } from "./story-theme-link";
 import { articleImageGallery } from "@/lib/article-image-gallery";
+import { storyThemeImage } from "@/lib/story-theme-image";
 import { Breadcrumbs } from "./breadcrumbs";
 import { BookIcon, ClockIcon } from "./icons";
 import { LatestNews24h } from "./latest-news-24h";
@@ -46,9 +47,7 @@ function themeStopToSummary(stop: StoryThemeArticle): ArticleSummary {
     authorName: "",
     publishedAt: asDate(stop.publishedAt) ?? new Date(Number.NaN),
     category: stop.category,
-    hero: stop.heroUrl
-      ? { url: stop.heroUrl, width: null, height: null, alt: "", caption: "", credit: "" }
-      : null,
+    hero: storyThemeImage(stop),
   };
 }
 

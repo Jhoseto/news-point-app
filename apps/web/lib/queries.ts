@@ -579,6 +579,8 @@ export interface StoryThemeArticle {
   path: string;
   category: CategoryRef | null;
   heroUrl: string | null;
+  /** Optional while previously cached theme payloads expire. */
+  heroImage?: Pick<Media, "width" | "height" | "variants">;
   publishedAt: Date | null;
   position: number;
 }
@@ -716,7 +718,8 @@ async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDeta
     .limit(1);
   if (!theme) return null;
 
-  const memberRows = await db
+  const presentationsReady = await hasMediaPresentations(db);
+  const members = db
     .select({
       articleId: articles.id,
       title: articles.title,
@@ -730,11 +733,17 @@ async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDeta
       heroKey: mediaAssets.storageKey,
       heroSource: mediaAssets.sourceUrl,
       heroProvider: mediaAssets.provider,
+      heroWidth: mediaAssets.width,
+      heroHeight: mediaAssets.height,
+      heroVariants: presentationsReady ? mediaPresentations.variants : sql<unknown>`'[]'::jsonb`,
     })
     .from(storyThemeArticles)
     .innerJoin(articles, eq(articles.id, storyThemeArticles.articleId))
     .leftJoin(categories, eq(categories.id, articles.primaryCategoryId))
-    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId))
+    .leftJoin(mediaAssets, eq(mediaAssets.id, articles.heroMediaId));
+  const memberRows = await (presentationsReady
+    ? members.leftJoin(mediaPresentations, eq(mediaPresentations.mediaAssetId, mediaAssets.id))
+    : members)
     .where(and(eq(storyThemeArticles.themeId, theme.id), isPublished()))
     .orderBy(asc(storyThemeArticles.position));
   return {
@@ -748,19 +757,29 @@ async function getStoryThemeBySlugInternal(slug: string): Promise<StoryThemeDeta
     coverUrl: theme.coverMediaId
       ? safeResolveUrl({ storageKey: theme.coverKey, sourceUrl: theme.coverSource, provider: theme.coverProvider as "wordpress_origin" | "object_storage" })
       : null,
-    articles: memberRows.map((row) => ({
-      articleId: row.articleId,
-      title: row.title,
-      path: row.path,
-      publishedAt: row.publishedAt,
-      position: row.position,
-      category: row.categoryName
-        ? { id: row.articleId, slug: row.categorySlug ?? "", name: row.categoryName, path: row.categoryPath ?? "" }
-        : null,
-      heroUrl: row.heroKey
+    articles: memberRows.map((row) => {
+      const heroUrl = row.heroKey
         ? safeResolveUrl({ storageKey: row.heroKey, sourceUrl: row.heroSource, provider: row.heroProvider as "wordpress_origin" | "object_storage" })
-        : null,
-    })),
+        : null;
+      return {
+        articleId: row.articleId,
+        title: row.title,
+        path: row.path,
+        publishedAt: row.publishedAt,
+        position: row.position,
+        category: row.categoryName
+          ? { id: row.articleId, slug: row.categorySlug ?? "", name: row.categoryName, path: row.categoryPath ?? "" }
+          : null,
+        heroUrl,
+        ...(heroUrl ? { heroImage: {
+          width: row.heroWidth,
+          height: row.heroHeight,
+          // Presentation adds the original itself; keep only the stored (up to six) alternatives.
+          variants: responsiveImageVariants(row.heroVariants, { url: heroUrl, width: row.heroWidth, height: row.heroHeight })
+            .filter((variant) => variant.url !== heroUrl),
+        } } : {}),
+      };
+    }),
   };
 }
 
