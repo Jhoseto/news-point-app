@@ -57,7 +57,7 @@ export default async function NewArticlePage() {
         publishAtSofia: null,
         social: {
           facebook: { enabled: true, text: "", textMode: "auto" },
-          instagram: { enabled: true, text: "", textMode: "auto" },
+          instagram: { enabled: false, text: "", textMode: "auto" },
         },
       }}
       sections={sections}
