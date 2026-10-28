@@ -19,7 +19,7 @@ export async function claimInstagramJob(db: ScriptDb): Promise<InstagramJob | nu
         if (!row)
             return null;
         const [claimed] = await tx.execute<InstagramJob>(sql `update instagram_publications set status='working',lease_token=${randomUUID()}::uuid,
-      lease_until=${new Date(Date.now() + LEASE_MS)},updated_at=now() where id=${row.id}::uuid returning *`);
+      lease_until=now()+(${LEASE_MS} * interval '1 millisecond'),updated_at=now() where id=${row.id}::uuid returning *`);
         return claimed ?? null;
     });
 }
@@ -59,7 +59,7 @@ export async function processInstagramJob(db: ScriptDb, job: InstagramJob, depen
 } = {}) {
     const owned = sql `id=${job.id}::uuid and lease_token=${job.lease_token}::uuid and lease_until>now()`;
     const finish = async (status: string, error: string | null = null, delay = 0) => db.execute(sql `update instagram_publications set status=${status},error_code=${error},
-    next_attempt_at=${new Date(Date.now() + delay)},lease_token=null,lease_until=null,updated_at=now() where ${owned}`);
+    next_attempt_at=now()+(${delay} * interval '1 millisecond'),lease_token=null,lease_until=null,updated_at=now() where ${owned}`);
     let sending = false;
     try {
         if (process.env.INSTAGRAM_PUBLISHING_ENABLED !== "1") {
@@ -93,7 +93,7 @@ export async function processInstagramJob(db: ScriptDb, job: InstagramJob, depen
             return;
         }
         const started = await db.execute(sql `update instagram_publications set image_key=${imageKey},image_hash=${imageHash},status='sending',
-      attempts=attempts+1,operation_started_at=now(),updated_at=now(),lease_until=${new Date(Date.now() + LEASE_MS)} where ${owned}
+      attempts=attempts+1,operation_started_at=now(),updated_at=now(),lease_until=now()+(${LEASE_MS} * interval '1 millisecond') where ${owned}
       and exists(select 1 from articles where id=${job.article_id}::uuid and is_public and published_at<=now()) returning id`);
         if (!started.length)
             return;
