@@ -22,7 +22,7 @@ const portraitByName: Record<string, TeamPhoto> = {
   "атанас доминов": { small: "/brand/team-atanas-cutout-800-d3aa0ef8.webp", large: "/brand/team-atanas-cutout-1120-d3aa0ef8.webp", alt: "Атанас Доминов" },
   "николай мутавски": { small: "/brand/team-nikolai-cutout-800-018f69d2.webp", large: "/brand/team-nikolai-cutout-1120-018f69d2.webp", alt: "Николай Мутавски" },
   "вилина дишева": { small: "/brand/team-vilina-cutout-800-9e90f1a3.webp", large: "/brand/team-vilina-cutout-1120-9e90f1a3.webp", alt: "Вилина Дишева" },
-  "мария стефанова": { small: "/brand/team-maria-cutout-800-0681e8d8.webp", large: "/brand/team-maria-cutout-1120-0681e8d8.webp", alt: "Мария Стефанова" },
+  "мария пашова": { small: "/brand/team-maria-cutout-800-0681e8d8.webp", large: "/brand/team-maria-cutout-1120-0681e8d8.webp", alt: "Мария Пашова" },
 };
 
 function Photo({ photo, preview = false }: { photo: TeamPhoto; preview?: boolean }) {

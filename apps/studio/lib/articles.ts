@@ -778,7 +778,7 @@ async function purgeArticlePlacements(tx: Pick<ReturnType<typeof getDb>, "select
 }
 
 /** Permanently removes a material and its public URL. Irreversible. */
-export async function deleteArticle(_staff: Staff, id: string): Promise<{ id: string }> {
+export async function deleteArticle(staff: Staff, id: string): Promise<{ id: string }> {
   const result = await getDb().transaction(async (tx) => {
     const [article] = await tx.select().from(articles).where(eq(articles.id, id)).for("update").limit(1);
     if (!article) throw new EditorError(404, "not_found", "Статията не съществува.");
@@ -787,6 +787,12 @@ export async function deleteArticle(_staff: Staff, id: string): Promise<{ id: st
       : [];
     auditEvidence({ article: publicAuditState(article) }, null);
     await purgeArticlePlacements(tx, id);
+    // Queue the public URL before cascades remove outbox/QA rows. Never sends HTTP here.
+    if (article.publishedAt) await tx.insert(outboxEvents).values({
+      type: "article.updated", entityId: id, version: article.version + 1,
+      payload: { path: article.path, title: article.title, topics: [],
+        visibilityChange: { visible: false, actorId: staff.id, actorName: staff.name } },
+    });
     await tx.delete(editorQaArticles).where(eq(editorQaArticles.articleId, id));
     await tx.delete(articles).where(eq(articles.id, id));
     return { path: article.path, categoryPath: category?.path ?? null, title: article.title };

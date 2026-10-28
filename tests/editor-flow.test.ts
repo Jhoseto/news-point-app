@@ -38,7 +38,7 @@ beforeAll(async () => {
   adapt(db as never);
   const transaction = db.transaction.bind(db);
   db.transaction = ((callback: (tx: unknown) => unknown) => transaction(async tx => { adapt(tx as never); return callback(tx); })) as typeof db.transaction;
-  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 20, 21, 24, 25, 26, 27, 30, 38]);
+  const included = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 17, 18, 19, 20, 21, 24, 25, 26, 27, 30, 38, 42]);
   for (const file of readdirSync("packages/db/migrations").sort()) if (included.has(Number(file.slice(0, 2)))) await pg.exec(readFileSync(`packages/db/migrations/${file}`, "utf8"));
   await pg.exec(`insert into staff_users(id,name,email,role) values('qa-editor','QA Editor','qa@example.invalid','editor');`);
   await db.insert(schema.categories).values({ id: categoryId, slug: "qa-rubric", path: "/qa-rubric/", name: "QA", kind: "section" });
@@ -99,6 +99,25 @@ describe("editor API permissions and validation", () => {
 });
 
 describe("article editor transactions", () => {
+  it("automatically queues public IndexNow changes, never autosave, and retains deletion", async () => {
+    const input = draft();
+    const created = await createArticle(staff, input);
+    const queued = async () => (await pg.query<{ version: number; generation: number }>(
+      "select version,generation from indexnow_jobs where article_id=$1", [created.id])).rows;
+    expect(await queued()).toHaveLength(0);
+    await publishRevision(staff, created.id, 1, randomUUID(), true);
+    const first = (await queued())[0]!;
+    await saveRevision(staff, created.id, 1, { ...input, title: "Explicit revised fixture" });
+    expect(await queued()).toEqual([first]);
+    await publishRevision(staff, created.id, 2, randomUUID(), true);
+    expect((await queued())[0]!.generation).toBe(first.generation+1);
+    await setArticleVisibility(created.id, false, staff);
+    const hidden = (await queued())[0]!;
+    expect(hidden.generation).toBe(first.generation+2);
+    await deleteArticle({ ...staff, email: "qa@example.invalid" }, created.id);
+    expect((await queued())[0]!.version).toBe(hidden.version+1);
+    expect(await db.select().from(schema.outboxEvents).where(eq(schema.outboxEvents.entityId,created.id))).toHaveLength(0);
+  });
   it("creates the first Studio revision before updating an unchanged imported article", async () => {
     const input = draft();
     const id = randomUUID();
@@ -294,6 +313,9 @@ describe("article editor transactions", () => {
     await publishRevision(staff, created.id, 1, randomUUID(), true);
     const jobs = await pg.query("select * from push_jobs where article_id=$1", [created.id]);
     expect(jobs.rows).toHaveLength(0);
+    expect((await pg.query("select * from indexnow_jobs where article_id=$1", [created.id])).rows).toHaveLength(0);
+    await deleteArticle({ ...staff, email: "qa@example.invalid" }, created.id);
+    expect((await pg.query("select * from indexnow_jobs where article_id=$1", [created.id])).rows).toHaveLength(0);
     vi.unstubAllEnvs(); const real = await createArticle(staff, draft());
     await publishRevision(staff, real.id, 1, randomUUID(), true);
     expect((await pg.query("select * from push_jobs where article_id=$1", [real.id])).rows).toHaveLength(1);
@@ -304,6 +326,7 @@ describe("article editor transactions", () => {
     expect(await publishDueScheduled(db as never)).toBe(1);
     const article = await getEditorArticle(created.id);
     expect(article).toMatchObject({ isPublic: true, listenEnabled: false });
+    expect((await pg.query("select * from indexnow_jobs where article_id=$1", [created.id])).rows).toHaveLength(1);
     expect(await db.select().from(schema.articleCategories).where(eq(schema.articleCategories.articleId, created.id))).toHaveLength(1);
   });
 });

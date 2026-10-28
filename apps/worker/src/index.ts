@@ -4,6 +4,7 @@ import { assertOutboxReady } from "./outbox-ready";
 import { processOneAiPodcastJob } from "./ai-podcast-worker";
 import { startPushWorker } from "./push-worker";
 import { startSocialPublishingWorker } from "./social-publishing-worker";
+import { startIndexNowWorker } from "./indexnow-worker";
 import { processOneMediaUpload, cleanExpiredUploads } from "./media-upload-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
@@ -61,6 +62,7 @@ async function runWorker() {
 
   const stopPush = startPushWorker(db, log);
   const stopSocial = startSocialPublishingWorker(db, log);
+  const stopIndexNow = startIndexNowWorker(db, log);
   const boostTimer = setInterval(() => {
     void applyDueViewBoosts(db)
       .then((updated) => { if (updated > 0) log(`view boosts updated ${updated}`); })
@@ -83,6 +85,7 @@ async function runWorker() {
     clearInterval(aiTimer);
     await stopPush();
     await stopSocial();
+    await stopIndexNow();
     await close();
   }
 
