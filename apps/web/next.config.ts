@@ -84,6 +84,8 @@ const nextConfig: NextConfig = {
       "/brand/apple-touch-icon-167.png",
       "/brand/favicon-16.png",
       "/brand/favicon-32.png",
+      "/brand/favicon-96.png",
+      "/brand/favicon-192.png",
       "/brand/newspoint-logo.webp",
       "/brand/newspoint-logo-dark.webp",
       "/brand/mark-emblem.webp",

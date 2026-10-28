@@ -13,6 +13,7 @@ const STUDIO_BRAND = resolve(root, "apps/studio/public/brand");
 
 const SVG_DENSITY = 512;
 const readerOnly = process.argv.includes("--reader-pwa-only");
+const largeFaviconsOnly = process.argv.includes("--large-favicons-only");
 
 async function markRaster(size) {
   return sharp(MARK_SVG, { density: SVG_DENSITY }).resize(size, size, { fit: "fill" }).ensureAlpha().png().toBuffer();
@@ -61,16 +62,19 @@ const SIZES = [
   { name: "apple-touch-icon-152.png", size: 152, maskable: false },
   { name: "apple-touch-icon-167.png", size: 167, maskable: false },
   { name: "favicon-32.png", size: 32, maskable: false },
+  { name: "favicon-96.png", size: 96, maskable: false },
+  { name: "favicon-192.png", size: 192, maskable: false },
   { name: "favicon-16.png", size: 16, maskable: false },
 ];
 
 await mkdir(OUT_DIR, { recursive: true });
-if (!readerOnly) await mkdir(STUDIO_BRAND, { recursive: true });
+if (!readerOnly && !largeFaviconsOnly) await mkdir(STUDIO_BRAND, { recursive: true });
 
 for (const { name, size, maskable } of SIZES) {
-  if (readerOnly && size < 120) continue;
+  if (largeFaviconsOnly && !["favicon-96.png", "favicon-192.png"].includes(name)) continue;
+  if (readerOnly && (size < 120 || name.startsWith("favicon-"))) continue;
   const target = resolve(OUT_DIR, name);
-  const image = size >= 120
+  const image = size >= 120 && !name.startsWith("favicon-")
     ? await readerPwaIcon(sharp, MARK_SVG, size)
     : await circularMarkPipeline(size, { maskable });
   const pngOpts = { compressionLevel: 9, ...(size <= 32 ? { palette: true } : {}) };
@@ -79,7 +83,7 @@ for (const { name, size, maskable } of SIZES) {
   console.log(`saved ${name} (${(info.size / 1024).toFixed(1)} KB)`);
 }
 
-if (!readerOnly) {
+if (!readerOnly && !largeFaviconsOnly) {
 await (await squareMarkPipeline(512)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark-512w.webp"));
 await (await squareMarkPipeline(256)).webp({ quality: 92 }).toFile(join(OUT_DIR, "studio-mark.webp"));
 
