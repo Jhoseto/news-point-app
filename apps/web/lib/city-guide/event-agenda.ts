@@ -24,7 +24,14 @@ export function agendaExtraMatches(event: { title: string; price: number | null 
 export type AgendaEvent = { id: string; title: string; kind: AgendaKind; date: string; endDate: string; time: string; place: string; address: string; image: string | null; status: string; price: number | null; description?: string; recurrence?: string; doorsTime?: string; performanceTime?: string };
 const canonicalPlace = (place: string) => /^Bee Bop Caf[eé]$/iu.test(place) ? "Bee Bop Café" : place;
 const day = (date: Date) => date.toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });
-export function cityAgenda(groups: CityObservation[], category: "culture" | "nightlife"): AgendaEvent[] {
+export function eventDescription(fields: Record<string, unknown>): string {
+  const paragraphs = String(fields.description ?? "").split(/\n{2,}/u).map(value => value.trim()).filter(Boolean);
+  const practical = [["Времетраене", fields.duration], ["Език", fields.language], ["Субтитри", fields.subtitles]]
+    .flatMap(([label, value]) => typeof value === "string" && value.trim() ? [`${label}: ${value.trim()}`] : []);
+  if (practical.length) paragraphs.push(practical.join(" · "));
+  return [...new Set(paragraphs)].join("\n\n").slice(0, 20_000);
+}
+export function cityAgenda(groups: CityObservation[], category: "culture" | "nightlife", today = day(new Date())): AgendaEvent[] {
   return groups.filter(group => group.status === "observed").flatMap(group => group.items.flatMap(item => {
     const f = item.fields, source = group.sourceId;
     let kind: AgendaKind = programmeKind(source, f) ?? (source === "club-code-upcoming" ? "party" : source === "plovdiv-theatre" ? "theatre" : source === "plovdiv-opera" ? "opera" : source === "plovdiv-gallery-current" ? "exhibition" : explicitNightEventKind(f) ?? "community");
@@ -43,11 +50,12 @@ export function cityAgenda(groups: CityObservation[], category: "culture" | "nig
     if (!/^\d{4}-\d{2}-\d{2}$/u.test(date)) return [];
     const hash = String(f.imageHash ?? "");
     return [{ id: `${source}:${item.key}`, title: String(f.title), kind, date, endDate, time,
-      description: String(f.description ?? ""), recurrence: String(f.recurrence ?? ""), doorsTime: String(f.doorsTime ?? ""), performanceTime: String(f.performanceTime ?? ""),
+      description: eventDescription(f), recurrence: String(f.recurrence ?? ""), doorsTime: String(f.doorsTime ?? ""), performanceTime: String(f.performanceTime ?? ""),
       place: canonicalPlace(String(f.place ?? f.location ?? f.venue ?? (kind === "theatre" ? "Драматичен театър Пловдив" : ""))), address: String(f.address ?? ""),
       status: String(f.status ?? ""), price: typeof f.price === "number" ? f.price : null,
-      image: /^[a-f0-9]{64}$/u.test(hash) ? `/api/city-guide/event-image?${new URLSearchParams({ category, sourceId: source, recordKey: item.key, hash })}` : null }];
-  })).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.title.localeCompare(b.title, "bg"));
+      image: /^[a-f0-9]{64}$/u.test(hash) ? `/api/city-guide/event-image?${new URLSearchParams({ category, sourceId: source, hash })}` : null }];
+  })).filter(event => !!event.recurrence || event.endDate >= today)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.title.localeCompare(b.title, "bg"));
 }
 
 export function agendaPeriodMatches(event: AgendaEvent, period: string, today: string): boolean {

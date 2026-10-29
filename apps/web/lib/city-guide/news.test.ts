@@ -21,6 +21,24 @@ describe("city guide news links", () => {
     expect(cityTopicStories(["Билети и карти"], [older, newer], now).map(story => story.path)).toEqual(["/news/new/", "/news/old/"]);
     expect(cityStoryForTopic("Билети и карти", [older, newer], now)?.path).toBe("/news/new/");
   });
+  it("never fills the home, category or topic rails with stale local news", () => {
+    const now = new Date("2026-10-29T10:00:00Z");
+    const september = [
+      { ...article("bus", "Първите електрически автобуси вече се движат по линия №20 в Пловдив"), publishedAt: new Date("2026-09-15T10:00:00Z") },
+      { ...article("school", "Първият звънец удари в Пловдив: 3301 деца тръгнаха в първи клас"), publishedAt: new Date("2026-09-15T09:00:00Z") },
+      { ...article("line", "Автобус №116 възстановява нормалния си маршрут в Пловдив"), publishedAt: new Date("2026-09-02T09:00:00Z") },
+    ];
+    expect(cityTopicStories(["Градски автобуси", "Първи клас"], september, now)).toEqual([]);
+    expect(cityStoryForCategory(["Градски автобуси", "Първи клас"], september, now)).toBeNull();
+    expect(cityStoriesForTopics(["Градски автобуси", "Първи клас"], september, now)).toEqual({ "Градски автобуси": null, "Първи клас": null });
+  });
+
+  it("uses shorter freshness windows for operational topics", () => {
+    const now = new Date("2026-10-29T10:00:00Z");
+    const eightDaysOld = { ...article("route", "Автобусна линия №20 в Пловдив е с нов маршрут"), publishedAt: new Date("2026-10-21T09:00:00Z") };
+    const sixDaysOld = { ...article("route-new", "Автобусна линия №21 в Пловдив е с нов маршрут"), publishedAt: new Date("2026-10-23T11:00:00Z") };
+    expect(cityTopicStories(["Градски автобуси"], [eightDaysOld, sixDaysOld], now).map(story => story.path)).toEqual(["/news/route-new/"]);
+  });
   it("follows the exact bus line and the named procedure without unrelated fallback", () => {
     const now = new Date("2026-10-26T10:00:00Z");
     const pool = [article("20", "Автобусна линия №20 в Пловдив с нов маршрут"), article("200", "Автобусна линия 200 в Пловдив с нов маршрут"), article("clinic", "Община Пловдив търси управител за Психодиспансера"), article("other", "Община Пловдив обяви конкурс за управител на друго дружество")];

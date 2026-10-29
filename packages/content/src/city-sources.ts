@@ -1,8 +1,8 @@
 /** One explicit collection and expiry policy shared by the collector and reader. Seconds. */
-// Temporarily deferred by Koce: municipal administration plus sources without a
-// reliable machine-readable production path. Keep implementations and evidence
-// so a source can return after an official endpoint or allowlisting is available.
-export const CITY_DEFERRED_CATEGORIES = ["municipality"];
+// Categories remain reachable in the production guide. Individual sources without
+// a reliable machine-readable production path stay deferred below, so an empty
+// category never turns unverified pilot records into reader-facing information.
+export const CITY_DEFERRED_CATEGORIES: string[] = [];
 export const CITY_DEFERRED_SOURCES = new Set([
   "plovdiv-management-competitions", "plovdiv-public-consultations", "plovdiv-auction-list",
   "plovdiv-tax-notices", "plovdiv-taxes", "plovdiv-housing", "plovdiv-contacts",

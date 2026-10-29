@@ -5,13 +5,13 @@ const entry = (title: string, published: string, slug: string) => `<div class="s
 const page = (...entries: string[]) => `<h2>Предстоящи събития</h2>${entries.join("")}`;
 const listing = { title: "Работилница", published: "2026-10-25", detailUrl: "https://youthcentre.plovdiv.bg/bg/novini/rabotilnitsa" };
 const detail = (body: string, title = "Работилница") => `<div class="vert-pics"><h2>${title}</h2><div>${body}</div></div>`;
-const workshop = (date = "26 октомври") => detail(`На ${date} от 18:00 ч. те каним в Младежки център Пловдив, зала „Библиотека“. Участието е безплатно.`);
+const workshop = (date = "26 октомври") => detail(`<p>На ${date} от 18:00 ч. те каним в Младежки център Пловдив, зала „Библиотека“.</p><p>Участието е безплатно и програмата включва практическа работа.</p>`);
 const now = new Date("2026-10-26T06:00:00Z");
 
 describe("Youth Center event pilot", () => {
   it("does not confuse the article publication date with the event date", () => {
     expect(parseYouthListing(page(entry("Работилница", "25-10-2026", "rabotilnitsa")), now)).toEqual([listing]);
-    expect(parseYouthDetail(workshop(), listing)?.fields).toMatchObject({ date: "2026-10-26", time: "18:00", place: "Младежки център Пловдив · зала „Библиотека“" });
+    expect(parseYouthDetail(workshop(), listing)?.fields).toMatchObject({ date: "2026-10-26", time: "18:00", place: "Младежки център Пловдив · зала „Библиотека“", description: expect.stringContaining("практическа работа") });
     expect(parseYouthDetail(detail("Публикувана новина от Младежки център Пловдив"), listing)).toBeNull();
   });
 

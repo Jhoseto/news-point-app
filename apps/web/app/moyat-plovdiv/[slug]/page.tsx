@@ -42,14 +42,15 @@ export default async function CityCategoryPage({ params }: Props) {
   const availableSlugs = categoryGroups.filter(entry => cityAvailableTopics(entry.slug, entry.groups).length > 0).map(entry => entry.slug);
   const withNav = (content: React.ReactNode) => <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={availableTopics} />{content}</>;
   if (slug === "nightlife" || slug === "culture") {
-    const events = cityAgenda(activeGroups, slug);
+    const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });
+    const events = cityAgenda(activeGroups, slug, today);
     const kinds = [...new Set(events.map(event => event.kind))];
     const news = Object.fromEntries(["all", ...kinds].map(kind => [kind, cityAgendaStories(articles, kind === "all" ? kinds : [kind as AgendaKind])]));
     for (const place of new Set(events.map(event => event.place))) {
       for (const kind of ["all", ...kinds]) news[`place:${place}:${kind}`] = cityAgendaContextStories(articles, kind === "all" ? kinds : [kind as AgendaKind], { place });
     }
     for (const event of events) news['event:' + event.id] = cityAgendaContextStories(articles, [event.kind], { place: event.place, title: event.title });
-    return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={[...kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` })), ...(Object.keys(AGENDA_EXTRA_FILTERS) as AgendaExtra[]).filter(key => events.some(event => agendaExtraMatches(event, key))).map(key => ({ title: AGENDA_EXTRA_FILTERS[key], href: `#agenda-extra-${key}` }))]} /><CityEventAgenda category={slug} events={events} news={news} today={new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" })} /></>;
+    return <><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={[...kinds.map(kind => ({ title: AGENDA_KINDS[kind], href: `#agenda-${kind}` })), ...(Object.keys(AGENDA_EXTRA_FILTERS) as AgendaExtra[]).filter(key => events.some(event => agendaExtraMatches(event, key))).map(key => ({ title: AGENDA_EXTRA_FILTERS[key], href: `#agenda-extra-${key}` }))]} /><CityEventAgenda category={slug} events={events} news={news} today={today} /></>;
   }
   if (slug === "outages") return withNav(<CityOutagesView category={category} stories={stories} observations={observations} />);
   if (slug === "transport") return withNav(<CityTransportView category={category} stories={stories} observations={observations} activeTopics={availableTopics.map(topic => topic.title)} hasFareData={activeGroups.some(group => group.sourceId === "plovdiv-transit")} hasRouteData={activeGroups.some(group => group.sourceId === "plovdiv-livetransport-gtfs")} />);

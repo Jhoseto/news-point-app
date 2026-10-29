@@ -1,4 +1,4 @@
-import { eventImageUrl } from "./event-media";
+import { eventImageUrl, normalizeEventTitle } from "./event-media";
 import { createHash } from "node:crypto";
 import { DomUtils, parseDocument } from "htmlparser2";
 
@@ -665,6 +665,36 @@ function parseOpera(dom: Root): PilotSnapshot {
   return unique("plovdiv-opera", items, ["Listing changes and cancellations need repeated observation; the performance URL may be shared by several dates."], "uncertain");
 }
 
+export function parseOperaDetail(html: string, expectedTitle: string): { description: string; duration?: string; language?: string; subtitles?: string } {
+  const dom = parseDocument(html);
+  const main = firstTag(dom, "main");
+  const heading = main && firstTag(main, "h1");
+  if (!main || !heading || normalizeEventTitle(text(heading)) !== normalizeEventTitle(expectedTitle)) throw new Error("plovdiv-opera: detail title mismatch");
+  const summary = text(firstByClass(main, "page-desc"));
+  const details = firstByClass(main, "widget-event-details");
+  if (!details) throw new Error("plovdiv-opera: detail content missing");
+  const paragraphs = firstByClass(details, "rich-text")
+    ? DomUtils.getElementsByTagName("p", firstByClass(details, "rich-text")!).map(paragraph => text(paragraph)).filter(Boolean)
+    : [];
+  const labels = new Map<string, string>();
+  for (const group of allByClass(details, "label-group")) {
+    const label = text(firstByClass(group, "label")).toLocaleLowerCase("bg");
+    const values = allByClass(group, "label-content").map(value => text(value)).filter(Boolean);
+    if (label && values.length) labels.set(label, values.join(", "));
+  }
+  const description = [...new Set([summary, ...paragraphs].filter(Boolean))].join("\n\n").slice(0, 20_000);
+  if (description.length < 40) throw new Error("plovdiv-opera: usable description missing");
+  const duration = labels.get("времетраене");
+  const language = labels.get("език");
+  const subtitles = labels.get("субтитри");
+  return {
+    description,
+    ...(duration ? { duration } : {}),
+    ...(language ? { language } : {}),
+    ...(subtitles ? { subtitles } : {}),
+  };
+}
+
 function parseTheatre(dom: Root): PilotSnapshot {
   const table = DomUtils.getElementById("MainContent_grdPlan", dom);
   if (!table) throw new Error("plovdiv-theatre: public programme table missing");
@@ -744,7 +774,8 @@ export function parseEpayGoEventDetail(html: string, listingItem: PilotItem): Pi
   const listingDate = String(listingItem.fields.dateText).match(/^(\d{1,2})\s+(\p{L}+)$/u);
   const detailMonth = new Intl.DateTimeFormat("bg-BG", { month: "long", timeZone: "UTC" }).format(detailDate);
   if (!listingDate || Number(listingDate[1]) !== Number(parts[3]) || listingDate[2] !== detailMonth) throw new Error("epaygo-plovdiv-explicit: listing and detail dates disagree");
-  return item(listingItem.key, listingItem.sourceUrl, { title: String(event.name), date: `${parts[1]}-${parts[2]}-${parts[3]}`, time: parts[4]!, place, address, ...(eventImageUrl(event.image, listingItem.sourceUrl) ? { imageUrl: eventImageUrl(event.image, listingItem.sourceUrl)! } : {}) });
+  const description = typeof event.description === "string" ? text(parseDocument(event.description)).slice(0, 12_000) : "";
+  return item(listingItem.key, listingItem.sourceUrl, { title: String(event.name), date: `${parts[1]}-${parts[2]}-${parts[3]}`, time: parts[4]!, place, address, ...(description ? { description } : {}), ...(eventImageUrl(event.image, listingItem.sourceUrl) ? { imageUrl: eventImageUrl(event.image, listingItem.sourceUrl)! } : {}) });
 }
 
 function parseAdoptionGuide(dom: Root): PilotSnapshot {
@@ -787,9 +818,21 @@ function parseGalleryExhibitions(dom: Root): PilotSnapshot {
       || `${end[1]}-${end[2]}-${end[3]}` < `${start[1]}-${start[2]}-${start[3]}` || !venue) {
       throw new Error(`${sourceId}: incomplete exhibition card`);
     }
-    return item(key, listingUrl, { title, startDate: `${start[1]}-${start[2]}-${start[3]}`, endDate: `${end[1]}-${end[2]}-${end[3]}`, venue, ...(eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl) ? { imageUrl: eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl)! } : {}) });
+    return item(key, href, { title, startDate: `${start[1]}-${start[2]}-${start[3]}`, endDate: `${end[1]}-${end[2]}-${end[3]}`, venue, ...(eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl) ? { imageUrl: eventImageUrl(firstTag(card, "img")?.attribs.src, listingUrl)! } : {}) });
   });
   return unique(sourceId, entries, ["The current listing can contain ended exhibitions; reader view filters by end date.", "No explicit cancellation state or verified opening hours are provided."], "uncertain");
+}
+
+export function parseGalleryExhibitionDetail(html: string, listingItem: PilotItem): { description: string } {
+  const dom = parseDocument(html);
+  const heading = DomUtils.getElementsByTagName("h1", dom)[0];
+  if (!heading || normalizeEventTitle(text(heading)) !== normalizeEventTitle(String(listingItem.fields.title))) throw new Error("plovdiv-gallery-current: detail title mismatch");
+  const content = firstByClass(dom, "st-473");
+  const textBlock = content && firstByClass(content, "text");
+  const paragraphs = textBlock ? DomUtils.getElementsByTagName("p", textBlock).map(node => text(node)).filter(value => value && !/^текст\s*:/iu.test(value)) : [];
+  const description = paragraphs.join("\n\n").slice(0, 20_000);
+  if (description.length < 40) throw new Error("plovdiv-gallery-current: detail description missing");
+  return { description };
 }
 
 function parseMunicipalContacts(dom: Root): PilotSnapshot {
@@ -986,6 +1029,10 @@ export function parseClubEventDetail(html: string, listingItem: PilotItem): Pilo
   const image = eventImageUrl(event.image, listingItem.sourceUrl);
   if (image) fields.imageUrl = image;
   if (typeof address === "string" && address) fields.address = address;
+  if (typeof event.description === "string") {
+    const description = text(parseDocument(event.description)).slice(0, 12_000);
+    if (description) fields.description = description;
+  }
   if ((typeof price === "string" || typeof price === "number") && /^\d+(?:\.\d{1,2})?$/u.test(String(price)) && Number(price) > 0 && currency === "EUR") {
     fields.price = Number(price);
     fields.currency = currency;

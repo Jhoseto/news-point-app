@@ -97,6 +97,20 @@ const EVENT_TOPICS = new Set(["Къде да изхвърля?", "Мобилни
 const EVENT_MONTHS: Record<string, number> = { януари: 1, февруари: 2, март: 3, април: 4, май: 5, юни: 6, юли: 7, август: 8, септември: 9, октомври: 10, ноември: 11, декември: 12 };
 const EVENT_DATE_TITLE = /(?:^|\D)(\d{1,2})\s+(януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)(?:\s+(20\d{2}))?/i;
 const EVENT_NEWS_MAX_AGE_MS = 30 * 86_400_000;
+const DEFAULT_NEWS_MAX_AGE_MS = 30 * 86_400_000;
+const FAST_NEWS_MAX_AGE_MS = 7 * 86_400_000;
+const URGENT_NEWS_MAX_AGE_MS = 2 * 86_400_000;
+const URGENT_TOPICS = new Set(["Без вода", "Без ток", "Парно и топла вода"]);
+const FAST_TOPICS = new Set([
+  "Градски автобуси", "Къде е автобусът?", "Затворени улици", "Улични ремонти",
+  "Синя и зелена зона", "Паркинги", "Детски градини и ясли", "Първи клас",
+]);
+
+function topicMaxAge(topic: string): number {
+  if (URGENT_TOPICS.has(topic)) return URGENT_NEWS_MAX_AGE_MS;
+  if (FAST_TOPICS.has(topic)) return FAST_NEWS_MAX_AGE_MS;
+  return DEFAULT_NEWS_MAX_AGE_MS;
+}
 
 function eligibleStory(article: ArticleSummary, now: Date, topic?: string): boolean {
   const localDay = (date: Date) => date.toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });
@@ -154,18 +168,11 @@ export function cityStoriesForTopics(topics: readonly string[], articles: Articl
 export function cityTopicStories(topics: readonly string[], articles: ArticleSummary[], now = new Date(), limit = 3): CityStory[] {
   const scored = articles.flatMap(article => {
     const age = now.getTime() - article.publishedAt.getTime();
-    if (!Number.isFinite(age) || age < 0 || age > 120 * 86_400_000 || !/пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`)) return [];
-    if (age > 30 * 86_400_000 && /свободн.*мест.*(?:градин|ясл)|(?:градин|ясл).*свободн.*мест|автобусн.*лини.*заради ремонт/iu.test(article.title)) return [];
+    if (!Number.isFinite(age) || age < 0 || age > DEFAULT_NEWS_MAX_AGE_MS || !/пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`)) return [];
     const scores = topics.flatMap(topic => {
       const rule = TOPIC_RULES[topic];
-      if (!rule || !rule.title.test(article.title) || !eligibleStory(article, now, topic)) return [];
+      if (!rule || age > topicMaxAge(topic) || !rule.title.test(article.title) || !eligibleStory(article, now, topic)) return [];
       if (topic === "Въздухът в Пловдив" && !/пловдив/iu.test(article.title)) return [];
-      // Outage headlines are useful for today's situation, not an old incident.
-      if (["Без вода", "Без ток", "Парно и топла вода"].includes(topic) && age > 2 * 86_400_000) return [];
-      if (age > 30 * 86_400_000 && (
-        topic === "Градски автобуси" && /заради ремонт|времен.*маршрут/iu.test(article.title)
-        || topic === "Детски градини и ясли" && /свободн.*мест|прием|класиран/iu.test(article.title)
-      )) return [];
       return [storyScore(article, rule.query, now)];
     });
     return scores.length ? [{ article, score: Math.max(...scores) }] : [];
@@ -258,8 +265,7 @@ export function cityAgendaStories(articles: ArticleSummary[], kinds: AgendaKind[
   const seen = new Set<string>();
   return articles.filter(article => {
     const age = now.getTime() - article.publishedAt.getTime();
-    const retrospective = /след концерта|закри|откриха|отбеляза|представи|премиерата|спечели|награда/iu.test(article.title);
-    return age >= 0 && age <= 180 * 86_400_000 && (age <= EVENT_NEWS_MAX_AGE_MS || retrospective) && eligibleStory(article, now)
+    return age >= 0 && age <= EVENT_NEWS_MAX_AGE_MS && eligibleStory(article, now)
       && !/парти[яи]|ДАНС|прокуратур|кръводар|птичи грип|пожарник|за деца|за кучета|церемони|водосвет|бойните знамена|убийств|насили|агресия|катастроф|жесток бой|голов спектакъл/iu.test(article.title)
       && /пловдив/iu.test(`${article.title} ${article.excerpt} ${article.category?.name ?? ""}`)
       && kinds.some(kind => AGENDA_NEWS[kind].test(article.title));

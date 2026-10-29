@@ -23,8 +23,10 @@ export function parseLoHi(html:string,now=new Date()):PilotSnapshot{
   const donation=free&&/на шапка/iu.test(body);
   const announcement=D.getElementsByTagName("p",card).map(n=>D.textContent(n).trim()).join(" ");
   const status=/^(?:отменено|събитието е отменено|cancelled|canceled)(?:[.!\s]|$)/iu.test(announcement)||/^(?:отменено|cancelled)[!: .]/iu.test(title)?"EventCancelled":/^(?:отложено|събитието е отложено|postponed)(?:[.!\s]|$)/iu.test(announcement)?"EventPostponed":"EventScheduled";
+  const notes=[announcement,donation?"Свободен вход с възможност за доброволен принос на място.":"",eventKind==="quiz"&&!announcement?"Куиз вечер. Условията за отбори и участие се уточняват при резервация.":"",describedStart!==cardTime?`В картата е обявен час ${cardTime}, а в описанието — ${describedStart}. Потвърди началото при резервация.`:""]
+   .map(value=>value.replace(/\s+/gu," ").trim()).filter(Boolean);
   const fields:Record<string,string|number>={title,date,endDate:date,time:cardTime,place:"Lo/Hi Craft Space",address:'ул. „Райко Даскалов“ 55, Пловдив',eventKind,status,
-   description:donation?"Свободен вход с възможност за доброволен принос на място.":eventKind==="quiz"?"Куиз вечер. Условията за отбори и участие се уточняват при резервация.":"",...(performance?{performanceTime:performance}:{}),...(describedStart!==cardTime?{description:`В картата е обявен час ${cardTime}, а в описанието — ${describedStart}. Потвърди началото при резервация.${donation?" Свободен вход с доброволен принос.":""}`}:{})};
+   description:[...new Set(notes)].join("\n\n").slice(0,12000),...(performance?{performanceTime:performance}:{}),};
   if(price)fields.price=Number(price[1]!.replace(',','.'));else if(free)fields.price=0;
   const key=createHash("sha256").update(`${title}|${date}`).digest("hex");
   if(items.some(x=>x.key===key))throw new Error("Lo/Hi: duplicate event");

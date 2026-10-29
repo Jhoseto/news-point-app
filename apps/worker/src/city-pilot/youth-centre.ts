@@ -79,7 +79,9 @@ export function parseYouthDetail(html: string, listing: YouthListing): PilotItem
   const room = content.match(/зала\s*[„"]([^“”"]+)[“”"]/iu)?.[1];
   const place = room ? `Младежки център Пловдив · зала „${room}“` : "Младежки център Пловдив";
   const picture = DomUtils.getElementsByTagName("img", body).map(node => eventImageUrl(node.attribs.src, listing.detailUrl)).find(Boolean);
-  const fields = { ...(picture ? { imageUrl: picture } : {}), title: listing.title, date, endDate, time, place, published: listing.published };
+  const description = DomUtils.getElementsByTagName("p", body).map(paragraph => clean(DomUtils.textContent(paragraph)))
+    .filter(value => value.length >= 20 && value !== listing.title).join("\n\n").slice(0, 12_000);
+  const fields = { ...(picture ? { imageUrl: picture } : {}), title: listing.title, date, endDate, time, place, published: listing.published, ...(description ? { description } : {}) };
   return { key: `event:${digest(listing.detailUrl).slice(0, 24)}`, sourceUrl: listing.detailUrl, fields, fingerprint: digest(JSON.stringify(fields) + digest(content)) };
 }
 

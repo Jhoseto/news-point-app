@@ -12,7 +12,7 @@ import { createHash, createHmac } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { resolve, isAbsolute } from "node:path";
 import { pilotSources, type CandidateSource } from "./catalog";
-import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parsePilotPage, type PilotSnapshot } from "./parse";
+import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parseGalleryExhibitionDetail, parseOperaDetail, parsePilotPage, type PilotSnapshot } from "./parse";
 import { previewAfterCheck, type LocalPreview } from "./preview";
 import { parsePlovdivGtfsArchive } from "./gtfs";
 import { collectFirstGradeVacancies } from "./first-grade";
@@ -24,7 +24,7 @@ import { collectPublicConsultations } from "./public-consultations";
 import { collectManagementCompetitions } from "./competitions";
 import { archiveProcedurePdf, auctionConditions, competitionSections, type ProcedureDocument } from "./procedure-documents";
 import { createCityPilotWriter } from "@newspoint/db/city";
-import { archiveEventImage, eventImageUrl, normalizeEventTitle, theatrePhotos, theatreDetailPhoto } from "./event-media";
+import { archiveEventImage, eventImageUrl, normalizeEventTitle, theatreDetailInformation, theatreDetailPhoto, theatreProductions, type TheatreProduction } from "./event-media";
 
 type SourceState = {
   etag?: string;
@@ -325,28 +325,68 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
         ? ["Every listing row is checked against structured event detail; repeated observation is still needed for cancellations and removals.", "Ticket availability is not part of this pilot."]
         : [...snapshot.limitations, `${rejected.length} explicitly named candidates lacked structured detail or a Plovdiv address.`, "No explicit event status is supplied; disappearance is not proof of cancellation."] };
     }
+    if (source.id === "plovdiv-opera") {
+      const details = new Map<string, ReturnType<typeof parseOperaDetail>>();
+      if (new Set(snapshot.items.map(entry => entry.sourceUrl)).size > 24) throw new Error("plovdiv-opera: detail request budget exceeded");
+      for (const entry of snapshot.items) {
+        if (!details.has(entry.sourceUrl)) {
+          await new Promise(done => setTimeout(done, 1200));
+          const page = await requestSource({ ...source, url: entry.sourceUrl }, { failures: 0, items: {} }, true);
+          if (!page.response.ok || !page.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("plovdiv-opera: detail request failed");
+          details.set(entry.sourceUrl, parseOperaDetail(decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type")), String(entry.fields.title)));
+        }
+        entry.fields = { ...entry.fields, ...details.get(entry.sourceUrl)! };
+        entry.fingerprint = createHash("sha256").update(JSON.stringify(entry.fields)).digest("hex");
+      }
+    }
+    if (source.id === "plovdiv-gallery-current") {
+      if (snapshot.items.length > 24) throw new Error("plovdiv-gallery-current: detail request budget exceeded");
+      for (const entry of snapshot.items) {
+        await new Promise(done => setTimeout(done, 1200));
+        const page = await requestSource({ ...source, url: entry.sourceUrl }, { failures: 0, items: {} }, true);
+        if (!page.response.ok || !page.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("plovdiv-gallery-current: detail request failed");
+        entry.fields = { ...entry.fields, ...parseGalleryExhibitionDetail(decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type")), entry) };
+        entry.fingerprint = createHash("sha256").update(JSON.stringify(entry.fields)).digest("hex");
+      }
+    }
     if (source.id === "plovdiv-theatre") {
       await new Promise(done => setTimeout(done, 1200));
       const page = await requestSource({ ...source, url: "https://dtp.bg/production-category/current-season" }, { failures: 0, items: {} }, true);
-      if (!page.response.ok) throw new Error("theatre photographs: programme unavailable");
-      const photos = theatrePhotos(decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type")));
-      await new Promise(done => setTimeout(done, 1200));
-      const home = await requestSource({ ...source, url: "https://dtp.bg/" }, { failures: 0, items: {} }, true);
-      if (!home.response.ok) throw new Error("theatre photographs: current highlights unavailable");
-      for (const [title, url] of theatrePhotos(decodeHtml(await bodyWithinLimit(home.response), home.response.headers.get("content-type")))) photos.set(title, url);
+      if (!page.response.ok) throw new Error("theatre details: programme unavailable");
+      const productions = theatreProductions(decodeHtml(await bodyWithinLimit(page.response), page.response.headers.get("content-type")));
       // Both official programmes name the same author and production; no fuzzy title matching.
-      const lecture = photos.get(normalizeEventTitle("Лекция № 3 за силата на словото"));
-      if (lecture) photos.set(normalizeEventTitle("КАМЕН ДОНЕВ - ЗА СИЛАТА НА СЛОВОТО"), lecture);
+      const lecture = productions.get(normalizeEventTitle("Лекция № 3 за силата на словото"));
+      if (lecture) productions.set(normalizeEventTitle("КАМЕН ДОНЕВ - ЗА СИЛАТА НА СЛОВОТО"), lecture);
+      const elizabeth = productions.get(normalizeEventTitle("Eлизабет или кралицата девственица"));
+      if (elizabeth) productions.set(normalizeEventTitle("ЕЛИЗАБЕТ или КРАЛИЦАТА ДЕВСТВЕНИЦА"), elizabeth);
+      const airship = productions.get(normalizeEventTitle("Влюбеният дирижабъл. Съдбата на поета."));
+      if (airship) productions.set(normalizeEventTitle("ВЛЮБЕНИЯТ ДИРИЖАБЪЛ"), airship);
       if (snapshot.items.some(entry => normalizeEventTitle(String(entry.fields.title)) === "боряна")) {
         await new Promise(done => setTimeout(done, 1200));
         const guest = await requestSource({ ...source, url: "https://dtp.bg/show/name-ihlcyi" }, { failures: 0, items: {} }, true);
         if (!guest.response.ok) throw new Error("theatre photograph: guest production unavailable");
-        const photo = theatreDetailPhoto(decodeHtml(await bodyWithinLimit(guest.response), guest.response.headers.get("content-type")), "Боряна");
-        if (photo) photos.set("боряна", photo);
+        const html = decodeHtml(await bodyWithinLimit(guest.response), guest.response.headers.get("content-type"));
+        const photo = theatreDetailPhoto(html, "Боряна");
+        productions.set("боряна", { title: "Боряна", url: "https://dtp.bg/show/name-ihlcyi", ...(photo ? { imageUrl: photo } : {}) });
+      }
+      const selected = new Map<string, TheatreProduction>();
+      for (const entry of snapshot.items) {
+        const production = productions.get(normalizeEventTitle(String(entry.fields.title)));
+        if (production) selected.set(production.url, production);
+      }
+      if (selected.size > 30) throw new Error("plovdiv-theatre: detail request budget exceeded");
+      const details = new Map<string, ReturnType<typeof theatreDetailInformation>>();
+      for (const production of selected.values()) {
+        await new Promise(done => setTimeout(done, 1200));
+        const detail = await requestSource({ ...source, url: production.url }, { failures: 0, items: {} }, true);
+        if (!detail.response.ok || !detail.response.headers.get("content-type")?.toLowerCase().includes("text/html")) throw new Error("plovdiv-theatre: detail request failed");
+        details.set(production.url, theatreDetailInformation(decodeHtml(await bodyWithinLimit(detail.response), detail.response.headers.get("content-type")), production.title));
       }
       for (const entry of snapshot.items) {
-        const url = photos.get(normalizeEventTitle(String(entry.fields.title)));
-        if (url) entry.fields.imageUrl = url;
+        const production = productions.get(normalizeEventTitle(String(entry.fields.title)));
+        if (!production) continue;
+        entry.fields = { ...entry.fields, ...(production.imageUrl ? { imageUrl: production.imageUrl } : {}), ...(production.duration ? { duration: production.duration } : {}), ...details.get(production.url) };
+        entry.fingerprint = createHash("sha256").update(JSON.stringify(entry.fields)).digest("hex");
       }
     }
     const archived = new Map<string, Awaited<ReturnType<typeof archiveEventImage>>>();

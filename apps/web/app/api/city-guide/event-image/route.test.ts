@@ -7,12 +7,12 @@ import { GET } from "./route";
 const bytes = Buffer.from("RIFF0000WEBPexplicit-test-fixture");
 const hash = createHash("sha256").update(bytes).digest("hex");
 const group = { sourceId: "plovdiv-theatre", status: "observed", items: [{ key: "fixture", fields: { imageHash: hash } }] };
-const request = (digest = hash) => new Request(`http://localhost/api/city-guide/event-image?category=culture&sourceId=plovdiv-theatre&recordKey=fixture&hash=${digest}`);
+const request = (digest = hash) => new Request(`http://localhost/api/city-guide/event-image?category=culture&sourceId=plovdiv-theatre&hash=${digest}`);
 beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); mocks.load.mockReset().mockResolvedValue([group]); mocks.read.mockReset().mockResolvedValue(bytes); });
 afterEach(() => vi.unstubAllEnvs());
 it("serves only current associated images privately", async () => {
   const response = await GET(request());
-  expect(response.status).toBe(200); expect(response.headers.get("content-type")).toBe("image/webp"); expect(response.headers.get("cache-control")).toBe("private, no-store");
+  expect(response.status).toBe(200); expect(response.headers.get("content-type")).toBe("image/webp"); expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
 });
 it("refuses path traversal, wrong hashes, stale records and production", async () => {
   expect((await GET(request("../secret"))).status).toBe(404);
@@ -27,7 +27,8 @@ it("serves a shelter photograph only for its own current profile", async () => {
   const url = request().url.replace("category=culture", "category=adopt").replace("sourceId=plovdiv-theatre", "sourceId=plovdiv-dog-shelter");
   expect((await GET(new Request(url))).status).toBe(200);
   expect(mocks.load).toHaveBeenCalledWith("adopt", "plovdiv-dog-shelter");
-  expect((await GET(new Request(url.replace("recordKey=fixture", "recordKey=another")))).status).toBe(404);
+  mocks.load.mockResolvedValue([{ ...group, sourceId: "plovdiv-dog-shelter", items: [{ key: "another", fields: { imageHash: "b".repeat(64) } }] }]);
+  expect((await GET(new Request(url))).status).toBe(404);
 });
 it("enabled production requires explicit storage and still refuses unassociated images", async () => {
   vi.stubEnv("NODE_ENV", "production"); vi.stubEnv("CITY_GUIDE_ENABLED", "1"); vi.stubEnv("CITY_GUIDE_STORAGE_DIR", "");

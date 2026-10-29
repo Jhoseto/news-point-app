@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { candidateSources } from "./catalog";
-import { parseClubEventDetail, parseEpayGoEventDetail, parsePilotPage } from "./parse";
+import { parseClubEventDetail, parseEpayGoEventDetail, parseOperaDetail, parsePilotPage } from "./parse";
 import { runPilotSource } from "./run";
 import { previewAfterCheck } from "./preview";
 import { zipSync, strToU8 } from "fflate";
@@ -118,6 +118,16 @@ describe("city source pilot", () => {
     expect(() => parsePilotPage("plovdiv-opera", card("19:00").replace("30</span>/<span>10", "31</span>/<span>02"))).toThrow("event card schema changed");
   });
 
+  it("extracts the official opera synopsis and practical details", () => {
+    const html = `<main><section><h1>Турандот</h1><div class="page-desc"><p>Кратко официално представяне на спектакъла с достатъчно информация.</p></div></section><div class="widget-event-details"><div class="label-group"><span class="label">времетраене</span><span class="label-content">160 минути</span></div><div class="label-group"><span class="label">език</span><span class="label-content">Италиански</span></div><div class="rich-text"><p>Първи подробен абзац за постановката и нейната сценична концепция.</p><p>Втори подробен абзац за музиката и артистите.</p></div></div></main>`;
+    expect(parseOperaDetail(html, "Турандот")).toEqual({
+      description: "Кратко официално представяне на спектакъла с достатъчно информация.\n\nПърви подробен абзац за постановката и нейната сценична концепция.\n\nВтори подробен абзац за музиката и артистите.",
+      duration: "160 минути",
+      language: "Италиански",
+    });
+    expect(() => parseOperaDetail(html, "Аида")).toThrow("detail title mismatch");
+  });
+
   it("rejects an impossible theatre date or time instead of publishing it", () => {
     const row = (dateTime: string) => `<table id="MainContent_grdPlan"><tr><th>№</th></tr><tr><td>1</td><td>${dateTime}</td><td>Постановка</td></tr></table>`;
     expect(() => parsePilotPage("plovdiv-theatre", row("31-02-2026 г. 19:00 ч."))).toThrow("incomplete programme row");
@@ -181,8 +191,8 @@ describe("city source pilot", () => {
 
   it("checks a club listing against its dated event detail", () => {
     const listed = { key: "300", sourceUrl: "https://www.clubcode.bg/event/?eventid=300", fingerprint: "old", fields: { title: "Infinite Grooves", dateText: "Sat 24 Oct, 23:00 → Sun 25 Oct, 06:00" } };
-    const detail = `<script type="application/ld+json">${JSON.stringify({ "@type": "Event", name: "Infinite Grooves", startDate: "2026-10-24T23:00:00+03:00", endDate: "2026-10-25T06:00:00+02:00", eventStatus: "https://schema.org/EventScheduled", url: listed.sourceUrl, location: { name: "Club Code" }, offers: { price: "10.00", priceCurrency: "EUR" } })}</script>`;
-    expect(parseClubEventDetail(detail, listed).fields).toMatchObject({ place: "Club Code", price: 10, status: "EventScheduled" });
+    const detail = `<script type="application/ld+json">${JSON.stringify({ "@type": "Event", name: "Infinite Grooves", description: "Подробна официална програма на вечерта и участващите артисти.", startDate: "2026-10-24T23:00:00+03:00", endDate: "2026-10-25T06:00:00+02:00", eventStatus: "https://schema.org/EventScheduled", url: listed.sourceUrl, location: { name: "Club Code" }, offers: { price: "10.00", priceCurrency: "EUR" } })}</script>`;
+    expect(parseClubEventDetail(detail, listed).fields).toMatchObject({ place: "Club Code", price: 10, status: "EventScheduled", description: "Подробна официална програма на вечерта и участващите артисти." });
     expect(() => parseClubEventDetail(detail, { ...listed, fields: { ...listed.fields, dateText: "Sun 25 Oct, 23:00" } })).toThrow("dates disagree");
   });
 
@@ -222,8 +232,8 @@ describe("city source pilot", () => {
     const card = (id: string, title: string) => `<div id="${id}" class="event_content_box"><div class="headline_date_t_all"><span>30</span><span>октомври</span></div><div class="headline_text_t_all"><span>${title}</span></div><a href="https://epaygo.bg/${id}">Билет</a></div>`;
     const listing = parsePilotPage("epaygo-plovdiv-explicit", card("4095825818", "Live in Plovdiv") + card("3449284060", "Опера Пловдив") + card("88888888", "Live in Sofia"));
     expect(listing.items.map((entry) => entry.key)).toEqual(["4095825818", "3449284060"]);
-    const detail = (name: string, address: string, startDate = "2026-10-30T20:00") => `<script type="application/ld+json">${JSON.stringify({ "@type": "Event", name, startDate, location: { name: "Rock Bar", address: { streetAddress: address } } })}</script>`;
-    expect(parseEpayGoEventDetail(detail("Live in Plovdiv", "ул. Лейди Странгфорд 5, Пловдив"), listing.items[0]!)?.fields).toMatchObject({ date: "2026-10-30", time: "20:00", place: "Rock Bar" });
+    const detail = (name: string, address: string, startDate = "2026-10-30T20:00") => `<script type="application/ld+json">${JSON.stringify({ "@type": "Event", name, description: "Пълна официална информация за концерта.", startDate, location: { name: "Rock Bar", address: { streetAddress: address } } })}</script>`;
+    expect(parseEpayGoEventDetail(detail("Live in Plovdiv", "ул. Лейди Странгфорд 5, Пловдив"), listing.items[0]!)?.fields).toMatchObject({ date: "2026-10-30", time: "20:00", place: "Rock Bar", description: "Пълна официална информация за концерта." });
     expect(parseEpayGoEventDetail(detail("Опера Пловдив", "бул. Дондуков 30, София"), listing.items[1]!)).toBeNull();
     expect(parseEpayGoEventDetail("<html></html>", listing.items[0]!)).toBeNull();
     expect(() => parseEpayGoEventDetail(detail("Live in Plovdiv", "Пловдив", "2026-10-31T20:00"), listing.items[0]!)).toThrow("listing and detail dates disagree");
