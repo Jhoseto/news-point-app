@@ -107,7 +107,11 @@ export async function ArticlePage({
             {subtitle ? <p id="article-tts-excerpt" className="np-article-deck">{subtitle}</p> : null}
             <div className="np-article-meta">
               <div className="np-article-byline">
-                <span className="np-article-author-mark"><span className="np-ring" aria-hidden="true" /></span>
+                <span className="np-article-author-mark" style={article.authorKind === "staff" && article.authorUserId
+                  ? { backgroundImage: `url("/api/authors/${encodeURIComponent(article.authorUserId)}/avatar/")` }
+                  : undefined}>
+                  <span className="np-ring" aria-hidden="true" />
+                </span>
                 <span><small>Автор</small><strong>{article.authorName}</strong></span>
               </div>
               <div className="np-article-meta-facts">

@@ -32,7 +32,7 @@ export function ShareButtons({ url, title }: { url: string; title: string }) {
 
   return (
     <div className="np-article-share">
-      <span className="np-article-share-label"><small>Споделете</small><strong>Историята</strong></span>
+      <span className="np-article-share-label"><small>Споделете</small></span>
       <button type="button" onClick={systemShare} className={`${buttonClass} np-article-share-system md:hidden`} aria-label="Сподели чрез системата">
         <ShareIcon width={16} height={16} />
       </button>

@@ -51,6 +51,7 @@ export interface ArticleSummary {
 export interface ArticleDetail extends ArticleSummary {
   modifiedAt: Date;
   authorKind?: "staff" | "newsroom" | "manual";
+  authorUserId?: string | null;
   publicAuthorAnchor?: string | undefined;
   authorName: string;
   sourceUrl: string | null;
@@ -369,6 +370,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
       ...summaryColumns(ready),
       authorName: articles.authorName,
       authorKind: articles.authorKind,
+      authorUserId: articles.authorUserId,
       publicAuthorId: authorProfiles.staffUserId,
       publicAuthorName: staffUsers.name,
       sourceUrl: articles.sourceUrl,
@@ -431,6 +433,7 @@ export const getArticleByPath = cache(async (path: string): Promise<ArticleDetai
     ...toSummary(row),
     authorName: row.authorName,
     authorKind: row.authorKind,
+    authorUserId: row.authorUserId,
     publicAuthorAnchor: publicAuthorAnchor(row.authorName, row.publicAuthorId && row.publicAuthorName ? { id: row.publicAuthorId, name: row.publicAuthorName } : null),
     sourceUrl: row.sourceUrl,
     body,

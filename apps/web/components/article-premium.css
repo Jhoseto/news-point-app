@@ -179,7 +179,7 @@
 }
 .np-article-meta::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--np-gradient); }
 .np-article-byline { display: flex; align-items: center; gap: 0.7rem; min-width: max-content; }
-.np-article-author-mark { display: grid; width: 2.45rem; height: 2.45rem; place-items: center; border: 1px solid color-mix(in oklab, var(--np-accent) 25%, var(--np-line)); border-radius: 50%; background: var(--np-surface); box-shadow: 0 8px 22px -15px var(--np-accent); }
+.np-article-author-mark { position: relative; display: grid; width: 2.45rem; height: 2.45rem; overflow: hidden; place-items: center; border: 1px solid color-mix(in oklab, var(--np-accent) 25%, var(--np-line)); border-radius: 50%; background-color: var(--np-surface); background-position: center; background-size: cover; box-shadow: 0 8px 22px -15px var(--np-accent); }
 .np-article-author-mark .np-ring { width: 1.2rem; height: 1.2rem; }
 .np-article-byline > span:last-child, .np-article-meta-facts > span > span { display: flex; flex-direction: column; gap: 0.1rem; }
 .np-article-byline small, .np-article-share-label small, .np-article-meta-facts strong { color: var(--np-muted); font-size: 0.6rem; font-weight: 750; letter-spacing: 0.08em; line-height: 1.1; text-transform: uppercase; }
