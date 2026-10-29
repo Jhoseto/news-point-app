@@ -3,6 +3,7 @@ import type { SmartDb } from "@newspoint/db/smart";
 
 /** Read-only provider reconciliation. No model requests, provisioning or spending controls. */
 export async function reconcileAiCosts(db:SmartDb,fetcher:typeof fetch=fetch){
+  if((process.env.SMART_PROVIDER || "minimax") !== "openai")return false;
   const key=process.env.OPENAI_COSTS_READ_KEY,project=process.env.OPENAI_PROJECT_ID;
   if(!key||!project)return false;
   const start=Math.floor(Date.now()/86400_000)*86400-7*86400;

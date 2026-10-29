@@ -15,7 +15,7 @@ async function handle(request:Request){
     if(params.get("export")==="csv"){
       if(!report.ready)return Response.json({error:"Отчетността още не е активирана."},{status:503,headers});
       const rows=report.operations.length?report.operations:report.articles;
-      const columns=report.operations.length?["id","operation","model","status","amount","startedAt"]:["id","title","path","amount","calls","searches","pending"];
+      const columns=report.operations.length?["id","operation","provider","model","status","amount","startedAt"]:["id","title","path","amount","calls","searches","pending"];
       const csv="\uFEFF"+[columns.map(safeCsvCell).join(","),...rows.map(row=>columns.map(c=>safeCsvCell(row[c])).join(","))].join("\r\n");
       return new Response(csv,{headers:{...headers,"Content-Type":"text/csv; charset=utf-8","Content-Disposition":'attachment; filename="newspoint-ai-costs-current-page.csv"'}});
     }

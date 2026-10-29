@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const SMART_QUESTION_LIMIT = 5;
-export const SMART_PROMPT_VERSION = "smart-2026-10-29-v1";
+export const SMART_PROMPT_VERSION = "smart-2026-10-29-v2";
 const text = z.string().trim().min(1);
 export const smartQuestionSchema = z.object({ id: text.max(160), text: text.max(220) });
 export type SmartQuestion = z.infer<typeof smartQuestionSchema>;
@@ -20,8 +20,8 @@ export const smartAnswerSchema = z.object({
   checkedAt: z.string(), expiresAt: z.string(),
 });
 export type SmartAnswer = z.infer<typeof smartAnswerSchema>;
-export type SmartCard = { articleId: string; title: string; path: string; reason: string; publishedAt: string };
-export type SmartTurn = { id: string; question: string; status: "pending" | "completed" | "failed"; answer: SmartAnswer | null; cached: boolean };
+export type SmartCard = { hero?:{url:string;width:number|null;height:number|null;alt:string;caption:string;credit:string}|null; articleId: string; title: string; path: string; reason: string; publishedAt: string };
+export type SmartTurn = { id: string; question: string; status: "pending" | "completed" | "failed"; answer: SmartAnswer | null; cached: boolean; cards?:SmartCard[] };
 export type SmartBootstrap = {
   status: "ready" | "preparing" | "unavailable"; articleId: string; version: string;
   questions: SmartQuestion[]; related: SmartCard | null; message?: string;
@@ -29,11 +29,22 @@ export type SmartBootstrap = {
 export type SmartSession = { id: string; usedQuestions: number; maxQuestions: number; turns: SmartTurn[]; updated: boolean };
 /** Evidence passages stay in the server registry, not in reader network responses. */
 export function readerSmartSession<T extends SmartSession>(session:T):T{
-  return {...session,turns:session.turns.map(turn=>({...turn,answer:turn.answer?{...turn.answer,sources:turn.answer.sources.map(source=>({...source,passage:""}))}:null}))};
+  return {...session,turns:session.turns.map(turn=>{
+    if(!turn.answer)return turn;
+    const sources=turn.answer.sources.filter(source=>!!source.articleId&&(source.kind==="current"||source.kind==="newspoint")).map(source=>({...source,passage:""}));
+    const ids=new Set(sources.map(source=>source.id));
+    const external=turn.answer.sources.filter(source=>source.kind==="external"||source.kind==="official").map(source=>source.url);
+    return {...turn,answer:{...turn.answer,sources,blocks:turn.answer.blocks.map(block=>({...block,text:smartReaderText(block.text,external),sourceIds:block.sourceIds.filter(id=>ids.has(id))}))}};
+  })};
 }
 
 export function normalizeSmartQuestion(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+/** Layout whitespace is not factual content; words, punctuation and dates stay exact. */
+export function smartEvidenceContains(passage:string,quote:string):boolean {
+  const compact=(value:string)=>value.replace(/\s+/gu," ").trim();
+  return !!compact(quote)&&compact(passage).includes(compact(quote));
 }
 export function freshSmartAnswer(answer: SmartAnswer, now = Date.now()): boolean {
   return Number.isFinite(Date.parse(answer.checkedAt)) && Date.parse(answer.expiresAt) > now
@@ -59,6 +70,8 @@ export type AiUsage = { input: number; cachedInput: number; cacheWrite: number; 
 export type AiRate = { input: string; cachedInput: string; cacheWrite: string; output: string; search: string; version: string };
 // Rates are USD per million tokens; search is USD per individual billable call.
 export const AI_RATES: Record<string, AiRate> = {
+  "MiniMax-M3": { input:"0.30", cachedInput:"0.06", cacheWrite:"0.30", output:"1.20", search:"0.01", version:"2026-10-29-minimax-standard-under-512k" },
+  "MiniMax-M3.1-Flash": { input:"0.15", cachedInput:"0.015", cacheWrite:"0.15", output:"0.60", search:"0.01", version:"2026-10-29-minimax-standard" },
   "gpt-6.1-sol": { input: "2", cachedInput: "0.10", cacheWrite: "2.50", output: "10", search: "0.01", version: "2026-10-29-standard-short" },
   "gpt-6.1-terra": { input: "1", cachedInput: "0.05", cacheWrite: "1.25", output: "5", search: "0.01", version: "2026-10-29-standard-short" },
   "gpt-6-luna": { input: "0.10", cachedInput: "0.01", cacheWrite: "0.125", output: "0.50", search: "0.01", version: "2026-10-29-standard-short" },
@@ -84,4 +97,16 @@ export function aiCostUsd(usage: AiUsage, rate: AiRate): string {
 export function safeCsvCell(value: unknown): string {
   const raw = String(value ?? "");
   return `"${(/^[\s]*[=+@-]/.test(raw) ? "'" + raw : raw).replaceAll('"', '""')}"`;
+}
+
+/** No outgoing citations in reader copy; evidence remains intact in the server registry. */
+export function smartReaderText(value:string,externalUrls:readonly string[]=[]):string {
+  let text=value;
+  for(const raw of externalUrls){
+    let host:string;try{host=new URL(raw).hostname.replace(/^www\./i,"");}catch{continue;}
+    const escaped=host.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    // Preserve the qualification and the claim while removing a legacy site attribution.
+    text=text.replace(new RegExp(`^Според\\s+[^\\n]{0,140}?(?:на|в|от)\\s+(?:www\\.)?${escaped}\\s*[,–—:-]?\\s+`,"iu"),"По наличната информация ");
+  }
+  return text.replace(/\[([^\]]+)\]\(https?:\/\/[^)]+\)/giu,(_all,label:string)=>/\.(?:bg|com|org|net|eu)\b/i.test(label)?"":label).replace(/https?:\/\/[^\s<>]+/giu,"").replace(/ +([,.;:!?])/g,"$1").trim();
 }

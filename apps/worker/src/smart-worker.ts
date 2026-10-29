@@ -5,14 +5,24 @@ import { smartConfig } from "@newspoint/db/smart-provider";
 import {indexSmartArticle} from "@newspoint/db/smart-index";
 import { failSmartTurn, pruneSmartPrivateData, smartArticle, smartReady, SmartError, type SmartDb } from "@newspoint/db/smart";
 
+export async function recoverSmartJobs(db:SmartDb){
+  // One SSH/database round trip. Every data-modifying CTE runs even when empty.
+  await db.execute(sql`with turns as (
+    update smart_turns set status='failed',error_code='expired' where status='pending' and lease_until<=now() returning id
+  ), nodes as (
+    update smart_nodes set state='uncertain' where state='pending' and lease_until<=now() returning key
+  ), bootstraps as (
+    update smart_bootstraps set state='uncertain' where state='pending' and lease_until is not null and lease_until<=now() returning article_id
+  ), operations as (
+    update ai_operations set status='unknown',error_code='process_interrupted' where status='pending' and started_at<now()-interval '10 minutes' returning id
+  ), jobs as (
+    update smart_index_jobs set state='uncertain' where state='pending' and lease_until<=now() returning article_id
+  ) select 1`);
+}
 export async function processSmartTick(db:SmartDb) {
   const config=smartConfig();
   if(!config.enabled||!config.key||!await smartReady(db))return false;
-  await db.execute(sql`update smart_turns set status='failed',error_code='expired' where status='pending' and lease_until<=now()`);
-  await db.execute(sql`update smart_nodes set state='uncertain' where state='pending' and lease_until<=now()`);
-  await db.execute(sql`update smart_bootstraps set state='uncertain' where state='pending' and lease_until is not null and lease_until<=now()`);
-  await db.execute(sql`update ai_operations set status='unknown',error_code='process_interrupted' where status='pending' and started_at<now()-interval '10 minutes'`);
-  await db.execute(sql`update smart_index_jobs set state='uncertain' where state='pending' and lease_until<=now()`);
+  await recoverSmartJobs(db);
   const turns=await db.execute(sql`select t.*,s.owner_hash from smart_turns t join smart_sessions s on s.id=t.session_id
     where t.status='pending' and t.processor_token is null and t.lease_until>now() and s.deleted_at is null and s.expires_at>now() order by t.created_at limit 1`);
   if(turns[0]) {
@@ -27,7 +37,7 @@ export async function processSmartTick(db:SmartDb) {
     where b.state='pending' and b.lease_token is null order by b.updated_at limit 1`);
   // A requested article is indexed first. Background archive indexing is explicit opt-in.
   let target=pending[0]?.article_id?String(pending[0].article_id):null;
-  if(!target&&process.env.SMART_INDEX_AUTOMATIC==="1") {
+  if(!target&&config.provider === "openai"&&process.env.SMART_INDEX_AUTOMATIC==="1") {
     const rows=await db.execute(sql`select a.id from smart_public_articles a where a.published_at>=now()-interval '6 months' and not exists(select 1 from smart_documents d where d.article_id=a.id and d.revision=a.revision)
       and not exists(select 1 from smart_index_jobs j where j.article_id=a.id and j.revision=a.revision and j.state in ('pending','uncertain'))
       order by a.published_at desc limit 1`);target=rows[0]?.id?String(rows[0].id):null;
@@ -53,7 +63,7 @@ export async function processSmartTick(db:SmartDb) {
     }
   }catch(error){
     await db.execute(sql`update smart_index_jobs set state='uncertain' where article_id=${target}::uuid and lease_token=${token}::uuid and state='pending'`);
-    if(pending[0])await db.execute(sql`update smart_bootstraps set state='uncertain',lease_until=null where article_id=${target}::uuid and lease_token=${token}::uuid`);
+    if(pending[0])await db.execute(sql`update smart_bootstraps set state='uncertain',lease_token=null,lease_until=null,updated_at=now() where article_id=${target}::uuid and lease_token=${token}::uuid`);
     throw error;
   }
   return true;
@@ -65,6 +75,6 @@ export function startSmartWorker(db:SmartDb,log:(message:string)=>void) {
   // Privacy maintenance continues when model access or the public feature is disabled.
   const prune=async()=>{if(pruning)return;pruning=true;try{if(await smartReady(db))await pruneSmartPrivateData(db);}catch(error){log(`Smart maintenance: ${safeError(error)}`);}finally{pruning=false;}};
   const maintenance=setInterval(()=>void prune(),60*60_000);void prune();
-  const timer=setInterval(()=>void tick(),3000);
+  const timer=setInterval(()=>void tick(),1000);void tick();
   return ()=>{clearInterval(timer);clearInterval(maintenance);};
 }

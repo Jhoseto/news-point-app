@@ -38,7 +38,7 @@ export function parseOpenAiUsage(data: Record<string, unknown>): AiUsage | null 
   };
   return Object.values(parsed).every(x => Number.isSafeInteger(x) && x >= 0) ? parsed : null;
 }
-export type CostFilters = { start: Date; end: Date; module: string | null; article: string | null; environment: string | null; page: number; query?:string|null };
+export type CostFilters = { start: Date; end: Date; module: string | null; article: string | null; environment: string | null; page: number; query?:string|null; provider?:string|null; model?:string|null };
 export function costFilters(params: URLSearchParams): CostFilters {
   const now = new Date();
   const start = params.get("start") ? new Date(params.get("start")!) : new Date(now.getTime() - 30 * 86400_000);
@@ -54,11 +54,14 @@ export function costFilters(params: URLSearchParams): CostFilters {
   if (environment && !["production", "development", "test"].includes(environment)) throw new Error("invalid_environment");
   const query=params.get("q")?.trim()||null;
   if(query&&query.length>160)throw new Error("invalid_query");
-  return { start, end, module, article, environment, page, query };
+  const provider=params.get("provider")?.trim()||null,model=params.get("model")?.trim()||null;
+  if(provider&&!/^[a-z][a-z0-9_-]{0,39}$/.test(provider))throw new Error("invalid_provider");
+  if(model&&!/^[a-zA-Z0-9_.:/-]{1,100}$/.test(model))throw new Error("invalid_model");
+  return { start, end, module, article, environment, page, query, provider, model };
 }
 export async function readAiCosts(db: SmartDb, f: CostFilters) {
   const ready = await db.execute(sql`select to_regclass('public.ai_operations') is not null as ready`);
-  if (!ready[0]?.ready) return { ready: false, modules: [], articles: [], operations: [], daily: [], totals: null, grandTotals:null, provider: [], coverage: [] };
+  if (!ready[0]?.ready) return { ready: false, models: [], cacheAttributionAvailable:!f.provider&&!f.model, modules: [], articles: [], operations: [], daily: [], totals: null, grandTotals:null, provider: [], coverage: [] };
   const articleKey=sql`coalesce(article_id,(article_snapshot->>'id')::uuid)`;
   const search=f.query?`%${f.query.replace(/[\\%_]/g,x=>`\\${x}`)}%`:null;
   // Match article identity first, then include all of its operations, including older titles.
@@ -67,33 +70,41 @@ export async function readAiCosts(db: SmartDb, f: CostFilters) {
     union select coalesce(m.article_id,(m.article_snapshot->>'id')::uuid) from ai_operations m where m.article_snapshot->>'title' ilike ${search}
   ))`;
   const filter = sql`${titleFilter} and started_at>=${f.start.toISOString()}::timestamptz and started_at<${f.end.toISOString()}::timestamptz and (${f.module}::text is null or module=${f.module}) and (${f.article}::uuid is null or ${articleKey}=${f.article}::uuid) and (${f.environment}::text is null or environment=${f.environment})`;
+  const providerFilter=sql`(${f.provider??null}::text is null or provider=${f.provider??null}) and (${f.model??null}::text is null or model=${f.model??null})`;
+  const scopedFilter=sql`${filter} and ${providerFilter}`;
   const knownTotal=sql`case when count(*)>0 and count(amount_usd)=0 then null else coalesce(sum(amount_usd),0) end`;
-  const [totals, modules, articles, operations, daily, provider, grandTotals] = await Promise.all([
-    db.execute(sql`select ${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending from ai_operations where ${filter}`),
-    db.execute(sql`select module,provider,${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending from ai_operations where ${filter} group by module,provider order by sum(amount_usd) desc nulls last`),
+  const [totals, modules, articles, operations, daily, provider, grandTotals, models] = await Promise.all([
+    db.execute(sql`select ${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending from ai_operations where ${scopedFilter}`),
+    db.execute(sql`select module,provider,${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending from ai_operations where ${scopedFilter} group by module,provider order by sum(amount_usd) desc nulls last`),
     db.execute(sql`with spend as (select ${articleKey} as id,max(article_snapshot->>'title') as title,max(article_snapshot->>'path') as path,${knownTotal} as amount,count(*)::int as calls,
       coalesce(sum((usage->>'searches')::int),0)::int as searches,count(*) filter(where amount_usd is null)::int as pending
-      from ai_operations where ${filter} group by ${articleKey}), activity as (
+      from ai_operations where ${scopedFilter} group by ${articleKey}), activity as (
       select ${articleKey} as id,max(article_snapshot->>'title') as title,max(article_snapshot->>'path') as path,count(*) filter(where cached)::int as hits,count(*) filter(where not cached)::int as generated
-      from smart_activity where ${titleFilter} and created_at>=${f.start.toISOString()}::timestamptz and created_at<${f.end.toISOString()}::timestamptz and (${f.module}::text is null or ${f.module}='smart')
+      from smart_activity where ${!f.provider&&!f.model} and ${titleFilter} and created_at>=${f.start.toISOString()}::timestamptz and created_at<${f.end.toISOString()}::timestamptz and (${f.module}::text is null or ${f.module}='smart')
       and (${f.article}::uuid is null or ${articleKey}=${f.article}::uuid) and (${f.environment}::text is null or environment=${f.environment}) group by ${articleKey})
       select coalesce(s.id,a.id) as id,coalesce(s.title,a.title) as title,coalesce(s.path,a.path) as path,(case when s.calls>0 and s.amount is null then null else coalesce(s.amount,0) end)::text as amount,
       coalesce(s.calls,0) as calls,coalesce(s.searches,0) as searches,coalesce(s.pending,0) as pending,coalesce(a.hits,0) as "cacheHits",coalesce(a.generated,0) as generated,
-      (select (case when count(*)>0 and count(o.amount_usd)=0 then null else coalesce(sum(o.amount_usd),0) end)::text from ai_operations o where coalesce(o.article_id,(o.article_snapshot->>'id')::uuid)=coalesce(s.id,a.id) and (${f.module}::text is null or o.module=${f.module}) and (${f.environment}::text is null or o.environment=${f.environment})) as "lifetimeAmount",
+      (select (case when count(*)>0 and count(o.amount_usd)=0 then null else coalesce(sum(o.amount_usd),0) end)::text from ai_operations o where coalesce(o.article_id,(o.article_snapshot->>'id')::uuid)=coalesce(s.id,a.id) and (${f.module}::text is null or o.module=${f.module}) and (${f.environment}::text is null or o.environment=${f.environment}) and (${f.provider??null}::text is null or o.provider=${f.provider??null}) and (${f.model??null}::text is null or o.model=${f.model??null})) as "lifetimeAmount",
       not exists(select 1 from articles where id=coalesce(s.id,a.id)) as deleted
       from spend s full outer join activity a on s.id=a.id order by coalesce(s.amount,0) desc,coalesce(s.id,a.id) limit 50 offset ${(f.page - 1) * 50}`),
-    f.article ? db.execute(sql`select id,operation,model,status,amount_usd::text as amount,usage,rate,error_code,started_at as "startedAt",finished_at as "finishedAt" from ai_operations where ${filter} order by started_at desc,id limit 100 offset ${(f.page - 1) * 100}`) : Promise.resolve([]),
-    db.execute(sql`select to_char(started_at at time zone 'Europe/Sofia','YYYY-MM-DD') as day,${knownTotal}::text as amount from ai_operations where ${filter} group by day order by day`),
-    db.execute(sql`with report as (select provider,project_id,currency,sum(amount) as amount,min(bucket_start) as period_start,max(bucket_end) as period_end,max(checked_at) as checked_at from ai_provider_costs where bucket_start>=${f.start.toISOString()}::timestamptz and bucket_end<=${f.end.toISOString()}::timestamptz group by provider,project_id,currency)
+    f.article ? db.execute(sql`select id,operation,provider,model,status,amount_usd::text as amount,usage,rate,error_code,started_at as "startedAt",finished_at as "finishedAt" from ai_operations where ${scopedFilter} order by started_at desc,id limit 100 offset ${(f.page - 1) * 100}`) : Promise.resolve([]),
+    db.execute(sql`select to_char(started_at at time zone 'Europe/Sofia','YYYY-MM-DD') as day,${knownTotal}::text as amount from ai_operations where ${scopedFilter} group by day order by day`),
+    db.execute(sql`with report as (select provider,project_id,currency,sum(amount) as amount,min(bucket_start) as period_start,max(bucket_end) as period_end,max(checked_at) as checked_at from ai_provider_costs where (${f.provider??null}::text is null or provider=${f.provider??null}) and bucket_start>=${f.start.toISOString()}::timestamptz and bucket_end<=${f.end.toISOString()}::timestamptz group by provider,project_id,currency)
       select r.provider,r.project_id as "projectId",r.currency,r.amount::text as amount,r.checked_at as "checkedAt",r.period_start as "periodStart",r.period_end as "periodEnd",
         local.amount::text as "localAmount",case when r.currency='usd' then (r.amount-local.amount)::text else null end as difference,local.pending,
         ${f.environment}::text is not null as "environmentFiltered"
       from report r cross join lateral (select (case when count(*)>0 and count(o.amount_usd)=0 then null else coalesce(sum(o.amount_usd),0) end) as amount,count(*) filter(where o.amount_usd is null)::int as pending from ai_operations o
         where o.provider=r.provider and o.project_id=r.project_id and o.started_at>=r.period_start and o.started_at<r.period_end and (${f.environment}::text is null or o.environment=${f.environment})) local`),
     db.execute(sql`select ${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending from ai_operations where started_at>=${f.start.toISOString()}::timestamptz and started_at<${f.end.toISOString()}::timestamptz and (${f.environment}::text is null or environment=${f.environment})`),
+    db.execute(sql`select provider,model,${knownTotal}::text as amount,count(*)::int as calls,count(*) filter(where amount_usd is null)::int as pending,
+      coalesce(sum((usage->>'input')::bigint),0)::text as "inputTokens",coalesce(sum((usage->>'output')::bigint),0)::text as "outputTokens",
+      coalesce(sum((usage->>'cachedInput')::bigint),0)::text as "cachedTokens",coalesce(sum((usage->>'searches')::bigint),0)::text as searches,
+      sum(case when amount_usd is not null then (usage->>'searches')::numeric*(rate->>'search')::numeric end)::text as "searchAmount",
+      sum(case when amount_usd is not null then amount_usd-(usage->>'searches')::numeric*(rate->>'search')::numeric end)::text as "tokenAmount"
+      from ai_operations where ${scopedFilter} group by provider,model order by provider,model`),
   ]);
   // Explicit coverage; existing Gemini/TTS costs must never silently appear as zero.
-  return { ready: true, modules, articles, operations, daily, totals: totals[0], grandTotals:grandTotals[0], provider, coverage: [
+  return { ready: true, models, cacheAttributionAvailable:!f.provider&&!f.model, modules, articles, operations, daily, totals: totals[0], grandTotals:grandTotals[0], provider:f.model?[]:provider, coverage: [
     { module: "smart", name: "NewsPoint Smart", status: "metered" },
     { module: "podcast", name: "AI подкасти", status: "not_connected" },
     { module: "tts", name: "Четене на статии", status: "not_connected" },

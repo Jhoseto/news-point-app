@@ -12,7 +12,9 @@ async function main(){
  if(!Number.isInteger(concurrency)||concurrency<1||concurrency>32)throw new Error("Invalid --concurrency");
  const {db,close}=createScriptDb("dev",8),startedAt=new Date().toISOString();
  try{
-  const config=smartConfig();if(!config.key)throw new Error("OPENAI_API_KEY missing");
+  const config=smartConfig();
+  if(config.provider === "minimax"){console.log("MiniMax uses current public content directly; no embedding backfill or OpenAI requests.");return;}
+  if(!config.key)throw new Error("Smart provider key missing");
   const rows=await db.execute(sql`select a.id from smart_public_articles a where a.published_at>=now()-interval '6 months'
     and not exists(select 1 from smart_documents d where d.article_id=a.id and d.revision=a.revision)
     order by a.published_at desc limit ${limit??2147483647}`);

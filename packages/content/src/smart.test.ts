@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AI_RATES, aiCostUsd, normalizeSmartQuestion, safeCsvCell, validateSmartEvidence } from "./smart";
+import { AI_RATES, aiCostUsd, normalizeSmartQuestion, smartEvidenceContains, smartReaderText, readerSmartSession, safeCsvCell, validateSmartEvidence } from "./smart";
 
 describe("Smart accounting and evidence", () => {
   it("prices cached input and reasoning subsets exactly once", () => {
@@ -16,4 +16,19 @@ describe("Smart accounting and evidence", () => {
   it("rejects factual answers without supplied evidence", () => {
     expect(() => validateSmartEvidence({ status: "answered", blocks: [{ text: "Test fixture fact", sourceIds: ["invented"] }], sources: [], followUps: [], checkedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 10000).toISOString() })).toThrow("unknown_evidence");
   });
+});
+
+it("matches layout whitespace in quotes but never changes dates, words or punctuation",()=>{
+ expect(smartEvidenceContains("Пловдив 2026 г.\n\nСледва процедура.","Пловдив 2026 г. Следва процедура.")).toBe(true);
+ expect(smartEvidenceContains("Пловдив 2026 г.","Пловдив 2025 г.")).toBe(false);
+ expect(smartEvidenceContains("Пловдив 2026 г.","Русе 2026 г.")).toBe(false);
+ expect(smartEvidenceContains("Пловдив 2026 г.","")).toBe(false);
+});
+
+it("hides outgoing citations in reader copy without changing the stored evidence",()=>{
+ expect(smartReaderText('Според биографичния профил на Slava.bg тя започва във вестник „Труд“.',['https://slava.bg/profile'])).toBe('По наличната информация тя започва във вестник „Труд“.');
+ expect(smartReaderText('Информация https://example.org/page')).not.toContain('https://');
+ const source={id:'external-qa',articleId:null,kind:'external' as const,title:'QA external',url:'https://example.org/page',passage:'Full evidence stays on server',version:'qa',publishedAt:null,checkedAt:new Date().toISOString()};
+ const original={id:'qa',usedQuestions:1,maxQuestions:5,updated:false,turns:[{id:'qa',question:'QA',status:'completed' as const,cached:true,answer:{status:'insufficient' as const,blocks:[{text:'QA факт',sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:source.checkedAt,expiresAt:source.checkedAt}}]};
+ const reader=readerSmartSession(original);expect(reader.turns[0]!.answer!.sources).toEqual([]);expect(reader.turns[0]!.answer!.blocks[0]!.sourceIds).toEqual([]);expect(original.turns[0]!.answer.sources[0]!.passage).toBe('Full evidence stays on server');
 });

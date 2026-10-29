@@ -12,3 +12,8 @@ it.each([[null,401],[{id:"qa",role:"editor"},403]])("denies private financial da
 it.each(["admin","master_admin"])("allows %s and protects CSV titles",async role=>{
  mocks.staff.mockResolvedValue({id:"qa",role});const result=await GET(new Request("http://studio.test/admin/api/ai-costs/?export=csv"));expect(result.status).toBe(200);expect(await result.text()).toContain("'=QA formula fixture");expect(result.headers.get("cache-control")).toBe("private, no-store");
 });
+
+it("exports the provider alongside the model in per-article operation CSV",async()=>{
+ mocks.staff.mockResolvedValue({id:"qa",role:"admin"});mocks.read.mockResolvedValue({ready:true,articles:[],operations:[{id:"qa",operation:"answer",provider:"minimax",model:"MiniMax-M3.1-Flash",status:"known",amount:"0.00027",startedAt:"2026-10-29T10:00:00Z"}]});
+ const response=await GET(new Request("http://studio.test/admin/api/ai-costs/?export=csv"));const text=await response.text();expect(text).toContain('"provider"');expect(text).toContain('"minimax"');expect(text).toContain('"MiniMax-M3.1-Flash"');
+});

@@ -6,6 +6,8 @@ import {smartEmbedding,type SmartConfig} from "./smart-provider";
 import {packSmartVector,smartSemanticReady} from "./smart-vector";
 
 export async function indexSmartArticle(db:SmartDb,config:SmartConfig,id:string):Promise<"ready"|"indexed"|"outside_window"|"busy"|"uncertain">{
+ // MiniMax reads current public content directly, without OpenAI embeddings.
+ if(config.provider === "minimax")return "ready";
  await smartSemanticReady(db);
  const article=await smartArticle(db,id);
  const eligible=await db.execute(sql`select published_at>=now()-interval '6 months' as eligible from smart_public_articles where id=${id}::uuid`);
