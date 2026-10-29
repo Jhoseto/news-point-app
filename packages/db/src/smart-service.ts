@@ -52,6 +52,16 @@ const assessmentSchema = z.object({ relevant: z.boolean(), evidenceSourceIds:z.a
 const answerSchema = z.object({ status: z.enum(["answered","insufficient","off_topic"]),
   blocks: z.array(z.object({ text: z.string().min(1).max(4000), evidence: z.array(z.object({ sourceId: z.string(), quote: z.string().min(10).max(1500) })).max(8) })).min(1).max(6),
   followUps: z.array(z.string().min(8).max(220)).max(3), timeSensitive: z.boolean() });
+/** Own URLs found on the web still obey publication and archive-window controls. */
+export async function smartOwnedResearchSource(db:SmartDb,config:SmartConfig,current:SmartArticle,raw:string):Promise<SmartSource|null|undefined>{
+  const url=new URL(raw),host=(value:string)=>value.toLowerCase().replace(/^www\./,"");
+  if(host(url.hostname)!==host(new URL(config.contentOrigin).hostname))return undefined;
+  if(url.username||url.password||!["http:","https:"].includes(url.protocol))return null;
+  const rows=await db.execute(sql`select id from smart_public_articles where (path=${url.pathname} or path=${decodeURI(url.pathname)})
+    and (id=${current.id}::uuid or published_at>=now()-interval '6 months') limit 1`);
+  if(!rows[0])return null;
+  const article=await smartArticle(db,String(rows[0].id));return ownSource(article,config.contentOrigin,undefined,article.id===current.id);
+}
 async function researchSources(db: SmartDb, config: SmartConfig, article: SmartArticle, question: string): Promise<SmartSource[]> {
   const research = await smartAi(db,config,article,"research", { instructions: RULES + " Намери до 3 конкретни достъпни първични източника за избрания въпрос. Предпочитай официални документи, провери дати и същия случай. Това е само намиране на доказателства: дай до 120 думи с inline citations, без дълъг окончателен доклад. Не отговаряй от паметта.",
     input: JSON.stringify({ question, article: {title:article.title,publishedAt:article.publishedAt}, now:new Date().toISOString() }),
@@ -60,7 +70,11 @@ async function researchSources(db: SmartDb, config: SmartConfig, article: SmartA
   const sources: SmartSource[] = [];
   for (const [index, source] of research.sources.slice(0,5).entries()) {
     try {
+      const owned=await smartOwnedResearchSource(db,config,article,source.url);
+      if(owned!==undefined){if(owned)sources.push(owned);continue;}
       const page = await fetchSmartPage(source.url);
+      const redirectedOwn=await smartOwnedResearchSource(db,config,article,page.url);
+      if(redirectedOwn!==undefined){if(redirectedOwn)sources.push(redirectedOwn);continue;}
       sources.push({ id:`web:${index}:${smartHash(page.text).slice(0,12)}`,articleId:null,version:smartHash(page.text),title:source.title,url:page.url,kind:"external",publishedAt:null,checkedAt:new Date().toISOString(),passage:page.text });
     } catch { /* An inaccessible page is not evidence. Never substitute its snippet. */ }
   }
@@ -74,22 +88,32 @@ export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, arti
   sources=sources.filter(s=>s.kind==="current"||assessment.evidenceSourceIds.includes(s.id));
   if (!assessment.relevant) return { status:"off_topic",blocks:[{text:"Този въпрос е извън темата на текущата новина. Попитай нещо, свързано с материала.",sourceIds:[]}],sources:[],followUps:[],checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+300_000).toISOString() } satisfies SmartAnswer;
   if (assessment.needsResearch) sources.push(...await researchSources(db,config,article,assessment.researchQuery || question));
-  const result = await smartJson(db,config,article,"answer",RULES+` Върни отговор обикновено 80–220 думи. Всяко фактологично твърдение трябва да има evidence с точен буквален цитат от подаден пасаж и неговото sourceId. Не използвай факти от assessment или памет. timeSensitive=true за текущо развитие, предстоящи събития и променлив актуален статус; false за устойчив исторически или обяснителен контекст. Ако доказателствата не стигат, status=insufficient и кажи ограничението. Предложи 2–3 различни нови въпроса, които не са вече зададени и не предполагат недоказани факти.`, {question,sources,history:memory,now:new Date().toISOString()},answerSchema);
-  const byId = new Map(sources.map(s=>[s.id,s]));
-  for (const block of result.blocks) {
-    if (result.status === "answered" && !block.evidence.length) throw new SmartError("evidence",503,"Липсват достатъчно доказателства.");
-    for (const evidence of block.evidence) if (!byId.get(evidence.sourceId)?.passage.includes(evidence.quote)) throw new SmartError("evidence",503,"Отговорът не премина проверката на доказателствата.");
+  sources=[...new Map(sources.map(source=>[source.id,source])).values()];
+  const byId=new Map(sources.map(source=>[source.id,source]));
+  const asked=new Set(history.map(h=>normalizeSmartQuestion(h.question)));asked.add(normalizeSmartQuestion(question));
+  let result:z.infer<typeof answerSchema>|undefined,critique="",approved=false;
+  for(let attempt=0;attempt<2;attempt++){
+    result=await smartJson(db,config,article,attempt?"answer_repair":"answer",RULES+` Върни отговор обикновено 80–220 думи. Всяко фактологично твърдение трябва да има evidence с точен буквален цитат от подаден пасаж и неговото sourceId. При status=answered всеки блок задължително има доказателство. Не използвай факти от assessment или памет. timeSensitive=true за текущо развитие, предстоящи събития и променлив актуален статус; false за устойчив исторически или обяснителен контекст. Ако доказателствата не стигат, status=insufficient и кажи ограничението; не измисляй цитати. Предложи 2–3 различни нови въпроса, които не са вече зададени и не предполагат недоказани факти. При critique преработи проблемните твърдения или честно признай липсата, без да отслабваш проверката.`,{question,sources,history:memory,previous:attempt?result:null,critique,now:new Date().toISOString()},answerSchema);
+    const errors:string[]=[];
+    for(const [index,block] of result.blocks.entries()){
+      if(result.status==="answered"&&!block.evidence.length)errors.push(`Блок ${index+1} няма доказателство.`);
+      for(const evidence of block.evidence)if(!byId.get(evidence.sourceId)?.passage.includes(evidence.quote))errors.push(`Блок ${index+1} няма точен цитат от посочения източник.`);
+    }
+    const normalized=result.followUps.map(normalizeSmartQuestion);
+    if(result.status!=="off_topic"&&(normalized.length<2||new Set(normalized).size!==normalized.length||normalized.some(q=>asked.has(q))))errors.push("Нужни са 2–3 различни, нови въпроса без повторения.");
+    if(errors.length){critique=errors.join(" ");continue;}
+    const verified=await smartJson(db,config,article,"verification",RULES+" Провери независимо всяко твърдение спрямо точния цитиран пасаж. Отхвърли неподкрепена причинност, съименници, смесени места/дати, стари роли като актуални и твърдение за живот/смърт без доказателство. Провери и follow-ups: да не повтарят по смисъл вече зададените въпроси, да са различни един от друг и да нямат неподкрепени предпоставки. valid=true само ако отговорът и въпросите са подкрепени или честно описват липсата. Това не е гаранция за абсолютна истина.",{question,result,sources,history:memory,now:new Date().toISOString()},z.object({valid:z.boolean(),reason:z.string().max(500)}));
+    if(verified.valid){approved=true;break;}critique=verified.reason;
   }
-  // Independent model pass evaluates entailment, identity and time, not just quote existence.
-  const verified = await smartJson(db,config,article,"verification",RULES+" Провери независимо всяко твърдение спрямо точния цитиран пасаж. Отхвърли неподкрепена причинност, съименници, смесени места/дати, стари роли като актуални и твърдение за живот/смърт без доказателство. Провери и follow-ups: да не повтарят по смисъл вече зададените въпроси, да са различни един от друг и да нямат неподкрепени предпоставки. valid=true само ако отговорът и въпросите са подкрепени или честно описват липсата. Това не е гаранция за абсолютна истина.",{question,result,sources,history:memory,now:new Date().toISOString()},z.object({valid:z.boolean(),reason:z.string().max(500)}));
-  if (!verified.valid || !await smartSourcesPublic(db,sources)) throw new SmartError("evidence",503,"Нужна е допълнителна проверка на информацията.");
-  const asked = new Set(history.map(h=>normalizeSmartQuestion(h.question))); asked.add(normalizeSmartQuestion(question));
-  const followUps = [...new Set(result.followUps)].filter(q=>!asked.has(normalizeSmartQuestion(q))).map(text=>({id:randomUUID(),text}));
-  if(result.status!=="off_topic"&&followUps.length<2)throw new SmartError("evidence",503,"Продължаващите въпроси очакват проверка.");
+  if(!approved||!result||!await smartSourcesPublic(db,sources))throw new SmartError("evidence",503,"Нужна е допълнителна проверка на информацията.");
+  const followUps=result.followUps.map(text=>({id:randomUUID(),text}));
   return validateSmartEvidence({ status:result.status, blocks:result.blocks.map(b=>({text:b.text,sourceIds:[...new Set(b.evidence.map(e=>e.sourceId))]})),
     sources:sources.filter(s=>result.blocks.some(b=>b.evidence.some(e=>e.sourceId===s.id))),followUps,checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+(result.timeSensitive || result.status!=="answered" ? 300_000 : 86400_000)).toISOString() });
 }
-export async function askSmart(db: SmartDb,config:SmartConfig,owner:string,input:SmartAsk) {
+type SmartSessionResult=Awaited<ReturnType<typeof readSmartSession>>;
+export function askSmart(db:SmartDb,config:SmartConfig,owner:string,input:SmartAsk):Promise<SmartSessionResult>;
+export function askSmart(db:SmartDb,config:SmartConfig,owner:string,input:SmartAsk,cachedOnly:true):Promise<SmartSessionResult|null>;
+export async function askSmart(db: SmartDb,config:SmartConfig,owner:string,input:SmartAsk,cachedOnly=false) {
   const session = await readSmartSession(db,input.sessionId,owner);
   const article = await smartArticle(db,session.articleId);
   let shared = false, parent:string|null=null, generation=article.revision;
@@ -118,6 +142,15 @@ export async function askSmart(db: SmartDb,config:SmartConfig,owner:string,input
       history=[];generation=new Date(rows[0]!.updated_at as string).toISOString();shared=true;
     }
   }
+  let immediate:SmartAnswer|null=null;
+  if(cachedOnly){
+    if(!shared)return null;
+    const key=smartNodeKey(article,input.questionId!,parent,`${generation}:${config.model}`);
+    const rows=await db.execute(sql`select answer from smart_nodes where key=${key} and state='ready' and expires_at>now()`);
+    const answer=rows[0]?.answer as SmartAnswer|undefined;
+    if(!answer||!await smartSourcesPublic(db,answer.sources))return null;
+    immediate=answer;
+  }
   const turn=await reserveSmartTurn(db,owner,input);
   if(turn.status!=="pending") return readSmartSession(db,input.sessionId,owner);
   // Exactly one handler may execute this turn, even for concurrent identical retries.
@@ -129,7 +162,7 @@ export async function askSmart(db: SmartDb,config:SmartConfig,owner:string,input
     let answer:SmartAnswer,cached=false;
     if(shared) {
       nodeKey=smartNodeKey(article,input.questionId!,parent,`${generation}:${config.model}`);
-      const node=await acquireSmartNode(db,nodeKey,article,input.questionId!,input.question,parent);
+      const node=immediate?{answer:immediate,token:null}:await acquireSmartNode(db,nodeKey,article,input.questionId!,input.question,parent);
       if(node.answer){answer=node.answer;cached=true;}
       else {nodeToken=node.token;answer=await answerSmartQuestion(db,config,article,input.question,history);await finishSmartNode(db,nodeKey,nodeToken!,answer);}
     } else answer=await answerSmartQuestion(db,config,article,input.question,history);

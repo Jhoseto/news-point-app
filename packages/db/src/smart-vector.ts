@@ -24,7 +24,7 @@ type Snapshot={signature:string;entries:Entry[]};
 type State={snapshot?:Snapshot;loading?:Promise<Snapshot>};
 const snapshots=new WeakMap<object,State>();
 async function metadata(db:SmartDb){
- const rows=await db.execute(sql`select md5(coalesce(string_agg(d.article_id::text||':'||d.chunk::text||':'||d.revision||':'||d.indexed_at::text,',' order by d.article_id,d.chunk),'')) as signature,
+ const rows=await db.execute(sql`select md5(coalesce(string_agg(d.article_id::text||':'||d.chunk::text||':'||d.revision||':'||d.indexed_at::text||':'||a.published_at::text,',' order by d.article_id,d.chunk),'')) as signature,
    extract(epoch from (now()-interval '6 months'))*1000 as cutoff
    from smart_documents d join smart_public_articles a on a.id=d.article_id and a.revision=d.revision
    where a.published_at>=now()-interval '6 months' and d.model='text-embedding-3-small'`);

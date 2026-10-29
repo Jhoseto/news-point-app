@@ -27,6 +27,10 @@ export type SmartBootstrap = {
   questions: SmartQuestion[]; related: SmartCard | null; message?: string;
 };
 export type SmartSession = { id: string; usedQuestions: number; maxQuestions: number; turns: SmartTurn[]; updated: boolean };
+/** Evidence passages stay in the server registry, not in reader network responses. */
+export function readerSmartSession<T extends SmartSession>(session:T):T{
+  return {...session,turns:session.turns.map(turn=>({...turn,answer:turn.answer?{...turn.answer,sources:turn.answer.sources.map(source=>({...source,passage:""}))}:null}))};
+}
 
 export function normalizeSmartQuestion(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("bg").replace(/[^\p{L}\p{N}]+/gu, " ").trim();

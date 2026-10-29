@@ -6,7 +6,7 @@ import "./ai-costs.css";
 
 type Row=Record<string,unknown>;
 export type AiCostsData={ready:boolean;modules:Row[];articles:Row[];operations:Row[];daily:Row[];totals:Row|null;grandTotals?:Row|null;provider:Row[];coverage:{module:string;name:string;status:string}[];page?:number};
-const money=(value:unknown)=>value===null||value===undefined?"Очаква проверка":new Intl.NumberFormat("bg-BG",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:12}).format(Number(value));
+const money=(value:unknown)=>value===null||value===undefined?"Очаква проверка":`${new Intl.NumberFormat("bg-BG",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(value))} $`;
 const count=(value:unknown)=>new Intl.NumberFormat("bg-BG").format(Number(value??0));
 const operationLabels:Record<string,string>={embedding:"Смислов индекс",prepare:"Въпроси и свързана статия",assessment:"Оценка на въпроса",research:"Външно проучване",answer:"Отговор и продължения",verification:"Проверка на доказателства"};
 function dateLabel(value:unknown){return new Date(String(value)).toLocaleString("bg-BG",{timeZone:"Europe/Sofia",dateStyle:"short",timeStyle:"short"});}

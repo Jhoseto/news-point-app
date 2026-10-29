@@ -6,6 +6,8 @@ import { sql } from "drizzle-orm";
 import { getDb, loadRootEnv } from "@newspoint/db";
 import { SmartError, smartReady, smartRateLimit, readSmartBootstrap, openSmartSession, readSmartSession, reserveSmartTurn, deleteSmartSession } from "@newspoint/db/smart";
 import { smartConfig } from "@newspoint/db/smart-provider";
+import {askSmart} from "@newspoint/db/smart-service";
+import {readerSmartSession} from "@newspoint/content/smart";
 
 const COOKIE="np_smart";
 const headers={"Cache-Control":"private, no-store","Vary":"Cookie","X-Content-Type-Options":"nosniff"};
@@ -52,7 +54,7 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       if(request.method==="GET"){
         if(!owner)return NextResponse.json(null,{headers});
         const rows=await db.execute(sql`select id from smart_sessions where article_id=${resource}::uuid and owner_hash=${owner} and deleted_at is null and expires_at>now()`);
-        return NextResponse.json(rows[0]?await readSmartSession(db,String(rows[0].id),owner):null,{headers});
+        return NextResponse.json(rows[0]?readerSmartSession(await readSmartSession(db,String(rows[0].id),owner)):null,{headers});
       }
       // Signed identities are not people; use trusted ingress only for cookie-creation abuse controls.
       const ipHeader=process.env.SMART_TRUSTED_IP_HEADER;
@@ -63,7 +65,7 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       const cookie=token?`${token}.${signature(config.secret,token)}`:null;
       const identity=owner??smartOwner(config.secret,cookie!)!;
       const sessionId=await openSmartSession(db,resource,identity);
-      const response=NextResponse.json(await readSmartSession(db,sessionId,identity),{headers});
+      const response=NextResponse.json(readerSmartSession(await readSmartSession(db,sessionId,identity)),{headers});
       if(cookie)response.cookies.set(COOKIE,cookie,{httpOnly:true,secure:config.origin.startsWith("https:"),sameSite:"lax",path:"/",maxAge:30*86400});
       return response;
     }
@@ -72,8 +74,10 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       const input=ask.parse(await boundedJson(request));
       const session=await readSmartSession(db,input.sessionId,owner);
       if(session.articleId!==resource)throw new SmartError("session",404,"Сесията не е достъпна.");
+      const cached=await askSmart(db,config,owner,input,true);
+      if(cached)return NextResponse.json(readerSmartSession(cached),{headers});
       await reserveSmartTurn(db,owner,input);
-      return NextResponse.json(await readSmartSession(db,input.sessionId,owner),{status:202,headers});
+      return NextResponse.json(readerSmartSession(await readSmartSession(db,input.sessionId,owner)),{status:202,headers});
     }
     if(action==="feedback"){
       const input=z.object({turnId:id,useful:z.boolean()}).strict().parse(await boundedJson(request));
@@ -83,7 +87,14 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       return NextResponse.json({ok:true},{headers});
     }
     if(request.method==="DELETE"){await deleteSmartSession(db,resource,owner);return NextResponse.json({ok:true},{headers});}
-    return NextResponse.json(await readSmartSession(db,resource,owner),{headers});
+    let restored=await readSmartSession(db,resource,owner);
+    // Readers already waiting when a shared answer became ready also avoid a serial worker queue.
+    const waiting=await db.execute(sql`select request_key,question,question_id,parent_key from smart_turns where session_id=${resource}::uuid and status='pending' and processor_token is null limit 1`);
+    if(waiting[0]){
+      const turn=waiting[0];
+      restored=await askSmart(db,config,owner,{sessionId:resource,requestKey:String(turn.request_key),question:String(turn.question),questionId:turn.question_id?String(turn.question_id):undefined,parentKey:turn.parent_key?String(turn.parent_key):undefined},true)??restored;
+    }
+    return NextResponse.json(readerSmartSession(restored),{headers});
   }catch(error){
     if(error instanceof SmartError)return NextResponse.json({error:error.message,code:error.code},{status:error.status,headers});
     if(error instanceof z.ZodError||error instanceof SyntaxError)return NextResponse.json({error:"Невалидна заявка.",code:"input"},{status:400,headers});

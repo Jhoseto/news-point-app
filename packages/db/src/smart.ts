@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { SMART_PROMPT_VERSION, type SmartAnswer, type SmartBootstrap, type SmartSource } from "@newspoint/content/smart";
+import { SMART_PROMPT_VERSION, type SmartAnswer, type SmartBootstrap, type SmartSource,type SmartTurn } from "@newspoint/content/smart";
 import type { ScriptDb } from "./node";
 
 /** Shared by Next routes and the Node worker; do not mark server-only. */
@@ -23,8 +23,8 @@ export async function smartArticle(db: SmartDb, id: string): Promise<SmartArticl
 export async function smartSourcesPublic(db: SmartDb, sources: SmartSource[]): Promise<boolean> {
   const own = sources.filter(s => s.articleId);
   for (const source of own) {
-    const rows = await db.execute(sql`select revision,published_at>=now()-interval '6 months' as eligible from smart_public_articles where id=${source.articleId}::uuid`);
-    if (!rows[0] || rows[0].revision !== source.version || (source.kind!=="current"&&!rows[0].eligible)) return false;
+    const rows = await db.execute(sql`select revision,published_at,published_at>=now()-interval '6 months' as eligible from smart_public_articles where id=${source.articleId}::uuid`);
+    if (!rows[0] || rows[0].revision !== source.version || (source.publishedAt&&new Date(rows[0].published_at as string).toISOString()!==new Date(source.publishedAt).toISOString()) || (source.kind!=="current"&&!rows[0].eligible)) return false;
   }
   return true;
 }
@@ -62,7 +62,8 @@ export async function readSmartSession(db: SmartDb, id: string, owner: string) {
     and (status<>'failed' or created_at=(select max(created_at) from smart_turns where session_id=${id}::uuid)) order by created_at limit 10`);
   // Never restore withdrawn sources in previously saved answers.
   for (const turn of turns) if (turn.answer && !await smartSourcesPublic(db, (turn.answer as SmartAnswer).sources)) turn.answer = null;
-  return { id, articleId: article.id, revision: article.revision, usedQuestions: Number(session.used), maxQuestions: 5, updated: article.revision !== session.revision, turns };
+  const typedTurns=turns.map(turn=>({id:String(turn.id),question:String(turn.question),status:turn.status as SmartTurn["status"],answer:turn.answer as SmartAnswer|null,cached:Boolean(turn.cached),nodeKey:turn.nodeKey?String(turn.nodeKey):null}));
+  return { id, articleId: article.id, revision: article.revision, usedQuestions: Number(session.used), maxQuestions: 5, updated: article.revision !== session.revision, turns:typedTurns };
 }
 export type SmartAsk = { sessionId: string; requestKey: string; question: string; questionId?: string | undefined; parentKey?: string | undefined };
 export async function reserveSmartTurn(db: SmartDb, owner: string, input: SmartAsk) {
@@ -112,7 +113,7 @@ export async function deleteSmartSession(db: SmartDb, id: string, owner: string)
   });
 }
 export function smartNodeKey(article: SmartArticle, questionId: string, parent: string | null, generation: string) {
-  return smartHash([article.id, article.revision, questionId, parent, generation, SMART_PROMPT_VERSION, "bg"]);
+  return smartHash([article.id, article.revision,article.publishedAt, questionId, parent, generation, SMART_PROMPT_VERSION, "bg"]);
 }
 export async function acquireSmartNode(db: SmartDb, key: string, article: SmartArticle, questionId: string, question: string, parent: string | null) {
   const token = randomUUID();
