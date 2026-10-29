@@ -1,7 +1,11 @@
 import { z } from "zod";
 
-export const SMART_QUESTION_LIMIT = 5;
-export const SMART_PROMPT_VERSION = "smart-2026-10-29-v2";
+export const SMART_QUESTION_LIMIT = 3;
+export const SMART_QUESTION_COOLDOWN_SECONDS = 600;
+export const SMART_PROMPT_VERSION = "smart-2026-10-29-v3";
+export const smartProviderSelectionSchema=z.object({provider:z.enum(["minimax","openai"]),version:z.number().int().min(1)}).strict();
+export type SmartProvider="minimax"|"openai";
+export type SmartProviderSettings={ready:boolean;provider:SmartProvider;version:number;updatedAt:string|null;options:{provider:SmartProvider;label:string;model:string;modelLabel:string;available:boolean}[]};
 const text = z.string().trim().min(1);
 export const smartQuestionSchema = z.object({ id: text.max(160), text: text.max(220) });
 export type SmartQuestion = z.infer<typeof smartQuestionSchema>;
@@ -17,6 +21,7 @@ export const smartAnswerSchema = z.object({
   blocks: z.array(z.object({ text: text.max(4000), sourceIds: z.array(text.max(200)).max(12) })).min(1).max(8),
   followUps: z.array(smartQuestionSchema).max(3),
   sources: z.array(smartSourceSchema).max(20),
+  relatedArticleIds:z.array(z.uuid()).max(3).optional(),
   checkedAt: z.string(), expiresAt: z.string(),
 });
 export type SmartAnswer = z.infer<typeof smartAnswerSchema>;
@@ -26,7 +31,7 @@ export type SmartBootstrap = {
   status: "ready" | "preparing" | "unavailable"; articleId: string; version: string;
   questions: SmartQuestion[]; related: SmartCard | null; message?: string;
 };
-export type SmartSession = { id: string; usedQuestions: number; maxQuestions: number; turns: SmartTurn[]; updated: boolean };
+export type SmartSession = { id: string; usedQuestions: number; maxQuestions: number; turns: SmartTurn[]; updated: boolean; quotaResetAt?:string|null;serverNow?:string };
 /** Evidence passages stay in the server registry, not in reader network responses. */
 export function readerSmartSession<T extends SmartSession>(session:T):T{
   return {...session,turns:session.turns.map(turn=>{
@@ -34,7 +39,8 @@ export function readerSmartSession<T extends SmartSession>(session:T):T{
     const sources=turn.answer.sources.filter(source=>!!source.articleId&&(source.kind==="current"||source.kind==="newspoint")).map(source=>({...source,passage:""}));
     const ids=new Set(sources.map(source=>source.id));
     const external=turn.answer.sources.filter(source=>source.kind==="external"||source.kind==="official").map(source=>source.url);
-    return {...turn,answer:{...turn.answer,sources,blocks:turn.answer.blocks.map(block=>({...block,text:smartReaderText(block.text,external),sourceIds:block.sourceIds.filter(id=>ids.has(id))}))}};
+    const related=new Set(sources.filter(source=>source.kind==="newspoint").map(source=>source.articleId));
+    return {...turn,answer:{...turn.answer,sources,...(turn.answer.relatedArticleIds?{relatedArticleIds:turn.answer.relatedArticleIds.filter(id=>related.has(id))}:{}),blocks:turn.answer.blocks.map(block=>({...block,text:smartReaderText(block.text,external),sourceIds:block.sourceIds.filter(id=>ids.has(id))}))}};
   })};
 }
 
@@ -54,6 +60,8 @@ export function validateSmartEvidence(answer: SmartAnswer): SmartAnswer {
   const parsed = smartAnswerSchema.parse(answer);
   const ids = new Set(parsed.sources.map(s => s.id));
   if (ids.size !== parsed.sources.length) throw new Error("duplicate_source");
+  const related=new Set(parsed.sources.filter(source=>source.kind==="newspoint").map(source=>source.articleId));
+  if(parsed.relatedArticleIds?.some(id=>!related.has(id)))throw new Error("unknown_related_article");
   for (const block of parsed.blocks) {
     if (parsed.status === "answered" && !block.sourceIds.length) throw new Error("missing_evidence");
     if (block.sourceIds.some(id => !ids.has(id))) throw new Error("unknown_evidence");

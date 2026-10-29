@@ -51,7 +51,10 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   const [question,setQuestion]=useState("");
   const [error,setError]=useState("");
   const [loading,setLoading]=useState(false);
+  const [clock,setClock]=useState(()=>Date.now());
+  const serverOffset=useRef(0);
   const [ready,setReady]=useState(Boolean(initial));
+  const [sessionChecked,setSessionChecked]=useState(demo||Boolean(initial));
   const root=useRef<HTMLElement>(null);
   const request=useRef<{key:string;question:string;questionId?:string;parentKey?:string}|null>(null);
   const prefix=`/api/smart/article/${encodeURIComponent(articleId)}`;
@@ -61,7 +64,38 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   const answered=session?.turns.filter(t=>t.status==="completed")??[];
   const choices=smartChoices(bootstrap?.questions??[],session?.turns??[],submitting);
   const latest=answered.at(-1);
-  const busy=loading||pending;
+  const busy=loading||pending||!sessionChecked;
+  const remainingSeconds=limit&&session?.quotaResetAt?Math.max(0,Math.ceil((Date.parse(session.quotaResetAt)-clock-serverOffset.current)/1000)):null;
+  const countdown=remainingSeconds===null?null:`${Math.floor(remainingSeconds/60)}:${String(remainingSeconds%60).padStart(2,"0")}`;
+  async function refreshSession(signal?:AbortSignal){
+    if(!session||demo)return;
+    const result=await smartFetch<Session>(`/api/smart/session/${session.id}/`,{...(signal?{signal}:{})});
+    if(!signal?.aborted){setSession(result);setError("");}
+  }
+  useEffect(()=>{if(session?.serverNow){serverOffset.current=Date.parse(session.serverNow)-Date.now();setClock(Date.now());}},[session?.serverNow]);
+  useEffect(()=>{
+    if(!expanded||!limit)return;
+    setClock(Date.now());const timer=setInterval(()=>setClock(Date.now()),1000);
+    return()=>clearInterval(timer);
+  },[expanded,limit]);
+  useEffect(()=>{
+    if(!expanded||!limit||!session?.quotaResetAt||demo)return;
+    const controller=new AbortController();
+    const delay=Math.max(0,Date.parse(session.quotaResetAt)-Date.now()-serverOffset.current)+100;
+    const timer=setTimeout(()=>void refreshSession(controller.signal).catch(e=>{if(!controller.signal.aborted)setError((e as Error).message);}),delay);
+    return()=>{clearTimeout(timer);controller.abort();};
+    // The server owns quota renewal; the countdown never unlocks the form itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[expanded,limit,session?.id,session?.quotaResetAt,session?.serverNow,demo]);
+  useEffect(()=>{
+    if(!expanded||!session||demo||busy)return;
+    const controller=new AbortController();
+    const check=()=>{if(document.visibilityState==="visible")void refreshSession(controller.signal).catch(()=>{});};
+    window.addEventListener("focus",check);document.addEventListener("visibilitychange",check);
+    return()=>{controller.abort();window.removeEventListener("focus",check);document.removeEventListener("visibilitychange",check);};
+    // Refresh also catches questions consumed in another tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[expanded,session?.id,demo,busy]);
   useEffect(()=>{
     if(!consent||impression.current||!root.current)return;
     const observer=new IntersectionObserver(entries=>{if(entries.some(e=>e.isIntersecting)&&track("impression")){impression.current=true;observer.disconnect();}},{threshold:.3});
@@ -84,7 +118,7 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
       setError("");const result=await smartFetch<SmartBootstrap>(`${prefix}/bootstrap/${retry?"?retry=1":""}`,{...(signal?{signal}:{})});
       if(signal?.aborted)return false;
       setBootstrap(result);setReady(true);
-      if(!restored.current){const previous=await smartFetch<Session|null>(`${prefix}/session/`,{...(signal?{signal}:{})});if(!signal?.aborted){if(previous)setSession(previous);restored.current=true;}}
+      if(!restored.current){const previous=await smartFetch<Session|null>(`${prefix}/session/`,{...(signal?{signal}:{})});if(!signal?.aborted){if(previous)setSession(previous);restored.current=true;setSessionChecked(true);}}
       return result.status;
     }catch(e){if(!signal?.aborted){setError((e as Error).message);setReady(true);}return false;}
   }
@@ -126,7 +160,7 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
     setLoading(true);setSubmitting(value);setError("");
     try{
       let current=session;if(!current){current=await smartFetch<Session>(`${prefix}/session/`,{method:"POST"});setSession(current);}
-      if(current.usedQuestions>=5)return;
+      if(current.usedQuestions>=SMART_QUESTION_LIMIT)return;
       const publicChoice=choice?.public;
       if(!request.current||request.current.question!==value||request.current.questionId!==(publicChoice?choice?.id:undefined)||request.current.parentKey!==(publicChoice?choice?.parentKey??undefined:undefined))request.current={key:crypto.randomUUID(),question:value,...(publicChoice?{questionId:choice!.id}:{}),...(publicChoice&&choice?.parentKey?{parentKey:choice!.parentKey}:{})};
       const result=await smartFetch<Session>(`${prefix}/ask/`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:current.id,requestKey:request.current.key,question:value,questionId:request.current.questionId,parentKey:request.current.parentKey})});
@@ -134,22 +168,23 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
       track("question",{question_type:choice?(choice.parentKey?"follow_up":"suggested"):"custom"});
       if(last&&last.status!=="pending")request.current=null;
       if(last?.status==="failed")setError("Проучването не завърши. Можеш да опиташ отново.");
-    }catch(e){setError((e as Error).message);if((e as {code?:string}).code==="question_changed"&&await loadBootstrap()){setError("Предложенията са обновени. Избери актуален въпрос.");}}finally{setLoading(false);setSubmitting("");}
+    }catch(e){setError((e as Error).message);if((e as {code?:string}).code==="question_limit"){await refreshSession().catch(()=>{});}if((e as {code?:string}).code==="question_changed"&&await loadBootstrap()){setError("Предложенията са обновени. Избери актуален въпрос.");}}finally{setLoading(false);setSubmitting("");}
   }
   return <section ref={root} className={`np-smart${expanded?" np-smart-expanded":""}`} aria-labelledby={`smart-title-${articleId}`}>
     <div className="np-smart-topline"><span className="np-smart-identity"><span className="np-smart-mark"><SmartMark/></span><span>NewsPoint <strong>Smart</strong></span></span>
       <div className="np-smart-help" ref={help}><button ref={helpButton} className="np-smart-help-trigger" type="button" aria-expanded={helpOpen} aria-controls={`smart-help-${articleId}`} onClick={()=>setHelpOpen(v=>!v)}>Какво е NewsPoint Smart?<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 9v5m0-8v1"/></svg></button>
-      {helpOpen?<div className="np-smart-help-bubble" id={`smart-help-${articleId}`} role="region" aria-label="За NewsPoint Smart"><strong>Новината не свършва с последния ред.</strong><p>NewsPoint Smart ти помага да разбереш повече за тази история. Избери предложен въпрос или задай свой. Системата разглежда темата в контекста на статията, свързаните ни публикации и допълнителна информация.</p><p>Получаваш допълнителен контекст и нови посоки за продължение. Можеш да зададеш до 5 въпроса по новината. Системата не гарантира 100% достоверност. При липсваща или противоречива информация посочва неяснотите.</p><button type="button" onClick={()=>{setHelpOpen(false);helpButton.current?.focus();}}>Разбрах</button></div>:null}</div>
+      {helpOpen?<div className="np-smart-help-bubble" id={`smart-help-${articleId}`} role="region" aria-label="За NewsPoint Smart"><strong>Новината не свършва с последния ред.</strong><p>NewsPoint Smart ти помага да разбереш повече за тази история. Избери предложен въпрос или задай свой. Системата разглежда темата в контекста на статията, свързаните ни публикации и допълнителна информация.</p><p>Получаваш допълнителен контекст и нови посоки за продължение. Можеш да зададеш до 3 въпроса по новината, след което има пауза от 10 минути. Презареждането на страницата не нулира брояча. Системата не гарантира 100% достоверност. При липсваща или противоречива информация посочва неяснотите.</p><button type="button" onClick={()=>{setHelpOpen(false);helpButton.current?.focus();}}>Разбрах</button></div>:null}</div>
     </div>
-    <header className="np-smart-header"><div><h2 ref={panelHeading} tabIndex={-1} id={`smart-title-${articleId}`}>{expanded?"Какво още искаш да разбереш?":"Виж отвъд новината."}</h2><p>{expanded?"Въпрос по въпрос — по-дълбоко в историята.":"Повече контекст. Важните въпроси. По-ясната картина."}</p></div>{expanded&&used>0?<span className="np-smart-count" aria-label={`${used} от 5 въпроса`}>{used}<span>/ 5</span></span>:null}</header>
+    <header className="np-smart-header"><div><h2 ref={panelHeading} tabIndex={-1} id={`smart-title-${articleId}`}>{expanded?"Какво още искаш да разбереш?":"Виж отвъд новината."}</h2><p>{expanded?"Въпрос по въпрос — по-дълбоко в историята.":"Повече контекст. Важните въпроси. По-ясната картина."}</p></div>{expanded&&used>0?<span className="np-smart-count" aria-label={`${used} от ${SMART_QUESTION_LIMIT} въпроса`}>{used}<span>/ {SMART_QUESTION_LIMIT}</span></span>:null}</header>
     {!expanded?<button ref={activateButton} className="np-smart-activate" type="button" aria-expanded={false} aria-controls={`smart-content-${articleId}`} onClick={()=>{setExpanded(true);requestAnimationFrame(()=>panelHeading.current?.focus({preventScroll:true}));track("activate");}}><SmartMark/><span>Използвай NewsPoint Smart</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg></button>:null}
     {expanded?<div className="np-smart-content" id={`smart-content-${articleId}`}>
     {demo?<p className="np-smart-notice">Преглед на интерфейса с тестови данни.</p>:null}
     {bootstrap?.related&&!answered.length?<SmartNewsCards cards={[bootstrap.related]}/>:null}
     {(!ready||bootstrap?.status==="preparing")&&!answered.length&&!error?<div className="np-smart-preparing" role="status" aria-live="polite"><span className={`np-smart-working${preparationSlow?" np-smart-paused":""}`} aria-hidden="true"/><div><strong>{preparationSlow?"Подготовката отнема повече време.":"Намираме трите важни въпроса."}</strong><p>{preparationSlow?"Можеш да опиташ отново или да зададеш свой въпрос.":"Моля, изчакай. Свързваме фактите и подбираме най-полезните посоки."}</p></div>{preparationSlow?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
+    {bootstrap?.status==="ready"&&!sessionChecked&&!error?<p className="np-smart-status" role="status"><span className="np-smart-working" aria-hidden="true"/>Проверяваме оставащите въпроси…</p>:null}
     {bootstrap?.status==="unavailable"?<div className="np-smart-notice" role="status"><p>{bootstrap.message??"Въпросите не се заредиха. Опитай отново."}</p><button className="np-smart-retry" type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Зареди трите въпроса</button></div>:null}
     {session?.updated?<p className="np-smart-notice">Статията е обновена. Предишните отговори са по версията към момента на въпроса.</p>:null}
-    <p className="sr-only" role="status" aria-atomic="true">{latest?.answer?`Отговорът на „${latest.question}“ е готов. Можеш да продължиш с нов въпрос.`:""}</p>
+    <p className="sr-only" role="status" aria-atomic="true">{latest?.answer?`Отговорът на „${latest.question}“ е готов. ${limit?"Трите въпроса са използвани. Следва пауза от 10 минути.":"Можеш да продължиш с нов въпрос."}`:""}</p>
     <ol className="np-smart-feed" aria-label="Твоят разговор по новината">
       {(session?.turns??[]).map((turn,index)=><li className="np-smart-turn" key={turn.id}>
         <div className="np-smart-reader-question"><span className="np-smart-turn-label">Твоят въпрос <span>{index+1}</span></span><h3>{turn.question}</h3></div>
@@ -166,10 +201,10 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
     </ol>
     <div className="np-smart-next">
     {!limit&&choices.length?<><p className="np-smart-choices-label">{answered.length?"Продължи историята":"Избери посока"}</p><div className="np-smart-questions" aria-label={answered.length?"Продължи историята":"Избери какво искаш да разбереш"}>{choices.map(q=><button key={`${q.parentKey??"root"}:${q.id}`} type="button" disabled={busy} onClick={()=>void ask(q)}><span>{q.text}</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M5 10h10m-4-4 4 4-4 4"/></svg></button>)}</div></>:null}
-    {used===3?<p className="np-smart-remaining">Остават ти 2 въпроса по тази новина.</p>:null}
-    {limit?<div className="np-smart-finished"><strong>Използва петте въпроса по тази новина.</strong><p>Всички отговори остават видими в разговора.</p>{bootstrap?.related&&!answered.some(turn=>turn.cards?.some(card=>card.articleId===bootstrap.related!.articleId))?<SmartNewsCards cards={[bootstrap.related]}/>:null}</div>:<form className="np-smart-form" onSubmit={e=>{e.preventDefault();void ask();}}><label htmlFor={`smart-question-${articleId}`}>Или задай свой въпрос</label><div className="np-smart-input-wrap"><input id={`smart-question-${articleId}`} minLength={3} maxLength={600} placeholder="Попитай нещо по тази история…" value={question} disabled={busy} onChange={e=>setQuestion(e.target.value)}/><button type="submit" disabled={busy||question.trim().length<3}>Попитай<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M10 15V5m-4 4 4-4 4 4"/></svg></button></div></form>}
+    {used===2&&!limit?<p className="np-smart-remaining">Остава ти 1 въпрос по тази новина.</p>:null}
+    {limit?<div className="np-smart-finished"><strong>Използва трите въпроса по тази новина.</strong><p>Можеш да продължиш {countdown?<span>след <time className="np-smart-countdown" aria-label={`Оставащо време: ${countdown}`}>{countdown}</time></span>:"след паузата от 10 минути"}. Отговорите остават в разговора.</p><button className="np-smart-retry" type="button" onClick={()=>void refreshSession().catch(e=>setError((e as Error).message))}>Провери оставащото време</button>{bootstrap?.related&&!answered.some(turn=>turn.cards?.some(card=>card.articleId===bootstrap.related!.articleId))?<SmartNewsCards cards={[bootstrap.related]}/>:null}</div>:<form className="np-smart-form" onSubmit={e=>{e.preventDefault();void ask();}}><label htmlFor={`smart-question-${articleId}`}>Или задай свой въпрос</label><div className="np-smart-input-wrap"><input id={`smart-question-${articleId}`} minLength={3} maxLength={600} placeholder="Попитай нещо по тази история…" value={question} disabled={busy} onChange={e=>setQuestion(e.target.value)}/><button type="submit" disabled={busy||question.trim().length<3}>Попитай<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M10 15V5m-4 4 4-4 4 4"/></svg></button></div></form>}
     </div>
-    {error?<div className="np-smart-error" role="alert"><p>{error}</p>{!bootstrap||bootstrap.status!=="ready"?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
+    {error?<div className="np-smart-error" role="alert"><p>{error}</p>{!sessionChecked||!bootstrap||bootstrap.status!=="ready"?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
     <button className="np-smart-collapse" type="button" aria-expanded={true} aria-controls={`smart-content-${articleId}`} onClick={()=>{setExpanded(false);requestAnimationFrame(()=>activateButton.current?.focus());}}>Свий панела</button>
     </div>:null}
   </section>;

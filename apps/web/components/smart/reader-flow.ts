@@ -15,7 +15,8 @@ export function smartChoices(roots: SmartQuestion[], turns: (SmartTurn & {nodeKe
     const before=tray.length;
     tray=tray.filter(q=>key(q)!==selected);
     if(turn.status!=="completed"||!turn.answer)continue;
-    const fresh=turn.answer.followUps.map(q=>({...q,public:Boolean(turn.nodeKey),...(turn.nodeKey?{parentKey:turn.nodeKey}:{})}));
+    const publicParent=Boolean(turn.nodeKey)&&Date.parse(turn.answer.expiresAt)>Date.now();
+    const fresh=turn.answer.followUps.map(q=>({...q,public:publicParent,...(publicParent?{parentKey:turn.nodeKey!}:{})}));
     const candidates=[...fresh,...reserve].filter((q,i,all)=>!asked.has(key(q))&&!tray.some(t=>key(t)===key(q))&&all.findIndex(t=>key(t)===key(q))===i);
     // A custom question can leave all three slots occupied: retain two and
     // introduce one continuation grounded in its answer.

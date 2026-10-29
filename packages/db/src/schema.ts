@@ -765,3 +765,12 @@ export const schemaTables = {
   storyThemeSlugs,
   pushSubscriptions,
 };
+
+/** Studio Smart provider selection; secrets remain in the server environment. */
+export const smartSettings = pgTable("smart_settings", {
+  id:boolean("id").primaryKey().default(true),
+  provider:text("provider",{enum:["minimax","openai"]}).notNull(),
+  version:integer("version").notNull().default(1),
+  updatedBy:text("updated_by").references(()=>staffUsers.id,{onDelete:"set null"}),
+  updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow(),
+});

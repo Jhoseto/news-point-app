@@ -11,9 +11,10 @@ async function cardsFor(ids:string[]):Promise<Map<string,SmartCard>>{
 }
 export async function readerSessionWithCards<T extends SmartSession>(session:T){
   const safe=readerSmartSession(session);
-  const ids=safe.turns.flatMap(turn=>turn.answer?.sources.filter(source=>source.kind==="newspoint"&&source.articleId).map(source=>source.articleId!)??[]);
+  const relatedIds=(turn:SmartSession["turns"][number])=>[...new Set([...(turn.answer?.relatedArticleIds??[]),...(turn.answer?.sources.filter(source=>source.kind==="newspoint"&&source.articleId).map(source=>source.articleId!)??[])])].slice(0,3);
+  const ids=safe.turns.flatMap(relatedIds);
   const cards=await cardsFor(ids);
-  return {...safe,turns:safe.turns.map(turn=>({...turn,cards:[...new Set(turn.answer?.sources.filter(source=>source.kind==="newspoint").map(source=>source.articleId!)??[])].flatMap(id=>cards.has(id)?[cards.get(id)!]:[])}))};
+  return {...safe,turns:safe.turns.map(turn=>({...turn,cards:relatedIds(turn).flatMap(id=>cards.has(id)?[cards.get(id)!]:[])}))};
 }
 export async function readerBootstrapWithCards(bootstrap:SmartBootstrap):Promise<SmartBootstrap>{
   if(!bootstrap.related)return bootstrap;

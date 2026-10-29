@@ -17,6 +17,15 @@ export function smartConfig(env: Record<string, string | undefined> = process.en
     secret: env.SMART_SIGNING_SECRET ?? "", origin: new URL(env.WEB_URL || "http://localhost:3000").origin,contentOrigin:new URL(env.SMART_CONTENT_ORIGIN||"https://newspoint.bg").origin, project: provider === "openai" ? env.OPENAI_PROJECT_ID ?? null : null };
 }
 /** Fixed origins and no redirects keep each credential with its own provider. */
+function strictOpenAiSchema(value:unknown):unknown{
+  if(Array.isArray(value))return value.map(strictOpenAiSchema);
+  if(!value||typeof value!=="object")return value;
+  const result=Object.fromEntries(Object.entries(value).filter(([key])=>key!=="default"&&key!=="$schema").map(([key,item])=>[key,strictOpenAiSchema(item)]));
+  if(result.type==="object"&&result.properties&&typeof result.properties==="object"){
+    result.required=Object.keys(result.properties);result.additionalProperties=false;
+  }
+  return result;
+}
 export function smartProviderRequest(config:SmartConfig,request:Record<string,unknown>) {
   const embedding=request.model === "text-embedding-3-small";
   if(config.provider === "minimax" && embedding)throw new SmartError("embedding_provider",503,"OpenAI е изключен за NewsPoint Smart.");
@@ -28,6 +37,9 @@ export function smartProviderRequest(config:SmartConfig,request:Record<string,un
     const format=(body.text as {format?:{schema?:unknown}}|undefined)?.format;
     // Do not assume strict schema support; enforce the schema locally on every result.
     if(format?.schema){body.instructions=String(body.instructions??"")+"\nВърни единствено валиден JSON обект, без Markdown, по тази JSON Schema: "+JSON.stringify(format.schema);delete body.text;}
+  }else {
+    const text=body.text as {format?:{schema?:unknown}}|undefined;
+    if(text?.format?.schema)body.text={...text,format:{...text.format,schema:strictOpenAiSchema(text.format.schema)}};
   }
   return {url:`https://${config.provider === "minimax" ? "api.minimax.io" : "api.openai.com"}/v1/${embedding?"embeddings":"responses"}`,body:embedding?request:body};
 }

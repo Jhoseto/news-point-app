@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
-import { SMART_PROMPT_VERSION, type SmartAnswer, type SmartBootstrap, type SmartSource,type SmartTurn } from "@newspoint/content/smart";
+import { SMART_PROMPT_VERSION,SMART_QUESTION_LIMIT,SMART_QUESTION_COOLDOWN_SECONDS, type SmartAnswer, type SmartBootstrap, type SmartSource,type SmartTurn } from "@newspoint/content/smart";
 import type { ScriptDb } from "./node";
 import {publicSmartBootstrap} from "./smart-preparation";
 
@@ -66,11 +66,13 @@ export async function openSmartSession(db: SmartDb, articleId: string, owner: st
 export async function readSmartSession(db: SmartDb, id: string, owner: string) {
   // One snapshot for ownership, publication, revision and turns. Polling does not
   // need the full article body or three serial SSH/database round trips.
-  const rows=await db.execute(sql`select s.*,a.id as "articleId",a.revision as "currentRevision",
+  const rows=await db.execute(sql`select s.*,a.id as "articleId",a.revision as "currentRevision",now() as "serverNow",
+    (s.used>=${SMART_QUESTION_LIMIT} and s.updated_at+make_interval(secs=>${SMART_QUESTION_COOLDOWN_SECONDS})<=now()) as quota_expired,
+    s.updated_at+make_interval(secs=>${SMART_QUESTION_COOLDOWN_SECONDS}) as "quotaResetAt",
     coalesce((select jsonb_agg(t.item order by t.created_at) from (
       select created_at,jsonb_build_object('id',id,'question',question,'status',status,'answer',answer,'cached',cached,'nodeKey',node_key) as item
       from smart_turns where session_id=s.id and created_at>=s.created_at
-      and (status<>'failed' or created_at=(select max(created_at) from smart_turns where session_id=s.id)) order by created_at limit 10
+      and (status<>'failed' or created_at=(select max(created_at) from smart_turns where session_id=s.id)) order by created_at desc limit 10
     ) t),'[]'::jsonb) as turns
     from smart_sessions s join smart_public_articles a on a.id=s.article_id
     where s.id=${id}::uuid and s.owner_hash=${owner} and s.expires_at>now() and s.deleted_at is null`);
@@ -81,16 +83,17 @@ export async function readSmartSession(db: SmartDb, id: string, owner: string) {
   // Normal history is checked in one batch. A withdrawn/revised dependency falls
   // back to per-turn checks so unrelated valid answers remain available.
   if(!await smartSourcesPublic(db,all))for(const turn of turns)if(turn.answer&&!await smartSourcesPublic(db,turn.answer.sources))turn.answer=null;
-  return {id,articleId:String(session.articleId),revision:String(session.currentRevision),usedQuestions:Number(session.used),maxQuestions:5,updated:session.currentRevision!==session.revision,turns};
+  return {id,articleId:String(session.articleId),revision:String(session.currentRevision),usedQuestions:session.quota_expired?0:Math.min(Number(session.used),SMART_QUESTION_LIMIT),maxQuestions:SMART_QUESTION_LIMIT,quotaResetAt:Number(session.used)>=SMART_QUESTION_LIMIT&&!session.quota_expired?new Date(session.quotaResetAt as string).toISOString():null,serverNow:new Date(session.serverNow as string).toISOString(),updated:session.currentRevision!==session.revision,turns};
 }
 
 export type SmartAsk = { sessionId: string; requestKey: string; question: string; questionId?: string | undefined; parentKey?: string | undefined };
 export async function reserveSmartTurn(db: SmartDb, owner: string, input: SmartAsk) {
   return db.transaction(async tx=>{
     // Lock the session first. A second statement gets a fresh snapshot after any
-    // concurrent owner finishes, preserving idempotency and the five-turn quota.
-    const sessions=await tx.execute(sql`select * from smart_sessions where id=${input.sessionId}::uuid and owner_hash=${owner} and expires_at>now() and deleted_at is null for update`);
+    // concurrent owner finishes, preserving idempotency and the three-question quota.
+    const sessions=await tx.execute(sql`select *,used>=${SMART_QUESTION_LIMIT} and updated_at+make_interval(secs=>${SMART_QUESTION_COOLDOWN_SECONDS})<=now() as quota_expired from smart_sessions where id=${input.sessionId}::uuid and owner_hash=${owner} and expires_at>now() and deleted_at is null for update`);
     const session=sessions[0];if(!session)throw new SmartError("session",404,"Сесията не е достъпна.");
+    const used=session.quota_expired?0:Number(session.used);
     const hash=smartHash([input.question,input.questionId??null,input.parentKey??null]);
     const rows=await tx.execute(sql`with previous as (
       select * from smart_turns where session_id=${input.sessionId}::uuid and request_key=${input.requestKey}::uuid
@@ -99,22 +102,22 @@ export async function reserveSmartTurn(db: SmartDb, owner: string, input: SmartA
     ), inserted as (
       insert into smart_turns(id,session_id,request_key,input_hash,question,question_id,parent_key,status,lease_until)
       select ${randomUUID()}::uuid,${input.sessionId}::uuid,${input.requestKey}::uuid,${hash},${input.question},${input.questionId??null},${input.parentKey??null},'pending',now()+interval '10 minutes'
-      where not exists(select 1 from previous) and ${Number(session.used)}<5
+      where not exists(select 1 from previous) and ${used}<${SMART_QUESTION_LIMIT}
         -- Consume RETURNING before INSERT checks the one-active-turn index.
         and (select count(*) from expired)>=0
         and exists(select 1 from smart_public_articles where id=${String(session.article_id)}::uuid)
         and not exists(select 1 from smart_turns where session_id=${input.sessionId}::uuid and status='pending' and lease_until>now())
       returning *
     ), extended as (
-      update smart_sessions set expires_at=now()+interval '24 hours',updated_at=now() where id=${input.sessionId}::uuid and exists(select 1 from inserted) returning id
+      update smart_sessions set used=${used},expires_at=now()+interval '24 hours',updated_at=now() where id=${input.sessionId}::uuid and exists(select 1 from inserted) returning id
     ) select exists(select 1 from smart_public_articles where id=${String(session.article_id)}::uuid) as "articleReady",
       coalesce((select to_jsonb(p) from previous p),(select to_jsonb(i) from inserted i)) as turn,
       exists(select 1 from smart_turns where session_id=${input.sessionId}::uuid and status='pending' and lease_until>now()) as busy`);
     const row=rows[0]!;if(!row.articleReady)throw new SmartError("not_found",404,"Тази новина не е достъпна.");
     const turn=row.turn as Record<string,unknown>|null;
-    if(turn){if(turn.input_hash!==hash)throw new SmartError("idempotency",409,"Повторен идентификатор с различен въпрос.");return Object.assign(turn,{session_used:Number(session.used)});}
+    if(turn){if(turn.input_hash!==hash)throw new SmartError("idempotency",409,"Повторен идентификатор с различен въпрос.");return Object.assign(turn,{session_used:used});}
     if(row.busy)throw new SmartError("busy",409,"Предишният въпрос още се обработва.");
-    throw new SmartError("question_limit",429,"Използва петте въпроса по тази новина.");
+    throw new SmartError("question_limit",429,"Използва трите въпроса по тази новина. Можеш да продължиш след 10 минути.");
   });
 }
 export async function finishSmartTurn(db: SmartDb, id: string, answer: SmartAnswer, cached: boolean, nodeKey: string | null) {
@@ -126,7 +129,7 @@ export async function finishSmartTurn(db: SmartDb, id: string, answer: SmartAnsw
       left join smart_public_articles a on a.id=s.article_id where t.id=${id}::uuid for update of s`);
     const row=rows[0];if(!row)throw new SmartError("turn",404,"Въпросът не е достъпен.");
     if(row.status!=="pending")return;
-    if(row.deleted_at||Number(row.used)>=5||new Date(row.lease_until as string).getTime()<=Date.now())throw new SmartError("expired",409,"Обработката е изтекла. Възстановете разговора.");
+    if(row.deleted_at||Number(row.used)>=SMART_QUESTION_LIMIT||new Date(row.lease_until as string).getTime()<=Date.now())throw new SmartError("expired",409,"Обработката е изтекла. Възстановете разговора.");
     if(!row.articleId)throw new SmartError("not_found",404,"Тази новина не е достъпна.");
     const counted=answer.status!=="off_topic";
     await tx.execute(sql`with changed as (

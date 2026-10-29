@@ -3,7 +3,7 @@ import {smartChoices} from "./reader-flow";
 import type {SmartTurn} from "@newspoint/content/smart";
 
 const roots=["First root question","Second root question","Third root question"].map((text,i)=>({id:`r${i}`,text}));
-function turn(question:string,followUps:string[],nodeKey?:string){return {id:question,question,status:"completed",cached:false,nodeKey,answer:{status:"answered",blocks:[],sources:[],followUps:followUps.map((text,i)=>({id:`${question}-${i}`,text})),checkedAt:"",expiresAt:""}} as SmartTurn&{nodeKey?:string};}
+function turn(question:string,followUps:string[],nodeKey?:string){return {id:question,question,status:"completed",cached:false,nodeKey,answer:{status:"answered",blocks:[],sources:[],followUps:followUps.map((text,i)=>({id:`${question}-${i}`,text})),checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString()}} as SmartTurn&{nodeKey?:string};}
 describe("persistent Smart suggestions",()=>{
   it("retains two unchosen roots and adds a continuation with its actual public parent",()=>{
     const tray=smartChoices(roots,[turn(roots[0]!.text,["A fresh continuation"],"node-one")]);
@@ -27,4 +27,9 @@ describe("persistent Smart suggestions",()=>{
     expect(smartChoices(roots,[{...pending,status:"failed"}])).toHaveLength(3);
     expect(smartChoices(roots,[turn(roots[0]!.text,[roots[0]!.text,roots[1]!.text,"Fresh choice"])])).toHaveLength(3);
   });
+});
+
+it("keeps an expired follow-up usable as a private question after the cooldown instead of sending an expired public parent",()=>{
+ const expired=turn(roots[0]!.text,["A continuation after the pause"],"expired-node");expired.answer!.expiresAt=new Date(Date.now()-1000).toISOString();
+ const choice=smartChoices(roots,[expired]).find(q=>q.text==="A continuation after the pause");expect(choice?.public).toBe(false);expect(choice?.parentKey).toBeUndefined();
 });

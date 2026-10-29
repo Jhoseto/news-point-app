@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { askSmart, prepareSmartArticle } from "@newspoint/db/smart-service";
-import { smartConfig } from "@newspoint/db/smart-provider";
-import {indexSmartArticle} from "@newspoint/db/smart-index";
+import { readSmartRuntimeConfig } from "@newspoint/db/smart-settings";
 import { failSmartTurn, pruneSmartPrivateData, smartArticle, smartReady, SmartError, type SmartDb } from "@newspoint/db/smart";
 
 export async function recoverSmartJobs(db:SmartDb){
@@ -20,7 +19,7 @@ export async function recoverSmartJobs(db:SmartDb){
   ) select 1`);
 }
 export async function processSmartTick(db:SmartDb) {
-  const config=smartConfig();
+  const config=await readSmartRuntimeConfig(db);
   if(!config.enabled||!config.key||!await smartReady(db))return false;
   await recoverSmartJobs(db);
   const turns=await db.execute(sql`select t.*,s.owner_hash from smart_turns t join smart_sessions s on s.id=t.session_id
@@ -31,17 +30,9 @@ export async function processSmartTick(db:SmartDb) {
     catch(error){await failSmartTurn(db,String(t.id));await db.execute(sql`update smart_turns set error_code=${error instanceof Error?error.name:"failed"} where id=${t.id as string}::uuid`);}
     return true;
   }
-  const vectorReady=await db.execute(sql`select to_regclass('public.smart_documents') is not null as ready`);
-  if(!vectorReady[0]?.ready)return false;
   const pending=await db.execute(sql`select b.article_id from smart_bootstraps b join smart_public_articles a on a.id=b.article_id
     where b.state='pending' and b.lease_token is null order by b.updated_at limit 1`);
-  // A requested article is indexed first. Background archive indexing is explicit opt-in.
-  let target=pending[0]?.article_id?String(pending[0].article_id):null;
-  if(!target&&config.provider === "openai"&&process.env.SMART_INDEX_AUTOMATIC==="1") {
-    const rows=await db.execute(sql`select a.id from smart_public_articles a where a.published_at>=now()-interval '6 months' and not exists(select 1 from smart_documents d where d.article_id=a.id and d.revision=a.revision)
-      and not exists(select 1 from smart_index_jobs j where j.article_id=a.id and j.revision=a.revision and j.state in ('pending','uncertain'))
-      order by a.published_at desc limit 1`);target=rows[0]?.id?String(rows[0].id):null;
-  }
+  const target=pending[0]?.article_id?String(pending[0].article_id):null;
   if(!target)return false;
   // Lease the requested preparation before any paid work, across worker processes.
   const token=randomUUID();
@@ -51,11 +42,6 @@ export async function processSmartTick(db:SmartDb) {
   }
   try {
     const article=await smartArticle(db,target);
-    const indexed=await indexSmartArticle(db,config,target);
-    if(indexed==="busy"||indexed==="uncertain"){
-      if(pending[0])await db.execute(sql`update smart_bootstraps set state=${indexed==="uncertain"?"uncertain":"pending"},lease_token=null,lease_until=null where article_id=${target}::uuid and lease_token=${token}::uuid`);
-      return true;
-    }
     if(pending[0]) {
       const prepared=await prepareSmartArticle(db,config,article);
       await db.execute(sql`update smart_bootstraps set payload=${JSON.stringify(prepared.payload)}::jsonb,sources=${JSON.stringify(prepared.sources)}::jsonb,state='ready',expires_at=now()+interval '24 hours',lease_token=null,lease_until=null,updated_at=now()

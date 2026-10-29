@@ -5,7 +5,7 @@ import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getDb, loadRootEnv } from "@newspoint/db";
 import { SmartError, smartReady, smartRateLimit, readSmartBootstrap, openSmartSession, readSmartSession, reserveSmartTurn, deleteSmartSession } from "@newspoint/db/smart";
-import { smartConfig } from "@newspoint/db/smart-provider";
+import { readSmartRuntimeConfig } from "@newspoint/db/smart-settings";
 import {askSmart} from "@newspoint/db/smart-service";
 import {readerSessionWithCards,readerBootstrapWithCards} from "./smart-reader-data";
 
@@ -31,10 +31,10 @@ async function boundedJson(request:Request){
 }
 export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|"ask"|"history"|"feedback",rawId:string){
   try{
-    loadRootEnv();const config=smartConfig();
+    loadRootEnv();const db=getDb();const config=await readSmartRuntimeConfig(db);
     if(!config.enabled)throw new SmartError("disabled",503,"NewsPoint Smart още не е активен.");
     if(config.secret.length<32)throw new SmartError("config",503,"NewsPoint Smart очаква конфигурация.");
-    const resource=id.parse(rawId);const db=getDb();
+    const resource=id.parse(rawId);
     if(!await smartReady(db))throw new SmartError("migration",503,"NewsPoint Smart се подготвя.");
     const owner=smartOwner(config.secret,request.cookies.get(COOKIE)?.value);
     if(request.method!=="GET"){

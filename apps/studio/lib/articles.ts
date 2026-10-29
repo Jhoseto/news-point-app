@@ -53,7 +53,7 @@ import { resolveFirstPublishedAt, ScheduledPublishConflictError } from "./publis
 
 export class EditorError extends Error {
   constructor(
-    readonly status: 400 | 403 | 404 | 409 | 422,
+    readonly status: 400 | 403 | 404 | 409 | 422 | 503,
     readonly code: string,
     message: string,
     readonly details?: unknown,

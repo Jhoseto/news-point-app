@@ -24,6 +24,9 @@ it("matches layout whitespace in quotes but never changes dates, words or punctu
  expect(smartEvidenceContains("Пловдив 2026 г.","Русе 2026 г.")).toBe(false);
  expect(smartEvidenceContains("Пловдив 2026 г.","")).toBe(false);
 });
+it("rejects a related article id without a corresponding verified own source",()=>{
+ expect(()=>validateSmartEvidence({status:"insufficient",blocks:[{text:"QA",sourceIds:[]}],sources:[],relatedArticleIds:["00000000-0000-4000-8000-000000000002"],followUps:[],checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+1000).toISOString()})).toThrow("unknown_related_article");
+});
 
 it("hides outgoing citations in reader copy without changing the stored evidence",()=>{
  expect(smartReaderText('Според биографичния профил на Slava.bg тя започва във вестник „Труд“.',['https://slava.bg/profile'])).toBe('По наличната информация тя започва във вестник „Труд“.');

@@ -49,3 +49,5 @@
 .np-smart-next .np-smart-form{border-top:1px solid var(--np-line);padding-top:18px;margin-top:0}
 .np-smart-next .np-smart-form>label{color:var(--np-ink)}
 @media(max-width:420px){.np-smart-reader-question{padding:13px 14px}.np-smart-reader-question h3{font-size:15px}.np-smart-feed{gap:24px}.np-smart-answer-block p{font-size:14px;line-height:1.85}}
+
+.np-smart-countdown{font-variant-numeric:tabular-nums;font-weight:750;color:var(--np-ink);white-space:nowrap}

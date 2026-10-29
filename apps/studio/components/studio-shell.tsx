@@ -27,7 +27,7 @@ const NAV = [
 ];
 const USERS_LINK = { href: "/users", label: "Профили", icon: "M16 19v-1a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v1M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6M22 19v-1a4 4 0 0 0-3-3.87M16 4.13a3 3 0 0 1 0 5.74" };
 const LOGS_LINK = { href: "/logs", label: "Logs", icon: "M8 5h12M8 12h12M8 19h12M3 5h.01M3 12h.01M3 19h.01" };
-const AI_COSTS_LINK = { href: "/ai-costs", label: "AI разходи", icon: "M4 19h16M7 15V9m5 6V5m5 10v-4" };
+const AI_SETTINGS_LINK = { href: "/ai-settings", label: "AI настройки", icon: "M4 7h16M4 17h16M8 4v6M16 14v6" };
 const MONITORING_LINK = { href: "/error-monitoring", label: "Error monitoring", icon: "M3 12h4l3-8 4 16 3-8h4" };
 
 const NAV_HELP: Record<string, string> = {
@@ -42,7 +42,7 @@ const NAV_HELP: Record<string, string> = {
   "/stories": "Обединява свързани статии в тема с продължение и хронология.",
   "/users": "Управлява служебни профили и права за достъп до Studio.",
   "/logs": "История на действията в Studio: служител, промяна, час и резултат.",
-  "/ai-costs": "AI потребление по модул, статия и операция, с отделяне на непотвърдените разходи.",
+  "/ai-settings": "Избор на модела, който отговаря в NewsPoint Smart.",
   "/error-monitoring": "Работа на сайта, засечени прекъсвания и диагностика. Удивителната показва активен проблем или нов сигнал и се изчиства при преглед след възстановяване.",
   "/settings/social/": "Свързва Facebook страница и показва проблеми при изпращане на новини.",
 };
@@ -70,10 +70,10 @@ function navClass(collapsed: boolean) {
 export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = false, children }: { user: { id?: string; name: string; role: string }; webUrl: string; canManageUsers: boolean; canManageSocial?: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
   const nav = NAV;
-  const mobileNav = [...(canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK, AI_COSTS_LINK] : NAV), ...(canManageSocial ? [{ href: "/settings/social/", label: "Facebook", icon: "M14 4h-2a3 3 0 0 0-3 3v13M6 11h9" }] : [])];
+  const mobileNav = [...(canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK, AI_SETTINGS_LINK] : NAV), ...(canManageSocial ? [{ href: "/settings/social/", label: "Facebook", icon: "M14 4h-2a3 3 0 0 0-3 3v13M6 11h9" }] : [])];
   // The editor uses the full width for its side-by-side preview.
   const wide = /^\/articles\/[^/]+$/.test(pathname);
-  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs" || pathname === "/ai-costs" || pathname === "/moyat-plovdiv" || pathname === "/error-monitoring";
+  const desk = pathname === "/" || pathname === "/arrange" || pathname === "/logs" || pathname === "/ai-settings" || pathname === "/moyat-plovdiv" || pathname === "/error-monitoring";
   const router = useRouter();
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
   const [collapsed, setCollapsed] = useState(wide);
@@ -234,7 +234,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               <Link href={MONITORING_LINK.href} data-help={NAV_HELP[MONITORING_LINK.href]} aria-label={`${MONITORING_LINK.label}${monitoringAttention ? ` — ${monitoringTitle}` : ""}`} aria-current={isActive(MONITORING_LINK.href) ? "page" : undefined} className={`${navClass(collapsed)} mb-2 w-full`}>
                 <Icon d={MONITORING_LINK.icon} />{collapsed ? <span className="sr-only">{MONITORING_LINK.label}</span> : MONITORING_LINK.label}{monitoringBadge}
               </Link>
-              <Link href={AI_COSTS_LINK.href} data-help={NAV_HELP[AI_COSTS_LINK.href]} aria-current={isActive(AI_COSTS_LINK.href)?"page":undefined} className={`${navClass(collapsed)} mb-2 w-full`}><Icon d={AI_COSTS_LINK.icon}/>{collapsed?<span className="sr-only">{AI_COSTS_LINK.label}</span>:AI_COSTS_LINK.label}</Link>
+              <Link href={AI_SETTINGS_LINK.href} data-help={NAV_HELP[AI_SETTINGS_LINK.href]} aria-current={isActive(AI_SETTINGS_LINK.href)?"page":undefined} className={`${navClass(collapsed)} mb-2 w-full`}><Icon d={AI_SETTINGS_LINK.icon}/>{collapsed?<span className="sr-only">{AI_SETTINGS_LINK.label}</span>:AI_SETTINGS_LINK.label}</Link>
             </>
           ) : null}
           <Link

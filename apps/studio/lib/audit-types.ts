@@ -1,4 +1,5 @@
 export const AUDIT_AREAS = {
+  ai: "AI настройки",
   city: "Моят Пловдив",
   breaking: "Извънредно",
   social: "Социални мрежи",

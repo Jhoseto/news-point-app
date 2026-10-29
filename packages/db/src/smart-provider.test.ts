@@ -13,6 +13,12 @@ const config=()=>smartConfig({MINIMAX_API_KEY:"minimax-test-only",OPENAI_API_KEY
 const reply=(extra:Record<string,unknown>={})=>Response.json({id:"qa-response",model:"MiniMax-M3.1-Flash",status:"completed",usage:{input_tokens:100,output_tokens:60,input_tokens_details:{cached_tokens:20},output_tokens_details:{reasoning_tokens:40}},output:[{type:"message",content:[{type:"output_text",text:'{"valid":true}'}]}],...extra});
 beforeEach(()=>{vi.clearAllMocks();vi.unstubAllGlobals();ledger.start.mockResolvedValue("qa-ledger");});
 describe("Smart provider isolation (offline)",()=>{
+  it("makes OpenAI structured schemas strict at every object without mutating the Zod schema",()=>{
+    const schema=z.toJSONSchema(z.object({valid:z.boolean(),note:z.string().optional(),items:z.array(z.object({value:z.number().default(1)}))}));
+    const request=smartProviderRequest(smartConfig({SMART_PROVIDER:"openai",OPENAI_API_KEY:"qa"}),{text:{format:{type:"json_schema",strict:true,schema}}});
+    const strict=(request.body.text as any).format.schema;
+    expect(strict.required).toEqual(["valid","note","items"]);expect(strict.additionalProperties).toBe(false);expect(strict.properties.items.items.required).toEqual(["value"]);expect(strict.properties.items.items.additionalProperties).toBe(false);expect(JSON.stringify(strict)).not.toContain('"default"');expect(schema.required).not.toContain("note");
+  });
   it("does one direct search, keeps credentials at its fixed host, and never prices it as zero",async()=>{
     const network=vi.fn().mockResolvedValue(Response.json({base_resp:{status_code:0},organic:[{title:"Official QA",link:"https://example.org/proof",snippet:"Not evidence"},{title:"Bad",link:"https://secret@example.org/"},{title:"Bad",link:"javascript:alert(1)"}]}));
     expect(await smartMiniMaxSearch(db,config(),article,"QA query",network)).toEqual([{title:"Official QA",url:"https://example.org/proof"}]);

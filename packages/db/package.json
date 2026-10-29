@@ -7,6 +7,7 @@
     "./smart-index": "./src/smart-index.ts",
     "./smart": "./src/smart.ts",
     "./ai-usage": "./src/ai-usage.ts",
+    "./smart-settings": "./src/smart-settings.ts",
     "./smart-provider": "./src/smart-provider.ts",
     "./smart-service": "./src/smart-service.ts",
     ".": "./src/index.ts",
