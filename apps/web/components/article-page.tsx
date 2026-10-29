@@ -81,6 +81,9 @@ export async function ArticlePage({
   // Lightbox gallery: hero first, then every body image in document order.
   const imageGallery = articleImageGallery(article.body, article.media, article.heroEmbedUrl ? null : article.hero);
   const analytics = publicAnalyticsEnabled() ? readPublicAnalyticsConfig() : null;
+  const authorAvatarUrl = article.authorKind === "staff" && article.authorUserId
+    ? `/api/authors/${encodeURIComponent(article.authorUserId)}/avatar/`
+    : null;
 
   return (
     <div className="np-container np-article-page">
@@ -107,10 +110,11 @@ export async function ArticlePage({
             {subtitle ? <p id="article-tts-excerpt" className="np-article-deck">{subtitle}</p> : null}
             <div className="np-article-meta">
               <div className="np-article-byline">
-                <span className="np-article-author-mark" style={article.authorKind === "staff" && article.authorUserId
-                  ? { backgroundImage: `url("/api/authors/${encodeURIComponent(article.authorUserId)}/avatar/")` }
-                  : undefined}>
-                  <span className="np-ring" aria-hidden="true" />
+                <span
+                  className="np-article-author-mark"
+                  style={authorAvatarUrl ? { backgroundImage: `url("${authorAvatarUrl}")` } : undefined}
+                >
+                  {authorAvatarUrl ? null : <span className="np-ring" aria-hidden="true" />}
                 </span>
                 <span><small>Автор</small><strong>{article.authorName}</strong></span>
               </div>
