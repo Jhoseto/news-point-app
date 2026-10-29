@@ -37,7 +37,7 @@ import { ShareButtons } from "./share";
 import { ReadingProgress } from "./reading-progress";
 import { CategoryPill } from "./ui";
 import "./article-premium.css";
-import { SmartReader } from "./smart/reader";
+import { SmartEntry } from "./smart/entry";
 
 function themeStopToSummary(stop: StoryThemeArticle): ArticleSummary {
   return {
@@ -149,7 +149,7 @@ export async function ArticlePage({
             <div className="np-article-reading-column">
               {sections.length >= 2 ? <div className="np-article-inline-toc"><ArticleRail sections={sections} /></div> : null}
               <div id="np-article-body"><ArticleBody blocks={article.body} media={article.media} imageGallery={imageGallery} /></div>
-              {process.env.SMART_ENABLED === "1" ? <SmartReader key={article.id} articleId={article.id} measurementId={analytics?.kind==="ga4"?analytics.measurementId:undefined} /> : null}
+              <SmartEntry key={article.id} articleId={article.id} measurementId={analytics?.kind==="ga4"?analytics.measurementId:undefined} />
               <footer className="np-article-end">
                 <ArticleNeighbours
                   older={older}

@@ -1,25 +1,31 @@
-.np-ai-settings{width:min(100%,940px);margin:0 auto;padding:clamp(24px,4vw,48px);color:var(--np-body)}
-.np-ai-settings-heading{padding-bottom:30px;border-bottom:1px solid var(--np-line)}
-.np-ai-settings-heading h1{margin:0 0 10px;font-size:clamp(26px,3vw,34px);line-height:1.2;letter-spacing:-.04em;font-weight:800;color:var(--np-ink)}
-.np-ai-settings-heading p{margin:0;font-size:14px;line-height:1.7;color:var(--np-muted)}
-.np-ai-settings-section{padding:32px 0}
-.np-ai-settings-section-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:18px;margin-bottom:25px}
-.np-ai-settings-eyebrow{display:block;font-size:11px;font-weight:650;color:var(--np-muted);margin-bottom:6px}
-.np-ai-settings-section h2{margin:0;font-size:21px;line-height:1.4;letter-spacing:-.025em;color:var(--np-ink);font-weight:750}
-.np-ai-settings-current{font-size:12px;line-height:1.7;color:var(--np-muted)}.np-ai-settings-current strong{color:var(--np-ink);font-weight:750}
-.np-ai-settings-options{display:flex;gap:14px}
-.np-ai-settings-option{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;text-align:left;border:1px solid var(--np-line);border-radius:12px;background:var(--np-surface);color:var(--np-body);padding:23px;font-family:inherit;cursor:pointer;transition:border-color 180ms cubic-bezier(.16,1,.3,1),background 180ms cubic-bezier(.16,1,.3,1)}
-.np-ai-settings-option:hover:not(:disabled){border-color:var(--np-accent)}
-.np-ai-settings-option[aria-pressed=true]{border-color:var(--np-accent);background:var(--np-surface-2)}
-.np-ai-settings-option:disabled{cursor:default}.np-ai-settings-option:disabled:not([aria-pressed=true]){opacity:.6}
-.np-ai-settings-option-top{display:flex;align-items:center;justify-content:space-between;gap:15px}.np-ai-settings-option-top strong{font-size:21px;font-weight:750;letter-spacing:-.03em;color:var(--np-ink)}
-.np-ai-settings-choice{display:grid;place-items:center;width:23px;height:23px;border:1px solid var(--np-line);border-radius:50%;flex-shrink:0}
-.np-ai-settings-option[aria-pressed=true] .np-ai-settings-choice{border-color:var(--np-accent);background:var(--np-accent);color:#fff}.np-ai-settings-choice svg{width:18px;height:18px}
-.np-ai-settings-model{font-size:13px;line-height:1.7;color:var(--np-muted);margin-top:5px}
-.np-ai-settings-option-status{font-size:11px;font-weight:650;line-height:1.7;margin-top:24px;color:var(--np-muted)}.np-ai-settings-option[aria-pressed=true] .np-ai-settings-option-status{color:var(--np-ink)}
-.np-ai-settings-hint,.np-ai-settings-loading{font-size:12px;line-height:1.8;color:var(--np-muted);margin:18px 0 0}
-.np-ai-settings-message{font-size:13px;line-height:1.7;color:var(--np-success);margin:22px 0 0}
-.np-ai-settings-error{font-size:13px;line-height:1.7;color:var(--np-danger);margin:22px 0 0}.np-ai-settings-error p{margin:0}.np-ai-settings-error button{font:inherit;color:var(--np-link);background:none;border:0;padding:8px 0;min-height:44px;cursor:pointer;text-decoration:underline}
-.np-ai-settings button:focus-visible{outline:2px solid var(--np-accent);outline-offset:4px}
-@media(max-width:600px){.np-ai-settings-options{flex-direction:column}.np-ai-settings-option{padding:20px}.np-ai-settings-section-heading{align-items:flex-start;flex-direction:column;gap:10px}.np-ai-settings-heading{padding-bottom:24px}}
+.np-ai-settings{width:min(100%,900px);margin:0 auto;padding:clamp(20px,3vw,32px);color:var(--np-body)}
+.np-ai-settings-heading h1{margin:0 0 6px;font-size:28px;line-height:1.25;letter-spacing:-.035em;font-weight:800;color:var(--np-ink)}
+.np-ai-settings-heading p{margin:0;font-size:13px;line-height:1.7;color:var(--np-muted)}
+.np-ai-settings-tabs{display:flex;border-bottom:1px solid var(--np-line);margin-top:22px}
+.np-ai-settings-tabs button{font:inherit;font-size:13px;font-weight:750;min-height:44px;padding:10px 3px;border:0;border-bottom:2px solid var(--np-accent);background:none;color:var(--np-ink);cursor:pointer}
+.np-ai-settings-section{padding:22px 0}
+.np-ai-settings-section-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid var(--np-line)}
+.np-ai-settings-section h2{margin:0;font-size:18px;font-weight:750;letter-spacing:-.02em;color:var(--np-ink)}
+.np-ai-settings-section-heading p{margin:5px 0 0;font-size:12px;line-height:1.7;color:var(--np-muted)}
+.np-ai-settings-power{display:flex;align-items:center;gap:12px;flex-shrink:0}.np-ai-settings-power>span{font-size:12px;color:var(--np-muted)}
+.np-ai-settings-toggle{font:inherit;font-size:12px;font-weight:750;min-height:44px;min-width:96px;padding:10px 15px;border:1px solid var(--np-line);border-radius:8px;background:var(--np-surface);color:var(--np-ink);cursor:pointer}
+.np-ai-settings-toggle[aria-pressed=false]{color:#fff;background:var(--np-accent);border-color:var(--np-accent)}
+.np-ai-settings-row{display:grid;grid-template-columns:180px 1fr;gap:20px;align-items:center;padding:20px 0}
+.np-ai-settings-label h3{margin:0;font-size:13px;font-weight:750;color:var(--np-ink)}.np-ai-settings-label p{margin:5px 0 0;font-size:12px;line-height:1.7;color:var(--np-muted)}
+.np-ai-settings-options{display:flex;gap:10px;min-width:0}
+.np-ai-settings-option,.np-ai-settings-model-choice{flex:1;min-width:0;display:flex;flex-direction:column;align-items:stretch;text-align:left;font:inherit;padding:12px 14px;border:1px solid var(--np-line);border-radius:8px;background:var(--np-surface);color:var(--np-body);cursor:pointer;transition:border-color 180ms cubic-bezier(.16,1,.3,1),background 180ms cubic-bezier(.16,1,.3,1)}
+.np-ai-settings-option[aria-pressed=true],.np-ai-settings-model-choice[aria-pressed=true]{border-color:var(--np-accent);background:var(--np-surface-2)}
+.np-ai-settings-option:hover:not(:disabled),.np-ai-settings-model-choice:hover:not(:disabled){border-color:var(--np-accent)}
+.np-ai-settings-option-top{display:flex;align-items:center;justify-content:space-between;gap:10px}.np-ai-settings-option-top strong,.np-ai-settings-model-choice strong{font-size:14px;font-weight:750;color:var(--np-ink)}
+.np-ai-settings-choice{display:grid;place-items:center;width:18px;height:18px;border:1px solid var(--np-line);border-radius:50%;flex-shrink:0}
+.np-ai-settings-option[aria-pressed=true] .np-ai-settings-choice{background:var(--np-accent);border-color:var(--np-accent);color:#fff}.np-ai-settings-choice svg{width:14px;height:14px}
+.np-ai-settings-model,.np-ai-settings-model-choice span{font-size:11px;line-height:1.7;color:var(--np-muted);margin-top:3px}
+.np-ai-settings-option-status,.np-ai-settings-model-choice span:last-child{font-size:10px;line-height:1.7;color:var(--np-muted);margin-top:6px}
+.np-ai-settings-models{border:0;padding:0 0 0 200px;margin:0;min-width:0}.np-ai-settings-models legend{font-size:12px;font-weight:750;color:var(--np-ink);margin-bottom:10px;padding:0}
+.np-ai-settings-hint,.np-ai-settings-loading{font-size:12px;line-height:1.7;color:var(--np-muted);margin:18px 0 0}
+.np-ai-settings-message{font-size:12px;line-height:1.7;color:var(--np-success);margin:12px 0 0}
+.np-ai-settings-error{font-size:12px;line-height:1.7;color:var(--np-danger);margin:14px 0 0}.np-ai-settings-error p{margin:0}.np-ai-settings-error button{font:inherit;color:var(--np-link);background:none;border:0;padding:8px 0;min-height:44px;cursor:pointer;text-decoration:underline}
+.np-ai-settings button:disabled{cursor:default;opacity:.65}.np-ai-settings button:focus-visible,.np-ai-settings-section:focus-visible{outline:2px solid var(--np-accent);outline-offset:3px}
+@media(max-width:600px){.np-ai-settings-row{grid-template-columns:1fr;gap:12px}.np-ai-settings-models{padding:0}.np-ai-settings-section-heading{align-items:flex-start;flex-direction:column;gap:12px}.np-ai-settings-power{width:100%;justify-content:space-between}.np-ai-settings-option,.np-ai-settings-model-choice{padding:12px}.np-ai-settings-heading h1{font-size:25px}}
+/* bc-audit-ignore: motion-easing-token — this accessibility override removes motion; the transition above uses the approved deceleration curve. */
 @media(prefers-reduced-motion:reduce){.np-ai-settings *{transition:none!important;animation:none!important}}

@@ -57,7 +57,7 @@ export async function processSmartTick(db:SmartDb) {
 export function startSmartWorker(db:SmartDb,log:(message:string)=>void) {
   let busy=false,pruning=false;
   const safeError=(error:unknown)=>error instanceof SmartError?error.code:error instanceof Error?error.name:"failed";
-  const tick=async()=>{if(busy||process.env.SMART_ENABLED!=="1")return;busy=true;try{await processSmartTick(db);}catch(error){log(`Smart: ${safeError(error)}`);}finally{busy=false;}};
+  const tick=async()=>{if(busy)return;busy=true;try{await processSmartTick(db);}catch(error){log(`Smart: ${safeError(error)}`);}finally{busy=false;}};
   // Privacy maintenance continues when model access or the public feature is disabled.
   const prune=async()=>{if(pruning)return;pruning=true;try{if(await smartReady(db))await pruneSmartPrivateData(db);}catch(error){log(`Smart maintenance: ${safeError(error)}`);}finally{pruning=false;}};
   const maintenance=setInterval(()=>void prune(),60*60_000);void prune();
