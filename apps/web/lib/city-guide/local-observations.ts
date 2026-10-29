@@ -126,7 +126,7 @@ function isRelevantRow(sourceId: string, fields: Record<string, string | number>
     && typeof fields.type === "string" && typeof fields.district === "string" && typeof fields.address === "string" && typeof fields.phone === "string";
   if (sourceId === "chistota-bulky-waste") return (fields.kind === "pickup" && typeof fields.phone === "string")
     || (fields.kind === "site" && typeof fields.district === "string" && typeof fields.address === "string" && typeof fields.contact === "string" && typeof fields.accepted === "string");
-  if (sourceId === "ecomap-containers") return typeof fields.type === "string" && typeof fields.address === "string"
+  if (["ecomap-containers", "ecopack-containers"].includes(sourceId)) return typeof fields.type === "string" && typeof fields.address === "string"
     && typeof fields.latitude === "number" && typeof fields.longitude === "number";
   if (sourceId === "ecomap-collection-events") return typeof fields.title === "string" && typeof fields.details === "string"
     && typeof fields.date === "string" && /^\d{4}-\d{2}-\d{2}$/u.test(fields.date) && fields.date >= today;

@@ -8,10 +8,11 @@ const LABELS: Record<string, string> = {
   blue: "Хартия и картон",
   green: "Стъкло",
   brown: "Биоотпадъци",
+  black: "Смесени битови отпадъци",
   tekstil: "Текстил",
   nuba: "Батерии и акумулатори",
 };
-const TYPES = ["yellow", "blue", "green", "brown", "tekstil", "nuba"] as const;
+const TYPES = ["yellow", "blue", "green", "brown", "black", "tekstil", "nuba"] as const;
 const PAGE_SIZE = 18;
 
 export function CityEcoPoints({ items }: { items: CityObservation["items"] }) {

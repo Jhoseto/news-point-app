@@ -22,9 +22,28 @@ function response(body: string, status = 200, headers: Record<string, string> = 
   return new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", ...headers } });
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("city source pilot", () => {
+  it("uses the signed relay only after a configured source is blocked directly", async () => {
+    const source = candidateSources.find(entry => entry.id === "lohi-programme")!;
+    const html = `<main>Lo/Hi Craft Space. Rayko Daskalov 55, Plovdiv
+      <article class="event" data-event="Music Quiz" data-date="2026-11-09" data-time="20:00"><h3>Music Quiz</h3><p>Участие с отбори.</p></article>
+    </main>`;
+    vi.stubEnv("CITY_SOURCE_RELAY_URL", "https://newspoint.bg/city-source-relay/v1");
+    vi.stubEnv("CITY_SOURCE_RELAY_SECRET", "s".repeat(64));
+    const fetchMock = vi.fn().mockResolvedValueOnce(response("blocked", 403, { "cf-mitigated": "challenge" }))
+      .mockResolvedValueOnce(response(html, 200, { "x-np-relay-final-url": source.url }));
+    vi.stubGlobal("fetch", fetchMock);
+    const result = await runPilotSource(source, { failures: 0, items: {} }, time);
+    expect(result.journal.outcome).toBe("parsed");
+    expect(result.snapshot?.items).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const relayRequest = fetchMock.mock.calls[1]?.[0] as URL;
+    const relayInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect(relayRequest.toString()).toBe("https://newspoint.bg/city-source-relay/v1");
+    expect(relayInit.headers).toMatchObject({ "x-np-city-timestamp": expect.any(String), "x-np-city-signature": expect.stringMatching(/^[a-f0-9]{64}$/u) });
+  });
   it("honours Retry-After from a required PDF without refreshing a previous snapshot", async () => {
     const source = candidateSources.find(entry => entry.id === "plovdiv-low-emission-permit")!;
     const listing = '<div id="content"><h1>Бланки и формуляри</h1><p>Зона с ниски емисии:</p><p><a href="/wp-content/uploads/2026/09/info.pdf">Информация</a></p><p><a href="/wp-content/uploads/2026/09/form.pdf">Заявление</a></p><p>Синя зона:</p></div>';

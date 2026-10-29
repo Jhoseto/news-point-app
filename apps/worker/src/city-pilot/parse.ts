@@ -261,7 +261,7 @@ export function parseEcomapContainers(json: string): PilotSnapshot {
   const sourceUrl = "https://ecomap.plovdiv.bg/";
   const parsed: unknown = JSON.parse(json);
   if (!Array.isArray(parsed) || parsed.length < 1500 || parsed.length > 2500) throw new Error(`${sourceId}: city container count outside observed range`);
-  const types = new Set(["yellow", "blue", "green", "brown", "tekstil", "nuba"]);
+  const types = new Set(["yellow", "blue", "green", "brown", "black", "tekstil", "nuba"]);
   const entries = parsed.map((raw: unknown) => {
     if (!raw || typeof raw !== "object") throw new Error(`${sourceId}: invalid container record`);
     const row = raw as Record<string, unknown>;
@@ -283,8 +283,53 @@ export function parseEcomapContainers(json: string): PilotSnapshot {
   });
   return unique(sourceId, entries, [
     "The API returns map points and collection types, not the condition, capacity, opening hours or guaranteed present operation of each container.",
-    "The six observed types cover street containers; dedicated collection sites and their accepted waste require another source.",
+    "The seven observed types cover street containers; dedicated collection sites and their accepted waste require another source.",
     "City bounds were compared with two half-city queries on 2026-10-25; repeated completeness and removal behaviour remain unproven.",
+  ]);
+}
+
+export function parseEcopackContainers(json: string): PilotSnapshot {
+  const sourceId = "ecopack-containers";
+  const sourceUrl = "https://map.ecopack.bg/";
+  const parsed: unknown = JSON.parse(json);
+  if (!parsed || typeof parsed !== "object" || (parsed as { type?: unknown }).type !== "FeatureCollection"
+    || !Array.isArray((parsed as { features?: unknown }).features)) throw new Error(`${sourceId}: invalid GeoJSON collection`);
+  const features = (parsed as { features: unknown[] }).features;
+  if (features.length < 5_000 || features.length > 10_000) throw new Error(`${sourceId}: national location count outside observed range`);
+  const entries: PilotItem[] = [];
+  for (const raw of features) {
+    if (!raw || typeof raw !== "object") throw new Error(`${sourceId}: invalid feature`);
+    const feature = raw as Record<string, unknown>;
+    const properties = feature.properties;
+    const geometry = feature.geometry;
+    if (!properties || typeof properties !== "object" || !geometry || typeof geometry !== "object") throw new Error(`${sourceId}: incomplete feature`);
+    const props = properties as Record<string, unknown>;
+    if (props.municipality !== "Пловдив" || props.status !== "active") continue;
+    const coordinates = (geometry as Record<string, unknown>).coordinates;
+    if ((geometry as Record<string, unknown>).type !== "Point" || !Array.isArray(coordinates) || coordinates.length !== 2) throw new Error(`${sourceId}: invalid Plovdiv geometry`);
+    const longitude = Number(coordinates[0]);
+    const latitude = Number(coordinates[1]);
+    const id = props.id;
+    const address = props.address;
+    const zone = props.zone;
+    const containers = props.containers;
+    if (!Number.isSafeInteger(id) || Number(id) <= 0 || typeof address !== "string" || !address.trim() || address.length > 300
+      || (zone !== null && typeof zone !== "string") || !Array.isArray(containers)
+      || !Number.isFinite(latitude) || latitude < 42.07 || latitude > 42.23
+      || !Number.isFinite(longitude) || longitude < 24.58 || longitude > 24.91) throw new Error(`${sourceId}: invalid Plovdiv location`);
+    const activeTypes = [...new Set(containers.flatMap(container => {
+      if (!container || typeof container !== "object") throw new Error(`${sourceId}: invalid container`);
+      const row = container as Record<string, unknown>;
+      if (row.is_active !== true || row.status !== "active") return [];
+      if (!["blue", "yellow", "green"].includes(String(row.type))) throw new Error(`${sourceId}: unknown active container type`);
+      return [String(row.type)];
+    }))].sort();
+    for (const type of activeTypes) entries.push(item(`${id}:${type}`, sourceUrl, { type, address: clean(address), district: typeof zone === "string" ? zone : "", latitude, longitude }));
+  }
+  if (entries.length < 500 || entries.length > 900) throw new Error(`${sourceId}: Plovdiv container count outside observed range`);
+  return unique(sourceId, entries, [
+    "Източникът е публичната карта на ЕКОПАК и покрива обслужваните от оператора райони, основно Централен и Тракия; не е карта на всички контейнери в Пловдив.",
+    "Показва публикувани активни точки и видове контейнери, но не запълване, повреда или гаранция, че съдът е наличен в момента.",
   ]);
 }
 
@@ -429,14 +474,15 @@ function parseEvnHeatingOutages(dom: Root): PilotSnapshot {
       }));
       const address = details.get("Адрес") ?? "";
       const issue = details.get("Неизправност") ?? "";
-      const start = details.get("Дата на изключване от") ?? "";
-      const end = details.get("Дата на изключване до") ?? "";
-      const deadline = details.get("Срок на изключването до") ?? "";
-      const validDateTime = (value: string) => {
-        const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4}) ([01]\d|2[0-3]):([0-5]\d):([0-5]\d)$/u);
-        return !!match && validCalendarDate(match[3]!, match[2]!, match[1]!);
+      const normalizeDateTime = (value: string) => {
+        const match = value.match(/^(\d{2})\.(\d{2})\.(\d{4})(?:\s+г\.,)?\s+([01]\d|2[0-3]):([0-5]\d):([0-5]\d)(?:\s+ч\.)?$/u);
+        if (!match || !validCalendarDate(match[3]!, match[2]!, match[1]!)) return null;
+        return `${match[1]}.${match[2]}.${match[3]} ${match[4]}:${match[5]}:${match[6]}`;
       };
-      if (!address || !issue || !validDateTime(start) || !validDateTime(end) || !validDateTime(deadline) || rows.length !== 5) throw new Error(`${sourceId}: incomplete ${kind} outage row`);
+      const start = normalizeDateTime(details.get("Дата на изключване от") ?? "");
+      const end = normalizeDateTime(details.get("Дата на изключване до") ?? "");
+      const deadline = normalizeDateTime(details.get("Срок на изключването до") ?? "");
+      if (!address || !issue || !start || !end || !deadline || rows.length !== 5) throw new Error(`${sourceId}: incomplete ${kind} outage row`);
       entries.push(item(digest([kind, address, start]), sourceUrl, { kind, address, issue, start, end, deadline }));
     }
     return cards.length;

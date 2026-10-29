@@ -46,7 +46,7 @@ $articleWorkerOutput = Join-Path (Get-Location) 'tests/reports/article-edge-cach
 pnpm dlx wrangler@4.153.0 deploy --dry-run --config deploy/cloudflare/wrangler.jsonc --outdir $articleWorkerOutput
 ```
 
-The pinned CLI was verified against the official npm registry on 2026-10-27. `wrangler.jsonc` deliberately has `ENABLED=0`, no production route and no workers.dev endpoint. A dry run compiles locally and does not publish.
+The pinned CLI was verified against the official npm registry on 2026-10-27. `wrangler.jsonc` keeps the production `newspoint.bg/*` route and observability configuration explicit, has `ENABLED=0` as its safe source default, and has no workers.dev endpoint. Production deploys must pass `ENABLED=1` deliberately. A dry run compiles locally and does not publish.
 
 Tests cover credential/viewport/RSC/query isolation, public-only rendering, missing/hidden content, pending-render invalidation, both purge URLs, provider failure and 1000 **isolated simultaneous fill calls** sharing one render. Local production Next checks use a real published article read-only through the SSH tunnel; they do not prove a live Cloudflare HIT or a live global purge.
 
@@ -66,6 +66,14 @@ Production release, route changes and credential creation require the owner's co
 Disable/remove the Worker route first (or set its `ENABLED=0`): canonical requests immediately use the original Next site. Then disable the server flag/restart as appropriate. Existing render copies expire after 30 seconds; purge their URLs if immediate invalidation is needed. Do not stop unrelated websites or alter HTTP/2 as part of this rollback.
 
 Primary references checked: [native fetch cache and purging](https://developers.cloudflare.com/workers/reference/how-the-cache-works/), [request cache options](https://developers.cloudflare.com/workers/runtime-apis/request/), [single-file purge](https://developers.cloudflare.com/cache/how-to/purge-cache/purge-by-single-file/), [Workers limits](https://developers.cloudflare.com/workers/platform/limits/). Route Handler behavior was also checked against the bundled Next16.3.8 documentation.
+
+## City source relay
+
+`newspoint-city-source-relay` is a separate `workers.dev` Worker used only as a signed read-only fallback for the public Lo/Hi programme. It has no `newspoint.bg` route and does not share article-cache behavior. The production collector first requests Lo/Hi directly and uses the relay only after the observed HTTP 202 response. The Worker accepts only `GET /city-source-relay/v1`, requires a five-minute HMAC-SHA256 signature, follows at most three same-host HTTPS redirects, allows only `www.lohicraftspace.com`, caps responses at 4MB and returns `private, no-store`. Unknown paths return404; unsigned requests return403.
+
+The same secret is stored only as a Cloudflare Worker secret and in the private server `.env.local`. `CITY_SOURCE_RELAY_URL` and `CITY_SOURCE_RELAY_SECRET` must never enter a client bundle or repository value. Tests are in `tests/edge/city-source-relay-worker.test.ts`. `wrangler.city-relay.jsonc` deploys only this isolated Worker.
+
+Do not add `plovdiv.bg`, `ecomap.plovdiv.bg` or `dogshelter.plovdiv.bg` to the allowlist: production and Cloudflare egress both receive403 from those domains. They require official allowlisting or another explicitly approved provider. Do not use browser challenge execution or weaken the NewsPoint zone WAF as a workaround.
 
 ## Public static files and cookie bypass (28 October 2026)
 

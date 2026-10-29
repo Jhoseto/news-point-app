@@ -10,7 +10,6 @@ describe("city navigation coverage", () => {
   it("lists only topics with current records in catalog order", () => {
     expect(cityAvailableTopics("transport", [group("plovdiv-transit"), group("plovdiv-airport-flights"), group("plovdiv-livetransport-gtfs", "stale")])).toEqual([
       { title: "Извън града", href: "#nablyudavani-plovdiv-airport-flights" },
-      { title: "Билети и карти", href: "#nablyudavani-plovdiv-transit" },
     ]);
   });
 

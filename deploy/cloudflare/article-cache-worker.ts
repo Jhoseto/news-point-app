@@ -1,8 +1,7 @@
 import { articleDocumentCandidate, articleEdgePath } from "../../packages/content/src/article-edge-cache";
-
 type Bindings = { ENABLED?: string; PUBLIC_ORIGIN?: string };
 type EdgeFetchOptions = RequestInit & { cf: { cacheEverything: boolean; cacheTtlByStatus: Record<string, number> } };
-type Fetcher = (input: Request, init?: EdgeFetchOptions) => Promise<Response>;
+type Fetcher = (input: Request, init?: RequestInit | EdgeFetchOptions) => Promise<Response>;
 
 /** Native fetch cache, not custom Cache API keys: supports global URL purge. */
 export function createArticleCacheWorker(fetcher: Fetcher = fetch) {

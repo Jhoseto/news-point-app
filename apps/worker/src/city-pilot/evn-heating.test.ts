@@ -26,6 +26,20 @@ describe("EVN heating interruptions", () => {
     expect(after.key).toBe(before.key);
     expect(after.fingerprint).not.toBe(before.fingerprint);
   });
+  it("accepts EVN's decorated Bulgarian date format and keeps stable normalized values", () => {
+    const decorated = card
+      .replace("23.10.2026 12:00:00", "23.10.2026 г., 12:00:00 ч.")
+      .replaceAll("26.10.2026 20:00:00", "26.10.2026 г., 20:00:00 ч.");
+    const plain = parsePilotPage("evn-heating-outages", page()).items[0]!;
+    const current = parsePilotPage("evn-heating-outages", page(decorated)).items[0]!;
+    expect(current.fields).toMatchObject({
+      start: "23.10.2026 12:00:00",
+      end: "26.10.2026 20:00:00",
+      deadline: "26.10.2026 20:00:00",
+    });
+    expect(current.key).toBe(plain.key);
+    expect(current.fingerprint).toBe(plain.fingerprint);
+  });
   it("accepts an explicitly empty report without calling previous faults resolved", () => {
     const snapshot = parsePilotPage("evn-heating-outages", page("", "", "В момента няма известни неизправности."));
     expect(snapshot.items).toEqual([]);

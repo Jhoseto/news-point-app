@@ -21,6 +21,7 @@ export const candidateSources: CandidateSource[] = [
   { id: "lohi-programme", category: "events", url: LOHI_URL, format: "html", pilot: true },
   ...Object.entries(PARKING_VENUES).map(([id, config]) => ({ id, category: "parking" as const, url: config.url, format: "html" as const, pilot: true as const })),
   { id: "plovdiv-community-air", category: "environment", url: PLOVDIV_AIR_URL, format: "json", pilot: true },
+  { id: "ecopack-containers", category: "environment", url: "https://map.ecopack.bg/api/locations/geojson", format: "json", pilot: true },
   { id: "plovdiv-transit", category: "transport", url: "https://www.plovdiv.bg/item/transport/mass-public-transport/", format: "html", pilot: true },
   { id: "plovdiv-transport-news", category: "transport", url: "https://www.plovdiv.bg/category/transport/", format: "html" },
   { id: "plovdiv-low-emission-permit", category: "transport", url: "https://www.plovdiv.bg/administration/municipal-enterprises/op_parking/form/", format: "html", pilot: true },

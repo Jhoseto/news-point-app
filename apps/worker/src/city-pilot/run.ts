@@ -8,11 +8,11 @@ import { parsePlovdivAir } from "./air-quality";
 import { parsePlannedPower } from "./planned-power";
 import { citySourcePolicy, citySourceInRelease } from "@newspoint/content/city-sources";
 import { VENUE_PROGRAMMES, collectVenueProgramme } from "./venue-programmes";
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { resolve, isAbsolute } from "node:path";
 import { pilotSources, type CandidateSource } from "./catalog";
-import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEpayGoEventDetail, parsePilotPage, type PilotSnapshot } from "./parse";
+import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parsePilotPage, type PilotSnapshot } from "./parse";
 import { previewAfterCheck, type LocalPreview } from "./preview";
 import { parsePlovdivGtfsArchive } from "./gtfs";
 import { collectFirstGradeVacancies } from "./first-grade";
@@ -48,6 +48,7 @@ const journalPath = resolve(outputDir, "runs.jsonl");
 const previewPath = process.env.CITY_PILOT_STORE_PREVIEW === "1" ? resolve(outputDir, "preview.json") : null;
 const maxBodyBytes = 4_000_000;
 const agent = process.env.CITY_PILOT_USER_AGENT || (process.argv.includes("--release") ? "NewsPointCity/1.0 (+https://newspoint.bg/)" : "NewsPointCityPilot/0.1 (+https://newspoint.bg/)");
+const relaySourceIds = new Set(["lohi-programme"]);
 
 
 export function pilotRefreshSeconds(sourceId: string): number {
@@ -100,7 +101,31 @@ async function requestSource(source: CandidateSource, previous: SourceState, req
     const headers = new Headers({ Accept: source.format === "gtfs" ? "application/zip,application/octet-stream" : source.format === "pdf" ? "application/pdf" : source.format === "json" ? "application/json" : "text/html,application/xhtml+xml", "User-Agent": agent });
     if (!requireBody && previous.etag) headers.set("If-None-Match", previous.etag);
     if (!requireBody && previous.lastModified) headers.set("If-Modified-Since", previous.lastModified);
-    const response = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(20_000), cache: "no-store" });
+    let response = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(20_000), cache: "no-store" });
+    if ([202, 403].includes(response.status) && relaySourceIds.has(source.id)) {
+      const relayUrl = process.env.CITY_SOURCE_RELAY_URL ?? "";
+      const relaySecret = process.env.CITY_SOURCE_RELAY_SECRET ?? "";
+      let endpoint: URL | null = null;
+      try {
+        endpoint = new URL(relayUrl);
+        if (endpoint.protocol !== "https:" || endpoint.username || endpoint.password || endpoint.port || endpoint.pathname !== "/city-source-relay/v1" || endpoint.search || endpoint.hash) endpoint = null;
+      } catch { endpoint = null; }
+      if (endpoint && relaySecret.length >= 32) {
+        await response.body?.cancel();
+        const relayAccept = headers.get("accept") ?? "";
+        const relayEtag = headers.get("if-none-match") ?? "";
+        const relayModified = headers.get("if-modified-since") ?? "";
+        const signedValue = [url, relayAccept, relayEtag, relayModified].join("\n");
+        const timestamp = String(Math.floor(Date.now() / 1000));
+        const signature = createHmac("sha256", relaySecret).update(`${timestamp}\n${signedValue}`).digest("hex");
+        response = await fetch(endpoint, { method: "GET", headers: { "user-agent": agent, "x-np-city-url": url, "x-np-city-accept": relayAccept, "x-np-city-if-none-match": relayEtag, "x-np-city-if-modified-since": relayModified, "x-np-city-timestamp": timestamp, "x-np-city-signature": signature }, redirect: "error", signal: AbortSignal.timeout(25_000), cache: "no-store" });
+        const relayedFinalUrl = response.headers.get("x-np-relay-final-url");
+        if (!relayedFinalUrl) { await response.body?.cancel(); throw new Error("city relay response missing final URL"); }
+        const relayed = new URL(relayedFinalUrl);
+        if (relayed.protocol !== "https:" || relayed.hostname !== expectedHost) { await response.body?.cancel(); throw new Error("city relay left the source HTTPS host"); }
+        url = relayed.toString();
+      }
+    }
     if (![301, 302, 303, 307, 308].includes(response.status)) return { response, finalUrl: url };
     const location = response.headers.get("location");
     if (!location) throw new Error("redirect without Location");
@@ -190,7 +215,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     if (source.format === "gtfs" ? !/(?:application\/zip|application\/octet-stream)/u.test(contentType) : source.format === "json" ? !contentType.includes("application/json") : !contentType.includes("text/html")) throw new Error("unexpected response content type");
-    const body = await bodyWithinLimit(response);
+    const body = await bodyWithinLimit(response, source.id === "ecopack-containers" ? 8_000_000 : maxBodyBytes);
     const bodyHash = sha256(body);
     if (!requireSnapshot && !detailDriven && !daySensitive && !partitioned && !alwaysParse && !(source.id === "vik-outages" && !previous.partition) && bodyHash === previous.bodyHash && previous.lastParsedAt) {
       const state = { ...previous, failures: 0, lastCheckedAt: checkedAt, lastSuccessAt: checkedAt, nextDueAt: dueAfter(source, 0, null, now) };
@@ -209,7 +234,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       procedureDocuments.set(url, document);
       return document;
     };
-    let snapshot = source.id === "balbok-plovdiv-campaigns" ? await collectBalbokCampaigns(decodeHtml(body, response.headers.get("content-type")), async url => {
+    let snapshot = source.id === "ecopack-containers" ? parseEcopackContainers(new TextDecoder().decode(body)) : source.id === "balbok-plovdiv-campaigns" ? await collectBalbokCampaigns(decodeHtml(body, response.headers.get("content-type")), async url => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       httpStatus = detail.response.status;

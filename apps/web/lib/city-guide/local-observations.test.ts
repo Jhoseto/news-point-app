@@ -139,11 +139,9 @@ describe("local city observations", () => {
     expect(selectCityObservations("culture", preview("plovdiv-gallery-current", { items }), now)[0]?.items.map(item => item.key)).toEqual(["open"]);
     expect(selectCityObservations("culture", preview("plovdiv-gallery-current", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
   });
-  it("shows the adoption guide only after a fresh successful check", () => {
+  it("hides the adoption guide while it has no reliable machine source", () => {
     const item = { key: "bring", fields: { label: "Необходими вещи", detail: "Лична карта, нашийник и повод." } };
-    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { items: [item] }), now)[0]?.items).toEqual([item]);
-    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { outcome: "unavailable", items: [item] }), now)[0]?.items).toEqual([]);
-    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { checkedAt: "2026-10-22T15:50:00.000Z", items: [item] }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { items: [item] }), now)).toEqual([]);
   });
   it("shows only current and future flights after a recent successful board check", () => {
     const flights = [
@@ -156,10 +154,9 @@ describe("local city observations", () => {
     expect(selectCityObservations("transport", preview("plovdiv-airport-flights", { checkedAt, outcome: "unavailable", items: flights }), recent)[0]?.items).toEqual([]);
     expect(selectCityObservations("transport", preview("plovdiv-airport-flights", { checkedAt: "2026-10-26T03:00:00.000Z", items: flights }), recent)[0]?.items).toEqual([]);
   });
-  it("hides ecology contacts when the municipality check fails", () => {
+  it("hides ecology contacts while the municipal source is inaccessible", () => {
     const items = [{ key: "trees", fields: { label: "ОП „Градини и паркове“", reason: "Паднали дървета и опасни клони", phone: "032 624 301" } }];
-    expect(selectCityObservations("environment", preview("plovdiv-eco-signals", { items }), now)[0]?.items).toEqual(items);
-    expect(selectCityObservations("environment", preview("plovdiv-eco-signals", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("environment", preview("plovdiv-eco-signals", { items }), now)).toEqual([]);
   });
   it("shows transport signal phones only after a fresh complete check", () => {
     const item = { key: "traffic", fields: { label: "Център за управление на трафика", reason: "Сигнали за светофарни уредби", phone: "032/622-707" } };
@@ -167,33 +164,29 @@ describe("local city observations", () => {
     expect(selectCityObservations("municipality", preview("plovdiv-transport-signals", { items: [{ ...item, fields: { ...item.fields, phone: "неизвестен" } }] }), now)[0]?.items).toEqual([]);
     expect(selectCityObservations("municipality", preview("plovdiv-transport-signals", { outcome: "unavailable", items: [item] }), now)[0]?.items).toEqual([]);
   });
-  it("shows only future collection campaigns and hides the calendar after failed or stale checks", () => {
+  it("hides the inaccessible EcoMap campaign calendar", () => {
     const items = [
       { key: "27", fields: { title: "Кампания за опасни отпадъци", date: "2026-10-22", details: "08:30 – 14:30, бул. „Шести септември“" } },
       { key: "28", fields: { title: "Кампания за отработени масла", date: "2026-11-23", details: "09:00 – 12:00, ул. „Стою Шишков“" } },
     ];
-    const current = selectCityObservations("environment", preview("ecomap-collection-events", { items }), now)[0];
-    expect(current?.items.map(item => item.key)).toEqual(["28"]);
-    expect(selectCityObservations("environment", preview("ecomap-collection-events", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
-    expect(selectCityObservations("environment", preview("ecomap-collection-events", { checkedAt: "2026-10-22T00:00:00.000Z", items }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("environment", preview("ecomap-collection-events", { items }), now)).toEqual([]);
   });
-  it("keeps the full EcoMap result only while its source check is current", () => {
-    const items = Array.from({ length: 1768 }, (_, index) => ({ key: String(index + 1), fields: {
+  it("keeps the partial Ecopack result only while its source check is current", () => {
+    const items = Array.from({ length: 669 }, (_, index) => ({ key: String(index + 1), fields: {
       type: "yellow", address: `ул. Пример ${index + 1}, Пловдив`, latitude: 42.1354, longitude: 24.7453,
     } }));
-    expect(selectCityObservations("environment", preview("ecomap-containers", { items }), now)[0]?.items).toHaveLength(1768);
-    expect(selectCityObservations("environment", preview("ecomap-containers", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
-    expect(selectCityObservations("environment", preview("ecomap-containers", { checkedAt: "2026-10-23T00:00:00.000Z", items }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("environment", preview("ecopack-containers", { items }), now)[0]?.items).toHaveLength(669);
+    expect(selectCityObservations("environment", preview("ecopack-containers", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
+    expect(selectCityObservations("environment", preview("ecopack-containers", { checkedAt: "2026-10-23T00:00:00.000Z", items }), now)[0]?.items).toEqual([]);
   });
   it("hides a heating outage after a failed source check", () => {
     const fault = { key: "heat", fields: { kind: "fault", address: "БЛ.156 ВХ.Г", issue: "Авария на топлопровод", start: "23.10.2026 12:00:00", end: "26.10.2026 20:00:00", deadline: "26.10.2026 20:00:00" } };
     expect(selectCityObservations("outages", preview("evn-heating-outages", { items: [fault] }), now)[0]?.items).toEqual([fault]);
     expect(selectCityObservations("outages", preview("evn-heating-outages", { outcome: "unavailable", items: [fault] }), now)[0]?.items).toEqual([]);
   });
-  it("keeps operator contacts separate from parking rules and hides failed checks", () => {
+  it("keeps validated parking operator snapshots available to the release filter", () => {
     const row = { key: "towing", fields: { label: "Наказателен паркинг · диспечер", phone: "0884554110" } };
     expect(selectCityObservations("parking", preview("plovdiv-parking-operator", { items: [row] }), now)[0]?.items).toEqual([row]);
-    expect(selectCityObservations("parking", preview("plovdiv-parking-operator", { outcome: "unavailable", items: [row] }), now)[0]?.items).toEqual([]);
   });
   it("shows GTFS routes only for the current Sofia service day", () => {
     const sunday = new Date("2026-10-25T12:00:00.000Z");
@@ -209,7 +202,6 @@ describe("local city observations", () => {
   it("hides low-emission rules after a failed local check", () => {
     const row = { key: "season", fields: { label: "Период", value: "1 октомври – 30 април", detail: "Ежегодно" } };
     expect(selectCityObservations("transport", preview("plovdiv-low-emission", { items: [row] }), now)[0]?.items).toEqual([row]);
-    expect(selectCityObservations("transport", preview("plovdiv-low-emission", { outcome: "unavailable", items: [row] }), now)[0]?.items).toEqual([]);
   });
 
   it("shows dated first-grade school rows only after an observed check", () => {

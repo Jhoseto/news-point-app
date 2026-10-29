@@ -41,11 +41,11 @@ export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]
   },
   environment: {
     "Въздухът в Пловдив": ["plovdiv-community-air"],
-    "Чистота и сметосъбиране": ["ecomap-containers"],
+    "Чистота и сметосъбиране": ["ecopack-containers"],
     "Паркове и зелени площи": ["plovdiv-eco-signals"],
     "Комари и кърлежи": ["plovdiv-eco-signals"],
-    "Къде да изхвърля?": ["chistota-bulky-waste", "ecomap-containers"],
-    "Мобилни пунктове": ["ecomap-collection-events", "balbok-plovdiv-campaigns"],
+    "Къде да изхвърля?": ["chistota-bulky-waste", "ecopack-containers"],
+    "Мобилни пунктове": ["balbok-plovdiv-campaigns"],
     "Домашни любимци": ["plovdiv-eco-signals"],
   },
   culture: {
