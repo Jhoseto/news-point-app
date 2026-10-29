@@ -3,6 +3,12 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./smart-vector": "./src/smart-vector.ts",
+    "./smart-index": "./src/smart-index.ts",
+    "./smart": "./src/smart.ts",
+    "./ai-usage": "./src/ai-usage.ts",
+    "./smart-provider": "./src/smart-provider.ts",
+    "./smart-service": "./src/smart-service.ts",
     ".": "./src/index.ts",
     "./schema": "./src/schema.ts",
     "./node": "./src/node.ts",
@@ -19,6 +25,8 @@
     "./city-admin": "./src/city-admin.ts"
   },
   "scripts": {
+    "smart:index": "node --use-system-ca --conditions=react-server --import tsx src/scripts/smart-index.ts",
+    "smart:evaluate": "node --use-system-ca --conditions=react-server --import tsx src/scripts/smart-evaluate.ts",
     "typecheck": "tsc -p tsconfig.json",
     "db:check": "tsx src/scripts/db-check.ts",
     "db:verify": "tsx src/scripts/db-verify.ts"

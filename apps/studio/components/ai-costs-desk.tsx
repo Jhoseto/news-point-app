@@ -1,0 +1,64 @@
+"use client";
+import { useEffect, useState } from "react";
+import { withBase } from "../lib/paths";
+import { sofiaToday, sofiaDayStart, shiftIsoDate } from "../lib/article-list-query";
+import "./ai-costs.css";
+
+type Row=Record<string,unknown>;
+export type AiCostsData={ready:boolean;modules:Row[];articles:Row[];operations:Row[];daily:Row[];totals:Row|null;grandTotals?:Row|null;provider:Row[];coverage:{module:string;name:string;status:string}[];page?:number};
+const money=(value:unknown)=>value===null||value===undefined?"Очаква проверка":new Intl.NumberFormat("bg-BG",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:12}).format(Number(value));
+const count=(value:unknown)=>new Intl.NumberFormat("bg-BG").format(Number(value??0));
+const operationLabels:Record<string,string>={embedding:"Смислов индекс",prepare:"Въпроси и свързана статия",assessment:"Оценка на въпроса",research:"Външно проучване",answer:"Отговор и продължения",verification:"Проверка на доказателства"};
+function dateLabel(value:unknown){return new Date(String(value)).toLocaleString("bg-BG",{timeZone:"Europe/Sofia",dateStyle:"short",timeStyle:"short"});}
+export function AiCostsDesk({initial,demo=false}:{initial?:AiCostsData;demo?:boolean}){
+  const [tab,setTab]=useState<"overview"|"smart">("overview");
+  const [data,setData]=useState<AiCostsData|null>(initial??null);
+  const [period,setPeriod]=useState("30"),[environment,setEnvironment]=useState("");
+  const [query,setQuery]=useState("");
+  const [from,setFrom]=useState(sofiaToday()),[to,setTo]=useState(sofiaToday());
+  const [article,setArticle]=useState<string|null>(null),[page,setPage]=useState(1);
+  const [error,setError]=useState(""),[loading,setLoading]=useState(!initial),[refresh,setRefresh]=useState(0);
+  function params(){
+    const result=new URLSearchParams({page:String(page)}),today=sofiaToday();
+    if(period==="all")result.set("start","1970-01-01T00:00:00.000Z");
+    else if(period==="custom"){
+      result.set("start",sofiaDayStart(from)?.toISOString()??"invalid");
+      result.set("end",sofiaDayStart(shiftIsoDate(to,1))?.toISOString()??"invalid");
+    }else if(period==="today"||period==="month")result.set("start",sofiaDayStart(period==="today"?today:`${today.slice(0,7)}-01`)!.toISOString());
+    else result.set("start",new Date(Date.now()-Number(period)*86400_000).toISOString());
+    if(query.trim())result.set("q",query.trim());if(tab==="smart")result.set("module","smart");if(article)result.set("article",article);if(environment)result.set("environment",environment);return result;
+  }
+  useEffect(()=>{
+    if(demo)return;const controller=new AbortController();setLoading(true);setError("");
+    void fetch(`${withBase("/api/ai-costs/")}?${params()}`,{cache:"no-store",signal:controller.signal}).then(async response=>{const result=await response.json();if(!response.ok)throw new Error(result.error??"Отчетът е недостъпен.");setData(result);}).catch(e=>{if(!controller.signal.aborted)setError((e as Error).message);}).finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+    return()=>controller.abort();
+  },[tab,period,from,to,query,article,page,environment,refresh,demo]);
+  const total=data?.totals;
+  const maxDay=Math.max(0,...(data?.daily??[]).map(d=>Number(d.amount)));
+  async function exportPage(){
+    if(demo)return;try{const query=params();query.set("export","csv");const response=await fetch(`${withBase("/api/ai-costs/")}?${query}`,{cache:"no-store"});if(!response.ok)throw new Error("Износът не е достъпен.");const url=URL.createObjectURL(await response.blob());const link=document.createElement("a");link.href=url;link.download="newspoint-ai-costs-current-page.csv";link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(e){setError((e as Error).message);}
+  }
+  return <section className="np-ai-costs" aria-labelledby="ai-costs-title">
+    <header className="np-cost-header"><div><span className="np-cost-eyebrow">Контрол и отчетност</span><h1 id="ai-costs-title">AI разходи</h1><p>От общия разход до всяка операция по статия.</p></div><button type="button" onClick={()=>setRefresh(v=>v+1)} disabled={loading}>Обнови отчета</button></header>
+    {demo?<p className="np-cost-notice">Демонстрация на структурата. Няма реално отчетени разходи.</p>:null}
+    {data?.ready?<div className="np-cost-summary"><div className="np-cost-total"><span>Общо отчетени AI разходи за всички модули</span><strong>{money(data.grandTotals?.amount)}</strong><small>За избрания период и среда. Несвързаните услуги не са включени.</small></div><dl><div><dt>Заявки към модели</dt><dd>{count(data.grandTotals?.calls)}</dd></div><div><dt>Очакват проверка</dt><dd>{count(data.grandTotals?.pending)}</dd></div></dl></div>:null}
+    <div className="np-cost-tabs" role="tablist" aria-label="AI модули" onKeyDown={e=>{if(!["ArrowLeft","ArrowRight","Home","End"].includes(e.key))return;e.preventDefault();const next=e.key==="Home"?"overview":e.key==="End"?"smart":tab==="overview"?"smart":"overview";setTab(next);setArticle(null);setPage(1);document.getElementById(`cost-tab-${next}`)?.focus();}}>{([['overview','Общ преглед'],['smart','NewsPoint Smart']] as const).map(([value,label])=><button key={value} id={`cost-tab-${value}`} role="tab" tabIndex={tab===value?0:-1} type="button" aria-selected={tab===value} aria-controls="cost-panel" onClick={()=>{setTab(value);setArticle(null);setPage(1);}}>{label}</button>)}</div>
+    <div className="np-cost-filters"><label>Период<select aria-label="Период" value={period} onChange={e=>{setPeriod(e.target.value);setPage(1);}}><option value="today">Днес</option><option value="1">Последните 24 часа</option><option value="7">Последните 7 дни</option><option value="30">Последните 30 дни</option><option value="month">Този месец</option><option value="all">От началото на отчитането</option><option value="custom">Собствен период</option></select></label>{period==="custom"?<><label>От<input type="date" value={from} onChange={e=>{setFrom(e.target.value);setPage(1);}}/></label><label>До включително<input type="date" value={to} onChange={e=>{setTo(e.target.value);setPage(1);}}/></label></>:null}<label>Среда<select aria-label="Среда" value={environment} onChange={e=>{setEnvironment(e.target.value);setPage(1);}}><option value="">Всички среди</option><option value="production">Продукция</option><option value="development">Разработка</option><option value="test">Тестове</option></select></label><label>Статия<input type="search" maxLength={160} placeholder="Търси по заглавие" value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}}/></label><span>Часове за София. Суми в USD.</span></div>
+    {error?<p className="np-cost-error" role="alert">{error}</p>:null}
+    <div id="cost-panel" role="tabpanel" aria-labelledby={`cost-tab-${tab}`} aria-busy={loading}>
+      {loading?<p role="status" className="np-cost-notice">Зареждаме записаното потребление…</p>:null}
+      {data&&!data.ready?<div className="np-cost-empty"><h2>Отчетността очаква активиране</h2><p>Все още няма свързан журнал на AI операциите. Липсващите данни не означават нулев разход.</p></div>:data?<>
+        {tab==="smart"?<div className="np-cost-summary"><div className="np-cost-total"><span>NewsPoint Smart</span><strong>{money(total?.amount)}</strong><small>Изчислено по записаното потребление за периода</small></div><dl><div><dt>Заявки към модели</dt><dd>{count(total?.calls)}</dd></div><div><dt>Очакват проверка</dt><dd>{count(total?.pending)}</dd></div></dl></div>:null}
+        {Number(total?.pending)>0?<p className="np-cost-notice">Сумата е непълна: има операции с непотвърдено потребление.</p>:null}
+        {tab==="overview"?<><div className="np-cost-coverage"><h2>Покритие на отчета</h2>{data.coverage.map(c=><div key={c.module}><strong>{c.name}</strong><span>{c.status==="metered"?"Отчитане на операциите":"Няма свързани данни"}</span></div>)}<p>Общата сума включва само свързаните данни. Все още не е потвърден пълен разход за всички AI услуги.</p></div>
+          <div className="np-cost-two"><section><h2>По модул и доставчик</h2>{data.modules.length?<ul className="np-cost-module-list">{data.modules.map((m,i)=><li key={i}><span><strong>{m.module==="smart"?"NewsPoint Smart":String(m.module)}</strong><small>{String(m.provider)}</small></span><b>{money(m.amount)}</b></li>)}</ul>:<p className="np-cost-muted">Няма записани операции за периода.</p>}</section><section><h2>Сверяване с доставчика</h2>{data.provider.length?data.provider.map((p,i)=><p key={i}>{String(p.provider)} <strong>{p.currency==="usd"?money(p.amount):`${p.amount} ${p.currency}`}</strong><br/><small>Период: {dateLabel(p.periodStart)} – {dateLabel(p.periodEnd)}. Синхронизирано {dateLabel(p.checkedAt)}. Не е индивидуална фактура по статия.</small>{p.difference!==null&&p.difference!==undefined?<><br/><small>Локално за същия проект и период: {money(p.localAmount)}. Разлика: {money(p.difference)}. {Number(p.pending)>0?"Има неизвестно потребление. ":""}{p.environmentFiltered?"Доставчикът обхваща всички среди; локалната сума е филтрирана. ":""}Разликата подлежи на проверка.</small></>:null}</p>):<p className="np-cost-muted">Все още няма синхронизиран отчет от доставчика.</p>}</section></div>
+          {data.daily.length?<section className="np-cost-chart"><h2>Разход по дни</h2><div>{data.daily.map(d=><div key={String(d.day)}><span>{String(d.day)}</span><span className="np-cost-bar" style={{width:`${maxDay?Number(d.amount)/maxDay*100:0}%`}}/><strong>{money(d.amount)}</strong></div>)}</div></section>:null}
+        </>:null}
+        <section className="np-cost-articles"><div className="np-cost-section-heading"><h2>{article?"Операции по статията":"Разход по статия"}</h2><div>{article?<button type="button" onClick={()=>{setArticle(null);setPage(1);}}>Всички статии</button>:null}<button type="button" disabled={!data.ready||loading} onClick={()=>void exportPage()}>CSV на тази страница</button></div></div>
+          <div className="np-cost-table-wrap"><table><thead>{article?<tr><th>Време</th><th>Операция</th><th>Модел</th><th>Статус</th><th className="np-cost-number">Сума</th></tr>:<tr><th>Статия</th><th className="np-cost-number">Заявки</th><th className="np-cost-number">Търсения</th><th className="np-cost-number">От кеш</th><th className="np-cost-number">За проверка</th><th className="np-cost-number">Разход за периода</th><th className="np-cost-number">Общо за статията</th></tr>}</thead><tbody>{article?data.operations.map(o=><tr key={String(o.id)}><td>{dateLabel(o.startedAt)}</td><td>{operationLabels[String(o.operation)]??String(o.operation)}{o.usage?<details><summary>Потребление</summary><dl>{Object.entries(o.usage as Row).map(([key,value])=><div key={key}><dt>{{input:"Входни токени",cachedInput:"Кеширани входни",cacheWrite:"Запис в кеша",output:"Изходни токени",reasoning:"Разсъждение (в изходните)",searches:"Търсения"}[key]??key}</dt><dd>{count(value)}</dd></div>)}</dl><small>Тарифа: {String((o.rate as Row|undefined)?.version??"неизвестна")}</small></details>:null}{o.error_code?<small>{String(o.error_code)}</small>:null}</td><td>{String(o.model)}</td><td>{o.status==="known"?"Изчислен":o.status==="pending"?"Обработва се":"Очаква проверка"}</td><td className="np-cost-number">{money(o.amount)}</td></tr>):data.articles.map((a,i)=><tr key={String(a.id??i)}><td>{a.id?<button className="np-cost-article-link" type="button" onClick={()=>{setArticle(String(a.id));setPage(1);}}>{String(a.title||"Изтрита статия")}{a.deleted?" (изтрита)":""}</button>:<strong>Обща подготовка и инфраструктура</strong>}{a.path&&!a.deleted?<a className="np-cost-public-link" href={String(a.path)} target="_blank" rel="noopener noreferrer">Отвори публикацията</a>:null}</td><td className="np-cost-number">{count(a.calls)}</td><td className="np-cost-number">{count(a.searches)}</td><td className="np-cost-number">{count(a.cacheHits)}</td><td className="np-cost-number">{count(a.pending)}</td><td className="np-cost-number">{money(a.amount)}</td><td className="np-cost-number">{money(a.lifetimeAmount)}</td></tr>)}</tbody></table></div>
+          {!(article?data.operations:data.articles).length?<div className="np-cost-empty"><h3>Няма отчетена активност за периода</h3><p>Когато има реални AI операции, тук ще се вижда към коя статия принадлежи всяка сума.</p></div>:null}
+          <nav className="np-cost-pagination" aria-label="Страници на отчета"><button type="button" disabled={page===1||loading} onClick={()=>setPage(p=>p-1)}>Предишна</button><span>Страница {page}</span><button type="button" disabled={loading||(article?data.operations.length<100:data.articles.length<50)} onClick={()=>setPage(p=>p+1)}>Следваща</button></nav>
+        </section></>:null}
+    </div>
+  </section>;
+}

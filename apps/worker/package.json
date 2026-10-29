@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --use-system-ca --import tsx src/index.ts",
-    "start": "node --use-system-ca --import tsx src/index.ts",
+    "dev": "node --use-system-ca --conditions=react-server --import tsx src/index.ts",
+    "start": "node --use-system-ca --conditions=react-server --import tsx src/index.ts",
+    "smart:dev": "node --use-system-ca --conditions=react-server --import tsx src/smart-cli.ts",
     "city:collect:watch": "node --use-system-ca --import tsx src/city-pilot/cli.ts --release --watch",
     "city:collect:once": "node --use-system-ca --import tsx src/city-pilot/cli.ts --release",
     "city:readiness": "node --use-system-ca --import tsx src/city-pilot/readiness.ts",

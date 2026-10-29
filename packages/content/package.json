@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./smart": "./src/smart.ts",
+    "./smart-text": "./src/smart-text.ts",
     "./indexnow": "./src/indexnow.ts",
     "./instagram": "./src/instagram-api.ts",
     ".": "./src/index.ts",

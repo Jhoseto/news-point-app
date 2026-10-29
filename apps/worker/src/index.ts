@@ -6,6 +6,7 @@ import { startPushWorker } from "./push-worker";
 import { startSocialPublishingWorker } from "./social-publishing-worker";
 import { startInstagramPublishingWorker } from "./instagram-publishing-worker";
 import { startIndexNowWorker } from "./indexnow-worker";
+import { reconcileAiCosts } from "./ai-cost-reconciliation";
 import { processOneMediaUpload, cleanExpiredUploads } from "./media-upload-worker";
 
 const { values: args } = parseArgs({ options: { once: { type: "boolean", default: false } } });
@@ -61,10 +62,14 @@ async function runWorker() {
     console.log(`[worker ${new Date().toLocaleTimeString("bg-BG", { timeZone: "Europe/Sofia" })}] ${message}`);
   }
 
+  const { startSmartWorker } = await import("./smart-worker");
   const stopPush = startPushWorker(db, log);
   const stopSocial = startSocialPublishingWorker(db, log);
   const stopInstagram = startInstagramPublishingWorker(db, log);
   const stopIndexNow = startIndexNowWorker(db, log);
+  const stopSmart = startSmartWorker(db, log);
+  let reconciling=false;
+  const costTimer=setInterval(()=>{if(process.env.AI_COSTS_SYNC_ENABLED!=="1"||reconciling)return;reconciling=true;void reconcileAiCosts(db).catch(()=>log("AI cost reconciliation unavailable")).finally(()=>{reconciling=false;});},15*60_000);
   const boostTimer = setInterval(() => {
     void applyDueViewBoosts(db)
       .then((updated) => { if (updated > 0) log(`view boosts updated ${updated}`); })
@@ -89,6 +94,8 @@ async function runWorker() {
     await stopSocial();
     await stopInstagram();
     await stopIndexNow();
+    stopSmart();
+    clearInterval(costTimer);
     await close();
   }
 

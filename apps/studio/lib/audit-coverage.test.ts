@@ -22,7 +22,7 @@ describe("All Studio entry points are covered", () => {
     const page = readFileSync(resolve("apps/studio/app/(studio)/logs/page.tsx"), "utf8");
     expect(page).toContain("if (!canReadLogs(staff.role)) notFound()");
     const shell = readFileSync(resolve("apps/studio/components/studio-shell.tsx"), "utf8");
-    expect(shell).toContain("canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK] : NAV");
+    expect(shell).toContain("canManageUsers ? [...NAV, USERS_LINK, LOGS_LINK, AI_COSTS_LINK] : NAV");
     expect(shell).toContain("href={LOGS_LINK.href}");
   });
 });

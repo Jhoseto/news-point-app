@@ -15,6 +15,8 @@ import {
   timestamp,
   unique,
   uuid,
+  numeric,
+  customType,
 } from "drizzle-orm/pg-core";
 
 const timestamps = {
@@ -684,7 +686,57 @@ export const cityRecordVersions = pgTable("city_record_versions", {
   observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
 });
 
+// Smart / AI accounting mirrors migrations 44–45. These are additive and default-off.
+export const aiOperations=pgTable("ai_operations",{
+  id:uuid("id").primaryKey(),module:text("module").notNull(),provider:text("provider").notNull(),projectId:text("project_id"),
+  articleId:uuid("article_id").references(()=>articles.id,{onDelete:"set null"}),articleSnapshot:jsonb("article_snapshot").notNull().default({}),
+  operation:text("operation").notNull(),model:text("model").notNull(),environment:text("environment").notNull(),status:text("status").notNull(),
+  responseId:text("response_id").unique(),requestId:text("request_id"),usage:jsonb("usage"),rate:jsonb("rate"),amountUsd:numeric("amount_usd",{precision:30,scale:12}),errorCode:text("error_code"),
+  startedAt:timestamp("started_at",{withTimezone:true}).notNull().defaultNow(),finishedAt:timestamp("finished_at",{withTimezone:true}),
+});
+export const aiProviderCosts=pgTable("ai_provider_costs",{
+  provider:text("provider").notNull(),projectId:text("project_id").notNull(),bucketStart:timestamp("bucket_start",{withTimezone:true}).notNull(),bucketEnd:timestamp("bucket_end",{withTimezone:true}).notNull(),
+  lineItem:text("line_item").notNull(),currency:text("currency").notNull(),amount:numeric("amount",{precision:30,scale:12}).notNull(),checkedAt:timestamp("checked_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.provider,t.projectId,t.bucketStart,t.lineItem,t.currency]})]);
+export const smartSessions=pgTable("smart_sessions",{
+  id:uuid("id").primaryKey(),articleId:uuid("article_id").notNull().references(()=>articles.id,{onDelete:"cascade"}),ownerHash:text("owner_hash").notNull(),revision:text("revision").notNull(),
+  used:integer("used").notNull().default(0),deletedAt:timestamp("deleted_at",{withTimezone:true}),expiresAt:timestamp("expires_at",{withTimezone:true}).notNull(),...timestamps,
+});
+export const smartNodes=pgTable("smart_nodes",{
+  key:text("key").primaryKey(),articleId:uuid("article_id").notNull().references(()=>articles.id,{onDelete:"cascade"}),revision:text("revision").notNull(),parentKey:text("parent_key"),
+  questionId:text("question_id").notNull(),question:text("question").notNull(),answer:jsonb("answer"),state:text("state").notNull(),leaseToken:uuid("lease_token"),leaseUntil:timestamp("lease_until",{withTimezone:true}),
+  expiresAt:timestamp("expires_at",{withTimezone:true}),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+});
+export const smartDependencies=pgTable("smart_dependencies",{
+  nodeKey:text("node_key").notNull().references(()=>smartNodes.key,{onDelete:"cascade"}),articleId:uuid("article_id").notNull().references(()=>articles.id,{onDelete:"cascade"}),revision:text("revision").notNull(),
+},t=>[primaryKey({columns:[t.nodeKey,t.articleId]})]);
+export const smartTurns=pgTable("smart_turns",{
+  id:uuid("id").primaryKey(),sessionId:uuid("session_id").notNull().references(()=>smartSessions.id,{onDelete:"cascade"}),requestKey:uuid("request_key").notNull(),inputHash:text("input_hash").notNull(),
+  question:text("question").notNull(),questionId:text("question_id"),parentKey:text("parent_key"),nodeKey:text("node_key").references(()=>smartNodes.key,{onDelete:"set null"}),status:text("status").notNull(),
+  answer:jsonb("answer"),cached:boolean("cached").notNull().default(false),counted:boolean("counted").notNull().default(false),processorToken:uuid("processor_token"),errorCode:text("error_code"),
+  leaseUntil:timestamp("lease_until",{withTimezone:true}).notNull(),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+});
+export const smartBootstraps=pgTable("smart_bootstraps",{
+  articleId:uuid("article_id").primaryKey().references(()=>articles.id,{onDelete:"cascade"}),revision:text("revision").notNull(),payload:jsonb("payload"),sources:jsonb("sources").notNull().default([]),
+  state:text("state").notNull(),leaseToken:uuid("lease_token"),leaseUntil:timestamp("lease_until",{withTimezone:true}),expiresAt:timestamp("expires_at",{withTimezone:true}),updatedAt:timestamp("updated_at",{withTimezone:true}).notNull().defaultNow(),
+});
+export const smartFeedback=pgTable("smart_feedback",{
+  sessionId:uuid("session_id").notNull().references(()=>smartSessions.id,{onDelete:"cascade"}),turnId:uuid("turn_id").notNull().references(()=>smartTurns.id,{onDelete:"cascade"}),useful:boolean("useful").notNull(),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.sessionId,t.turnId]})]);
+export const smartActivity=pgTable("smart_activity",{
+  turnId:uuid("turn_id").primaryKey(),articleId:uuid("article_id").references(()=>articles.id,{onDelete:"set null"}),articleSnapshot:jsonb("article_snapshot").notNull(),cached:boolean("cached").notNull(),environment:text("environment").notNull(),createdAt:timestamp("created_at",{withTimezone:true}).notNull().defaultNow(),
+});
+export const smartRateWindows=pgTable("smart_rate_windows",{key:text("key").notNull(),bucket:timestamp("bucket",{withTimezone:true}).notNull(),count:integer("count").notNull().default(1)},t=>[primaryKey({columns:[t.key,t.bucket]})]);
+const smartVectorBytes=customType<{data:Buffer;driverData:Buffer}>({dataType:()=>"bytea"});
+export const smartDocuments=pgTable("smart_documents",{
+  articleId:uuid("article_id").notNull().references(()=>articles.id,{onDelete:"cascade"}),revision:text("revision").notNull(),chunk:integer("chunk").notNull(),text:text("text").notNull(),embedding:smartVectorBytes("embedding").notNull(),model:text("model").notNull().default("text-embedding-3-small"),indexedAt:timestamp("indexed_at",{withTimezone:true}).notNull().defaultNow(),
+},t=>[primaryKey({columns:[t.articleId,t.chunk]})]);
+export const smartIndexJobs=pgTable("smart_index_jobs",{
+  articleId:uuid("article_id").primaryKey().references(()=>articles.id,{onDelete:"cascade"}),revision:text("revision").notNull(),leaseToken:uuid("lease_token").notNull(),leaseUntil:timestamp("lease_until",{withTimezone:true}).notNull(),state:text("state").notNull(),
+});
+
 export const schemaTables = {
+  aiOperations,aiProviderCosts,smartSessions,smartNodes,smartDependencies,smartTurns,smartBootstraps,smartFeedback,smartActivity,smartRateWindows,smartDocuments,smartIndexJobs,
   citySources, citySourceChecks, cityRecords, cityRecordVersions,
   breakingBulletins,
   articleRevisionSocial, socialConnections, socialPublications, socialOauthStates, socialDeletionReceipts,
