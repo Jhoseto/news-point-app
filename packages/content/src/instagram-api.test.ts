@@ -2,7 +2,8 @@ import { afterEach, expect, it, vi } from "vitest";
 import { InstagramClient, instagramConfiguration, instagramPermalink } from "./instagram-api";
 import { normalizeInstagram, normalizeSocial, socialInput, instagramText } from "./social-publishing";
 const config = { webhook: "https://hook.eu1.make.com/explicit-fixture", apiKey: "private-fixture", accountId: "123", username: "newspointbg" };
-const input = { jobId: "00000000-0000-4000-8000-000000000001", accountId: "123", caption: "Изолирана тестова снимка", imageUrl: `https://newspoint.bg/media/news/social-instagram/00000000-0000-4000-8000-000000000001-${"a".repeat(64)}.jpg` };
+const input = { jobId: "00000000-0000-4000-8000-000000000001", accountId: "123", caption: "Изолирана тестова снимка",
+    imageUrl: `https://newspoint.bg/media/news/social-instagram/00000000-0000-4000-8000-000000000001-${"a".repeat(64)}.jpg`, articleUrl: "https://newspoint.bg/test-news/" };
 afterEach(() => vi.unstubAllEnvs());
 it("keeps Instagram opt-in independent and follows titles only until edited", () => {
     expect(normalizeInstagram(undefined, "Заглавие")).toEqual({ enabled: false, text: instagramText("Заглавие"), textMode: "auto" });
@@ -10,6 +11,13 @@ it("keeps Instagram opt-in independent and follows titles only until edited", ()
     expect(normalizeInstagram(custom, "Ново")).toEqual(custom);
     expect(normalizeSocial({ facebook: { enabled: false, text: "", textMode: "auto" }, instagram: custom }, "Ново").instagram).toEqual(custom);
     expect(socialInput.safeParse({ facebook: { enabled: false, text: "", textMode: "auto" }, instagram: { ...custom, text: "x".repeat(2201) } }).success).toBe(false);
+});
+it("uses the first five article sentences for automatic Instagram text", () => {
+    const body = [{ type: "paragraph", html: "<p>Първо изречение. Второ изречение! Трето?</p>" },
+        { type: "image", mediaAssetId: "550e8400-e29b-41d4-a716-446655440000", caption: "Това не влиза." },
+        { type: "paragraph", html: "<p>Четвърто изречение. Пето изречение. Шесто не трябва.</p>" }];
+    expect(instagramText("Заглавие", body)).toBe("Първо изречение. Второ изречение! Трето? Четвърто изречение. Пето изречение.");
+    expect(normalizeInstagram({ enabled: true, text: "старо", textMode: "auto" }, "Заглавие", body).text).toBe(instagramText("Заглавие", body));
 });
 it("does not expose unconfigured or arbitrary webhook destinations", () => {
     vi.stubEnv("MAKE_INSTAGRAM_WEBHOOK_URL", config.webhook);

@@ -4,11 +4,11 @@ import { FACEBOOK_TEXT_MAX, normalizeSocial, type SocialInput, type SocialStatus
 import { callApi } from "@/lib/client-api";
 import { InstagramPublishingFields } from "./instagram-publishing-fields";
 
-export function SocialPublishingFields({ value, title, onChange, disabled, initialStatus, articleId, publishedRevision }: {
-  value: SocialInput | undefined; title: string; onChange: (value: SocialInput) => void; disabled: boolean;
+export function SocialPublishingFields({ value, title, body, onChange, disabled, initialStatus, articleId, publishedRevision }: {
+  value: SocialInput | undefined; title: string; body: unknown; onChange: (value: SocialInput) => void; disabled: boolean;
   initialStatus: SocialStatus; articleId: string | null; publishedRevision: number | null;
 }) {
-  const social = normalizeSocial(value, title);
+  const social = normalizeSocial(value, title, body);
   const [status, setStatus] = useState(initialStatus);
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState("");
@@ -66,6 +66,6 @@ export function SocialPublishingFields({ value, title, onChange, disabled, initi
         onChange={event => onChange({ ...social, facebook: { ...social.facebook, text: event.target.value, textMode: "custom" } })} />
     </label> : null}
     {error ? <p role="alert" className="studio-meta-field-span text-[10px] text-danger">{error}</p> : null}
-    <InstagramPublishingFields value={social} title={title} onChange={onChange} disabled={disabled} articleId={articleId} publishedRevision={publishedRevision} initialStatus={initialStatus.instagram}/>
+    <InstagramPublishingFields value={social} title={title} body={body} onChange={onChange} disabled={disabled} articleId={articleId} publishedRevision={publishedRevision} initialStatus={initialStatus.instagram}/>
   </>;
 }

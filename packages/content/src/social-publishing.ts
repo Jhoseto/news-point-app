@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { articleBody } from "./blocks";
 
 export const FACEBOOK_TEXT_MAX = 60_000;
 export const INSTAGRAM_TEXT_MAX = 2200;
@@ -8,17 +9,43 @@ export const socialInput = z.strictObject({ facebook: z.strictObject({
 }), instagram: instagramInput.optional() });
 export type SocialInput = z.infer<typeof socialInput>;
 export type InstagramInput = z.infer<typeof instagramInput>;
-export const instagramText = (title: string) => `${title}\n\nОще новини: newspoint.bg`;
-export function normalizeInstagram(value: InstagramInput | undefined, title: string): InstagramInput {
+function plainInstagramBody(body: unknown): string {
+  const parsed = articleBody.safeParse(body);
+  if (!parsed.success) return "";
+  return parsed.data.flatMap(block => {
+    if (block.type === "paragraph" || block.type === "quote" || block.type === "legacy_html") return [block.html];
+    if (block.type === "list") return block.items;
+    return [];
+  }).map(html => html.replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'").replace(/&lt;/gi, "<").replace(/&gt;/gi, ">")
+    .replace(/\s+/g, " ").trim()).filter(Boolean).join(" ");
+}
+
+/** First five editorial sentences, bounded by Instagram's caption limit. */
+export function instagramText(title: string, body?: unknown): string {
+  const text = plainInstagramBody(body);
+  if (!text) return title.trim().slice(0, INSTAGRAM_TEXT_MAX);
+  const segments = [...new Intl.Segmenter("bg", { granularity: "sentence" }).segment(text)]
+    .map(part => part.segment.trim()).filter(Boolean).slice(0, 5);
+  const selected: string[] = [];
+  for (const sentence of segments) {
+    const candidate = [...selected, sentence].join(" ");
+    if (candidate.length > INSTAGRAM_TEXT_MAX) break;
+    selected.push(sentence);
+  }
+  return selected.length ? selected.join(" ") : text.slice(0, INSTAGRAM_TEXT_MAX).trim();
+}
+export function normalizeInstagram(value: InstagramInput | undefined, title: string, body?: unknown): InstagramInput {
   const input = value ?? { enabled: false, text: "", textMode: "auto" };
-  return { ...input, text: input.textMode === "auto" ? instagramText(title) : input.text };
+  return { ...input, text: input.textMode === "auto" ? instagramText(title, body) : input.text };
 }
 export const facebookText = (title: string) => `${title}\n\n👇 Четете повече в първия коментар.`;
 export const defaultSocial = (title = ""): SocialInput => ({ facebook: { enabled: false, text: facebookText(title), textMode: "auto" } });
-export function normalizeSocial(value: SocialInput | undefined, title: string): SocialInput {
+export function normalizeSocial(value: SocialInput | undefined, title: string, body?: unknown): SocialInput {
   const social = value ?? defaultSocial(title);
   return { facebook: { ...social.facebook, text: social.facebook.textMode === "auto" ? facebookText(title) : social.facebook.text },
-    ...(social.instagram ? { instagram: normalizeInstagram(social.instagram, title) } : {}) };
+    ...(social.instagram ? { instagram: normalizeInstagram(social.instagram, title, body) } : {}) };
 }
 
 export const SOCIAL_ORIGINS = ["https://newspoint.bg", "https://www.newspoint.bg", "https://site44159-izdo3c.scloudsite101.com"] as const;

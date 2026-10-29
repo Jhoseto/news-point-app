@@ -98,7 +98,8 @@ export async function processInstagramJob(db: ScriptDb, job: InstagramJob, depen
         if (!started.length)
             return;
         sending = true;
-        const result = await (dependencies.client ?? new InstagramClient(config)).publish({ jobId: job.id, accountId: job.account_id, caption: job.caption, imageUrl: `${url.origin}/media/${imageKey}` });
+        const result = await (dependencies.client ?? new InstagramClient(config)).publish({ jobId: job.id, accountId: job.account_id, caption: job.caption,
+            imageUrl: `${url.origin}/media/${imageKey}`, articleUrl: job.article_url });
         // Lease token fencing: a late sender cannot acknowledge a replacement job.
         await db.execute(sql `update instagram_publications set status='succeeded',post_id=${result.postId},permalink=${result.permalink},error_code=null,
       lease_token=null,lease_until=null,updated_at=now() where ${owned}`);

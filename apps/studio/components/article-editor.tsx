@@ -634,7 +634,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
                   След запис новината влиза в избраната тема{published.isPublic ? "" : " и на сайта след публикуване"}.
                 </p>
               ) : null}
-              <SocialPublishingFields value={draft.social} title={draft.title} onChange={value => update("social", value)} disabled={readOnly || busy || Boolean(conflict)} initialStatus={socialStatus} articleId={articleId} publishedRevision={published.revision} />
+              <SocialPublishingFields value={draft.social} title={draft.title} body={body} onChange={value => update("social", value)} disabled={readOnly || busy || Boolean(conflict)} initialStatus={socialStatus} articleId={articleId} publishedRevision={published.revision} />
             </fieldset>
           </div>
 

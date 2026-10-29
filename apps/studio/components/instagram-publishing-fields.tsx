@@ -2,16 +2,17 @@
 import { useEffect, useState } from "react";
 import { INSTAGRAM_TEXT_MAX, normalizeInstagram, type SocialInput, type SocialStatus } from "@newspoint/content";
 import { callApi } from "@/lib/client-api";
-export function InstagramPublishingFields({ value, title, onChange, disabled, articleId, publishedRevision, initialStatus }: {
+export function InstagramPublishingFields({ value, title, body, onChange, disabled, articleId, publishedRevision, initialStatus }: {
     value: SocialInput;
     title: string;
+    body: unknown;
     onChange: (value: SocialInput) => void;
     disabled: boolean;
     articleId: string | null;
     publishedRevision: number | null;
     initialStatus?: SocialStatus | undefined;
 }) {
-    const instagram = normalizeInstagram(value.instagram, title);
+    const instagram = normalizeInstagram(value.instagram, title, body);
     const [status, setStatus] = useState<SocialStatus | null>(initialStatus ?? null);
     const [retrying, setRetrying] = useState(false);
     const [error, setError] = useState("");
@@ -61,7 +62,7 @@ export function InstagramPublishingFields({ value, title, onChange, disabled, ar
       {status?.job?.canRetry ? <button type="button" className="shrink-0 text-[10px] font-bold normal-case tracking-normal underline" disabled={disabled || retrying} onClick={() => void retry()}>{retrying ? "…" : "Отново"}</button> : null}
     </label>
     {(fixed || instagram.enabled) ? <label className="studio-meta-field"><span>Текст</span>
-      <input aria-label="Текст за Instagram" maxLength={INSTAGRAM_TEXT_MAX} className="np-input min-w-0 flex-1" disabled={disabled || fixed} value={fixed ? status!.job!.text : instagram.text} onChange={e => onChange({ ...value, instagram: { ...instagram, text: e.target.value, textMode: "custom" } })}/>
+      <textarea aria-label="Текст за Instagram" maxLength={INSTAGRAM_TEXT_MAX} rows={5} className="np-input min-w-0 flex-1" disabled={disabled || fixed} value={fixed ? status!.job!.text : instagram.text} onChange={e => onChange({ ...value, instagram: { ...instagram, text: e.target.value, textMode: "custom" } })}/>
     </label> : null}
     {error ? <p role="alert" className="studio-meta-field-span text-[10px] text-danger">{error}</p> : null}
   </>;

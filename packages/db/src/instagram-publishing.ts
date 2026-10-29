@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { normalizeInstagram, socialArticleUrl, socialOrigin, type InstagramInput, type SocialStatus } from "@newspoint/content";
+import { instagramText, normalizeInstagram, socialArticleUrl, socialOrigin, type InstagramInput, type SocialStatus } from "@newspoint/content";
 import { instagramConfiguration } from "@newspoint/content/instagram";
 import type { ScriptDb } from "./node";
 type Executor = Pick<ScriptDb, "execute">;
@@ -63,10 +63,16 @@ export async function enqueueInstagramPublication(db: Executor, id: string, revi
         return;
     const config = instagramConfiguration();
     const origin = socialOrigin(process.env.WEB_URL);
+    const [source] = await db.execute<{ title: string; body: unknown; text: string; text_mode: "auto" | "custom" }>(sql`
+      select r.title,r.body,s.text,s.text_mode from article_revisions r join article_revision_social s
+      on s.article_id=r.article_id and s.revision=r.number and s.provider='instagram' and s.enabled
+      where r.article_id=${id}::uuid and r.number=${revision}`);
+    if (!source) return;
+    const caption = source.text_mode === "auto" ? instagramText(source.title, source.body) : source.text;
     await db.execute(sql `insert into instagram_publications(article_id,revision,account_id,title,caption,article_url,storage_key,status,error_code)
-    select a.id,r.number,${config?.accountId ?? "unconnected"},r.title,s.text,${origin ?? ""}||a.path,m.storage_key,
-      case when ${Boolean(config && origin)} and m.storage_key like 'news/%' and r.hero_embed_url is null and length(trim(s.text))>0 then 'pending' else 'failed' end,
-      case when not ${Boolean(origin)} then 'origin' when not ${Boolean(config)} then 'connection' when m.storage_key is null or m.storage_key not like 'news/%' or r.hero_embed_url is not null then 'image' when length(trim(s.text))=0 then 'text' else null end
+    select a.id,r.number,${config?.accountId ?? "unconnected"},r.title,${caption},${origin ?? ""}||a.path,m.storage_key,
+      case when ${Boolean(config && origin)} and m.storage_key like 'news/%' and r.hero_embed_url is null and length(trim(${caption}))>0 then 'pending' else 'failed' end,
+      case when not ${Boolean(origin)} then 'origin' when not ${Boolean(config)} then 'connection' when m.storage_key is null or m.storage_key not like 'news/%' or r.hero_embed_url is not null then 'image' when length(trim(${caption}))=0 then 'text' else null end
     from articles a join article_revisions r on r.article_id=a.id and r.number=${revision}
     join article_revision_social s on s.article_id=a.id and s.revision=r.number and s.provider='instagram' and s.enabled
     left join media_assets m on m.id=r.hero_media_id
@@ -122,14 +128,16 @@ export async function retryInstagramPublication(db: ScriptDb, id: string) {
             return false;
         const [rev] = await tx.execute<{
             title: string;
+            body: unknown;
             storage_key: string | null;
             hero_embed_url: string | null;
         }>(sql `
-      select r.title,m.storage_key,r.hero_embed_url from article_revisions r left join media_assets m on m.id=r.hero_media_id
+      select r.title,r.body,m.storage_key,r.hero_embed_url from article_revisions r left join media_assets m on m.id=r.hero_media_id
       where r.article_id=${id}::uuid and r.number=${article.published_revision}`);
         if (!rev?.storage_key?.startsWith("news/") || rev.hero_embed_url)
             return false;
         const input = await readInstagramRevision(tx, id, article.published_revision, rev.title);
+        if (input?.textMode === "auto") input.text = instagramText(rev.title, rev.body);
         const url = socialArticleUrl(process.env.WEB_URL, article.path);
         if (!input?.enabled || !input.text.trim() || !url)
             return false;

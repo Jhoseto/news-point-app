@@ -1,4 +1,4 @@
-import { socialOrigin } from "./social-publishing";
+import { socialArticleUrl, socialOrigin } from "./social-publishing";
 export function instagramConfiguration() {
     const webhook = process.env.MAKE_INSTAGRAM_WEBHOOK_URL?.trim();
     const apiKey = process.env.MAKE_INSTAGRAM_WEBHOOK_API_KEY?.trim();
@@ -39,6 +39,7 @@ export class InstagramClient {
         accountId: string;
         caption: string;
         imageUrl: string;
+        articleUrl: string;
     }): Promise<{
         postId: string;
         permalink: string;
@@ -56,6 +57,15 @@ export class InstagramClient {
             throw new InstagramError("image");
         if (!input.caption.trim() || input.caption.length > 2200)
             throw new InstagramError("text");
+        let article: URL;
+        try {
+            article = new URL(input.articleUrl);
+        }
+        catch {
+            throw new InstagramError("origin");
+        }
+        if (socialArticleUrl(article.origin, article.pathname) !== input.articleUrl)
+            throw new InstagramError("origin");
         let response: Response;
         try {
             response = await this.send(this.config.webhook, { method: "POST", headers: { "content-type": "application/json", "x-make-apikey": this.config.apiKey },
