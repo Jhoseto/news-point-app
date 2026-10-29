@@ -42,7 +42,7 @@ stop_pid() {
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
       local role="${file##*/}"
       role="${role%.pid}"
-      if [[ "$role" == web || "$role" == studio ]]; then
+      if [[ "$role" == web || "$role" == studio || "$role" == worker ]]; then
         [[ "$(readlink "/proc/$pid/cwd")" == "$APP/apps/$role" ]] || return 1
         kill -TERM "$pid" 2>/dev/null || true
         for _ in {1..15}; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
@@ -85,7 +85,7 @@ nohup bash "$APP/deploy/np2/run-diagnostics.sh" web > "$APP/logs/web.log" 2>&1 &
 echo $! > "$APP/logs/web.pid"
 
 cd "$APP"
-nohup "$HOME/node/bin/pnpm" --filter @newspoint/worker start > "$APP/logs/worker.log" 2>&1 &
+nohup bash "$APP/deploy/np2/run-worker.sh" > "$APP/logs/worker.log" 2>&1 &
 echo $! > "$APP/logs/worker.pid"
 
 for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do

@@ -89,10 +89,19 @@ export async function smartAi(db: SmartDb, config: SmartConfig, article: SmartAr
     await settleAiOperation(db, id, String(data.model ?? model), usage, typeof data.id === "string" ? data.id : null, response.headers.get("x-request-id"),failure);
     if (!response.ok || data.status === "incomplete" || data.status === "failed") throw new SmartError(data.status==="incomplete"&&usage?"provider_incomplete_known":"provider", 503, "Проучването не завърши. Опитайте отново след малко.");
     const items = Array.isArray(data.output) ? data.output as Record<string, unknown>[] : [];
-    if(config.provider === "minimax" && operation === "research" && !items.some(item=>item.type === "web_search_call" && item.status === "completed"))throw new SmartError("research_not_performed",503,"Външното проучване не завърши.");
+    if(operation === "research" && !items.some(item=>item.type === "web_search_call" && item.status === "completed"))throw new SmartError("research_not_performed",503,"Външното проучване не завърши.");
     let text = "";
     const sources: { url: string; title: string }[] = [];
+    const discovered: {url:string;title:string}[]=[];
     for (const item of items) {
+      if(config.provider==="openai"&&item.type==="web_search_call"&&item.status==="completed"){
+        const action=item.action as {sources?:unknown[]}|undefined;
+        for(const value of action?.sources??[]){
+          if(value&&typeof value==="object"&&typeof (value as {url?:unknown}).url==="string"){
+            const source=value as {url:string;title?:unknown};discovered.push({url:source.url,title:typeof source.title==="string"?source.title:source.url});
+          }
+        }
+      }
       for (const part of Array.isArray(item.content) ? item.content as Record<string, unknown>[] : []) {
         if (part.type === "output_text" && typeof part.text === "string") text += part.text;
         for (const annotation of Array.isArray(part.annotations) ? part.annotations as Record<string, unknown>[] : [])
@@ -104,7 +113,9 @@ export async function smartAi(db: SmartDb, config: SmartConfig, article: SmartAr
       // Discovery only: pages are still fetched and checked before becoming evidence.
       for(const url of [...(text.match(/https:\/\/[^\s<>"\])]+/gu)??[])].reverse())sources.unshift({url:url.replace(/[.,;]+$/u,""),title:url});
     }
-    return { data, text, sources: [...new Map(sources.map(s => [s.url, s])).values()] };
+    // Inline citations first; full search discovery fills missing/blocked candidates.
+    // URLs remain untrusted and must pass DNS/HTTPS/page/quote checks before use.
+    return { data, text, sources: [...new Map([...sources,...discovered].map(s => [s.url, s])).values()] };
   } catch (error) {
     await markAiUnknown(db, id, error instanceof SmartError ? error.code : "network_or_usage_unknown");
     throw error instanceof SmartError ? error : new SmartError("provider", 503, "Проучването временно не е достъпно.");

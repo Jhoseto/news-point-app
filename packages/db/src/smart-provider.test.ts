@@ -13,6 +13,13 @@ const config=()=>smartConfig({MINIMAX_API_KEY:"minimax-test-only",OPENAI_API_KEY
 const reply=(extra:Record<string,unknown>={})=>Response.json({id:"qa-response",model:"MiniMax-M3.1-Flash",status:"completed",usage:{input_tokens:100,output_tokens:60,input_tokens_details:{cached_tokens:20},output_tokens_details:{reasoning_tokens:40}},output:[{type:"message",content:[{type:"output_text",text:'{"valid":true}'}]}],...extra});
 beforeEach(()=>{vi.clearAllMocks();vi.unstubAllGlobals();ledger.start.mockResolvedValue("qa-ledger");});
 describe("Smart provider isolation (offline)",()=>{
+  it("keeps OpenAI search discovery URLs when the summary has no inline citations",async()=>{
+    const result=await smartAi(db,smartConfig({SMART_PROVIDER:"openai",OPENAI_API_KEY:"qa-only"}),article,"research",{},vi.fn().mockResolvedValue(reply({model:"gpt-6-luna",output:[{type:"web_search_call",status:"completed",action:{sources:[{type:"url",url:"https://example.org/document",title:"Official document"},{type:"url",url:null}]}},{type:"message",content:[{type:"output_text",text:"Search summary, not evidence",annotations:[]}]}]})));
+    expect(result.sources).toEqual([{url:"https://example.org/document",title:"Official document"}]);
+  });
+  it("does not accept an OpenAI research summary without a completed search",async()=>{
+    await expect(smartAi(db,smartConfig({SMART_PROVIDER:"openai",OPENAI_API_KEY:"qa-only"}),article,"research",{},vi.fn().mockResolvedValue(reply({model:"gpt-6-luna"})))).rejects.toMatchObject({code:"research_not_performed"});
+  });
   it("makes OpenAI structured schemas strict at every object without mutating the Zod schema",()=>{
     const schema=z.toJSONSchema(z.object({valid:z.boolean(),note:z.string().optional(),items:z.array(z.object({value:z.number().default(1)}))}));
     const request=smartProviderRequest(smartConfig({SMART_PROVIDER:"openai",OPENAI_API_KEY:"qa"}),{text:{format:{type:"json_schema",strict:true,schema}}});

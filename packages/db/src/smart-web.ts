@@ -35,7 +35,7 @@ export async function fetchSmartPage(raw: string, redirects = 0): Promise<{ url:
       if (res.statusCode && [301,302,303,307,308].includes(res.statusCode)) { res.resume(); resolve({ location: res.headers.location ?? "" }); return; }
       if (res.statusCode !== 200 || !/^(text\/html|text\/plain)/i.test(res.headers["content-type"] ?? "")) { res.resume(); reject(new Error("unreadable_source")); return; }
       let size = 0; const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => { size += chunk.length; if (size > 750_000) req.destroy(new Error("source_size")); else chunks.push(chunk); });
+      res.on("data", (chunk: Buffer) => { size += chunk.length; if (size > 2_000_000) { const error=new Error("source_size");reject(error);req.destroy(error); } else chunks.push(chunk); });
       res.on("end", () => resolve({ body: Buffer.concat(chunks).toString("utf8") }));
       res.on("error", reject);
     });

@@ -90,7 +90,7 @@ stop_pid() {
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
       local role="${file##*/}"
       role="${role%.pid}"
-      if [[ "$role" == web || "$role" == studio ]]; then
+      if [[ "$role" == web || "$role" == studio || "$role" == worker ]]; then
         [[ "$(readlink "/proc/$pid/cwd")" == "$LIVE/apps/$role" ]] || return 1
         kill -TERM "$pid" 2>/dev/null || true
         for _ in {1..15}; do kill -0 "$pid" 2>/dev/null || break; sleep 1; done
