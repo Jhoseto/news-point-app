@@ -44,6 +44,7 @@ Thumbs.db
 .idea/
 
 # AI development files (kept locally, not part of the product repository)
+.agents/
 .cursor/
 AGENTS.md
 CLAUDE.md
