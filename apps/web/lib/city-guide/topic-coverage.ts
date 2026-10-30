@@ -6,7 +6,8 @@ import { CITY_PRESENTATION, readerCityGroups } from "./presentation";
 
 export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]>> = {
   transport: {
-    "Градски автобуси": ["plovdiv-livetransport-gtfs"],
+    "Градски автобуси": ["plovdiv-livetransport-gtfs", "plovdiv-transit-documents"],
+    "Междуградски автобуси": ["karat-plovdiv-sofia", "union-plovdiv-burgas", "union-plovdiv-varna"],
     "Пропуск за нискоемисионната зона": ["plovdiv-low-emission-permit"],
     "Влизане в центъра": ["plovdiv-low-emission"],
     "Извън града": ["plovdiv-airport-flights"],
@@ -82,6 +83,7 @@ export function cityAvailableTopics(categorySlug: string, groups: CityObservatio
       return !!kind && !!groups.find(group => group.sourceId === id)?.items.some(item => explicitNightEventKind(item.fields) === kind);
     });
     if (!sourceId) return [];
+    if (categorySlug === "transport" && topic.title === "Междуградски автобуси") return [{ title: topic.title, href: "#nablyudavani-intercity-buses" }];
     if (categorySlug === "culture" || categorySlug === "nightlife") {
       const filter = ({ "Театър": "theatre", "Опера и балет": "opera", "Изложби": "exhibition", "Срещи и работилници": "community", "Предстоящи": "all", "Партита": "party", "Музика на живо": "live", "Стендъп": "standup" } as Record<string, string>)[topic.title];
       return filter ? [{ title: topic.title, href: `#agenda-${filter}` }] : [];

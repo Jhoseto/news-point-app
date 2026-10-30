@@ -14,6 +14,22 @@ it("rejects blank/broken tables, unknown windows and impossible dates; excludes 
   for (const html of ["", "<table></table>", block().replace("КЕЦ", "changed"), block(undefined, "31.02.2026 до 27.10.2026"), block(undefined, undefined, "29:00 - 30:00")]) expect(() => parsePlannedPower(html, now)).toThrow();
   expect(parsePlannedPower(block(undefined, "23.10.2026 до 24.10.2026"), now).items).toEqual([]);
 });
+it("keeps the city outage when another regional row uses an unpadded day", () => {
+  const html = block("ГР. ХИСАР — тестов адрес", "3.11.2026 до 3.11.2026")
+    + block("ГР. ПЛОВДИВ — тестов адрес", "30.10.2026 до 30.10.2026", "10:00 - 13:00");
+  const result = parsePlannedPower(html, new Date("2026-10-30T09:00:00Z"));
+  expect(result.items).toHaveLength(1);
+  expect(result.items[0]?.fields).toMatchObject({ address: "ГР. ПЛОВДИВ — тестов адрес", startDate: "2026-10-30", endDate: "2026-10-30", startTime: "10:00", endTime: "13:00" });
+});
+it("normalizes unpadded days and months without changing identity or accepting impossible dates", () => {
+  const unpadded = parsePlannedPower(block(undefined, "3.1.2027 до 3.1.2027"), now).items[0]!;
+  const padded = parsePlannedPower(block(undefined, "03.01.2027 до 03.01.2027"), now).items[0]!;
+  expect(unpadded).toEqual(padded);
+  expect(unpadded.fields.startDate).toBe("2027-01-03");
+  for (const date of ["0.1.2027", "32.1.2027", "1.0.2027", "1.13.2027", "31.4.2027", "29.2.2027"])
+    expect(() => parsePlannedPower(block(undefined, `${date} до ${date}`), now)).toThrow();
+  expect(parsePlannedPower(block(undefined, "29.2.2028 до 29.2.2028"), now).items[0]?.fields.startDate).toBe("2028-02-29");
+});
 it("honours the publisher's Windows-1251 meta declaration when the HTTP header omits a charset", async () => {
   const html = '<meta http-equiv="Content-Type" content="text/html; charset=windows-1251">' + block("ГР. ПЛОВДИВ, ул. Тестова");
   const bytes = new Uint8Array([...html].map(char => { const code = char.codePointAt(0)!; return code >= 0x410 && code <= 0x44f ? code - 0x350 : code; }));

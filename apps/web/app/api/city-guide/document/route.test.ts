@@ -36,3 +36,16 @@ it("defers municipal entry-permit documents", async () => {
   expect((await GET(new Request(request().url.replace(group.sourceId, "plovdiv-low-emission-permit")))).status).toBe(404);
   expect(mocks.load).not.toHaveBeenCalled();
 });
+it("serves bus PDFs only for a current transport record and its own hash", async () => {
+  const sourceId = "plovdiv-transit-documents";
+  const busRequest = new Request(request().url.replace(group.sourceId, sourceId));
+  mocks.load.mockResolvedValue([{ ...group, sourceId }]);
+  expect((await GET(busRequest)).status).toBe(200);
+  expect(mocks.load).toHaveBeenCalledWith("transport", sourceId);
+  mocks.read.mockClear();
+  mocks.load.mockResolvedValue([{ ...group, sourceId, status: "stale" }]);
+  expect((await GET(busRequest)).status).toBe(404);
+  expect(mocks.read).not.toHaveBeenCalled();
+  mocks.load.mockResolvedValue([{ ...group, sourceId, items: [{ key: "another-line", fields: group.items[0]!.fields }] }]);
+  expect((await GET(busRequest)).status).toBe(404);
+});

@@ -15,6 +15,9 @@ import { pilotSources, type CandidateSource } from "./catalog";
 import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parseGalleryExhibitionDetail, parseOperaDetail, parsePilotPage, type PilotSnapshot } from "./parse";
 import { previewAfterCheck, type LocalPreview } from "./preview";
 import { parsePlovdivGtfsArchive } from "./gtfs";
+import { parseKaratPlovdivSofia } from "./intercity";
+import { collectTransitDocuments } from "./transit-documents";
+import { collectUnionIntercity, unionIntercityRoute, unionSearchBody, unionServiceDates, UNION_TIMETABLE_URL } from "./union-collection";
 import { collectFirstGradeVacancies } from "./first-grade";
 import { collectMunicipalAuctions } from "./auctions";
 import { collectYouthCentreEvents } from "./youth-centre";
@@ -94,14 +97,26 @@ async function bodyWithinLimit(response: Response, limit = maxBodyBytes): Promis
   return body;
 }
 
-async function requestSource(source: CandidateSource, previous: SourceState, requireBody = false): Promise<{ response: Response; finalUrl: string }> {
+async function requestSource(source: CandidateSource, previous: SourceState, requireBody = false, serviceDate?: string): Promise<{ response: Response; finalUrl: string }> {
   const expectedHost = new URL(source.url).hostname;
+  const unionRoute = unionIntercityRoute(source.id);
+  if (unionRoute && (source.url !== UNION_TIMETABLE_URL || !serviceDate)) throw new Error("Union: invalid public timetable request");
   let url = source.url;
   for (let redirects = 0; redirects <= 3; redirects++) {
+    if (source.id === "karat-plovdiv-sofia" || source.id === "plovdiv-transit-documents") {
+      const target = new URL(url);
+      const approved = source.id === "karat-plovdiv-sofia"
+        ? target.origin === "https://karat-s.com" && /^\/bus\/plovdiv-sofia\/?$/u.test(target.pathname)
+        : target.origin === "https://www.plovdiv.bg" && (target.pathname === "/item/transport/mass-public-transport/"
+          || /^\/wp-content\/uploads\/20\d{2}\/(?:0[1-9]|1[0-2])\/[A-Za-z0-9_-]+\.pdf$/iu.test(target.pathname));
+      if (!approved || target.username || target.password || target.port || target.search || target.hash) throw new Error("transport request left the approved public source paths");
+    }
     const headers = new Headers({ Accept: source.format === "gtfs" ? "application/zip,application/octet-stream" : source.format === "pdf" ? "application/pdf" : source.format === "json" ? "application/json" : "text/html,application/xhtml+xml", "User-Agent": agent });
     if (!requireBody && previous.etag) headers.set("If-None-Match", previous.etag);
     if (!requireBody && previous.lastModified) headers.set("If-Modified-Since", previous.lastModified);
-    let response = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(20_000), cache: "no-store" });
+    if (unionRoute) headers.set("Content-Type", "application/x-www-form-urlencoded");
+    let response = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(20_000), cache: "no-store",
+      ...(unionRoute ? { method: "POST", body: unionSearchBody(source.id, serviceDate!).toString() } : {}) });
     if ([202, 403].includes(response.status) && relaySourceIds.has(source.id)) {
       const relayUrl = process.env.CITY_SOURCE_RELAY_URL ?? "";
       const relaySecret = process.env.CITY_SOURCE_RELAY_SECRET ?? "";
@@ -127,6 +142,7 @@ async function requestSource(source: CandidateSource, previous: SourceState, req
       }
     }
     if (![301, 302, 303, 307, 308].includes(response.status)) return { response, finalUrl: url };
+    if (unionRoute) { await response.body?.cancel(); throw new Error("Union: timetable search redirect refused"); }
     const location = response.headers.get("location");
     if (!location) throw new Error("redirect without Location");
     const next = new URL(location, url);
@@ -194,20 +210,22 @@ function differences(before: Record<string, string>, after: Record<string, strin
 
 export async function runPilotSource(source: CandidateSource, previous: SourceState, now = Date.now(), requireSnapshot = false): Promise<{ state: SourceState; journal: Record<string, unknown>; snapshot?: PilotSnapshot }> {
   const started = Date.now();
+  const unionRoute = unionIntercityRoute(source.id);
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = source.id === "balbok-plovdiv-campaigns" || !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = !!unionRoute || source.id === "plovdiv-transit-documents" || source.id === "karat-plovdiv-sofia" || source.id === "balbok-plovdiv-campaigns" || !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
   let retryAfter: string | null = null;
   try {
-    const { response, finalUrl } = await requestSource(source, previous, requireSnapshot || detailDriven || daySensitive || partitioned || alwaysParse);
+    const { response, finalUrl } = await requestSource(source, previous, requireSnapshot || detailDriven || daySensitive || partitioned || alwaysParse || !!unionRoute, unionRoute ? unionServiceDates(now)[0] : undefined);
     httpStatus = response.status;
     retryAfter = response.headers.get("retry-after");
     try { guardCityResponse(response); }
     catch (error) { await response.body?.cancel(); throw error; }
     const checkedAt = new Date(now).toISOString();
     if (response.status === 304) {
+      if (unionRoute) { await response.body?.cancel(); throw new Error("Union: dated search requires a fresh response body"); }
       if (!previous.bodyHash || !previous.lastParsedAt) throw new Error("304 without a prior valid snapshot");
       const state = { ...previous, failures: 0, lastCheckedAt: checkedAt, lastSuccessAt: checkedAt, nextDueAt: dueAfter(source, 0, null, now) };
       return { state, journal: { sourceId: source.id, checkedAt, httpStatus, outcome: "unchanged", durationMs: Date.now() - started, itemCount: Object.keys(state.items).length } };
@@ -215,7 +233,7 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     if (source.format === "gtfs" ? !/(?:application\/zip|application\/octet-stream)/u.test(contentType) : source.format === "json" ? !contentType.includes("application/json") : !contentType.includes("text/html")) throw new Error("unexpected response content type");
-    const body = await bodyWithinLimit(response, source.id === "ecopack-containers" ? 8_000_000 : maxBodyBytes);
+    const body = await bodyWithinLimit(response, source.id === "ecopack-containers" ? 8_000_000 : unionRoute ? 1_000_000 : maxBodyBytes);
     const bodyHash = sha256(body);
     if (!requireSnapshot && !detailDriven && !daySensitive && !partitioned && !alwaysParse && !(source.id === "vik-outages" && !previous.partition) && bodyHash === previous.bodyHash && previous.lastParsedAt) {
       const state = { ...previous, failures: 0, lastCheckedAt: checkedAt, lastSuccessAt: checkedAt, nextDueAt: dueAfter(source, 0, null, now) };
@@ -234,7 +252,18 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
       procedureDocuments.set(url, document);
       return document;
     };
-    let snapshot = source.id === "ecopack-containers" ? parseEcopackContainers(new TextDecoder().decode(body)) : source.id === "balbok-plovdiv-campaigns" ? await collectBalbokCampaigns(decodeHtml(body, response.headers.get("content-type")), async url => {
+    let snapshot = unionRoute ? await collectUnionIntercity(decodeHtml(body, response.headers.get("content-type")), source.id, now, async date => {
+      await new Promise(done => setTimeout(done, 1200));
+      const page = await requestSource(source, { failures: 0, items: {} }, true, date);
+      httpStatus = page.response.status;
+      retryAfter = page.response.headers.get("retry-after") ?? retryAfter;
+      try { guardCityResponse(page.response); } catch (error) { await page.response.body?.cancel(); throw error; }
+      if (!page.response.ok || !page.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        await page.response.body?.cancel();
+        throw new Error(`Union: timetable request failed (HTTP ${page.response.status})`);
+      }
+      return decodeHtml(await bodyWithinLimit(page.response, 1_000_000), page.response.headers.get("content-type"));
+    }) : source.id === "karat-plovdiv-sofia" ? parseKaratPlovdivSofia(decodeHtml(body, response.headers.get("content-type"))) : source.id === "plovdiv-transit-documents" ? await collectTransitDocuments(decodeHtml(body, response.headers.get("content-type")), readProcedure, new Date(now)) : source.id === "ecopack-containers" ? parseEcopackContainers(new TextDecoder().decode(body)) : source.id === "balbok-plovdiv-campaigns" ? await collectBalbokCampaigns(decodeHtml(body, response.headers.get("content-type")), async url => {
       await new Promise(done => setTimeout(done, 1200));
       const detail = await requestSource({ ...source, url }, { failures: 0, items: {} }, true);
       httpStatus = detail.response.status;

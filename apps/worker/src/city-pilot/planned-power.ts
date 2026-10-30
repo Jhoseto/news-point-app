@@ -6,9 +6,9 @@ const sourceUrl = "https://www.elyug.bg/oldservices/ec_ep/abschaltung_bg/abschal
 const labels = ["Област", "КЕЦ", "Адрес(и)", "Срок на изключването от / до", "Дата(и) на изключването"];
 const clean = (value: string) => value.replace(/\s+/gu, " ").trim();
 function day(raw: string): string {
-  const match = raw.match(/^(\d{2})\.(\d{2})\.(20\d{2})$/u);
+  const match = raw.match(/^(\d{1,2})\.(\d{1,2})\.(20\d{2})$/u);
   if (!match) throw new Error("planned power: invalid date");
-  const value = `${match[3]}-${match[2]}-${match[1]}`;
+  const value = `${match[3]}-${match[2]!.padStart(2, "0")}-${match[1]!.padStart(2, "0")}`;
   if (new Date(`${value}T12:00:00Z`).toISOString().slice(0, 10) !== value) throw new Error("planned power: impossible date");
   return value;
 }
@@ -21,7 +21,7 @@ export function parsePlannedPower(html: string, now = new Date()): PilotSnapshot
     const block = rows.slice(index, index + labels.length);
     if (block.some((cells, i) => cells.length !== 2 || cells[0] !== labels[i] || !cells[1]) || block[0]![1] !== "ПЛОВДИВ") throw new Error("planned power: regional structure changed");
     const address = block[2]![1]!;
-    const dates = block[4]![1]!.match(/^(\d{2}\.\d{2}\.20\d{2}) до (\d{2}\.\d{2}\.20\d{2})$/u);
+    const dates = block[4]![1]!.match(/^(\d{1,2}\.\d{1,2}\.20\d{2}) до (\d{1,2}\.\d{1,2}\.20\d{2})$/u);
     const hours = block[3]![1]!.match(/^([0-2]\d:[0-5]\d) - ([0-2]\d:[0-5]\d)$/u);
     if (!dates || !hours || Number(hours[1]!.slice(0, 2)) > 23 || Number(hours[2]!.slice(0, 2)) > 23) throw new Error("planned power: dated window missing");
     const startDate = day(dates[1]!), endDate = day(dates[2]!);

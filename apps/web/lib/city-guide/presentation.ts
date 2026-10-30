@@ -24,7 +24,9 @@ export const CITY_PRESENTATION: Record<string, Presentation> = {
   "plovdiv-transport-signals": { title: "Сигнали за транспорт и осветление", description: "Телефони за автобуси, светофари и улично осветление.", note: "При непосредствена опасност се обади на 112.", utility: true },
   "plovdiv-parking-operator": { title: "При репатриран автомобил", description: "Контакт и адрес за справка.", note: "Няма проверка по регистрационен номер или време за реакция.", utility: true },
   "plovdiv-livetransport-gtfs": { title: "Автобуси: спирки и разписания", description: "Избери линия, посока и спирка, за да видиш планираните часове за днес.", note: "Часовете са по публикуваното разписание за днес. Не са прогноза за пристигане; закъснения и временни отклонения не са включени.", order: 1 },
-  "plovdiv-airport-flights": { title: "Полети от и до Пловдив", description: "Час, направление и последен обявен статус.", note: "Статусът може да се промени след проверката. Справката не включва влакове и междуградски автобуси." },
+  "plovdiv-transit-documents": { title: "Градски автобуси: делник и празник", description: "Оригиналните общински разписания по линии, с тръгвания от крайните спирки.", note: "Документи на Община Пловдив. Режимът „Празник“ не определя сам по себе си кои конкретни дати обхваща. При нова заповед разписанието може да се промени.", order: 2 },
+  "karat-plovdiv-sofia": { title: "Междуградски автобуси: Пловдив–София", description: "Публикувани дати, часове и точни спирки от Карат-С / Citylines.", note: "Източник: публичното разписание на Карат-С / Citylines за Пловдив–София. Това е частична справка, не списък на всички курсове или превозвачи. Датата на пътуване е посочена отделно от датата на проверката.", order: 3 },
+  "plovdiv-airport-flights": { title: "Полети от и до Пловдив", description: "Час, направление и последен обявен статус.", note: "Статусът може да се промени след проверката. Справката е само за полети." },
   "plovdiv-transit": { title: "Билети и карти", description: "Видове превозни документи и цени.", note: "Показани са публикуваните цени при последната проверка." },
   "plovdiv-low-emission-permit": { title: "Пропуск за нискоемисионната зона", description: "Условия, документи и заявление за жители и исторически автомобили.", note: "Пропускът урежда навлизане и движение; паркирането има отделни правила. Срокът за обработка и такса не са посочени в този комплект. Индивидуалното право се проверява от общината.", order: 3 },
   "plovdiv-low-emission": { title: "Правила за „Малък ринг“", description: "Ограничения за автомобилите в нискоемисионната зона.", note: "Няма проверка на конкретен автомобил или пропуск." },
@@ -51,7 +53,7 @@ export const CITY_PRESENTATION: Record<string, Presentation> = {
 
 /** A docket number alone is evidence for the collector, not useful reader content. */
 export function readerCityGroups(groups: CityObservation[]): CityObservation[] {
-  return groups.filter(group => citySourceInRelease(group.sourceId) && group.status === "observed" && group.items.length > 0
+  return groups.filter(group => citySourceInRelease(group.sourceId) && ((group.status === "observed" && group.items.length > 0) || ["karat-plovdiv-sofia", "plovdiv-transit-documents"].includes(group.sourceId))
     && group.sourceId !== "plovdiv-council")
     .sort((a, b) => (CITY_PRESENTATION[a.sourceId]?.order ?? 20) - (CITY_PRESENTATION[b.sourceId]?.order ?? 20));
 }

@@ -321,8 +321,11 @@ describe("city source pilot", () => {
       "calendar.txt": strToU8("service_id,monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date\nWEEKEND,0,0,0,0,0,1,1,20261024,20261231\n"),
       "calendar_dates.txt": strToU8("service_id,date,exception_type\nWEEKEND,20261025,2\n"),
       "routes.txt": strToU8("route_id,route_type,route_short_name,route_long_name\n24,3,24,Линия 24\n"),
-      "trips.txt": strToU8("route_id,service_id,trip_headsign\n24,WEEKEND,Прослав\n"),
-    }), sunday)).toThrow("calendar exceptions require separate validation");
+      "trips.txt": strToU8("route_id,service_id,trip_headsign,trip_id\n24,WEEKEND,Прослав,t1\n"),
+      "agency.txt": strToU8("agency_timezone\nEurope/Sofia\n"),
+      "stops.txt": strToU8("stop_id,stop_name\ns1,QA спирка 1\ns2,QA спирка 2\n"),
+      "stop_times.txt": strToU8("trip_id,stop_id,arrival_time,departure_time,stop_sequence\nt1,s1,08:00:00,08:00:00,1\nt1,s2,08:10:00,08:10:00,2\n"),
+    }), sunday)).toThrow("no service defined for today in Sofia");
     const source = candidateSources.find((entry) => entry.id === "plovdiv-livetransport-gtfs")!;
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(archive, { status: 200, headers: { "content-type": "application/zip" } })));
     const result = await runPilotSource(source, { failures: 0, items: {} }, sunday);

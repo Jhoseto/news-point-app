@@ -15,6 +15,7 @@
     "./city-health": "./src/city-health.ts",
     "./error-monitoring": "./src/error-monitoring.ts",
     "./city-sources": "./src/city-sources.ts",
+    "./city-intercity": "./src/city-intercity.ts",
     "./menu": "./src/menu.ts",
     "./disk": "./src/remote-disk.ts",
     "./audio": "./src/audio-processing.ts",

@@ -41,6 +41,10 @@ export const candidateSources: CandidateSource[] = [
   // The fetched 2026-10-25 ZIP advertises service through 2026-12-31, but its
   // calendar covers weekends only; day-specific checks and a seven-day test remain.
   { id: "plovdiv-livetransport-gtfs", category: "transport", url: "https://gtfs.livetransport.eu/gtfs/plovdiv.zip", format: "gtfs", pilot: true },
+  { id: "plovdiv-transit-documents", category: "transport", url: "https://www.plovdiv.bg/item/transport/mass-public-transport/", format: "html", pilot: true },
+  { id: "karat-plovdiv-sofia", category: "transport", url: "https://karat-s.com/bus/plovdiv-sofia", format: "html", pilot: true },
+  { id: "union-plovdiv-burgas", category: "transport", url: "https://union-ivkoni.com/bg/routes", format: "html", pilot: true },
+  { id: "union-plovdiv-varna", category: "transport", url: "https://union-ivkoni.com/bg/routes", format: "html", pilot: true },
   { id: "openstreetmap", category: "transport", url: "https://www.openstreetmap.org/", format: "map" },
   { id: "plovdiv-parking-rules", category: "parking", url: "https://www.plovdiv.bg/sms-parking/", format: "html", pilot: true },
   { id: "plovdiv-parking-operator", category: "parking", url: "https://www.plovdiv.bg/administration/municipal-enterprises/op_parking/", format: "html", pilot: true },

@@ -24,6 +24,10 @@ export const CITY_SOURCE_POLICY: Record<string, { refreshSeconds: number; staleS
   "plovdiv-community-air": { refreshSeconds: 900, staleSeconds: 1800 },
   "plovdiv-transit": { refreshSeconds: 86400, staleSeconds: 108000 },
   "plovdiv-livetransport-gtfs": { refreshSeconds: 21600, staleSeconds: 28800 },
+  "plovdiv-transit-documents": { refreshSeconds: 86400, staleSeconds: 108000 },
+  "karat-plovdiv-sofia": { refreshSeconds: 3600, staleSeconds: 5400 },
+  "union-plovdiv-burgas": { refreshSeconds: 3600, staleSeconds: 5400 },
+  "union-plovdiv-varna": { refreshSeconds: 3600, staleSeconds: 5400 },
   "plovdiv-airport-flights": { refreshSeconds: 3600, staleSeconds: 5400 },
   "plovdiv-low-emission-permit": { refreshSeconds: 86400, staleSeconds: 108000 },
   "plovdiv-low-emission": { refreshSeconds: 86400, staleSeconds: 108000 },
@@ -70,7 +74,7 @@ export const CITY_SOURCE_POLICY: Record<string, { refreshSeconds: number; staleS
 };
 
 export const CITY_CATEGORY_SOURCES: Record<string, readonly string[]> = {
-  transport: ["plovdiv-livetransport-gtfs", "plovdiv-airport-flights", "plovdiv-low-emission", "plovdiv-low-emission-permit", "plovdiv-transit"],
+  transport: ["plovdiv-livetransport-gtfs", "plovdiv-transit-documents", "karat-plovdiv-sofia", "union-plovdiv-burgas", "union-plovdiv-varna", "plovdiv-airport-flights", "plovdiv-low-emission", "plovdiv-low-emission-permit", "plovdiv-transit"],
   parking: ["mall-plovdiv-parking", "markovo-tepe-parking", "plovdiv-parking-rules", "vivacom-plovdiv-parking", "plovdiv-parking-operator"],
   outages: ["vik-outages", "evn-heating-outages", "elyug-planned-plovdiv-region"],
   municipality: ["plovdiv-management-competitions", "plovdiv-public-consultations", "plovdiv-auction-list", "plovdiv-tax-notices", "plovdiv-taxes", "plovdiv-housing", "plovdiv-contacts", "plovdiv-social-services", "plovdiv-eco-signals", "plovdiv-transport-signals", "plovdiv-council"],

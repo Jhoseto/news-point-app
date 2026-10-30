@@ -39,6 +39,7 @@ export function CityTransitTimetable({ lines, checkedAt, news = {} }: { lines: L
         <details className="city-procedure-document"><summary>Всички спирки по маршрута <span aria-hidden="true">+</span></summary><ol className="city-transit-stop-list">{pattern?.stops.map((stop, index) => <li key={`${stop.id}-${index}`}><button type="button" aria-pressed={stopIndex === index} onClick={() => setStopIndex(index)}>{stop.name}{stop.code ? ` · № ${stop.code}` : ""}</button></li>)}</ol></details>
       </>}
     </div>
+    <p className="city-action-small">Данни: <a href="https://gtfs.livetransport.eu/" rel="noreferrer" target="_blank">LiveTransport</a>, <a href="https://creativecommons.org/licenses/by/4.0/" rel="noreferrer" target="_blank">CC BY 4.0</a>. Подредени по линия и спирка за тази справка.</p>
     <CityRelatedNews stories={news[selected] ?? []} topic={`Още за линия ${line?.line ?? ""}`} />
   </div>;
 }

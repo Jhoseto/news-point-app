@@ -8,6 +8,9 @@ import { cache } from "react";
 import { z } from "zod";
 import { readCitySnapshots } from "@newspoint/db/city";
 import { explicitNightEventKind } from "./event-kind";
+import { cityIntercityJourneyRelevant } from "./intercity";
+import { cityTransitDocument } from "./transit-documents";
+import { cityIntercityRoute } from "@newspoint/content/city-intercity";
 
 const itemSchema = z.object({
   key: z.string().min(1),
@@ -45,6 +48,11 @@ function localDay(date: Date): string {
 }
 
 function isRelevantRow(sourceId: string, fields: Record<string, string | number>, today: string, now: Date): boolean {
+  if (cityIntercityRoute(sourceId)) return cityIntercityJourneyRelevant(fields, today, sourceId);
+  if (sourceId === "plovdiv-transit-documents") {
+    const document = cityTransitDocument(fields);
+    return !!document && document.validFrom <= today && document.validThrough >= today;
+  }
   if (sourceId === "balbok-plovdiv-campaigns") {
     const date = String(fields.date ?? ""), parsed = new Date(`${date}T12:00:00Z`);
     const clock = now.toLocaleTimeString("en-GB", { timeZone: "Europe/Sofia", hourCycle: "h23", hour: "2-digit", minute: "2-digit" });

@@ -54,9 +54,10 @@ export function CityEventAgenda({ category, events, news, today }: { category: "
   const setSelected = (event: AgendaEvent | null) => {
     if (event) {
       const hash = `#event-${encodeURIComponent(event.id)}`;
-      if (window.location.hash !== hash) window.history.pushState(window.history.state, "", hash);
+      // Next copies its router state itself; passing it back skips URL sync on refresh.
+      if (window.location.hash !== hash) window.history.pushState(null, "", hash);
     } else if (window.location.hash.startsWith("#event-")) {
-      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
     setSelectedId(event?.id ?? null);
   };
