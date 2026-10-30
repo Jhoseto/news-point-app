@@ -202,6 +202,8 @@ export const articles = pgTable(
   (table) => [
     unique("articles_source_legacy_key").on(table.sourceSystem, table.legacyId),
     index("articles_public_published_idx").on(table.publishedAt.desc()).where(sql`${table.isPublic}`),
+    // Migration 49 builds this native full-content index CONCURRENTLY.
+    index("articles_smart_public_fulltext_idx").using("gin",sql`to_tsvector('simple',coalesce(${table.title},'')||' '||coalesce(${table.excerpt},'')||' '||${table.body}::text)`).where(sql`${table.isPublic}`),
   ],
 );
 

@@ -27,6 +27,10 @@ function adapt(raw:RawDb):SmartDb {
     transaction:<T>(fn:(tx:SmartDb)=>Promise<T>)=>raw.transaction(tx=>fn(adapt(tx)))} as unknown as SmartDb;
 }
 const articleId=randomUUID();
+const answerProviders=["minimax","openai"] as const;
+function answerTestConfig(provider:typeof answerProviders[number]){
+  return smartConfig({SMART_PROVIDER:provider,SMART_MODEL:"gpt-6-luna",MINIMAX_API_KEY:"qa-shared-provider-not-real",OPENAI_API_KEY:"qa-shared-provider-not-real"});
+}
 beforeAll(async()=>{
   pg=new PGlite(); db=adapt(drizzle(pg));
   await pg.exec(`create table articles(id uuid primary key,title text,excerpt text,body jsonb,path text,published_revision integer,source_modified_at timestamptz,is_public boolean,published_at timestamptz,updated_at timestamptz);
@@ -40,6 +44,55 @@ beforeAll(async()=>{
 afterAll(async()=>{await pg.close();});
 const answer:SmartAnswer={status:"insufficient",blocks:[{text:"Explicit QA fixture: insufficient evidence",sourceIds:[]}],sources:[],followUps:[],checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString()};
 describe("Smart PostgreSQL invariants",()=>{
+  it.each(answerProviders)("rejects an unrelated question before external research (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),article=await smartArticle(db,articleId),since=new Date().toISOString();
+    const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify({queries:[],relevant:false,answer:null})}]}]}));
+    vi.stubGlobal("fetch",network);
+    try{
+      const result=await answerSmartQuestion(db,config,article,"QA unrelated general chat",[]);
+      expect(result.status).toBe("off_topic");expect(result.sources).toEqual([]);expect(result.followUps).toEqual([]);expect(network).toHaveBeenCalledTimes(1);
+      const operations=await db.execute(sql`select operation from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);
+      expect(operations.map(row=>row.operation)).toEqual(["retrieval"]);
+    }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
+  });
+
+  it("reads OpenAI discovery pages after our archive and grounds the answer in page evidence, not search text",async()=>{
+    const id=randomUUID(),config=answerTestConfig("openai"),url="https://example.org/official-biography";
+    const currentText="QA: Анна Петрова коментира решението.",externalText="QA: Анна Петрова е журналист. Започва работа в регионален вестник.";
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:currentText}])}::jsonb,'/qa-openai-research/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const events:string[]=[],observed={execute:(q:SQL)=>{if(new PgDialect().sqlToQuery(q).sql.includes("candidates as"))events.push("archive");return db.execute(q);},transaction:db.transaction.bind(db)} as SmartDb;
+    const page=vi.spyOn(smartWeb,"fetchSmartPage").mockImplementation(async requested=>{events.push("page");expect(requested).toBe(url);return {url,text:externalText};});
+    const values=[
+      {queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],relevant:true,needsResearch:true,researchQuery:"Анна Петрова биография",answer:null},
+      {status:"answered",blocks:[{text:externalText,evidence:["e1"]}],followUps:["Има ли публикувани нейни интервюта?"],timeSensitive:false},
+      {valid:true,factsValid:true,answerValid:true,reason:""},
+    ];
+    const network=vi.fn(async(requested:unknown,options:RequestInit)=>{
+      expect(String(requested)).toBe("https://api.openai.com/v1/responses");
+      const request=JSON.parse(String(options.body)),input=JSON.parse(request.input);
+      if(request.tools){
+        events.push("web");expect(request.include).toContain("web_search_call.action.sources");
+        return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[
+          {type:"web_search_call",status:"completed",action:{type:"search",sources:[{type:"url",url}]}},
+          {type:"message",content:[{type:"output_text",text:"QA unsupported search summary: the person was a doctor.",annotations:[]}]},
+        ]});
+      }
+      if(input.previous!==undefined||input.result){
+        expect(JSON.stringify(input.sources)).toContain(externalText);
+        expect(JSON.stringify(input.sources)).not.toContain("was a doctor");
+      }
+      const value=values.shift();if(!value)throw Error("Unexpected provider call");
+      return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const result=await answerSmartQuestion(observed,config,await smartArticle(db,id),"Каква е професионалната биография на Анна Петрова?",[]);
+      expect(result.status).toBe("answered");expect(result.blocks[0]?.text).toBe(externalText);expect(result.sources).toHaveLength(1);expect(result.sources[0]).toMatchObject({kind:"external",url,passage:externalText});
+      expect(events).toEqual(["archive","web","page"]);expect(network).toHaveBeenCalledTimes(4);expect(page).toHaveBeenCalledTimes(1);
+      const operations=await db.execute(sql`select operation,provider,model from ai_operations where article_id=${id}::uuid order by started_at`);
+      expect(operations.map(row=>row.operation)).toEqual(["retrieval","research","answer","verification"]);expect(operations.every(row=>row.provider==="openai"&&row.model==="gpt-6-luna")).toBe(true);
+    }finally{page.mockRestore();vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
   it("skips a duplicate assessment when the archive adds no evidence and meters search separately",async()=>{
     const config=smartConfig({MINIMAX_API_KEY:"explicit-qa-not-real",OPENAI_API_KEY:"must-not-use"}),article=await smartArticle(db,articleId);
     const result={status:"insufficient",blocks:[{text:"QA: недостатъчни доказателства.",evidence:[]}],followUps:["Какви официални документи са налични?","Кога е потвърдено описаното събитие?"],timeSensitive:false};
@@ -91,14 +144,14 @@ describe("Smart PostgreSQL invariants",()=>{
     await db.execute(sql`delete from smart_nodes where key=${key}`);
   });
 
-  it.each([true,false])("searches our archive even with a ready current-article draft and independently approves an uncited related card (%s)",async(validQuote)=>{
-    const currentId=randomUUID(),relatedId=randomUUID(),config=smartConfig({MINIMAX_API_KEY:"qa-card-first"});
+  it.each(answerProviders.flatMap(provider=>[true,false].map(validQuote=>({provider,validQuote}))))("searches our archive even with a ready draft and independently approves an uncited related card ($provider, $validQuote)",async({provider,validQuote})=>{
+    const currentId=randomUUID(),relatedId=randomUUID(),config=answerTestConfig(provider);
     const currentText="QA: Анна Петрова коментира решението.",relatedText="QABioCardTerm: Журналистката Анна Петрова започва работа в регионален вестник.";
     for(const [id,text,path] of [[currentId,currentText,"/qa-card-current/"],[relatedId,relatedText,"/qa-card-related/"]])await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text}])}::jsonb,${path},published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
     const article=await smartArticle(db,currentId),draft={status:"answered",blocks:[{text:currentText,evidence:["e0"]}],followUps:["Къде е публикувано решението?"],timeSensitive:false};
-    const values:any[]=[{queries:["QABioCardTerm","NoMatchingQATerm123"],answer:draft,needsResearch:false},{relevant:true,evidenceSourceIds:["s0"],needsResearch:false,researchQuery:"",explanation:"",answer:draft},{valid:true,factsValid:true,answerValid:true,reason:"",relatedArticles:[{index:1,quote:validQuote?relatedText:"QA: Това е измислен цитат и не присъства в публикацията."},{index:0,quote:currentText}]}];
+    const values:any[]=[{queries:["QABioCardTerm","NoMatchingQATerm123"],answer:draft,needsResearch:false},{valid:true,factsValid:true,answerValid:true,reason:"",relatedArticles:[{index:1,quote:validQuote?relatedText:"QA: Това е измислен цитат и не присъства в публикацията."},{index:0,quote:currentText}]}];
     const network=vi.fn(async(_url:unknown,options:RequestInit)=>{const value=values.shift();if(!value)throw Error("Unexpected model call");const input=JSON.parse(JSON.parse(String(options.body)).input);if(input.result)expect(input.relatedCandidates).toEqual([1]);return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});});vi.stubGlobal("fetch",network);
-    try{const result=await answerSmartQuestion(db,config,article,"Какво коментира Анна Петрова и къде има повече за нея?",[]);expect(result.relatedArticleIds).toEqual(validQuote?[relatedId]:[]);expect(result.blocks[0]!.sourceIds).toHaveLength(1);expect(result.sources.some(source=>source.articleId===relatedId)).toBe(validQuote);expect(network).toHaveBeenCalledTimes(3);expect(network.mock.calls.every(([url])=>!String(url).endsWith("/coding_plan/search"))).toBe(true);}
+    try{const result=await answerSmartQuestion(db,config,article,"Какво коментира Анна Петрова и къде има повече за нея?",[]);expect(result.relatedArticleIds).toEqual(validQuote?[relatedId]:[]);expect(result.blocks[0]!.text).toBe(currentText);expect(result.blocks[0]!.sourceIds).toHaveLength(1);expect(result.sources.some(source=>source.articleId===relatedId)).toBe(validQuote);expect(network).toHaveBeenCalledTimes(2);expect(network.mock.calls.every(([url])=>!String(url).endsWith("/coding_plan/search"))).toBe(true);}
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${currentId}::uuid`);await db.execute(sql`delete from articles where id in (${currentId}::uuid,${relatedId}::uuid)`);}
   });
 
@@ -113,6 +166,50 @@ describe("Smart PostgreSQL invariants",()=>{
     const network=vi.fn(async(url:unknown,options:RequestInit)=>{const value=values.shift();if(!value)throw Error("Unexpected provider call");if(String(url).endsWith("/coding_plan/search")){events.push("web");return Response.json(value);}const input=JSON.parse(JSON.parse(String(options.body)).input);if(input.previous!==undefined)expect(input.answerDepth).toBe("expanded");return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});});vi.stubGlobal("fetch",network);
     try{const result=await answerSmartQuestion(observed,config,article,"Каква е професионалната биография на Анна Петрова?",[]);expect(result.status).toBe("answered");expect(result.sources[0]?.kind).toBe("external");expect(result.sources[0]?.url).toBe(urls[3]!.link);expect(result.relatedArticleIds).toEqual([]);expect(events.indexOf("archive")).toBeLessThan(events.indexOf("web"));expect(page).toHaveBeenCalledTimes(4);const searches=network.mock.calls.filter(([url])=>String(url).endsWith("/coding_plan/search"));expect(searches).toHaveLength(2);expect(searches.map(([,options])=>JSON.parse(String(options.body)).q)).toEqual(["Анна Петрова биография","Анна Петрова журналист кариера"]);}
     finally{page.mockRestore();vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
+  it.each(answerProviders)("prefetches at most six pages, preserves slow source priority, and cancels unused reads without another search (%s)",async(provider)=>{
+    const id=randomUUID(),config=answerTestConfig(provider),urls=Array.from({length:8},(_,index)=>`https://example.org/qa-priority-${index}`);
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,'[]'::jsonb,'/qa-source-priority/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const passage=(index:number)=>`QA verified source ${index}: The public decision was recorded on 29 October 2026. This explicit test source contains the supporting record.`;
+    let releaseFirst!:()=>void,allStarted!:()=>void,writerStarted=false,unusedCancelled=false,searches=0;
+    const started:string[]=[],startedPromise=new Promise<void>(resolve=>{allStarted=resolve;});
+    const page=vi.spyOn(smartWeb,"fetchSmartPage").mockImplementation((url,_redirects,signal)=>{
+      const index=urls.indexOf(url);started.push(url);expect(signal).toBeDefined();
+      if(started.length===6)allStarted();
+      if(index===0)return new Promise(resolve=>{releaseFirst=()=>resolve({url,text:passage(index)});});
+      if(index===1)return Promise.reject(new Error("QA blocked preferred page"));
+      if(index===4)return new Promise((_resolve,reject)=>{signal!.addEventListener("abort",()=>{unusedCancelled=true;reject(new Error("QA cancelled unused page"));},{once:true});});
+      return Promise.resolve({url,text:passage(index)});
+    });
+    const selected=[0,2,3],values=[
+      {queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:null,needsResearch:true,researchQuery:"QA official source records"},
+      {status:"answered",blocks:selected.map((index,evidence)=>({text:passage(index),evidence:[`e${evidence}`]})),followUps:["Има ли публикувани други решения?"],timeSensitive:false},
+      {valid:true,factsValid:true,answerValid:true,reason:""},
+    ];
+    const network=vi.fn(async(requested:unknown,options:RequestInit)=>{
+      const request=JSON.parse(String(options.body));
+      if(String(requested).endsWith("/coding_plan/search")||request.tools){
+        searches++;return provider==="minimax"?Response.json({base_resp:{status_code:0},organic:urls.map((link,index)=>({title:`QA source ${index}`,link}))}):Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"web_search_call",status:"completed",action:{type:"search",sources:urls.map(url=>({type:"url",url}))}}]});
+      }
+      const input=JSON.parse(request.input);
+      if(input.previous!==undefined||input.result){
+        writerStarted=true;
+        expect(input.sources.filter((source:any)=>source.kind==="external").map((source:any)=>source.url)).toEqual(selected.map(index=>urls[index]));
+      }
+      const value=values.shift();if(!value)throw Error("Unexpected provider call");return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const pending=answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Какво показват официалните решения?",[]);
+      await startedPromise;
+      expect(started).toEqual(urls.slice(0,6));expect(page).toHaveBeenCalledTimes(6);expect(searches).toBe(1);
+      await Promise.resolve();await Promise.resolve();
+      // Faster low-priority pages cannot replace the still-pending first source.
+      expect(writerStarted).toBe(false);expect(unusedCancelled).toBe(false);
+      releaseFirst();const result=await pending;
+      expect(result.status).toBe("answered");expect(result.sources.map(source=>source.url)).toEqual(selected.map(index=>urls[index]));
+      expect(unusedCancelled).toBe(true);expect(searches).toBe(1);expect(network).toHaveBeenCalledTimes(4);
+    }finally{page.mockRestore();vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
   });
 
   it("does not stop at readable but unhelpful external news when the question needs a biography",async()=>{
@@ -407,8 +504,8 @@ describe("Smart PostgreSQL invariants",()=>{
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
 
-  it("reuses fresh verified source passages from history without paying for retrieval again",async()=>{
-    const config=smartConfig({MINIMAX_API_KEY:'qa-not-real'}),article=await smartArticle(db,articleId),since=new Date().toISOString();
+  it.each(answerProviders)("reuses fresh verified source passages from history without paying for retrieval again (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const source={id:'qa-inherited',articleId:null,version:'qa',kind:'external' as const,title:'QA source',url:'https://example.org/qa',publishedAt:null,checkedAt:new Date().toISOString(),passage:'Explicit QA evidence for a verified follow-up.'};
     const previous:SmartAnswer={status:'answered',blocks:[{text:'QA previous',sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:source.checkedAt,expiresAt:new Date(Date.now()+60000).toISOString()};
     const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],relevant:true,evidenceSourceIds:["s1"],needsResearch:false,researchQuery:'',explanation:'QA'}, {status:'answered',blocks:[{text:'QA supported answer',evidence:['e0']}],followUps:['Какво следва по тази история?','Какви документи предстоят по случая?'],timeSensitive:false},{valid:true,reason:'QA'}];
@@ -417,8 +514,8 @@ describe("Smart PostgreSQL invariants",()=>{
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
 
-  it("never publishes an indexed quote when the independent reviewer rejects its claim",async()=>{
-    const config=smartConfig({MINIMAX_API_KEY:"qa-not-real"}),article=await smartArticle(db,articleId),since=new Date().toISOString();
+  it.each(answerProviders)("never publishes an indexed quote when the independent reviewer rejects its claim (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const source={id:"qa-review-source",articleId:null,version:"qa",kind:"external" as const,title:"QA",url:"https://example.org/qa",publishedAt:null,checkedAt:new Date().toISOString(),passage:"QA: the person is alive; the event is not cancelled."};
     const prior:SmartAnswer={status:"answered",blocks:[{text:"QA",sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:source.checkedAt,expiresAt:new Date(Date.now()+60000).toISOString()};
     const draft={status:"answered",blocks:[{text:"QA unsupported death claim",evidence:["e0"]}],followUps:["Има ли документи по случая?","Какво е известно за датата?"],timeSensitive:true};
@@ -427,19 +524,19 @@ describe("Smart PostgreSQL invariants",()=>{
     try{await expect(answerSmartQuestion(db,config,article,"QA question",[{question:"prior",answer:prior}])).rejects.toMatchObject({code:"evidence"});expect(network).toHaveBeenCalledTimes(5);}
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
-  it("keeps two independently approved follow-ups without regenerating valid facts",async()=>{
-    const config=smartConfig({MINIMAX_API_KEY:"qa-not-real"}),article=await smartArticle(db,articleId),since=new Date().toISOString();
+  it.each(answerProviders)("selects one independently approved continuation without regenerating valid facts (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const source={id:"qa-select-source",articleId:null,version:"qa",kind:"external" as const,title:"QA",url:"https://example.org/qa",publishedAt:null,checkedAt:new Date().toISOString(),passage:"QA: the decision was approved on 29 October 2026."};
     const prior:SmartAnswer={status:"answered",blocks:[{text:"QA",sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:source.checkedAt,expiresAt:new Date(Date.now()+60000).toISOString()};
     const questions=["Кога ще бъде издадена гарантираната присъда?","Има ли други документи по случая?","Какво е известно за датата?"];
     const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],relevant:true,evidenceSourceIds:["s1"],needsResearch:false,researchQuery:"",explanation:"QA"},{status:"answered",blocks:[{text:"QA approved decision",evidence:["e0"]}],followUps:questions,timeSensitive:true},{valid:false,factsValid:true,answerValid:true,invalidFollowUps:[0],reason:"QA unsupported premise in first suggestion"}];
     const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]}));vi.stubGlobal("fetch",network);
-    try{const result=await answerSmartQuestion(db,config,article,"QA question",[{question:"prior",answer:prior}]);expect(result.status).toBe("answered");expect(result.followUps.map(q=>q.text)).toEqual(questions.slice(1));expect(network).toHaveBeenCalledTimes(3);}
+    try{const result=await answerSmartQuestion(db,config,article,"QA question",[{question:"prior",answer:prior}]);expect(result.status).toBe("answered");expect(result.followUps.map(q=>q.text)).toEqual(questions.slice(1,2));expect(network).toHaveBeenCalledTimes(3);}
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
 
-  it("keeps one of two independently approved continuations without regenerating valid facts",async()=>{
-    const config=smartConfig({MINIMAX_API_KEY:"qa-not-real"}),article=await smartArticle(db,articleId),since=new Date().toISOString();
+  it.each(answerProviders)("keeps one of two independently approved continuations without regenerating valid facts (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const source={id:"qa-select-source",articleId:null,version:"qa",kind:"external" as const,title:"QA",url:"https://example.org/qa",publishedAt:null,checkedAt:new Date().toISOString(),passage:"QA: the decision was approved on 29 October 2026."};
     const prior:SmartAnswer={status:"answered",blocks:[{text:"QA",sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:source.checkedAt,expiresAt:new Date(Date.now()+60000).toISOString()};
     const questions=["Кога ще бъде издадена гарантираната присъда?","Има ли други документи по случая?","Какво е известно за датата?"];
@@ -449,11 +546,11 @@ describe("Smart PostgreSQL invariants",()=>{
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
 
-  it("answers from the current article in two independent calls and attributes both charges",async()=>{
-    const id=randomUUID(),since=new Date().toISOString(),config=smartConfig({MINIMAX_API_KEY:"qa-not-real"});
+  it.each(answerProviders)("answers from the current article in two independent calls and attributes both charges (%s)",async(provider)=>{
+    const id=randomUUID(),since=new Date().toISOString(),config=answerTestConfig(provider);
     await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:"QA: На 29 октомври общината одобри точно два проекта."}])}::jsonb,'/qa-two-stage/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
     const draft={status:"answered",blocks:[{text:"QA: Одобрени са два проекта.",evidence:["e0"]}],followUps:["Има ли публикувани документи?","Какво е известно за срока?"],timeSensitive:false};
-    const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft},{valid:true,factsValid:true,answerValid:true,invalidFollowUps:[],reason:""}];
+    const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft,needsResearch:false},{valid:true,factsValid:true,answerValid:true,invalidFollowUps:[],reason:""}];
     const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]}));vi.stubGlobal("fetch",network);
     try{
       const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Колко проекта са одобрени?",[]);
@@ -462,8 +559,42 @@ describe("Smart PostgreSQL invariants",()=>{
       expect(rows.map(r=>r.operation)).toEqual(["retrieval","verification"]);expect(rows.every(r=>r.status==="known"&&r.article_id===id)).toBe(true);
     }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
   });
-  it("combines context assessment and drafting without a separate answer call",async()=>{
-    const config=smartConfig({MINIMAX_API_KEY:"qa-not-real"}),since=new Date().toISOString(),article=await smartArticle(db,articleId);
+
+  it.each(answerProviders.flatMap(provider=>[true,false].map(supported=>({provider,supported}))))("checks every one of fifteen valid evidence handles without a format rewrite ($provider, $supported)",async({provider,supported})=>{
+    const id=randomUUID(),config=answerTestConfig(provider),now=new Date().toISOString();
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,'[]'::jsonb,'/qa-many-evidence-handles/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const passage=Array.from({length:30},(_,index)=>`QA: Лицето е живо. Документиран биографичен етап ${index}. ${`Допълнителен проверен факт за етап ${index}. `.repeat(7)}`).join("\n").trim();
+    const source={id:"qa-many-facts",articleId:null,version:"qa",kind:"external" as const,title:"QA biography",url:"https://example.org/qa-biography",publishedAt:null,checkedAt:now,passage};
+    const prior:SmartAnswer={status:"answered",blocks:[{text:"QA: Биографичният запис е наличен.",sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:now,expiresAt:new Date(Date.now()+60000).toISOString()};
+    let writes=0,reviews=0,expectedQuotes:string[]=[];
+    const network=vi.fn(async(_url:unknown,options:RequestInit)=>{
+      const input=JSON.parse(JSON.parse(String(options.body)).input);
+      let value:unknown;
+      if(input.originalInput)throw Error("Valid fifteen-handle evidence must not cause a format repair");
+      if(input.result){
+        reviews++;const evidence=input.result.blocks[0].evidence;
+        expect(evidence).toHaveLength(15);expect(evidence.map((item:any)=>item.quote)).toEqual(expectedQuotes);expect(evidence.every((item:any)=>item.sourceId===source.id)).toBe(true);
+        expect(input.sources.find((item:any)=>item.id===source.id)?.passage).toBe(passage);
+        value={valid:supported,factsValid:supported,answerValid:true,invalidFollowUps:[],reason:supported?"":"QA: the quoted record says alive, not deceased"};
+      }else if(input.previous!==undefined){
+        writes++;const evidence=input.sources.flatMap((item:any)=>item.passages).slice(0,15);
+        expect(evidence).toHaveLength(15);expectedQuotes=evidence.map((item:any)=>item.text);
+        value={status:"answered",blocks:[{text:supported?"QA: Лицето е живо; записът съдържа документирани биографични етапи.":"QA: Лицето е починало.",evidence:evidence.map((item:any)=>item.id)}],followUps:["Има ли други официални биографични записи?"],timeSensitive:false};
+      }else value={queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:null,needsResearch:false,evidenceSourceIds:["s1"]};
+      return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const pending=answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Какви факти съдържа биографичният запис?",[{question:"QA: Има ли биографичен запис?",answer:prior}]);
+      if(supported){const result=await pending;expect(result.status).toBe("answered");expect(result.blocks[0]?.sourceIds).toEqual([source.id]);expect(result.sources[0]?.passage).toBe(passage);}
+      else await expect(pending).rejects.toMatchObject({code:"evidence"});
+      expect(writes).toBe(supported?1:2);expect(reviews).toBe(supported?1:2);expect(network).toHaveBeenCalledTimes(supported?3:5);
+      const operations=await db.execute(sql`select operation from ai_operations where article_id=${id}::uuid`);
+      expect(operations.map(row=>row.operation).sort()).toEqual(["answer_context","answer","verification",...(supported?[]:["answer_repair","verification"])].sort());
+    }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
+  it.each(answerProviders)("combines context assessment and drafting without a separate answer call (%s)",async(provider)=>{
+    const config=answerTestConfig(provider),since=new Date().toISOString(),article=await smartArticle(db,articleId);
     const relatedId=randomUUID();await db.execute(sql`insert into articles select ${relatedId}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:"QAContextMergeTerm: explicit related QA evidence."}])}::jsonb,'/qa-related-context/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
     const draft={status:"answered",blocks:[{text:"QA: explicit related QA evidence.",evidence:["e0"]}],followUps:["Има ли публикувани документи?","Какво е известно за срока?"],timeSensitive:true};
     const values=[{queries:["QAContextMergeTerm","AnotherMissingQATerm456"],answer:null},{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],relevant:true,evidenceSourceIds:[],needsResearch:false,researchQuery:"",explanation:"",answer:draft},{valid:true,answerValid:true,reason:""}];
@@ -471,6 +602,78 @@ describe("Smart PostgreSQL invariants",()=>{
     try{expect((await answerSmartQuestion(db,config,article,"QA contextual question",[])).status).toBe("answered");expect(network).toHaveBeenCalledTimes(3);const rows=await db.execute(sql`select operation from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz order by started_at`);expect(rows.map(r=>r.operation)).toEqual(["retrieval","answer_context","verification"]);}
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from articles where id=${relatedId}::uuid`);await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
   });
+  it.each(answerProviders)("researches current proof after the reviewer rejects a complete-looking early draft (%s)",async(provider)=>{
+    const id=randomUUID(),config=answerTestConfig(provider),url="https://example.org/qa-current-decision";
+    const currentText="QA: На 10 октомври общината планира заседание.",externalText="QA: На 29 октомври общината проведе заседанието и прие решението.";
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:currentText}])}::jsonb,'/qa-current-proof/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const draft={status:"answered",blocks:[{text:currentText,evidence:["e0"]}],followUps:["Има ли публикуван протокол?"],timeSensitive:true};
+    const values=[
+      {queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft,needsResearch:false},
+      {valid:false,factsValid:true,answerValid:false,reason:"QA: old plans do not prove whether the meeting took place"},
+      // An insufficient contextual draft must escalate even if its selector
+      // mistakenly says no research: it cannot be published as the final answer.
+      {relevant:true,evidenceSourceIds:["s0"],needsResearch:false,researchQuery:"QA current municipal decision",researchAlternative:"QA alternative decision",explanation:"",answer:{...draft,status:"insufficient",blocks:[{text:"QA: Тук липсва потвърждение.",evidence:[]}]}},
+      {...draft,blocks:[{text:externalText,evidence:["e1"]}]},
+      {valid:true,factsValid:true,answerValid:true,reason:""},
+    ];
+    const events:string[]=[],page=vi.spyOn(smartWeb,"fetchSmartPage").mockImplementation(async requested=>{expect(requested).toBe(url);events.push("page");return {url,text:externalText};});
+    const network=vi.fn(async(requested:unknown,options:RequestInit)=>{
+      const request=JSON.parse(String(options.body));
+      if(String(requested).endsWith("/coding_plan/search")||request.tools){
+        events.push("primary");const query=request.q??JSON.parse(request.input).question;expect(query).toBe("QA current municipal decision");
+        return provider==="minimax"?Response.json({base_resp:{status_code:0},organic:[{title:"QA decision",link:url}]}):Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"web_search_call",status:"completed",action:{type:"search",sources:[{type:"url",url}]}}]});
+      }
+      const input=JSON.parse(request.input),value=values.shift();if(!value)throw Error("Unexpected extra provider call");
+      if(input.result)events.push("review");
+      if(input.critique&&input.previous===undefined){events.push("context");expect(input.critique).toContain("old plans");}
+      return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Проведено ли е заседанието?",[]);
+      expect(result.status).toBe("answered");expect(result.blocks[0]?.text).toBe(externalText);expect(result.sources).toHaveLength(1);expect(result.sources[0]?.url).toBe(url);
+      expect(events).toEqual(["review","context","primary","page","review"]);expect(network).toHaveBeenCalledTimes(6);
+      const operations=await db.execute(sql`select operation from ai_operations where article_id=${id}::uuid order by started_at`);
+      // PGlite can give adjacent operations the same started_at timestamp.
+      // The strict events assertion above proves execution order; the ledger
+      // independently proves every operation was charged exactly once.
+      expect(operations.map(row=>row.operation).sort()).toEqual(["retrieval","verification","answer_context",provider==="minimax"?"research_search":"research","answer_repair","verification"].sort());
+    }finally{page.mockRestore();vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
+  it.each(answerProviders)("requires explicit fact and coverage approval before publishing an early draft (%s)",async(provider)=>{
+    const id=randomUUID(),config=answerTestConfig(provider),text="QA: Общината одобри два проекта.";
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text}])}::jsonb,'/qa-explicit-review/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const draft={status:"answered",blocks:[{text,evidence:["e0"]}],followUps:["Има ли публикувано решение?"],timeSensitive:false};
+    const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft,needsResearch:false},{valid:true,reason:""},{relevant:true,evidenceSourceIds:["s0"],needsResearch:false,researchQuery:"",explanation:"",answer:draft},{valid:true,factsValid:true,answerValid:true,reason:""}];
+    const network=vi.fn(async()=>{const value=values.shift();if(!value)throw Error("Unexpected provider call");return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});});vi.stubGlobal("fetch",network);
+    try{expect((await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Колко проекта са одобрени?",[])).status).toBe("answered");expect(network).toHaveBeenCalledTimes(4);}
+    finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
+  it.each(answerProviders)("does not accept a current-only expansion merely because history has an external source (%s)",async(provider)=>{
+    const id=randomUUID(),config=answerTestConfig(provider),url="https://example.org/qa-expanded-proof",now=new Date().toISOString();
+    const text="QA: Общината одобри проекта.",detail="QA: Комисията контролира изпълнението на проекта чрез месечни отчети.";
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text}])}::jsonb,'/qa-expansion-proof/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const source={id:"qa-prior-proof",articleId:null,version:"qa",kind:"external" as const,title:"QA prior source",url:"https://example.org/qa-prior",publishedAt:null,checkedAt:now,passage:"QA: По-рано общината обсъждаше бюджета на проекта."};
+    const prior:SmartAnswer={status:"answered",blocks:[{text:source.passage,sourceIds:[source.id]}],sources:[source],followUps:[],checkedAt:now,expiresAt:new Date(Date.now()+60000).toISOString()};
+    const draft={status:"answered",blocks:[{text,evidence:["e0"]}],followUps:["Има ли публикувано решение?"],timeSensitive:false};
+    const values=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft,needsResearch:false,evidenceSourceIds:["s0"],researchQuery:"QA project supervision"},{...draft,blocks:[{text:detail,evidence:["e1"]}]},{valid:true,factsValid:true,answerValid:true,reason:""}];
+    const page=vi.spyOn(smartWeb,"fetchSmartPage").mockResolvedValue({url,text:detail});
+    let searches=0,reviews=0;
+    const network=vi.fn(async(requested:unknown,options:RequestInit)=>{
+      const request=JSON.parse(String(options.body));
+      if(String(requested).endsWith("/coding_plan/search")||request.tools){
+        searches++;return provider==="minimax"?Response.json({base_resp:{status_code:0},organic:[{title:"QA details",link:url}]}):Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"web_search_call",status:"completed",action:{type:"search",sources:[{type:"url",url}]}}]});
+      }
+      const input=JSON.parse(request.input);if(input.result){reviews++;expect(input.requireExpansion).toBe(true);expect(input.result.blocks[0].text).toBe(detail);}
+      const value=values.shift();if(!value)throw Error("Unexpected provider call");return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Как се контролира изпълнението?",[{question:"QA previous budget",answer:prior}],{requireExpansion:true});
+      expect(result.status).toBe("answered");expect(result.blocks[0]?.text).toBe(detail);expect(result.sources[0]?.url).toBe(url);expect(searches).toBe(1);expect(reviews).toBe(1);expect(network).toHaveBeenCalledTimes(4);
+    }finally{page.mockRestore();vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+
   it("never salvages factually correct but insufficient current information by dropping a suggestion",async()=>{
     const config=smartConfig({MINIMAX_API_KEY:"qa-insufficient-context-key"}),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const relatedId=randomUUID();await db.execute(sql`insert into articles select ${relatedId}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:"QAInsufficientContextTerm: explicit related QA evidence."}])}::jsonb,'/qa-related-context/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
@@ -489,8 +692,47 @@ describe("Smart PostgreSQL invariants",()=>{
     finally{await db.execute(sql`delete from ai_operations where id in (${old}::uuid,${active}::uuid)`);}
   });
 
-  it.each([true,false])("uses independently checked fallback questions only when facts and coverage are approved (%s)",async(factsValid)=>{
-    const id=randomUUID(),config=smartConfig({MINIMAX_API_KEY:"qa-not-real"});
+  it.each(answerProviders.flatMap(provider=>["approve","reject","duplicate","invalid_index","revision"].map(mode=>({provider,mode}))))("repairs only rejected continuations after facts are approved ($provider, $mode)",async({provider,mode})=>{
+    const id=randomUUID(),relatedId=randomUUID(),config=answerTestConfig(provider);
+    const text="QA: Общината одобри точно два проекта.",relatedText="QAFollowupRepairTerm: Общината публикува решенията на съвета в публичен регистър.";
+    for(const [articleKey,passage,path] of [[id,text,"/qa-followup-only/"],[relatedId,relatedText,"/qa-followup-context/"]])await db.execute(sql`insert into articles select ${articleKey}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:passage}])}::jsonb,${path},published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    const article=await smartArticle(db,id),question="QA: Колко проекта са одобрени?";
+    const initialQuestions=["Каква е стойността на проектите?","Има ли официални документи за финансирането?","Какви са сроковете за изпълнение?"];
+    await db.execute(sql`insert into smart_bootstraps(article_id,revision,state,payload,sources,expires_at) values(${id}::uuid,${article.revision},'ready',${JSON.stringify({questions:initialQuestions.map((text,index)=>({id:`qa-${index}`,text}))})}::jsonb,'[]'::jsonb,now()+interval '1 day')`);
+    const prior:SmartAnswer={status:"answered",blocks:[{text:"QA: Предишен проверен контекст.",sourceIds:[]}],sources:[],followUps:[],checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString()};
+    const history=[{question:"QA: Предишен въпрос по тази история?",answer:prior}];
+    const rejected=["Защо общината отмени одобрените проекти?","Кога ще започне гарантираното разследване?"];
+    const replacements=mode==="duplicate"?[question,initialQuestions[0]!]:[mode==="invalid_index"?question:"Има ли данни кой контролира изпълнението?","Къде се публикуват решенията на общинския съвет?"];
+    const draft={status:"answered",blocks:[{text,evidence:["e0"]}],followUps:rejected,timeSensitive:false};
+    const values:any[]=[{queries:["QAFollowupRepairTerm","NoMatchingQATerm123"],answer:draft,needsResearch:false},{valid:false,factsValid:true,answerValid:true,invalidFollowUps:[0,1],approvedFallbacks:[],relatedArticles:[{index:1,quote:relatedText}],reason:"QA: both questions assume unsupported developments"},{followUps:replacements},{approvedIndices:mode==="reject"?[]:[mode==="invalid_index"?0:1],reason:"QA: independent question review"}];
+    let questionReviews=0;
+    const network=vi.fn(async(_url:unknown,options:RequestInit)=>{
+      const request=JSON.parse(String(options.body)),input=JSON.parse(request.input);
+      if(input.rejectedFollowUps){
+        expect(input.answer).toEqual([text]);expect(input.question).toBe(question);expect(input.initialQuestions).toEqual(initialQuestions);
+        expect(input.history).toEqual([{question:history[0]!.question,answer:prior.blocks[0]!.text}]);expect(JSON.stringify(input.sources)).toContain(relatedText);expect(JSON.stringify(input.sources)).toContain(text);
+        expect(input.sources.map((source:any)=>source.articleId)).toEqual([id,relatedId]);
+      }
+      if(input.followUps){questionReviews++;expect(input.followUps).toEqual(replacements);if(mode==="revision")await db.execute(sql`update articles set published_revision=published_revision+1 where id=${id}::uuid`);}
+      const value=values.shift();if(!value)throw Error("Unexpected extra provider request");return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });vi.stubGlobal("fetch",network);
+    try{
+      const pending=answerSmartQuestion(db,config,article,question,history);
+      if(mode==="approve"){
+        const result=await pending;expect(result.blocks).toEqual([{text,sourceIds:[result.sources.find(source=>source.articleId===id)!.id]}]);expect(result.followUps.map(item=>item.text)).toEqual([replacements[1]]);expect(result.relatedArticleIds).toEqual([relatedId]);
+      }else await expect(pending).rejects.toMatchObject({code:"evidence"});
+      expect(network).toHaveBeenCalledTimes(mode==="duplicate"?3:4);expect(questionReviews).toBe(mode==="duplicate"?0:1);
+      const operations=await db.execute(sql`select operation from ai_operations where article_id=${id}::uuid`);
+      expect(operations.map(row=>row.operation).sort()).toEqual(["retrieval","verification","followup_repair",...(mode==="duplicate"?[]:["followup_verification"])].sort());
+    }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id in (${id}::uuid,${relatedId}::uuid)`);}
+  });
+
+  it.each(answerProviders.flatMap(provider=>[
+    {provider,factsValid:true,answerValid:true},
+    {provider,factsValid:false,answerValid:true},
+    {provider,factsValid:true,answerValid:false},
+  ]))("uses fallback questions only with independent facts and coverage approval ($provider, $factsValid, $answerValid)",async({provider,factsValid,answerValid})=>{
+    const id=randomUUID(),config=answerTestConfig(provider);
     await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:"QA: На 29 октомври общината одобри два проекта."}])}::jsonb,'/qa-verified-fallback/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
     const article=await smartArticle(db,id),question="QA: Колко проекта са одобрени?";
     const questions=[question,"Има ли публикувани документи по проектите?","Какво е известно за изпълнението?"];
@@ -499,13 +741,14 @@ describe("Smart PostgreSQL invariants",()=>{
     const reserve=["Кой контролира изпълнението на проектите?","Има ли достъпни решения на комисията?"];
     const history=[{question:"QA prior context",answer:{status:"answered" as const,blocks:[],sources:[],followUps:reserve.map((text,index)=>({id:`reserve-${index}`,text})),checkedAt:new Date().toISOString(),expiresAt:new Date(Date.now()+60000).toISOString()}}];
     const draft={status:"answered",blocks:[{text:factsValid?"QA: Одобрени са два проекта.":"QA: Одобрени са двеста проекта.",evidence:["e0"]}],followUps:[question,"QA: Кои точно два проекта са одобрени?"],timeSensitive:false};
-    const review={valid:false,factsValid,answerValid:factsValid,invalidFollowUps:[0,1],approvedFallbacks:[0,1],reason:"QA: duplicate suggestions"};
-    const values:any[]=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft},review,...(factsValid?[]:[draft,review])];
+    const accepted=factsValid&&answerValid;
+    const review={valid:false,factsValid,answerValid,invalidFollowUps:[0,1],approvedFallbacks:[0,1],reason:"QA: duplicate suggestions"};
+    const values:any[]=[{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],answer:draft,needsResearch:false},review,...(accepted?[]:[{relevant:true,evidenceSourceIds:["s0"],needsResearch:false,researchQuery:"",explanation:"",answer:draft},review])];
     const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]}));
     vi.stubGlobal("fetch",network);
     try{
-      if(factsValid){const result=await answerSmartQuestion(db,config,article,question,history);expect(result.blocks[0]?.text).toBe(draft.blocks[0]!.text);expect(result.followUps.map(q=>q.text)).toEqual(reserve);expect(network).toHaveBeenCalledTimes(2);}
-      else {await expect(answerSmartQuestion(db,config,article,question,history)).rejects.toMatchObject({code:"evidence"});expect(network).toHaveBeenCalledTimes(4);}
+      if(accepted){const result=await answerSmartQuestion(db,config,article,question,history);expect(result.blocks[0]?.text).toBe(draft.blocks[0]!.text);expect(result.followUps.map(q=>q.text)).toEqual(reserve.slice(0,1));expect(network).toHaveBeenCalledTimes(2);}
+      else {await expect(answerSmartQuestion(db,config,article,question,history)).rejects.toMatchObject({code:"evidence"});expect(network).toHaveBeenCalledTimes(4);const operations=await db.execute(sql`select operation from ai_operations where article_id=${id}::uuid`);expect(operations.some(row=>String(row.operation).startsWith("followup_"))).toBe(false);}
     }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id=${id}::uuid`);}
   });
   it("replaces an expired reservation and does not count an off-topic completion",async()=>{
@@ -518,16 +761,16 @@ describe("Smart PostgreSQL invariants",()=>{
     expect((await readSmartSession(db,sessionId,"qa-expiry-batch")).usedQuestions).toBe(0);
   });
 
-  it("shows an omitted newer candidate to the reviewer and allows a supported repair from it",async()=>{
-    const id=randomUUID(),other=randomUUID(),config=smartConfig({MINIMAX_API_KEY:"qa-not-real"});
+  it.each(answerProviders)("shows an omitted newer candidate to the reviewer and allows a supported repair from it (%s)",async(provider)=>{
+    const id=randomUUID(),other=randomUUID(),config=answerTestConfig(provider);
     for(const [articleKey,text,path,age] of [[id,"QAReviewConflictTerm: срокът е 10 дни.","/qa-old-deadline/","2 days"],[other,"QAReviewConflictTerm: срокът е отменен.","/qa-new-deadline/","1 day"]])await db.execute(sql`insert into articles select ${articleKey}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text}])}::jsonb,${path},published_revision,source_modified_at,true,now()-${age}::interval,updated_at from articles where id=${articleId}::uuid`);
     const followUps=["Има ли публикуван акт?","Какво е известно за следващите действия?"];
     const draft={status:"answered",blocks:[{text:"QA: Срокът е 10 дни.",evidence:["e0"]}],followUps,timeSensitive:true};
     const repaired={...draft,blocks:[{text:"QA: Срокът е отменен.",evidence:["e1"]}]};
-    const values=[{queries:["QAReviewConflictTerm","NoMatchingQATerm123"],answer:null},{queries:["NoMatchingQATerm123","AnotherMissingQATerm456"],relevant:true,evidenceSourceIds:["s0"],needsResearch:false,researchQuery:"",explanation:"",answer:draft},{valid:false,factsValid:false,answerValid:false,reason:"QA: newer source cancels the deadline"},repaired,{valid:true,factsValid:true,answerValid:true,reason:""}];
+    const values=[{queries:["QAReviewConflictTerm","NoMatchingQATerm123"],answer:draft,needsResearch:false},{valid:false,factsValid:false,answerValid:false,reason:"QA: newer source cancels the deadline"},{relevant:true,evidenceSourceIds:["s1"],needsResearch:false,researchQuery:"",explanation:"",answer:repaired},{valid:true,factsValid:true,answerValid:true,reason:""}];
     let reviews=0;
     const network=vi.fn(async(_url:unknown,options:RequestInit)=>{const request=JSON.parse(String(options.body)),input=JSON.parse(request.input);if(input.result){reviews++;expect(input.sources.some((source:any)=>source.articleId===other)).toBe(true);}return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]});});vi.stubGlobal("fetch",network);
-    try{const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Валиден ли е срокът?",[]);expect(result.blocks[0]?.text).toBe("QA: Срокът е отменен.");expect(result.sources[0]?.articleId).toBe(other);expect(reviews).toBe(2);expect(network).toHaveBeenCalledTimes(5);}
+    try{const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Валиден ли е срокът?",[]);expect(result.blocks[0]?.text).toBe("QA: Срокът е отменен.");expect(result.sources[0]?.articleId).toBe(other);expect(reviews).toBe(2);expect(network).toHaveBeenCalledTimes(4);}
     finally{vi.unstubAllGlobals();for(const articleKey of [id,other]){await db.execute(sql`delete from ai_operations where article_id=${articleKey}::uuid`);await db.execute(sql`delete from articles where id=${articleKey}::uuid`);}}
   });
 

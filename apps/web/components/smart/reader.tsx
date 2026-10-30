@@ -13,7 +13,7 @@ type Session = Omit<SmartSession,"turns"> & {turns:Turn[]};
 type Props = { articleId: string; initial?: SmartBootstrap; demo?: boolean; measurementId?:string|undefined };
 function inlineAnswer(text:string){return smartReaderText(text).split(/(\*\*[^*\n]+\*\*)/g).map((part,index)=>part.startsWith("**")&&part.endsWith("**")?<strong key={index}>{part.slice(2,-2)}</strong>:part);}
 function SmartNewsCards({cards}:{cards:SmartCard[]}){return <div className="np-smart-news-cards">{cards.map(card=><a className="np-smart-news-card" href={card.path} key={card.articleId}><div className="np-smart-news-copy"><span className="np-smart-eyebrow">Още по темата</span><strong>{card.title}</strong>{card.reason?<span>{card.reason}</span>:null}</div><ArticleImage media={card.hero??null} sizes="64px" className="np-smart-news-thumb"/></a>)}</div>;}
-function SmartMark(){return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M12 3v4m0 10v4M3 12h4m10 0h4M5.6 5.6l2.8 2.8m7.2 7.2 2.8 2.8m0-12.8-2.8 2.8m-7.2 7.2-2.8 2.8"/><circle cx="12" cy="12" r="4"/></svg>}
+function SmartMark(){return <img className="np-smart-mark-img" src="/brand/smart-mark-128-9702a913.webp" width={128} height={128} alt="" decoding="async" aria-hidden="true"/>}
 async function smartFetch<T>(path:string,init?:RequestInit):Promise<T>{
   const controller=new AbortController();let timedOut=false;
   const abort=()=>controller.abort();init?.signal?.addEventListener("abort",abort,{once:true});

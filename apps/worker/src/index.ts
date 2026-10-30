@@ -87,16 +87,20 @@ async function runWorker() {
       .finally(() => { aiBusy = false; });
   }, 5_000);
 
-  async function shutdown() {
-    clearInterval(boostTimer);
-    clearInterval(aiTimer);
-    await stopPush();
-    await stopSocial();
-    await stopInstagram();
-    await stopIndexNow();
-    stopSmart();
-    clearInterval(costTimer);
-    await close();
+  let stopping:Promise<void>|null=null;
+  function shutdown() {
+    return stopping??=(async()=>{
+      clearInterval(boostTimer);
+      clearInterval(aiTimer);
+      clearInterval(costTimer);
+      const smartStopped=stopSmart();
+      await stopPush();
+      await stopSocial();
+      await stopInstagram();
+      await stopIndexNow();
+      await smartStopped;
+      await close();
+    })();
   }
 
   process.on("SIGINT", () => void shutdown().then(() => process.exit(0)));

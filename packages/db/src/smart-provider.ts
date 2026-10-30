@@ -122,10 +122,13 @@ export async function smartAi(db: SmartDb, config: SmartConfig, article: SmartAr
   }
 }
 export async function smartJson<T>(db: SmartDb, config: SmartConfig, article: SmartArticle, operation: string, instructions: string, input: unknown, schema: z.ZodType<T>) {
+  const singleAttempt=operation==="followup_repair"||operation==="followup_verification";
   const request={
-    model: config.model, instructions, input: config.provider==="minimax"?smartPromptInput(input):JSON.stringify(input),
-    ...(config.provider==="minimax"?{prompt_cache_key:`np-smart:${createHash("sha256").update(JSON.stringify([config.model,article.id,article.revision,operation.replace(/_(repair|retry)$/u,"")])).digest("hex")}`} : {}),
-    ...(["assessment","retrieval","prepare","prepare_verification",...(config.provider==="minimax"?["answer","answer_context","answer_repair","verification"]:[])].includes(operation)?{reasoning:{effort:config.provider==="minimax"&&config.model==="MiniMax-M3"&&operation==="retrieval"?"none":"low"}}:{}),
+    model: config.model, instructions, input: smartPromptInput(input),
+    prompt_cache_key:`np-smart:${createHash("sha256").update(JSON.stringify([config.provider,config.model,article.id,article.revision,operation.replace(/_(repair|retry)$/u,"")])).digest("hex").slice(0,55)}`,
+    // Short, evidence-indexed drafting does not need a second long deliberation.
+    // OpenAI's independent factual reviewer retains its existing medium effort.
+    ...(["assessment","retrieval","prepare","prepare_verification","answer","answer_context","answer_repair","followup_repair","followup_verification",...(config.provider==="minimax"?["verification"]:[])].includes(operation)?{reasoning:{effort:config.provider==="minimax"&&config.model==="MiniMax-M3"&&operation==="retrieval"?"none":"low"}}:{}),
     text: { format: { type: "json_schema", name: "smart_result", strict: true, schema: z.toJSONSchema(schema) } },
   };
   let result:AiResult;
@@ -133,13 +136,13 @@ export async function smartJson<T>(db: SmartDb, config: SmartConfig, article: Sm
   catch(error){
     // Retry only an explicitly incomplete response whose consumption was returned.
     // Timeouts/unknown usage never trigger a silent second provider call.
-    if(!(error instanceof SmartError)||error.code!=="provider_incomplete_known")throw error;
+    if(singleAttempt||!(error instanceof SmartError)||error.code!=="provider_incomplete_known")throw error;
     result=await smartAi(db,config,article,`${operation}_retry`,{...request,reasoning:{effort:"low"},max_output_tokens:12000});
   }
   const parse=(text:string)=>schema.parse(JSON.parse(text.trim().replace(/^```(?:json)?\s*\n([\s\S]*?)\n```$/u,"$1"))) as T;
   try { return parse(result.text); }
   catch(error) {
-    if(config.provider === "minimax") {
+    if(config.provider === "minimax"&&!singleAttempt) {
       // One metered format repair; source/quote/entailment checks remain unchanged.
       // Previous model text stays untrusted input, never a system instruction.
       const repaired=await smartAi(db,config,article,`${operation}_format_repair`,{...request,

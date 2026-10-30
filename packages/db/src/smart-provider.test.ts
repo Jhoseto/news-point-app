@@ -13,6 +13,27 @@ const config=()=>smartConfig({MINIMAX_API_KEY:"minimax-test-only",OPENAI_API_KEY
 const reply=(extra:Record<string,unknown>={})=>Response.json({id:"qa-response",model:"MiniMax-M3.1-Flash",status:"completed",usage:{input_tokens:100,output_tokens:60,input_tokens_details:{cached_tokens:20},output_tokens_details:{reasoning_tokens:40}},output:[{type:"message",content:[{type:"output_text",text:'{"valid":true}'}]}],...extra});
 beforeEach(()=>{vi.clearAllMocks();vi.unstubAllGlobals();ledger.start.mockResolvedValue("qa-ledger");});
 describe("Smart provider isolation (offline)",()=>{
+  it.each(["followup_repair","followup_verification"])("bounds %s to one paid request even on malformed or incomplete results",async operation=>{
+    const network=vi.fn().mockResolvedValue(reply({output:[{type:"message",content:[{type:"output_text",text:'{"valid":"bad"}'}]}]}));vi.stubGlobal("fetch",network);
+    await expect(smartJson(db,config(),article,operation,"QA",{},z.object({valid:z.boolean()}))).rejects.toMatchObject({code:"validation"});
+    expect(network).toHaveBeenCalledTimes(1);
+    network.mockClear();network.mockResolvedValue(reply({status:"incomplete",incomplete_details:{reason:"max_output_tokens"}}));
+    await expect(smartJson(db,config(),article,operation,"QA",{},z.object({valid:z.boolean()}))).rejects.toMatchObject({code:"provider_incomplete_known"});
+    expect(network).toHaveBeenCalledTimes(1);
+  });
+  it.each(["gpt-6-luna","gpt-6.1-sol"])("uses short indexed drafts but preserves the independent OpenAI reviewer for %s",async model=>{
+    const network=vi.fn().mockImplementation(async()=>reply({model}));vi.stubGlobal("fetch",network);
+    const c=smartConfig({SMART_PROVIDER:"openai",SMART_MODEL:model,OPENAI_API_KEY:"qa-only"});
+    for(const operation of ["answer_context","answer","answer_repair","followup_repair","followup_verification","verification"]){
+      await smartJson(db,c,article,operation,"QA",{question:"private",sources:[{id:"s0",passage:"Same evidence",checkedAt:"now"}]},z.object({valid:z.boolean()}));
+    }
+    const requests=network.mock.calls.map(call=>JSON.parse(call[1].body));
+    expect(requests.map(body=>body.reasoning.effort)).toEqual(["low","low","low","low","low","medium"]);
+    expect(requests.every(body=>body.service_tier==="default"&&body.model===model&&body.store===false)).toBe(true);
+    expect(requests.every(body=>body.prompt_cache_key.length<=64)).toBe(true);
+    expect(requests.every(body=>body.prompt_cache_key.match(/^np-smart:[a-f0-9]{55}$/)&&!body.prompt_cache_key.includes("private"))).toBe(true);
+    expect(JSON.parse(requests[0].input)).toMatchObject({sourceChecks:[{id:"s0",checkedAt:"now"}],question:"private"});
+  });
   it("keeps OpenAI search discovery URLs when the summary has no inline citations",async()=>{
     const result=await smartAi(db,smartConfig({SMART_PROVIDER:"openai",OPENAI_API_KEY:"qa-only"}),article,"research",{},vi.fn().mockResolvedValue(reply({model:"gpt-6-luna",output:[{type:"web_search_call",status:"completed",action:{sources:[{type:"url",url:"https://example.org/document",title:"Official document"},{type:"url",url:null}]}},{type:"message",content:[{type:"output_text",text:"Search summary, not evidence",annotations:[]}]}]})));
     expect(result.sources).toEqual([{url:"https://example.org/document",title:"Official document"}]);
@@ -56,7 +77,7 @@ describe("Smart provider isolation (offline)",()=>{
       await smartJson(db,config(),item,"answer","QA",{question},z.object({valid:z.boolean()}));
     }
     const keys=network.mock.calls.map(call=>JSON.parse(call[1].body).prompt_cache_key);
-    expect(keys[0]).toBe(keys[1]);expect(keys[2]).not.toBe(keys[0]);expect(keys[0]).toMatch(/^np-smart:[a-f0-9]{64}$/);
+    expect(keys[0]).toBe(keys[1]);expect(keys[2]).not.toBe(keys[0]);expect(keys[0]).toMatch(/^np-smart:[a-f0-9]{55}$/);
     expect(keys[0]).not.toContain("private");expect(keys[0]).not.toContain(config().key);
   });
   it("defaults every stage to MiniMax and never falls back to an OpenAI key",()=>{

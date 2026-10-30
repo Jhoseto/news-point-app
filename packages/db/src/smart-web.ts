@@ -1,4 +1,5 @@
 import { lookup } from "node:dns/promises";
+import type {LookupAddress} from "node:dns";
 import { isIP } from "node:net";
 import { request } from "node:https";
 import { plainSmartHtml } from "@newspoint/content/smart-text";
@@ -22,27 +23,67 @@ export function smartWebUrl(raw: string) {
   url.hash = "";
   return url;
 }
-/** DNS is checked and pinned for the TLS request, including every redirect. */
-export async function fetchSmartPage(raw: string, redirects = 0): Promise<{ url: string; text: string }> {
+function sourceAbort(signal:AbortSignal):Error {
+  return signal.reason instanceof Error ? signal.reason : new Error("source_aborted");
+}
+/** DNS has no native cancellation; stop waiting and never start a late request. */
+async function sourceLookup(hostname:string,signal:AbortSignal){
+  if(signal.aborted)throw sourceAbort(signal);
+  return new Promise<LookupAddress[]>((resolve,reject)=>{
+    const abort=()=>{cleanup();reject(sourceAbort(signal));};
+    const cleanup=()=>signal.removeEventListener("abort",abort);
+    signal.addEventListener("abort",abort,{once:true});
+    lookup(hostname,{all:true}).then(result=>{cleanup();if(signal.aborted)reject(sourceAbort(signal));else resolve(result);},error=>{cleanup();reject(error);});
+  });
+}
+async function fetchSmartPageStep(raw:string,redirects:number,signal:AbortSignal):Promise<{url:string;text:string}>{
+  if(signal.aborted)throw sourceAbort(signal);
   if (redirects > 2) throw new Error("redirect_limit");
   const url = smartWebUrl(raw);
-  const resolved = await lookup(url.hostname, { all: true });
+  const resolved = await sourceLookup(url.hostname,signal);
+  if(signal.aborted)throw sourceAbort(signal);
   if (!resolved.length || resolved.some(x => !publicSmartAddress(x.address))) throw new Error("private_address");
   const target = resolved[0]!;
   const result = await new Promise<{ location?: string; body?: string }>((resolve, reject) => {
+    let settled=false;
+    const finish=(error:Error|null,result?:{location?:string;body?:string})=>{
+      if(settled)return;settled=true;signal.removeEventListener("abort",abort);
+      if(error)reject(error);else resolve(result!);
+    };
+    const abort=()=>{const error=sourceAbort(signal);finish(error);req.destroy(error);};
     const req = request(url, { method: "GET", family:target.family,headers: { "User-Agent": "NewsPointSmart/1.0 (+https://newspoint.bg)", "Accept": "text/html,text/plain" },
-      lookup: (_host, _options, done) => done(null, target.address, target.family), timeout: 8000 }, res => {
-      if (res.statusCode && [301,302,303,307,308].includes(res.statusCode)) { res.resume(); resolve({ location: res.headers.location ?? "" }); return; }
-      if (res.statusCode !== 200 || !/^(text\/html|text\/plain)/i.test(res.headers["content-type"] ?? "")) { res.resume(); reject(new Error("unreadable_source")); return; }
+      lookup: (_host, _options, done) => done(null, target.address, target.family) }, res => {
+      if(settled){res.resume();return;}
+      if (res.statusCode && [301,302,303,307,308].includes(res.statusCode)) { finish(null,{location:res.headers.location??""});req.destroy();return; }
+      if (res.statusCode !== 200 || !/^(text\/html|text\/plain)/i.test(res.headers["content-type"] ?? "")) { finish(new Error("unreadable_source"));req.destroy();return; }
       let size = 0; const chunks: Buffer[] = [];
-      res.on("data", (chunk: Buffer) => { size += chunk.length; if (size > 2_000_000) { const error=new Error("source_size");reject(error);req.destroy(error); } else chunks.push(chunk); });
-      res.on("end", () => resolve({ body: Buffer.concat(chunks).toString("utf8") }));
-      res.on("error", reject);
+      res.on("data", (chunk: Buffer) => { if(settled)return;size += chunk.length; if (size > 2_000_000) { const error=new Error("source_size");finish(error);req.destroy(error); } else chunks.push(chunk); });
+      res.on("end", () => finish(null,{ body: Buffer.concat(chunks).toString("utf8") }));
+      res.on("error",error=>finish(error));
+      res.on("aborted",()=>finish(new Error("source_incomplete")));
     });
-    req.on("timeout", () => req.destroy(new Error("source_timeout"))); req.on("error", reject); req.end();
+    // Retain the request's error handler through destroy: its error event may be
+    // emitted after abort has already rejected the promise.
+    req.on("error",error=>finish(error));
+    signal.addEventListener("abort",abort,{once:true});
+    if(signal.aborted)abort();else req.end();
   });
-  if (result.location) return fetchSmartPage(new URL(result.location, url).href, redirects + 1);
+  if(signal.aborted)throw sourceAbort(signal);
+  if (result.location) return fetchSmartPageStep(new URL(result.location, url).href, redirects + 1,signal);
   const text = plainSmartHtml(result.body ?? "");
   if (text.length < 100) throw new Error("empty_source");
   return { url: url.href, text: text.slice(0, 20_000) };
+}
+/** One wall-clock deadline covers DNS, redirects and the entire response body.
+ * DNS is checked and pinned for every TLS request; aborted/partial bodies are
+ * never evidence. Optional cancellation lets a bounded research batch stop
+ * downloading lower-priority pages once it has its selected sources. */
+export async function fetchSmartPage(raw:string,redirects=0,signal?:AbortSignal):Promise<{url:string;text:string}>{
+  if(signal?.aborted)throw new Error("source_aborted");
+  const controller=new AbortController();
+  const abort=()=>controller.abort(new Error("source_aborted"));
+  signal?.addEventListener("abort",abort,{once:true});
+  const timer=setTimeout(()=>controller.abort(new Error("source_timeout")),8000);
+  try{return await fetchSmartPageStep(raw,redirects,controller.signal);}
+  finally{clearTimeout(timer);signal?.removeEventListener("abort",abort);}
 }
