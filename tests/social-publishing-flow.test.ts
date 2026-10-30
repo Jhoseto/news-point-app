@@ -14,7 +14,7 @@ import type { ScriptDb } from "@newspoint/db/node";
 import { createSessionClient } from "../packages/db/src/connection";
 import { createArticle, getEditorArticle, listRevisionHistory, publishRevision, saveRevision } from "../apps/studio/lib/articles";
 import { publishDueScheduled } from "../packages/db/src/scheduled-publish";
-import { readRevisionSocial, retrySocialPublication } from "../packages/db/src/social-publishing";
+import { hasPodcastSocialPublishing, readPodcastSocialStatus, readRevisionSocial, retrySocialPublication, sharePodcastToFacebook } from "../packages/db/src/social-publishing";
 import { claimSocialJob, prepareSocialPhoto, processSocialJob } from "../apps/worker/src/social-publishing-worker";
 import { defaultSocial } from "../packages/content/src/social-publishing";
 import { FacebookError, type FacebookClient } from "../packages/content/src/facebook-api";
@@ -71,7 +71,7 @@ beforeAll(async () => {
   }
   holder.db = db;
   const migrationClient = client ? createSessionClient("postgres://social_qa@127.0.0.1:55439/social_publishing_qa", 1) : undefined;
-  const included = new Set([1,2,3,4,5,6,7,8,9,12,13,17,18,19,20,21,24,25,26,27,30,38,39,43]);
+  const included = new Set([1,2,3,4,5,6,7,8,9,12,13,17,18,19,20,21,22,24,25,26,27,30,37,38,39,43,50]);
   for (const file of readdirSync("packages/db/migrations").sort()) if (included.has(Number(file.slice(0,2)))) {
     const migration = readFileSync(`packages/db/migrations/${file}`, "utf8");
     if (pg) await pg.exec(migration); else await migrationClient!.unsafe(migration);
@@ -83,6 +83,8 @@ beforeAll(async () => {
   fixtureRoot = await mkdtemp(resolve(tmpdir(), "np-facebook-qa-"));
   await mkdir(resolve(fixtureRoot, "media/news/2026/10"), { recursive: true });
   await writeFile(resolve(fixtureRoot, "media/news/2026/10/fixture.webp"), await sharp({ create: { width: 64, height: 48, channels: 3, background: "#789abc" } }).webp().toBuffer());
+  await mkdir(resolve(fixtureRoot, "media/podcasts/2026/10"), { recursive: true });
+  await writeFile(resolve(fixtureRoot, "media/podcasts/2026/10/12ab-cd34.webp"), await sharp({ create: { width: 80, height: 80, channels: 3, background: "#506080" } }).webp().toBuffer());
 }, 30000);
 beforeEach(async () => {
   await db.execute(sql`delete from instagram_publications`);
@@ -94,6 +96,140 @@ beforeEach(async () => {
   await db.insert(schema.socialConnections).values({ provider: "facebook", pageId: "11", name: "Explicit QA page fixture", encryptedToken: "not-a-live-token", status: "connected" });
 });
 afterAll(async () => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); await pg?.close(); await client?.end({ timeout: 5 }); if (fixtureRoot) await rm(fixtureRoot, { recursive: true, force: true }); });
+
+describe("Manual podcast Facebook delivery", () => {
+  async function episode(status: "draft" | "published" = "published", publishedAt = new Date(Date.now() - 1000)) {
+    const [row] = await db.insert(schema.podcasts).values({ title: "Изричен тестов подкаст", slug: `test-${randomUUID()}`, summary: "Кратко запазено резюме за изолирания тест.",
+      coverKey: "podcasts/2026/10/12ab-cd34.webp", audioKey: "podcasts/2026/10/12ab-cd34.mp3", durationSec: 60, bytes: 1024,
+      status, publishedAt: status === "published" ? publishedAt : null }).returning();
+    return row!;
+  }
+  const podcastJob = async (id: string) => (await db.select({ job: schema.socialPublications }).from(schema.podcastSocialPublications)
+    .innerJoin(schema.socialPublications, eq(schema.socialPublications.id, schema.podcastSocialPublications.jobId))
+    .where(eq(schema.podcastSocialPublications.podcastId, id)))[0]!.job;
+  const deps = (remote = makeApi()) => ({ makeClient: remote as unknown as MakeSocialClient, photo: async () => Buffer.from("explicit isolated photo") });
+  async function queuedPhoto() {
+    useMake(); const row = await episode(); await sharePodcastToFacebook(db, row.id, 1);
+    await db.update(schema.socialPublications).set({ step: "photo" }).where(eq(schema.socialPublications.id, (await podcastJob(row.id)).id));
+    return row;
+  }
+  it("queues exactly one durable job per episode and target from saved copy", async () => {
+    useMake(); const row = await episode();
+    expect((await readPodcastSocialStatus(db, row.id)).job).toBeNull();
+    const first = await sharePodcastToFacebook(db, row.id, 1);
+    const again = await sharePodcastToFacebook(db, row.id, 1);
+    expect(first.job?.id).toBe(again.job?.id);
+    expect(await db.select().from(schema.socialPublications)).toHaveLength(1);
+    expect(await podcastJob(row.id)).toMatchObject({ articleId: null, revision: 1, storageKey: row.coverKey, status: "pending",
+      articleUrl: `https://site44159-izdo3c.scloudsite101.com/livepoint/podcast/${row.slug}/` });
+    expect(first.job?.text).toContain(row.title); expect(first.job?.text).toContain(row.summary);
+    expect(first.job?.text).not.toContain("https://");
+    expect(JSON.stringify(first)).not.toContain("fixture-key"); expect(JSON.stringify(first)).not.toContain("hook.eu2.make.com");
+  });
+  it("rejects draft, future, stale, missing or disabled requests before enqueuing", async () => {
+    useMake(); const draft = await episode("draft"), future = await episode("published", new Date(Date.now() + 60000)), row = await episode();
+    await expect(sharePodcastToFacebook(db, draft.id, 1)).rejects.toMatchObject({ code: "not_public" });
+    await expect(sharePodcastToFacebook(db, future.id, 1)).rejects.toMatchObject({ code: "not_public" });
+    await expect(sharePodcastToFacebook(db, row.id, 2)).rejects.toMatchObject({ code: "revision_conflict" });
+    await expect(sharePodcastToFacebook(db, randomUUID(), 1)).rejects.toMatchObject({ status: 404 });
+    await expect(readPodcastSocialStatus(db, randomUUID())).rejects.toMatchObject({ status: 404 });
+    vi.stubEnv("SOCIAL_PUBLISHING_ENABLED", "0");
+    await expect(sharePodcastToFacebook(db, row.id, 1)).rejects.toMatchObject({ code: "disabled" });
+    vi.stubEnv("SOCIAL_PUBLISHING_ENABLED", "1"); vi.stubEnv("MAKE_SOCIAL_WEBHOOK_API_KEY", "");
+    await expect(sharePodcastToFacebook(db, row.id, 1)).rejects.toMatchObject({ code: "connection" });
+    expect(await db.select().from(schema.socialPublications)).toHaveLength(0);
+  });
+  it.runIf(real)("serializes simultaneous podcast clicks on independent PostgreSQL connections", async () => {
+    useMake(); const row = await episode();
+    const results = await Promise.all([sharePodcastToFacebook(db, row.id, 1), sharePodcastToFacebook(db, row.id, 1)]);
+    expect(results[0]!.job?.id).toBe(results[1]!.job?.id);
+    expect(await db.select().from(schema.socialPublications)).toHaveLength(1);
+    expect(await db.select().from(schema.podcastSocialPublications)).toHaveLength(1);
+  });
+  it("keeps the queued cover, title, caption and URL stable when the saved episode changes", async () => {
+    useMake(); const row = await episode(); await sharePodcastToFacebook(db, row.id, 1);
+    await db.update(schema.podcasts).set({ title: "По-късно заглавие", summary: "Редактирано резюме", coverKey: "podcasts/2026/10/abcd-9999.webp", revision: 2 }).where(eq(schema.podcasts.id, row.id));
+    const remote = makeApi(); await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    const job = await podcastJob(row.id);
+    expect(job).toMatchObject({ status: "pending", step: "photo", revision: 1, storageKey: row.coverKey });
+    expect(job.text).toContain(row.summary); expect(job.text).not.toContain("Редактирано");
+    const prepared = await readFile(resolve(fixtureRoot, "private", job.preparedFile!));
+    const expected = await renderFacebookPostImage(await readFile(resolve(fixtureRoot, "media", row.coverKey)), row.title);
+    expect(prepared.equals(expected)).toBe(true); expect(remote.publish).not.toHaveBeenCalled();
+    await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    expect(remote.publish).toHaveBeenCalledTimes(1);
+    expect(remote.publish.mock.calls[0]?.[0]).toMatchObject({ message: job.text, articleUrl: job.articleUrl });
+    expect((await sharePodcastToFacebook(db, row.id, 2)).job?.status).toBe("succeeded");
+    expect(await claimSocialJob(db)).toBeNull();
+  });
+  it("resumes only the comment after a known partial Make success", async () => {
+    const row = await queuedPhoto(); const remote = makeApi();
+    remote.publish.mockRejectedValueOnce(new MakeSocialError("comment_failed", true, false, "11_22"));
+    await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    expect(await podcastJob(row.id)).toMatchObject({ status: "retry", step: "comment", postId: "11_22" });
+    await db.update(schema.socialPublications).set({ nextAttemptAt: new Date(0) });
+    await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    expect(remote.publish).toHaveBeenCalledTimes(1); expect(remote.comment).toHaveBeenCalledTimes(1);
+    expect(remote.comment.mock.calls[0]?.[0]).toMatchObject({ articleUrl: (await podcastJob(row.id)).articleUrl, postId: "11_22" });
+    expect((await readPodcastSocialStatus(db, row.id)).job?.status).toBe("succeeded");
+  });
+  it("never reposts an uncertain result, including another share click or retry", async () => {
+    const row = await queuedPhoto(); const remote = makeApi(); remote.publish.mockRejectedValueOnce(new MakeSocialError("lost_response", true, true));
+    await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    expect((await sharePodcastToFacebook(db, row.id, 1)).job).toMatchObject({ status: "uncertain", canRetry: false });
+    await expect(sharePodcastToFacebook(db, row.id, 1, "retry")).rejects.toMatchObject({ code: "not_retryable" });
+    await db.update(schema.socialPublications).set({ nextAttemptAt: new Date(0) });
+    await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+    expect(remote.publish).toHaveBeenCalledTimes(1); expect(remote.comment).not.toHaveBeenCalled();
+  });
+  it("refreshes a failed pre-send snapshot only on an explicit retry", async () => {
+    useMake(); const row = await episode(); await sharePodcastToFacebook(db, row.id, 1);
+    await db.update(schema.socialPublications).set({ status: "failed", errorCode: "image" });
+    await db.update(schema.podcasts).set({ title: "Обновен тестов подкаст", revision: 2 }).where(eq(schema.podcasts.id, row.id));
+    expect((await sharePodcastToFacebook(db, row.id, 2)).job).toMatchObject({ status: "failed", canRetry: true });
+    const retry = await sharePodcastToFacebook(db, row.id, 2, "retry");
+    expect(retry.job).toMatchObject({ status: "pending", step: "prepare" });
+    expect((await podcastJob(row.id)).revision).toBe(2); expect(retry.job?.text).toContain("Обновен тестов подкаст");
+  });
+  it("cancels hidden or deleted episodes before contacting Facebook", async () => {
+    const remote = makeApi();
+    for (const remove of [false, true]) {
+      const row = await queuedPhoto();
+      const job = (await claimSocialJob(db))!;
+      if (remove) await db.delete(schema.podcasts).where(eq(schema.podcasts.id, row.id));
+      else await db.update(schema.podcasts).set({ status: "draft" }).where(eq(schema.podcasts.id, row.id));
+      await processSocialJob(db, job, deps(remote));
+      expect((await db.select().from(schema.socialPublications).where(eq(schema.socialPublications.id, job.id)))[0]?.status).toBe("cancelled");
+    }
+    expect(remote.publish).not.toHaveBeenCalled(); expect(remote.comment).not.toHaveBeenCalled();
+  });
+  it("rechecks publication after photo preparation immediately before the external write", async () => {
+    const row = await queuedPhoto(); const remote = makeApi();
+    await processSocialJob(db, (await claimSocialJob(db))!, { ...deps(remote), photo: async () => {
+      await db.update(schema.podcasts).set({ status: "draft" }).where(eq(schema.podcasts.id, row.id)); return Buffer.from("isolated photo");
+    } });
+    expect(remote.publish).not.toHaveBeenCalled();
+  });
+  it("does not widen the article photo allowlist to podcast or private audio files", async () => {
+    const row = await queuedPhoto(); const job = await podcastJob(row.id);
+    await expect(prepareSocialPhoto(job, row.title)).rejects.toMatchObject({ code: "image" });
+    await expect(prepareSocialPhoto({ ...job, storageKey: "ai-podcasts/2026/10/12ab.webp" }, row.title, "podcast")).rejects.toMatchObject({ code: "image" });
+    await expect(prepareSocialPhoto({ ...job, storageKey: row.audioKey }, row.title, "podcast")).rejects.toMatchObject({ code: "image" });
+  });
+  it("fails closed without migration 50 while article jobs continue to work", async () => {
+    const migration = readFileSync("packages/db/migrations/50_podcast_social_publishing.sql", "utf8");
+    await db.execute(sql`drop table podcast_social_publications`);
+    try {
+      useMake(); const row = await episode();
+      expect(await hasPodcastSocialPublishing(db)).toBe(false);
+      expect(await readPodcastSocialStatus(db, row.id)).toMatchObject({ ready: false, job: null });
+      await expect(sharePodcastToFacebook(db, row.id, 1)).rejects.toMatchObject({ code: "migration_required" });
+      const articleId = await makeJob(); const remote = makeApi();
+      await processSocialJob(db, (await claimSocialJob(db))!, deps(remote));
+      expect((await jobFor(articleId)).status).toBe("succeeded"); expect(remote.publish).toHaveBeenCalledTimes(1);
+    } finally { if (pg) await pg.exec(migration); else await client!.unsafe(migration); }
+  });
+});
 
 describe(real ? "Facebook on actual PostgreSQL" : "Facebook isolated database flow", () => {
   it("persists custom text through save/reopen/history and preserves it for older clients", async () => {

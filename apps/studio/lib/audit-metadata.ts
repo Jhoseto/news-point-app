@@ -14,8 +14,10 @@ export const textValue = (value: unknown, max = 240) => typeof value === "string
 export function auditDescriptor(path: string, method: string, input: AuditInput) {
   const clean = path.replace(/^\/admin(?=\/|$)/, "").replace(/(\/auth\/reset-password)\/[^/]+/g, "$1/[redacted]").replace(/\/+$/, "") || "/";
   const isRead = method === "GET" || method === "HEAD";
+  const podcastSocialId = clean.match(/^\/api\/podcasts\/([^/]+)\/social$/)?.[1];
   let area: AuditArea = "navigation";
-  if(clean.includes("/ai-settings")) area="ai";
+  if (podcastSocialId) area = "podcasts";
+  else if(clean.includes("/ai-settings")) area="ai";
   else if (clean.includes("/city-guide") || clean === "/moyat-plovdiv") area = "city";
   else if (clean.includes("/articles")) area = "articles";
   else if (clean.includes("/breaking")) area = "breaking";
@@ -30,9 +32,10 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   else if (clean.includes("/submissions") || clean.includes("/my-news")) area = "submissions";
   else if (clean.includes("/auth") || clean === "/login") area = "auth";
   else if (clean.includes("/logs")) area = "logs";
-  const routeId = clean.match(/\/(?:articles|staff)\/([^/]+)/)?.[1] ?? "";
+  const routeId = podcastSocialId ?? clean.match(/\/(?:articles|staff)\/([^/]+)/)?.[1] ?? "";
   let verb = textValue(input.action, 80) || (isRead ? "read" : method === "DELETE" ? "delete" : method === "PATCH" ? "edit" : "save");
-  if (area === "auth") verb = (clean.split("/auth/")[1] ?? verb).replace("/[redacted]", "");
+  if (podcastSocialId && !isRead) verb = input.action === "retry" ? "retryFacebook" : "shareFacebook";
+  else if (area === "auth") verb = (clean.split("/auth/")[1] ?? verb).replace("/[redacted]", "");
   else if (method === "POST" && /^\/api\/editor\/articles\/[^/]+\/delete$/.test(clean)) verb = "delete";
   else if (method === "POST" && /^\/api\/uploads\/[^/]+\/cancel$/.test(clean)) verb = "cancel";
   else if (method === "POST" && /^\/api\/staff\/[^/]+\/delete$/.test(clean)) verb = "delete";
@@ -50,7 +53,7 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   else if (clean === "/api/staff" && !isRead) verb = "create";
   const entityId = textValue(routeId || input.id || input.creationId || (input.input as AuditInput | undefined)?.id || input.jobId || input.assetId || input.themeId || input.projectId || input.pageKey || input.articleId || (isRead && ["podcasts", "submissions"].includes(area) ? input.key || input.path : ""));
   const entityLabel = textValue(input.title || (input.draft as AuditInput | undefined)?.title || input.name || input.alt || input.pageKey || input.email);
-  const labels: Record<string, string> = { read: "Преглед / търсене", upload: "Качване на файл", optimize: "Оптимизиране на снимка", visibility: "Промяна на видимост", preview: "Предварителен преглед", revision: "Запазване на редакция", deletePhoto: "Изтриване на снимка", uploadPhoto: "Качване на снимка", rename: "Преименуване на снимка" };
+  const labels: Record<string, string> = { shareFacebook: "Заявка за споделяне на подкаст във Facebook", retryFacebook: "Повторение на споделяне на подкаст във Facebook", read: "Преглед / търсене", upload: "Качване на файл", optimize: "Оптимизиране на снимка", visibility: "Промяна на видимост", preview: "Предварителен преглед", revision: "Запазване на редакция", deletePhoto: "Изтриване на снимка", uploadPhoto: "Качване на снимка", rename: "Преименуване на снимка" };
   return { area, verb, action: `${area}.${verb}`, actionLabel: actions[verb] || labels[verb] || `${method} ${clean}`, entityId, entityLabel, entityKind: area, path: clean };
 }
 

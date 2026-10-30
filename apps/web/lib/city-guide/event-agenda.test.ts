@@ -36,7 +36,7 @@ describe("unified event agenda", () => {
   it("keeps explicit cancellation and only uses internally archived images", () => {
     const event = cityAgenda([group("club-code-upcoming", { title: "Party", startDate: "2026-10-31T23:00:00+02:00", endDate: "2026-11-01T06:00:00+02:00", status: "EventCancelled", imageUrl: "https://external/image.jpg", imageHash: "a".repeat(64) })], "nightlife")[0]!;
     expect(event.status).toBe("EventCancelled");
-    expect(event.image).toMatch(/^\/api\/city-guide\/event-image\?/u);
+    expect(event.image).toMatch(/^\/moyat-plovdiv\/event-image\/\?/u);
     expect(agendaPeriodMatches(event, "today", "2026-11-01")).toBe(true);
   });
   it("includes an ongoing exhibition and uses seven calendar days, not eight", () => {

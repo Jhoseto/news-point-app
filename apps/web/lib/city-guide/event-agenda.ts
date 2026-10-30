@@ -53,7 +53,7 @@ export function cityAgenda(groups: CityObservation[], category: "culture" | "nig
       description: eventDescription(f), recurrence: String(f.recurrence ?? ""), doorsTime: String(f.doorsTime ?? ""), performanceTime: String(f.performanceTime ?? ""),
       place: canonicalPlace(String(f.place ?? f.location ?? f.venue ?? (kind === "theatre" ? "Драматичен театър Пловдив" : ""))), address: String(f.address ?? ""),
       status: String(f.status ?? ""), price: typeof f.price === "number" ? f.price : null,
-      image: /^[a-f0-9]{64}$/u.test(hash) ? `/api/city-guide/event-image?${new URLSearchParams({ category, sourceId: source, hash })}` : null }];
+      image: /^[a-f0-9]{64}$/u.test(hash) ? `/moyat-plovdiv/event-image/?${new URLSearchParams({ category, sourceId: source, hash })}` : null }];
   })).filter(event => !!event.recurrence || event.endDate >= today)
     .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time) || a.title.localeCompare(b.title, "bg"));
 }

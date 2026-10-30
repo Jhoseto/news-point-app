@@ -551,6 +551,14 @@ export const podcasts = pgTable(
   (table) => [unique("podcasts_slug_key").on(table.slug), index("podcasts_public_idx").on(table.publishedAt.desc())],
 );
 
+/** Podcast snapshots reuse the existing Facebook queue without changing article rows. */
+export const podcastSocialPublications = pgTable("podcast_social_publications", {
+  jobId: uuid("job_id").primaryKey().references(() => socialPublications.id, { onDelete: "cascade" }),
+  podcastId: uuid("podcast_id").references(() => podcasts.id, { onDelete: "set null" }),
+  pageId: text("page_id").notNull(),
+  title: text("title").notNull(),
+}, table => [unique("podcast_social_publications_episode_page_key").on(table.podcastId, table.pageId)]);
+
 /** Private resumable upload intent, durable across Studio/worker restarts. */
 export const mediaUploadSessions = pgTable("media_upload_sessions", {
   id: uuid("id").primaryKey(), ownerId: text("owner_id").references(() => staffUsers.id, { onDelete: "set null" }),
@@ -744,7 +752,7 @@ export const schemaTables = {
   articleRevisionSocial, socialConnections, socialPublications, socialOauthStates, socialDeletionReceipts,
   studioAuditLogs,
   polls, pollVotes, pollRevisions,
-  podcasts,
+  podcasts, podcastSocialPublications,
   aiPodcastProjects, aiPodcastAssets, aiPodcastJobs, aiPodcastAudit, aiPodcastVoiceSettings,
   categories,
   mediaAssets,

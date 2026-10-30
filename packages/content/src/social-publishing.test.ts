@@ -1,11 +1,28 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHmac } from "node:crypto";
-import { defaultSocial, facebookText, normalizeSocial, socialArticleUrl, socialInput } from "./social-publishing";
+import { defaultSocial, facebookText, facebookPodcastText, isPodcastSocialCover, normalizeSocial, socialArticleUrl, socialPodcastUrl, socialInput } from "./social-publishing";
 import { FacebookClient, FacebookError, facebookPermalink } from "./facebook-api";
 import { decryptSocialSecret, encryptSocialSecret, verifyFacebookSignedRequest } from "./social-secrets";
 
 afterEach(() => vi.unstubAllEnvs());
 describe("Facebook editorial intent", () => {
+  it("builds podcast copy from saved summary and keeps the URL out of the post", () => {
+    const text = facebookPodcastText("Заглавие", "<b>Кратко</b> резюме &amp; контекст. https://newspoint.bg/episode/");
+    expect(text).toBe("Заглавие\n\nКратко резюме & контекст.\n\n🎧 Слушайте епизода — линк в първия коментар.");
+    expect(facebookPodcastText("Заглавие", "дума ".repeat(140)).split("\n\n")[1]!.length).toBeLessThanOrEqual(360);
+  });
+  it("allows only canonical podcast routes on an approved public origin", () => {
+    expect(socialPodcastUrl("https://newspoint.bg", "/livepoint/podcast/nov-epizod/")).toBe("https://newspoint.bg/livepoint/podcast/nov-epizod/");
+    for (const path of ["/novina/", "/livepoint/podcast/a/", "/livepoint/podcast/../draft/", "/livepoint/podcast/test/?draft=1", "/livepoint/podcast/test/#x", "/livepoint/podcast/test/audio/"]) {
+      expect(socialPodcastUrl("https://newspoint.bg", path)).toBeNull();
+    }
+    expect(socialPodcastUrl("https://evil.invalid", "/livepoint/podcast/nov-epizod/")).toBeNull();
+    expect(socialArticleUrl("https://newspoint.bg", "/livepoint/podcast/nov-epizod/")).toBeNull();
+  });
+  it("only accepts stored public podcast webp covers, not audio/private files or traversal", () => {
+    expect(isPodcastSocialCover("podcasts/2026/10/12ab-cd34.webp")).toBe(true);
+    for (const key of ["news/2026/10/12ab.webp", "ai-podcasts/2026/10/12ab.webp", "podcasts/2026/10/12ab.mp3", "podcasts/2026/13/12ab.webp", "podcasts/2026/10/../12ab.webp", "podcasts/2026/10/12ab.webp?x=1"]) expect(isPodcastSocialCover(key)).toBe(false);
+  });
   it("uses the exact agreed template, follows titles only until manual editing", () => {
     expect(facebookText("Новина")).toBe("Новина\n\n👇 Четете повече в първия коментар.");
     const initial = defaultSocial("Първо");

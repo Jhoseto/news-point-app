@@ -619,6 +619,7 @@
   }
 
   .np-lp-traffic {
+    height: 100%;
     max-height: none;
     background:
       radial-gradient(circle at 72% -20%, color-mix(in oklab, var(--np-accent-2) 9%, transparent), transparent 42%),
@@ -1001,6 +1002,10 @@
     box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--np-accent) 72%, transparent);
     transform: translateY(-1px);
   }
+  .np-lp-item:focus-visible {
+    outline: 2px solid var(--np-link);
+    outline-offset: 2px;
+  }
   .np-lp-item[data-active] {
     color: var(--np-ink);
     border-color: color-mix(in oklab, var(--np-accent) 16%, transparent);
@@ -1043,31 +1048,38 @@
     background: rgb(0 5 22 / 0.46);
   }
   .np-lp-pop {
-    position: fixed;
+    position: relative;
     z-index: 60;
+    width: min(48rem, calc(100vw - 2rem));
+    max-height: calc(100dvh - var(--np-header-h) - 2rem);
     filter:
       drop-shadow(0 22px 28px rgb(10 20 84 / 0.28))
       drop-shadow(0 6px 12px rgb(56 24 214 / 0.2));
     animation: np-lp-panel-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .np-lp-pop[data-lp-module-pop="weather"] { width: min(48rem, calc(100vw - 2rem)); }
+  .np-lp-pop[data-lp-module-pop="cameras"] { width: min(42rem, calc(100vw - 2rem)); }
+  .np-lp-pop[data-lp-module-pop="report"],
+  .np-lp-pop[data-lp-module-pop="my-news"] { width: min(56rem, calc(100vw - 2rem)); }
+  .np-lp-pop[data-lp-module-pop="podcast"] { width: min(55rem, calc(100vw - 2rem)); }
+  .np-lp-pop-traffic {
+    width: min(98vw, calc(100vw - 1.25rem));
+    height: calc(100dvh - var(--np-header-h) - 1.25rem);
+    max-height: none;
   }
   [data-theme="dark"] .np-lp-pop {
     filter:
       drop-shadow(0 24px 32px rgb(0 0 0 / 0.55))
       drop-shadow(0 0 16px rgb(153 15 236 / 0.22));
   }
-  .np-lp-pop-arrow {
-    position: absolute;
-    top: -6px;
-    z-index: 2;
-    width: 14px;
-    height: 14px;
-    transform: translateX(-50%) rotate(45deg);
-    border-top: 1px solid var(--np-line);
-    border-left: 1px solid var(--np-line);
-    background: var(--np-surface);
-  }
+  .np-lp-pop-arrow { display: none; }
   .np-lp-panel {
     background: var(--np-surface);
+    max-height: inherit;
+  }
+  .np-lp-pop-traffic .np-lp-panel {
+    height: 100%;
+    max-height: none;
   }
   .np-lp-panel::before {
     content: "";
@@ -1268,7 +1280,7 @@
 @keyframes np-lp-panel-in {
   from {
     opacity: 0;
-    transform: translate3d(0, -0.55rem, 0) scale(0.96);
+    transform: translate3d(0, 0.4rem, 0) scale(0.97);
   }
 }
 

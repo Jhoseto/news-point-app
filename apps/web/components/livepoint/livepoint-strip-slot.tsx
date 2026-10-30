@@ -22,9 +22,11 @@ type Props = {
   latest: LatestHeadline | null;
   trafficConnected: boolean;
   camerasLiveLabel: boolean;
+  cityEnabled?: boolean;
 };
 
 export function LivePointStripSlot(props: Props) {
+  const cityEnabled = props.cityEnabled ?? false;
   const [ready, setReady] = useState(false);
   const [initialModule, setInitialModule] = useState<LivePointModule | null>(null);
   const activateModule = (module: LivePointModule) => {
@@ -65,6 +67,7 @@ export function LivePointStripSlot(props: Props) {
       <LivePointStripFallback
         weather={props.weather}
         latest={props.latest}
+        cityEnabled={cityEnabled}
         onModuleActivate={activateModule}
       />
     );
@@ -76,7 +79,7 @@ export function LivePointStripSlot(props: Props) {
       camerasLiveLabel={props.camerasLiveLabel}
       latest={props.latest}
     >
-      <LivePointStrip />
+      <LivePointStrip cityEnabled={cityEnabled} />
     </LivePointProvider>
   );
 }

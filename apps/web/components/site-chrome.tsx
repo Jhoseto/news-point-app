@@ -13,6 +13,7 @@ import { MobileFooter } from "./mobile-footer";
 import { DesktopFooter } from "./desktop-footer";
 import { BreakingBanner } from "./breaking-banner";
 import { getDb, readPublicBreaking } from "@newspoint/db";
+import { cityGuideEnabled } from "@/lib/city-guide/access";
 
 /**
  * Desktop bar: search in the exact centre of the viewport (equal 1fr side columns).
@@ -57,7 +58,7 @@ export async function SiteHeader() {
           </div>
         ) : null}
       </div>
-      <LivePointStrip />
+      <LivePointStrip cityEnabled={cityGuideEnabled()} />
       <BreakingBanner initial={breaking} categoryPaths={menu.map(item => item.path)} />
     </header>
   );

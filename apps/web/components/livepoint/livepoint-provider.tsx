@@ -18,7 +18,6 @@ import { createPortal } from "react-dom";
 import { isLivePointModule, MODULE_LABELS, MODULE_PATHS, type LivePointModule } from "@/lib/livepoint/config";
 import type { DataEnvelope, LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import { CloseIcon } from "../icons";
-import { podcastPanelPlace } from "@/lib/podcast-playback";
 import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
 const MobileLivePointPanel = dynamic(() => import("./mobile-livepoint-panel").then(module => module.MobileLivePointPanel), { ssr: false });
 // Panels are opened on demand — keep them out of the initial homepage JS.
@@ -53,30 +52,6 @@ export function useLivePoint(): LivePointContextValue {
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-const PANEL_MAX: Record<LivePointModule, number> = {
-  weather: 768,
-  traffic: 1216,
-  cameras: 672,
-  report: 896,
-  "my-news": 896,
-  podcast: 880,
-};
-
-type PanelPlace = { top: number; left: number; width: number; arrow: number };
-
-function placePanel(module: LivePointModule): PanelPlace | null {
-  const button = document.querySelector<HTMLElement>(`[data-lp-module="${module}"]`);
-  if (!button) return null;
-  const viewportWidth = window.innerWidth;
-  const rect = button.getBoundingClientRect();
-  const top = Math.max(rect.bottom, document.querySelector("[data-np-header]")?.getBoundingClientRect().bottom ?? rect.bottom) + 10;
-  if (module === "podcast") return { top, ...podcastPanelPlace(viewportWidth, rect.left, rect.width) };
-  const margin = 12;
-  const left = rect.left;
-  const width = Math.min(PANEL_MAX[module], Math.max(160, viewportWidth - left - margin));
-  return { top, left, width, arrow: Math.min(width - 18, Math.max(18, rect.width / 2)) };
-}
 
 const DETAIL_LABELS: Record<LivePointModule, string> = {
   weather: "Подробности за времето",
@@ -139,7 +114,6 @@ export function LivePointProvider({
   const pathname = usePathname();
   const titleId = useId();
   const [active, setActive] = useState<LivePointModule | null>(null);
-  const [place, setPlace] = useState<PanelPlace | null>(null);
   const [dirty, setDirty] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [mobile, setMobile] = useState(false);
@@ -240,25 +214,6 @@ export function LivePointProvider({
   useScrollLock(active !== null);
 
   useEffect(() => {
-    if (!active || mobile) return;
-    let frame = 0;
-    const measure = () => setPlace(placePanel(active));
-    const schedule = () => {
-      if (!frame) frame = requestAnimationFrame(() => { frame = 0; measure(); });
-    };
-    measure();
-    window.addEventListener("resize", schedule);
-    const header = document.querySelector("[data-np-header]");
-    const headerResize = new ResizeObserver(schedule);
-    if (header) headerResize.observe(header);
-    return () => {
-      headerResize.disconnect();
-      window.removeEventListener("resize", schedule);
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [active, mobile]);
-
-  useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       // The native location dialog is in the top layer and owns focus/Escape while open.
@@ -318,26 +273,24 @@ export function LivePointProvider({
       /> : null}
       {active && mounted && !mobile
         ? createPortal(
-            <div className="np-lp-layer pointer-events-none fixed inset-0 z-50">
+            <div className="np-lp-layer pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4 pt-[max(1rem,calc(var(--np-header-h)+0.75rem))]">
               <button
                 type="button"
                 aria-label="Затвори LivePoint"
                 tabIndex={-1}
-                className="np-lp-scrim pointer-events-auto fixed inset-x-0 top-[var(--np-header-h)] bottom-0 cursor-default backdrop-blur-md lg:left-[var(--np-rail-w)]"
+                className="np-lp-scrim pointer-events-auto absolute inset-x-0 top-[var(--np-header-h)] bottom-0 cursor-default backdrop-blur-md lg:left-[var(--np-rail-w)]"
                 onClick={close}
               />
               <div
-                className={`np-lp-pop pointer-events-auto ${active === "podcast" ? "np-podcast-pop" : ""}`}
-                style={place ? { top: place.top, left: place.left, width: place.width, transformOrigin: `${place.arrow}px 0` } : { top: "var(--np-header-h)", left: 12, right: 12, width: "auto" }}
+                className={`np-lp-pop pointer-events-auto ${active === "podcast" ? "np-podcast-pop" : ""} ${active === "traffic" ? "np-lp-pop-traffic" : ""}`}
+                data-lp-module-pop={active}
               >
-              <span className="np-lp-pop-arrow" style={place ? { left: place.arrow } : undefined} aria-hidden="true" />
               <div
                 ref={panel}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
                 className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "podcast" ? "np-podcast-panel" : active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
-                style={{ maxHeight: place ? `calc(100dvh - ${place.top + 16}px)` : "min(78dvh, 44rem)" }}
               >
                 <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
                   <h2

@@ -1,8 +1,8 @@
 import { and, desc, eq, sql } from "drizzle-orm";
-import { defaultSocial, normalizeSocial, socialArticleUrl, socialMessage, type SocialInput, type SocialStatus } from "@newspoint/content";
+import { defaultSocial, facebookPodcastText, isPodcastSocialCover, normalizeSocial, socialArticleUrl, socialPodcastUrl, socialMessage, podcastSocialMessage, type SocialInput, type SocialStatus } from "@newspoint/content";
 import { makeSocialConfiguration } from "@newspoint/content/make-social";
 import type { ScriptDb } from "./node";
-import { articles, articleRevisions, mediaAssets, socialConnections, socialPublications } from "./schema";
+import { articles, articleRevisions, mediaAssets, podcasts, podcastSocialPublications, socialConnections, socialPublications } from "./schema";
 import { enqueueInstagramPublication, readInstagramRevision, writeInstagramRevision, readInstagramStatus } from "./instagram-publishing";
 
 type Executor = Pick<ScriptDb, "execute">;
@@ -104,4 +104,73 @@ export async function retrySocialPublication(db: ScriptDb, id: string): Promise<
     await tx.update(socialPublications).set(values).where(eq(socialPublications.id, job.id));
     return true;
   });
+}
+
+export class PodcastSocialError extends Error {
+  constructor(public status: 404 | 409 | 422 | 503, public code: string, message: string) { super(message); }
+}
+export async function hasPodcastSocialPublishing(db: Executor): Promise<boolean> {
+  if (!await hasSocialPublishing(db)) return false;
+  const rows = await db.execute<{ ready: boolean }>(sql`select to_regclass('public.podcast_social_publications') is not null as ready`);
+  return rows[0]?.ready === true;
+}
+function podcastCanRetry(job: typeof socialPublications.$inferSelect, connection: SocialPage): boolean {
+  return job.status === "failed" && job.errorCode !== "review" && connection.connected && connection.pageId === job.pageId
+    && process.env.SOCIAL_PUBLISHING_ENABLED === "1" && (!job.leaseUntil || job.leaseUntil <= new Date());
+}
+export async function readPodcastSocialStatus(db: ScriptDb, id: string): Promise<SocialStatus> {
+  if (!await hasPodcastSocialPublishing(db)) return { ready: false, connected: false, enabled: false, job: null };
+  const [episode] = await db.select({ id: podcasts.id }).from(podcasts).where(eq(podcasts.id, id)).limit(1);
+  if (!episode) throw new PodcastSocialError(404, "not_found", "Подкастът не е намерен.");
+  const connection = await activeSocialPage(db);
+  const [row] = await db.select({ job: socialPublications }).from(podcastSocialPublications)
+    .innerJoin(socialPublications, eq(socialPublications.id, podcastSocialPublications.jobId))
+    .where(and(eq(podcastSocialPublications.podcastId, id), connection.connected ? eq(podcastSocialPublications.pageId, connection.pageId) : undefined))
+    .orderBy(desc(socialPublications.createdAt)).limit(1);
+  const job = row?.job;
+  return { ready: true, connected: connection.connected, enabled: process.env.SOCIAL_PUBLISHING_ENABLED === "1", job: job ? {
+    id: job.id, status: job.status, step: job.step, text: job.text, url: job.permalink,
+    message: podcastSocialMessage(job.status, job.step, job.errorCode), canRetry: podcastCanRetry(job, connection),
+  } : null };
+}
+/** Explicit editor click only. Podcast locking serializes simultaneous clicks and snapshots saved copy. */
+export async function sharePodcastToFacebook(db: ScriptDb, id: string, expectedRevision: number, action: "share" | "retry" = "share"): Promise<SocialStatus> {
+  if (!await hasPodcastSocialPublishing(db)) throw new PodcastSocialError(503, "migration_required", "Споделянето на подкасти още не е активирано.");
+  await db.transaction(async tx => {
+    const [episode] = await tx.select().from(podcasts).where(eq(podcasts.id, id)).for("update");
+    if (!episode) throw new PodcastSocialError(404, "not_found", "Подкастът не е намерен.");
+    if (episode.status !== "published" || !episode.publishedAt || episode.publishedAt > new Date()) throw new PodcastSocialError(409, "not_public", "Първо публикувайте подкаста в сайта.");
+    if (episode.revision !== expectedRevision) throw new PodcastSocialError(409, "revision_conflict", "Подкастът е променен. Презаредете преди споделяне.");
+    const connection = await activeSocialPage(tx);
+    if (!connection.connected) throw new PodcastSocialError(503, "connection", "Администраторът трябва да провери връзката с Facebook.");
+    if (process.env.SOCIAL_PUBLISHING_ENABLED !== "1") throw new PodcastSocialError(503, "disabled", "Споделянето във Facebook в момента е спряно.");
+    const [existing] = await tx.select({ job: socialPublications }).from(podcastSocialPublications)
+      .innerJoin(socialPublications, eq(socialPublications.id, podcastSocialPublications.jobId))
+      .where(and(eq(podcastSocialPublications.podcastId, id), eq(podcastSocialPublications.pageId, connection.pageId))).for("update");
+    if (existing && action === "share") return;
+    if (action === "retry" && (!existing || !podcastCanRetry(existing.job, connection))) throw new PodcastSocialError(409, "not_retryable", "Тази заявка не може да бъде изпратена повторно.");
+    const url = socialPodcastUrl(process.env.WEB_URL, `/livepoint/podcast/${episode.slug}/`);
+    const title = episode.title.trim();
+    const text = facebookPodcastText(title, episode.summary);
+    const updateSnapshot = !existing || (!existing.job.photoId && !existing.job.postId && !existing.job.operationStartedAt && ["prepare", "photo"].includes(existing.job.step));
+    if (updateSnapshot) {
+      if (!url) throw new PodcastSocialError(422, "origin", "Администраторът трябва да настрои публичния адрес на сайта.");
+      if (title.length < 2 || !episode.summary.trim()) throw new PodcastSocialError(422, "text", "Запишете заглавие и резюме преди споделяне.");
+      if (!isPodcastSocialCover(episode.coverKey)) throw new PodcastSocialError(422, "image", "Запишете валидна обложка преди споделяне.");
+    }
+    if (existing) {
+      const values: Partial<typeof socialPublications.$inferInsert> = { status: "pending", attempts: 0, nextAttemptAt: new Date(), errorCode: null, leaseToken: null, leaseUntil: null, updatedAt: new Date() };
+      if (updateSnapshot) {
+        Object.assign(values, { revision: episode.revision, text, articleUrl: url!, storageKey: episode.coverKey,
+          step: "prepare", preparedFile: null, preparedHash: null });
+        await tx.update(podcastSocialPublications).set({ title }).where(eq(podcastSocialPublications.jobId, existing.job.id));
+      }
+      await tx.update(socialPublications).set(values).where(eq(socialPublications.id, existing.job.id));
+      return;
+    }
+    const [job] = await tx.insert(socialPublications).values({ articleId: null, revision: episode.revision, pageId: connection.pageId,
+      text, articleUrl: url!, storageKey: episode.coverKey, status: "pending" }).returning({ id: socialPublications.id });
+    await tx.insert(podcastSocialPublications).values({ jobId: job!.id, podcastId: id, pageId: connection.pageId, title });
+  });
+  return readPodcastSocialStatus(db, id);
 }

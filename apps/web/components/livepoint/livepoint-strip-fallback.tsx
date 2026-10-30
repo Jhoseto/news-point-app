@@ -5,24 +5,25 @@ import type { LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import type { DataEnvelope } from "@/lib/livepoint/types";
 import { MODULE_PATHS, type LivePointModule } from "@/lib/livepoint/config";
 import { formatTempC } from "@/lib/livepoint/weather/labels";
-import { CameraIcon, CarIcon, ChevronRightIcon, CloudSunIcon, FeatherIcon, HeadphonesIcon, MegaphoneIcon } from "../icons";
+import { CameraIcon, CarIcon, ChevronRightIcon, CloudSunIcon, FeatherIcon, HeadphonesIcon, MapIcon, MegaphoneIcon } from "../icons";
 
 type Props = {
   weather: DataEnvelope<WeatherForecast>;
   latest: LatestHeadline | null;
   onModuleActivate?: (module: LivePointModule) => void;
+  cityEnabled?: boolean;
 };
 
 /** Same chrome as LivePointStrip, but plain links until the interactive strip loads. */
-export function LivePointStripFallback({ weather, latest, onModuleActivate }: Props) {
+export function LivePointStripFallback({ weather, latest, onModuleActivate, cityEnabled = false }: Props) {
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
   const items: { module: LivePointModule; label: string; icon: React.ReactNode }[] = [
+    { module: "my-news", label: "Моята новина", icon: <FeatherIcon width={17} height={17} /> },
     { module: "podcast", label: "Podcast", icon: <HeadphonesIcon width={17} height={17} /> },
     { module: "weather", label: `Време${forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}`, icon: <CloudSunIcon width={17} height={17} /> },
     { module: "traffic", label: "Трафик", icon: <CarIcon width={17} height={17} /> },
     { module: "cameras", label: "Камери", icon: <CameraIcon width={17} height={17} /> },
     { module: "report", label: "Подай сигнал", icon: <MegaphoneIcon width={17} height={17} /> },
-    { module: "my-news", label: "Моята новина", icon: <FeatherIcon width={17} height={17} /> },
   ];
   const itemClass =
     "np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2";
@@ -49,6 +50,10 @@ export function LivePointStripFallback({ weather, latest, onModuleActivate }: Pr
           </div>
           <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
         </div>
+        {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} className={itemClass}>
+          <span className="np-lp-item-icon" aria-hidden="true"><MapIcon width={17} height={17} /></span>
+          <span className="np-lp-item-label np-lp-word">Моят Пловдив</span>
+        </Link> : null}
         {items.map((item) =>
           onModuleActivate ? (
             <button

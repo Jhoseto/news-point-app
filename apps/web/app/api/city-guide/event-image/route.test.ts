@@ -1,16 +1,21 @@
 import { createHash } from "node:crypto";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ load: vi.fn(), read: vi.fn() }));
 vi.mock("@/lib/city-guide/local-observations", () => ({ loadCityObservations: mocks.load }));
 vi.mock("node:fs/promises", () => ({ readFile: mocks.read }));
-import { GET } from "./route";
+import { GET as apiGet } from "./route";
+import { GET as publicGet } from "../../../moyat-plovdiv/event-image/route";
 const bytes = Buffer.from("RIFF0000WEBPexplicit-test-fixture");
 const hash = createHash("sha256").update(bytes).digest("hex");
 const group = { sourceId: "plovdiv-theatre", status: "observed", items: [{ key: "fixture", fields: { imageHash: hash } }] };
-const request = (digest = hash) => new Request(`http://localhost/api/city-guide/event-image?category=culture&sourceId=plovdiv-theatre&hash=${digest}`);
+describe.each([
+  ["API", apiGet, "/api/city-guide/event-image/"],
+  ["crawlable image", publicGet, "/moyat-plovdiv/event-image/"],
+] as const)("%s publication guards", (_name, GET, path) => {
+const request = (digest = hash) => new Request(`http://localhost${path}?category=culture&sourceId=plovdiv-theatre&hash=${digest}`);
 beforeEach(() => { vi.stubEnv("NODE_ENV", "development"); mocks.load.mockReset().mockResolvedValue([group]); mocks.read.mockReset().mockResolvedValue(bytes); });
 afterEach(() => vi.unstubAllEnvs());
-it("serves only current associated images privately", async () => {
+it("serves only current associated immutable images", async () => {
   const response = await GET(request());
   expect(response.status).toBe(200); expect(response.headers.get("content-type")).toBe("image/webp"); expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
 });
@@ -38,4 +43,5 @@ it("enabled production requires explicit storage and still refuses unassociated 
   expect((await GET(request())).status).toBe(200);
   mocks.load.mockResolvedValue([]);
   expect((await GET(request())).status).toBe(404);
+});
 });

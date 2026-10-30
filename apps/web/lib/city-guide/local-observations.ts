@@ -197,6 +197,7 @@ export function selectCityObservations(
   categorySlug: string,
   preview: z.infer<typeof previewSchema>,
   now = new Date(),
+  preserveEmptySources = false,
 ): CityObservation[] {
   const today = localDay(now);
   return (CATEGORY_SOURCES[categorySlug] ?? []).flatMap(sourceId => {
@@ -206,10 +207,10 @@ export function selectCityObservations(
     const status = source.outcome === "unavailable" ? "unavailable" : age < 0 || age > (FRESH_MS[sourceId] ?? 0) ? "stale" : "observed";
     const items = status === "observed" ? source.items.filter(item => isRelevantRow(sourceId, item.fields, today, now)
       && (sourceId !== "epaygo-plovdiv-explicit" || (categorySlug === "nightlife" ? explicitNightEventKind(item.fields) !== null : explicitNightEventKind(item.fields) === null))) : [];
-    if (sourceId === "plovdiv-youth-centre" && items.length === 0) return [];
-    if ((sourceId === "plovdiv-auction-list" || sourceId === "plovdiv-public-consultations") && items.length === 0) return [];
-    if (sourceId === "plovdiv-management-competitions" && items.length === 0) return [];
-    if (categorySlug === "nightlife" && sourceId === "epaygo-plovdiv-explicit" && items.length === 0) return [];
+    if (!preserveEmptySources && sourceId === "plovdiv-youth-centre" && items.length === 0) return [];
+    if (!preserveEmptySources && (sourceId === "plovdiv-auction-list" || sourceId === "plovdiv-public-consultations") && items.length === 0) return [];
+    if (!preserveEmptySources && sourceId === "plovdiv-management-competitions" && items.length === 0) return [];
+    if (!preserveEmptySources && categorySlug === "nightlife" && sourceId === "epaygo-plovdiv-explicit" && items.length === 0) return [];
     if (sourceId === "plovdiv-livetransport-gtfs") items.sort((a, b) => String(a.fields.line).localeCompare(String(b.fields.line), "bg", { numeric: true }));
     if (sourceId === "plovdiv-airport-flights") items.sort((a, b) => `${a.fields.date} ${a.fields.time}`.localeCompare(`${b.fields.date} ${b.fields.time}`));
     return [{ sourceId, checkedAt: source.checkedAt, status, completeness: source.completeness, items }];
@@ -230,11 +231,11 @@ const loadDbPreview = cache(async (sourceId: string | null) => {
   });
 });
 
-export async function loadCityObservations(categorySlug: string, sourceId?: string): Promise<CityObservation[]> {
+export async function loadCityObservations(categorySlug: string, sourceId?: string, options?: { preserveEmptySources?: boolean }): Promise<CityObservation[]> {
   if (CITY_DEFERRED_CATEGORIES.includes(categorySlug)) return [];
   if (sourceId !== undefined && (!(CATEGORY_SOURCES[categorySlug] ?? []).includes(sourceId) || !citySourceInRelease(sourceId))) return [];
   if (!cityGuideEnabled()) return [];
-  const select = (data: z.infer<typeof previewSchema>) => selectCityObservations(categorySlug, data).filter(group => citySourceInRelease(group.sourceId) && (sourceId === undefined || group.sourceId === sourceId));
+  const select = (data: z.infer<typeof previewSchema>) => selectCityObservations(categorySlug, data, new Date(), options?.preserveEmptySources ?? false).filter(group => citySourceInRelease(group.sourceId) && (sourceId === undefined || group.sourceId === sourceId));
   if (process.env.NODE_ENV !== "development" || process.env.CITY_GUIDE_USE_DB_PREVIEW === "1") {
     try { return select(await loadDbPreview(sourceId ?? null)); }
     catch { return []; }

@@ -3,10 +3,10 @@ import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from "node:
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
-import { articles, articleRevisions, socialConnections, socialPublications, type ScriptDb, findRepoRoot } from "@newspoint/db/node";
-import { hasSocialPublishing } from "@newspoint/db/social-publishing";
+import { articles, articleRevisions, podcasts, podcastSocialPublications, socialConnections, socialPublications, type ScriptDb, findRepoRoot } from "@newspoint/db/node";
+import { hasPodcastSocialPublishing, hasSocialPublishing } from "@newspoint/db/social-publishing";
 import { mediaFile, readMediaFile } from "@newspoint/content/upload-media";
-import { socialArticleUrl } from "@newspoint/content";
+import { isPodcastSocialCover, socialArticleUrl, socialPodcastUrl } from "@newspoint/content";
 import { FacebookClient, FacebookError, facebookPermalink } from "@newspoint/content/facebook";
 import { MAKE_SOCIAL_MAX_PHOTO_BYTES, MakeSocialClient, MakeSocialError, makeSocialConfiguration, usesMakeSocialProvider } from "@newspoint/content/make-social";
 import { decryptSocialSecret, pageSecretContext } from "@newspoint/content/social-secrets";
@@ -26,8 +26,8 @@ function socialTempRoot(): string {
   if (inside(resolve(media), root) || inside(resolve(findRepoRoot()), root)) throw new FacebookError("image");
   return root;
 }
-export async function prepareSocialPhoto(job: Job, title: string): Promise<{ preparedFile: string; preparedHash: string }> {
-  if (!job.storageKey || !/^news\//.test(job.storageKey)) throw new FacebookError("image");
+export async function prepareSocialPhoto(job: Job, title: string, kind: "article" | "podcast" = "article"): Promise<{ preparedFile: string; preparedHash: string }> {
+  if (!job.storageKey || !(kind === "podcast" ? isPodcastSocialCover(job.storageKey) : /^news\//.test(job.storageKey))) throw new FacebookError("image");
   const path = mediaFile(job.storageKey);
   // Production is local disk; laptop SSH uses the existing direct remote-file transport.
   if (!process.env.MEDIA_SSH_TARGET) {
@@ -91,7 +91,13 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
   let generation: number | null = null;
   try {
     const [article] = job.articleId ? await db.select().from(articles).where(eq(articles.id, job.articleId)) : [];
-    if (!article?.isPublic || !article.publishedAt || article.publishedAt > new Date()) {
+    // The optional sidecar keeps article publishing compatible with databases before migration 50.
+    const [snapshot] = !job.articleId && await hasPodcastSocialPublishing(db)
+      ? await db.select().from(podcastSocialPublications).where(eq(podcastSocialPublications.jobId, job.id)) : [];
+    const [episode] = snapshot?.podcastId ? await db.select().from(podcasts).where(eq(podcasts.id, snapshot.podcastId)) : [];
+    const publicContent = job.articleId ? article?.isPublic && article.publishedAt && article.publishedAt <= new Date()
+      : snapshot?.pageId === job.pageId && episode?.status === "published" && episode.publishedAt && episode.publishedAt <= new Date();
+    if (!publicContent) {
       await finish({ status: job.status === "uncertain" ? "uncertain" : "cancelled", errorCode: "not_public", nextAttemptAt: new Date(Date.now() + 86400_000) }); return;
     }
     const makeConfig = makeMode ? makeSocialConfiguration() : null;
@@ -100,7 +106,9 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     generation = connection?.generation ?? null;
     const client = makeMode ? null : dependencies.client ?? new FacebookClient(decryptSocialSecret(connection!.encryptedToken, pageSecretContext(connection!.pageId)));
     const makeClient = makeMode ? dependencies.makeClient ?? MakeSocialClient.configured() : null;
-    if (!socialArticleUrl(new URL(job.articleUrl).origin, new URL(job.articleUrl).pathname)) throw new FacebookError("origin");
+    const target = new URL(job.articleUrl);
+    const approvedUrl = snapshot ? socialPodcastUrl(target.origin, target.pathname) : socialArticleUrl(target.origin, target.pathname);
+    if (approvedUrl !== job.articleUrl) throw new FacebookError("origin");
     if (job.status === "uncertain") {
       if (makeMode) {
         // The webhook may have completed after the response was lost. Never replay it blindly.
@@ -120,10 +128,11 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
     }
     if (job.step === "prepare") {
       if (!job.text.trim()) throw new FacebookError("text");
-      const [revision] = await db.select({ title: articleRevisions.title }).from(articleRevisions)
-        .where(and(eq(articleRevisions.articleId, job.articleId!), eq(articleRevisions.number, job.revision)));
-      if (!revision?.title.trim()) throw new FacebookError("text");
-      const prepared = await prepareSocialPhoto(job, revision.title);
+      const [revision] = job.articleId ? await db.select({ title: articleRevisions.title }).from(articleRevisions)
+        .where(and(eq(articleRevisions.articleId, job.articleId), eq(articleRevisions.number, job.revision))) : [];
+      const title = snapshot?.title ?? revision?.title;
+      if (!title?.trim()) throw new FacebookError("text");
+      const prepared = await prepareSocialPhoto(job, title, snapshot ? "podcast" : "article");
       await finish({ ...prepared, status: "pending", step: "photo", attempts: 0, errorCode: null, nextAttemptAt: new Date() }); return;
     }
     if (job.step === "resolve") {
@@ -142,7 +151,11 @@ export async function processSocialJob(db: ScriptDb, job: Job, dependencies: {
       : sql`exists(select 1 from social_connections where provider='facebook' and status='connected' and page_id=${job.pageId} and generation=${generation})`;
     const started = await db.update(socialPublications).set({ status: "sending", operationStartedAt: new Date(), attempts: job.attempts + 1, updatedAt: new Date() }).where(and(owned,
       connectionFence,
-      sql`exists(select 1 from articles where id=${job.articleId}::uuid and is_public=true)`,
+      snapshot
+        ? sql`exists(select 1 from podcast_social_publications s join podcasts p on p.id=s.podcast_id
+            where s.job_id=${job.id}::uuid and s.podcast_id=${snapshot.podcastId}::uuid and s.page_id=${job.pageId}
+            and p.status='published' and p.published_at <= now())`
+        : sql`exists(select 1 from articles where id=${job.articleId}::uuid and is_public=true and published_at <= now())`,
     )).returning({ id: socialPublications.id });
     if (!started.length) return;
     externalStarted = true;

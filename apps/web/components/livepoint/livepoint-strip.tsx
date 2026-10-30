@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { LivePointModule } from "@/lib/livepoint/config";
 import { formatTempC } from "@/lib/livepoint/weather/labels";
-import { CameraIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, CloudSunIcon, FeatherIcon, HeadphonesIcon, MegaphoneIcon } from "../icons";
+import { CameraIcon, CarIcon, ChevronLeftIcon, ChevronRightIcon, CloudSunIcon, FeatherIcon, HeadphonesIcon, MapIcon, MegaphoneIcon } from "../icons";
 import { useLivePoint } from "./livepoint-provider";
 import { LatestHeadlineCapsule } from "./latest-headline-capsule";
 
@@ -97,8 +99,10 @@ function StripScroller({ children }: { children: ReactNode }) {
   );
 }
 
-export function LivePointStrip() {
+export function LivePointStrip({ cityEnabled = false }: { cityEnabled?: boolean }) {
   const { weather, latest } = useLivePoint();
+  const pathname = usePathname();
+  const cityActive = pathname === "/moyat-plovdiv" || pathname.startsWith("/moyat-plovdiv/");
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
 
   return (
@@ -132,6 +136,13 @@ export function LivePointStrip() {
             <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
           </div>
 
+          {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} data-active={cityActive || undefined} aria-current={cityActive ? "page" : undefined} className="np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2">
+            <span className="np-lp-item-icon" aria-hidden="true"><MapIcon width={17} height={17} /></span>
+            <span className="np-lp-item-label">Моят Пловдив</span>
+          </Link> : null}
+          <StripItem module="my-news" icon={<FeatherIcon width={17} height={17} />}>
+            Моята новина
+          </StripItem>
           <StripItem module="podcast" icon={<HeadphonesIcon width={17} height={17} />}>
             Podcast
           </StripItem>
@@ -146,9 +157,6 @@ export function LivePointStrip() {
           </StripItem>
           <StripItem module="report" icon={<MegaphoneIcon width={17} height={17} />}>
             Подай сигнал
-          </StripItem>
-          <StripItem module="my-news" icon={<FeatherIcon width={17} height={17} />}>
-            Моята новина
           </StripItem>
         </StripScroller>
 

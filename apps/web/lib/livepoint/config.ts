@@ -10,7 +10,7 @@ export const PLOVDIV = {
 /** TomTom Incident Details bbox around Plovdiv (lon,lat pairs). */
 export const PLOVDIV_TRAFFIC_BBOX = "24.60,42.05,24.90,42.22";
 
-export const LIVEPOINT_MODULES = ["podcast", "weather", "traffic", "cameras", "report", "my-news"] as const;
+export const LIVEPOINT_MODULES = ["my-news", "podcast", "weather", "traffic", "cameras", "report"] as const;
 export type LivePointModule = (typeof LIVEPOINT_MODULES)[number];
 
 export function isLivePointModule(value: string | null | undefined): value is LivePointModule {

@@ -1,5 +1,4 @@
 import { cityGuideEnabled } from "@/lib/city-guide/access";
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CityGuideHome } from "@/components/city-guide/city-guide";
 import { CityHomeHighlights } from "@/components/city-guide/city-home-highlights";
@@ -9,11 +8,11 @@ import { loadCityObservations } from "@/lib/city-guide/local-observations";
 import { cityAvailableTopics } from "@/lib/city-guide/topic-coverage";
 import { cityStoryForCategory, cityTopicStories, type CityStory } from "@/lib/city-guide/news";
 import { loadCityArticlePool } from "@/lib/city-guide/news-server";
+import { cityPageMetadata, cityPageGraph, citySeoPage } from "@/lib/city-guide/seo";
+import { JsonLd } from "@/components/json-ld";
+import { CitySearchContext } from "@/components/city-guide/city-search-context";
 
-export const metadata: Metadata = {
-  title: "Моят Пловдив",
-  robots: { index: false, follow: false },
-};
+export function generateMetadata() { if (!cityGuideEnabled()) notFound(); return cityPageMetadata(); }
 
 export default async function CityGuidePage() {
   if (!cityGuideEnabled()) notFound();
@@ -39,5 +38,6 @@ export default async function CityGuidePage() {
     newsByCategory[category.slug] = cityStoryForCategory(activeTopicsByCategory[category.slug] ?? [], articles);
   }
   const featuredStories = cityTopicStories(Object.values(activeTopicsByCategory).flat(), articles, new Date(), 6).sort((a, b) => b.publishedAt.localeCompare(a.publishedAt)).slice(0, 3);
-  return <><CityLocalNav availableSlugs={availableSlugs} /><CityGuideHome availableSlugs={availableSlugs} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} newsByCategory={newsByCategory} featuredStories={featuredStories} today={<CityHomeHighlights groups={[...transport, ...outages, ...parking, ...municipality, ...education, ...environment]} culture={culture} nightlife={nightlife} />} /></>;
+  const searchItems = availableSlugs.flatMap(slug => { const page = citySeoPage(slug); return page ? [page] : []; });
+  return <><JsonLd data={cityPageGraph(undefined, searchItems)} /><CityLocalNav availableSlugs={availableSlugs} /><CityGuideHome availableSlugs={availableSlugs} activeTopicsByCategory={activeTopicsByCategory} topicHrefByCategory={topicHrefByCategory} newsByCategory={newsByCategory} featuredStories={featuredStories} today={<CityHomeHighlights groups={[...transport, ...outages, ...parking, ...municipality, ...education, ...environment]} culture={culture} nightlife={nightlife} />} /><CitySearchContext groups={Object.values(groupsByCategory).flat()} availableSlugs={availableSlugs} /></>;
 }
