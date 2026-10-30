@@ -140,7 +140,7 @@ export function LivePointStrip({ cityEnabled = false }: { cityEnabled?: boolean 
             <span className="np-lp-item-icon" aria-hidden="true"><MapIcon width={17} height={17} /></span>
             <span className="np-lp-item-label">Моят Пловдив</span>
           </Link> : null}
-          <StripItem module="my-news" icon={<FeatherIcon width={17} height={17} />}>
+          <StripItem module="my-news" className="max-lg:hidden" icon={<FeatherIcon width={17} height={17} />}>
             Моята новина
           </StripItem>
           <StripItem module="podcast" icon={<HeadphonesIcon width={17} height={17} />}>

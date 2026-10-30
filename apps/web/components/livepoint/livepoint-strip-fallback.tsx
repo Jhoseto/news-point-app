@@ -61,13 +61,13 @@ export function LivePointStripFallback({ weather, latest, onModuleActivate, city
               type="button"
               data-lp-module={item.module}
               onClick={() => onModuleActivate(item.module)}
-              className={itemClass}
+              className={`${itemClass}${item.module === "my-news" ? " max-lg:hidden" : ""}`}
             >
               <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{item.icon}</span>
               <span className="np-lp-item-label np-lp-word">{item.label}</span>
             </button>
           ) : (
-            <Link key={item.module} href={MODULE_PATHS[item.module]} prefetch={false} className={itemClass}>
+            <Link key={item.module} href={MODULE_PATHS[item.module]} prefetch={false} className={`${itemClass}${item.module === "my-news" ? " max-lg:hidden" : ""}`}>
               <span className="np-lp-item-icon lg:max-xl:hidden" aria-hidden="true">{item.icon}</span>
               <span className="np-lp-item-label np-lp-word">{item.label}</span>
             </Link>

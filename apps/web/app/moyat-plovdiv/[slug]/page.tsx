@@ -46,7 +46,7 @@ export default async function CityCategoryPage({ params }: Props) {
   const stories = cityStoriesForTopics(availableTopics.map(topic => topic.title), articles);
   const observations = <CityObservedData categorySlug={slug} groups={slug === "transport" ? observationGroups : activeGroups} stories={stories} articles={articles} extraSections={roadEnabled ? [{ id: "livepoint-roads", title: "Затворени улици и ремонти", description: "Текущи ограничения и засегнати участъци с карта.", count: 0, utility: false, content: <CityRoadRestrictions stories={cityTopicStories(["Затворени улици", "Улични ремонти"], articles)} /> }] : []} />;
   const availableSlugs = categoryGroups.filter(entry => cityAvailableTopics(entry.slug, entry.groups).length > 0).map(entry => entry.slug);
-  const searchContext = <CitySearchContext categorySlug={slug} groups={observationGroups} availableSlugs={availableSlugs} />;
+  const searchContext = <CitySearchContext categorySlug={slug} availableSlugs={availableSlugs} />;
   const withNav = (content: React.ReactNode) => <><JsonLd data={cityPageGraph(slug, availableTopics.map(topic => ({ title: topic.title, path: topic.href.startsWith("/") ? topic.href : `/moyat-plovdiv/${slug}/${topic.href}` })))} /><CityLocalNav currentSlug={slug} availableSlugs={availableSlugs} topics={availableTopics} />{content}{searchContext}</>;
   if (slug === "nightlife" || slug === "culture") {
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Sofia" });

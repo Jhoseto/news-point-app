@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -20,7 +20,10 @@ import { createPortal } from "react-dom";
 import type { CategoryRef } from "@/lib/queries";
 import { currentHeaderSheet, setHeaderSheet, useHeaderSheet } from "./header-state";
 import { MOBILE_OVERLAY_CHANGE, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
+import { MOBILE_HEADER_BACK_EVENT, canNavigateMobileBack, markMobileHistoryRoot, runMobileBack } from "@/lib/mobile-back";
+import { useLivePoint } from "./livepoint/livepoint-provider";
 import {
+  ArrowLeftIcon,
   BadgeIcon,
   BallotIcon,
   ClockIcon,
@@ -31,6 +34,7 @@ import {
   ChevronRightIcon,
   CupIcon,
   EyeIcon,
+  FeatherIcon,
   FlagIcon,
   GlobeIcon,
   GridIcon,
@@ -345,6 +349,12 @@ export function MobileRubricsSheet({ items }: { items: NavItem[] }) {
     if (mode === "pop") history.back();
     else stripSheetHistory("rubrics");
   }, [sheetOpen]);
+
+  useEffect(() => {
+    const onBack = () => { if (currentHeaderSheet() === "rubrics") closeSheet("pop"); };
+    window.addEventListener(MOBILE_HEADER_BACK_EVENT, onBack);
+    return () => window.removeEventListener(MOBILE_HEADER_BACK_EVENT, onBack);
+  }, [closeSheet]);
 
   useEffect(() => {
     if (!sheetOpen) return;
@@ -713,6 +723,12 @@ export function MobileSearch({ showHeaderTrigger = true }: { showHeaderTrigger?:
   }, [open]);
 
   useEffect(() => {
+    const onBack = () => { if (currentHeaderSheet() === "search") close("pop"); };
+    window.addEventListener(MOBILE_HEADER_BACK_EVENT, onBack);
+    return () => window.removeEventListener(MOBILE_HEADER_BACK_EVENT, onBack);
+  }, [close]);
+
+  useEffect(() => {
     if (!open) return;
     const switchPanel = (event: Event) => {
       if ((event as CustomEvent<MobileOverlay>).detail === "search") return;
@@ -788,9 +804,14 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
   latestOpen?: boolean;
   onNavigate?: () => void;
 } = {}) {
-  const current = usePathname() ?? "/";
+  const router = useRouter();
+  const livePoint = useLivePoint();
   const sheet = useHeaderSheet();
   const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    markMobileHistoryRoot(window.history, window.location.href);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -810,13 +831,27 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
     };
   }, []);
 
-  const onHome =
-    current === "/" && !sheet && !latestOpen && !current.startsWith("/#");
   const latestActive = latestOpen;
   const searchActive = sheet === "search";
-  const rubricsActive = sheet === "rubrics";
+  const myNewsActive = livePoint.active === "my-news";
   const itemClass =
-    "relative flex min-h-11 flex-1 flex-col items-center gap-1 py-2 text-[0.6875rem] font-semibold text-muted aria-[current=page]:text-accent dark:aria-[current=page]:text-link";
+    "relative flex min-h-11 min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2 text-[0.6875rem] font-semibold text-muted focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-link";
+
+  function goBack() {
+    runMobileBack({
+      livePointOpen: livePoint.active !== null,
+      latestOpen,
+      headerSheetOpen: currentHeaderSheet() !== null,
+      historyLength: window.history.length,
+      canGoBack: canNavigateMobileBack(window),
+    }, {
+      closeLivePoint: livePoint.close,
+      closeLatest: () => onNavigate?.(),
+      closeHeaderSheet: () => window.dispatchEvent(new Event(MOBILE_HEADER_BACK_EVENT)),
+      back: () => router.back(),
+      home: () => router.replace("/"),
+    });
+  }
 
   return (
     <nav
@@ -825,11 +860,23 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
       className="np-bottom-nav fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <div className="mx-auto flex max-w-md">
-        <Link href="/" prefetch={false} onClick={(event) => { if (!requestMobileOverlay("home")) event.preventDefault(); else onNavigate?.(); }} aria-current={onHome ? "page" : undefined} className={itemClass}>
+        <button type="button" onClick={goBack} className={itemClass}>
           <span aria-hidden="true" className="np-bottom-nav-mark" />
-          <HomeIcon width={21} height={21} />
-          Начало
-        </Link>
+          <ArrowLeftIcon width={21} height={21} />
+          Назад
+        </button>
+        <button
+          type="button"
+          onClick={() => livePoint.open("my-news")}
+          data-active={myNewsActive || undefined}
+          aria-expanded={myNewsActive}
+          aria-haspopup="dialog"
+          className={itemClass}
+        >
+          <span aria-hidden="true" className="np-bottom-nav-mark" />
+          <FeatherIcon width={21} height={21} />
+          Моята новина
+        </button>
         <button
           type="button"
           onClick={() => { if (requestMobileOverlay("latest")) onOpenLatest?.(); }}
@@ -852,17 +899,6 @@ export function BottomNav({ onOpenLatest, latestOpen = false, onNavigate }: {
           <span aria-hidden="true" className="np-bottom-nav-mark" />
           <SearchIcon width={21} height={21} />
           Търсене
-        </button>
-        <button
-          type="button"
-          onClick={() => { onNavigate?.(); openRubrics(); }}
-          data-active={rubricsActive || undefined}
-          aria-pressed={rubricsActive}
-          className={itemClass}
-        >
-          <span aria-hidden="true" className="np-bottom-nav-mark" />
-          <GridIcon width={21} height={21} />
-          Рубрики
         </button>
       </div>
     </nav>
