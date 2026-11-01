@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 import { indexingHeaderRules } from "./lib/indexing-policy.mjs";
 import { developmentSlashRedirects } from "./lib/dev-trailing-slash";
+import { legacyStaticRedirects } from "./lib/legacy-static-redirects";
 
 const repoRoot = resolve(import.meta.dirname, "../..");
 loadEnvConfig(repoRoot);
@@ -46,7 +47,7 @@ const nextConfig: NextConfig = {
   trailingSlash: true,
   async redirects() {
     const sitemaps = ["/sitemap_index.xml", "/post-sitemap.xml", "/category-sitemap.xml"].map(source => ({ source, destination: "/sitemap.xml", permanent: true }));
-    return [{ source: "/favicon.ico", destination: "/brand/favicon-32.png", permanent: true }, ...sitemaps, ...(process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [])];
+    return [...legacyStaticRedirects(), { source: "/favicon.ico", destination: "/brand/favicon-32.png", permanent: true }, ...sitemaps, ...(process.env.NODE_ENV === "development" ? developmentSlashRedirects() : [])];
   },
   // Studio (apps/studio, basePath /admin) is served through this host at /admin.
   // Pages keep the trailing slash; static files have none.

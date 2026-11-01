@@ -21,8 +21,11 @@ export function publicRobotsMetadata(env = process.env) {
 /** Explicit exclusions win after the public catch-all. Studio also keeps its own noindex headers. */
 export function indexingHeaderRules(env = process.env) {
   const rules = [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: publicIndexingEnabled(env) ? "index, follow" : "noindex, nofollow" }] }];
-  for (const source of ["/admin/:path*", "/api/:path*", "/edge-article-cache/:path*", "/draft/:path*", "/settings/:path*", "/search/:path*", "/offline/:path*", "/:category/archive/:cursor/"]) {
+  for (const source of ["/admin/:path*", "/api/:path*", "/edge-article-cache/:path*", "/draft/:path*", "/settings/:path*", "/search/:path*", "/offline/:path*"]) {
     rules.push({ source, headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] });
   }
+  // Public archive pages remain excluded from the index, but their article
+  // links must be followable, matching the route's existing robots metadata.
+  rules.push({ source: "/:category/archive/:cursor/", headers: [{ key: "X-Robots-Tag", value: publicIndexingEnabled(env) ? "noindex, follow" : "noindex, nofollow" }] });
   return rules;
 }

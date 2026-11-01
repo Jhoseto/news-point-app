@@ -1,10 +1,11 @@
 import "server-only";
 import { and, asc, eq, lte, sql } from "drizzle-orm";
-import { articles, categories, getDb, podcasts, storyThemes } from "@newspoint/db";
+import { articles, categories, getDb, podcasts, publishRequests, storyThemes } from "@newspoint/db";
 import { PUBLIC_MENU } from "@newspoint/content";
 import { discoverablePublicPages } from "./public-metadata";
 import { CAMERA_CATALOG } from "./livepoint/cameras/catalog";
 import { NEWS_SITEMAP_PAGE_SIZE, SITEMAP_PAGE_SIZE, type SitemapEntry, type SitemapKind } from "./sitemap-xml";
+import { publicArticleModifiedAt } from "./article-dates";
 
 const publishedArticles = () => and(eq(articles.isPublic, true), lte(articles.publishedAt, sql`now()`));
 const publishedThemes = () => and(eq(storyThemes.isPublished, true), lte(storyThemes.publishedAt, sql`now()`));
@@ -42,7 +43,26 @@ export async function sitemapPages(): Promise<SitemapEntry[]> {
 export async function sitemapEntries(kind: SitemapKind, page: number): Promise<SitemapEntry[]> {
   const db = getDb();
   const offset = page * SITEMAP_PAGE_SIZE;
-  if (kind === "articles") return db.select({ path: articles.path, updatedAt: articles.updatedAt }).from(articles).where(publishedArticles()).orderBy(asc(articles.path)).limit(SITEMAP_PAGE_SIZE).offset(offset);
+  if (kind === "articles") {
+    // Aggregate once for a whole sitemap page; publish_requests is keyed by
+    // idempotency, so a correlated lookup per article would repeat table scans.
+    const publishedRevisions = db.select({
+      articleId: publishRequests.articleId,
+      revision: publishRequests.revision,
+      publishedRevisionAt: sql<Date | null>`max(${publishRequests.createdAt})`.mapWith(publishRequests.createdAt).as("published_revision_at"),
+    }).from(publishRequests).groupBy(publishRequests.articleId, publishRequests.revision).as("published_revisions");
+    const rows = await db.select({
+      path: articles.path,
+      publishedAt: articles.publishedAt,
+      sourceModifiedAt: articles.sourceModifiedAt,
+      // Match the timestamp displayed by ArticleDetail. Technical row updates,
+      // imports and revisions not selected for publication are not content edits.
+      publishedRevisionAt: publishedRevisions.publishedRevisionAt,
+    }).from(articles)
+      .leftJoin(publishedRevisions, and(eq(publishedRevisions.articleId, articles.id), eq(publishedRevisions.revision, articles.publishedRevision)))
+      .where(publishedArticles()).orderBy(asc(articles.path)).limit(SITEMAP_PAGE_SIZE).offset(offset);
+    return rows.map(row => ({ path: row.path, updatedAt: publicArticleModifiedAt({ ...row, publishedAt: row.publishedAt! }) }));
+  }
   if (kind === "themes") {
     const rows = await db.select({ slug: storyThemes.slug, updatedAt: storyThemes.updatedAt }).from(storyThemes).where(publishedThemes()).orderBy(asc(storyThemes.slug)).limit(SITEMAP_PAGE_SIZE).offset(offset);
     return rows.map((row) => ({ path: `/temi/${row.slug}/`, updatedAt: row.updatedAt }));

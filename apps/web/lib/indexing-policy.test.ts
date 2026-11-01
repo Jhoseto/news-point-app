@@ -19,7 +19,12 @@ describe("public indexing launch gate", () => {
     expect(publicRobotsMetadata(env).index).toBe(false);
     expect(headerFor("/article/", env)).toBe("noindex, nofollow");
   });
-  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/edge-article-cache/v1/desktop/article/", "/edge-article-cache/v1/mobile/article/", "/draft/private-id/", "/settings/", "/search/", "/offline/", "/plovdiv/archive/page-token/"])("keeps excluded route %s noindex even at launch", path => {
+  it("lets crawlers follow public archive links while preserving noindex and the preview gate", () => {
+    expect(headerFor("/plovdiv/archive/page-token/", launch)).toBe("noindex, follow");
+    expect(headerFor("/plovdiv/archive/page-token/", { ...launch, NODE_ENV: "development" })).toBe("noindex, nofollow");
+    expect(headerFor("/plovdiv/archive/page-token/", { ...launch, NP_PUBLIC_INDEXING: "0" })).toBe("noindex, nofollow");
+  });
+  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/edge-article-cache/v1/desktop/article/", "/edge-article-cache/v1/mobile/article/", "/draft/private-id/", "/settings/", "/search/", "/offline/"])("keeps excluded route %s noindex even at launch", path => {
     expect(headerFor(path, launch)).toBe("noindex, nofollow");
   });
 });

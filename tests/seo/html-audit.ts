@@ -23,12 +23,19 @@ export function inspectSeoHtml(html: string) {
     if (attributes(script[1]!).type !== "application/ld+json") continue;
     try {
       const graph = JSON.parse(script[2]!);
-      jsonLd.push(...(graph["@graph"] ?? [graph]));
+      const nodes = Array.isArray(graph) ? graph : graph?.["@graph"] ?? [graph];
+      if (!Array.isArray(nodes) || nodes.some((node) => !node || typeof node !== "object" || Array.isArray(node))) throw new Error("Invalid graph");
+      jsonLd.push(...nodes);
     } catch { errors.push("Invalid JSON-LD"); }
   }
-  for (const article of jsonLd.filter((node) => node["@type"] === "NewsArticle")) {
+  const articles = jsonLd.filter((node) => [node["@type"]].flat().some((type) => type === "NewsArticle" || type === "Article"));
+  for (const article of articles) {
     if (!article.headline || !article.author || !article.publisher) errors.push("NewsArticle missing headline, author or publisher");
     for (const key of ["datePublished", "dateModified"]) if (typeof article[key] !== "string" || Number.isNaN(Date.parse(article[key]))) errors.push(`NewsArticle invalid ${key}`);
+    if (typeof article.description !== "string" || !article.description.trim()) errors.push("Article missing description");
+    if (Date.parse(String(article.dateModified)) < Date.parse(String(article.datePublished))) errors.push("Article modified before publication");
+    const authors = [article.author].flat() as (Record<string, unknown> | undefined)[];
+    if (!authors.length || authors.some((author) => !author || !["Person", "Organization"].includes(String(author["@type"])) || typeof author.name !== "string" || !author.name.trim())) errors.push("Article invalid author identity");
     if (Array.isArray(article.image)) for (const image of article.image) {
       try { const url = new URL(String(image)); if (!["http:", "https:"].includes(url.protocol)) errors.push("NewsArticle invalid image protocol"); }
       catch { errors.push("NewsArticle invalid image URL"); }
@@ -48,7 +55,9 @@ export function inspectSeoHtml(html: string) {
   const canonical = links.find((link) => link.rel === "canonical")?.href;
   for (const person of people) {
     if (typeof person.url !== "string" || !canonical || !person.url.startsWith(`${canonical}#`)) continue;
-    if (!elementIds.has(decodeURIComponent(new URL(person.url).hash.slice(1)))) errors.push("Person URL does not identify a visible profile");
+    try {
+      if (!elementIds.has(decodeURIComponent(new URL(person.url).hash.slice(1)))) errors.push("Person URL does not identify a visible profile");
+    } catch { errors.push("Invalid Person URL"); }
   }
   return {
     titles: [...document.matchAll(/<title>([\s\S]*?)<\/title>/gi)].map((match) => decode(match[1]!)),
@@ -63,10 +72,11 @@ export function inspectSeoHtml(html: string) {
       catch { return []; }
     }),
     jsonLdTypes: jsonLd.map((node) => String(node["@type"])), errors,
-    articleHeadlines: jsonLd.filter((node) => node["@type"] === "NewsArticle").map((node) => String(node.headline)),
-    articleAuthors: jsonLd.filter((node) => node["@type"] === "NewsArticle").map((node) => node.author as { "@type": string; "@id"?: string; name: string; url?: string }),
+    articleHeadlines: articles.map((node) => String(node.headline)),
+    articleAuthors: articles.flatMap((node) => [node.author].flat()).filter((author) => author && typeof author === "object") as { "@type": string; "@id"?: string; name: string; url?: string }[],
     personUrls: people.flatMap((node) => typeof node.url === "string" ? [node.url] : []),
     podcastSeriesIds: jsonLd.filter((node) => node["@type"] === "PodcastSeries").map((node) => String(node["@id"])),
     podcastEpisodes: podcastEpisodes.map((node) => ({ url: node.url, name: node.name, publishedAt: node.datePublished, seriesId: (node.partOfSeries as Record<string, unknown> | undefined)?.["@id"], audioUrl: (node.audio as Record<string, unknown> | undefined)?.contentUrl })),
+    links: [...new Set(anchors.flatMap((anchor) => anchor.href ? [anchor.href] : []))],
   };
 }

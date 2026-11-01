@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { sql } from "drizzle-orm";
 import { createScriptDb, findRepoRoot } from "../../packages/db/src/node";
 import { decode, inspectSeoHtml } from "./html-audit";
+import { auditPublicLink, internalLinkPaths } from "./link-audit";
 import { PUBLIC_MENU } from "../../packages/content/src/menu";
 import { CAMERA_CATALOG } from "../../apps/web/lib/livepoint/cameras/catalog";
 import { featuredPeople } from "../../apps/web/lib/public-team";
@@ -13,8 +14,8 @@ const root = findRepoRoot();
 const sharp = createRequire(resolve(root, "apps/web/package.json"))("sharp");
 const { db, close } = createScriptDb();
 const base = (process.env.SEO_BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-const origin = new URL((process.env.WEB_URL ?? "https://newspoint.bg").trim()).origin;
-const dir = resolve(root, "tests/reports/seo");
+const origin = new URL((process.env.SEO_CANONICAL_ORIGIN ?? process.env.WEB_URL ?? "https://newspoint.bg").trim()).origin;
+const dir = resolve(root, process.env.SEO_REPORT_DIR ?? "tests/reports/seo");
 const expectIndexable = process.argv.includes("--expect-indexable");
 const staticPaths = ["/", "/temi/", "/livepoint/podcast/", "/livepoint/weather/", "/livepoint/traffic/", "/livepoint/cameras/", "/livepoint/report/", "/livepoint/my-news/", "/team/", "/contacts/", "/advertising/", "/privacy-policy/", "/personal-data-policy/", "/cookies-policy/"];
 let auditPhase = "content read";
@@ -128,6 +129,7 @@ try {
   const sitemaps = [];
   const allUrls = new Set<string>();
   const newsUrls = new Set<string>();
+  const cityUrls = new Set<string>();
   for (const path of parts) {
     auditPhase = `sitemap ${path}`;
     const response = await request(path);
@@ -142,6 +144,10 @@ try {
       target.add(url);
       try { const parsed = new URL(url); if (parsed.origin !== origin || parsed.search || parsed.hash) errors.push("Noncanonical sitemap URL"); }
       catch { errors.push("Invalid sitemap URL"); }
+      if (path === "/sitemaps/city.xml") {
+        if (url.startsWith(`${origin}/moyat-plovdiv/`)) cityUrls.add(url);
+        else errors.push("Unexpected city sitemap path");
+      }
     }
     if (!body.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"')) errors.push("Missing sitemap namespace");
     if (urls.length > (isNews ? 1000 : 50000)) errors.push("Sitemap exceeds URL limit");
@@ -152,8 +158,29 @@ try {
     }
     sitemaps.push({ path, status: response.status, urls: urls.length, duplicateUrls, errors });
   }
+  // City discovery is derived from current accepted observations, not article rows.
+  // Verify every submitted city URL instead of blindly allowing a route prefix.
+  const linkPaths = [...new Set([
+    ...[...cityUrls].map(url => new URL(url).pathname),
+    ...pages.flatMap(page => internalLinkPaths(page.links, origin, page.path)),
+  ])];
+  const linkLimit = 600;
+  const selectedLinkPaths = linkPaths.slice(0, linkLimit);
+  const linkChecks: Awaited<ReturnType<typeof auditPublicLink>>[] = [];
+  let linkIndex = 0;
+  await Promise.all(Array.from({ length: 4 }, async () => {
+    while (linkIndex < selectedLinkPaths.length) {
+      const path = selectedLinkPaths[linkIndex++]!;
+      linkChecks.push(await auditPublicLink(path, base, origin, fetch, { expectIndexable }));
+    }
+  }));
+  linkChecks.sort((a, b) => a.path.localeCompare(b.path));
+  const cityErrors = [...cityUrls].flatMap(url => {
+    const check = linkChecks.find(entry => `${origin}${entry.path}` === url);
+    return !check || check.errors.length || check.hops.length !== 1 || check.hops[0]?.status !== 200 || check.canonical !== url || check.noindex ? [`City sitemap URL is not directly indexable: ${url}`] : [];
+  });
   const missingPaths = content.expectedPaths.filter((path) => !allUrls.has(`${origin}${path}`));
-  const expected = new Set(content.expectedPaths.map((path) => `${origin}${path}`));
+  const expected = new Set([...content.expectedPaths.map((path) => `${origin}${path}`), ...cityUrls]);
   const extraUrls = [...allUrls].filter((url) => !expected.has(url));
   // Sync may publish new rows after the first snapshot. Validate extras against
   // a fresh read-only snapshot instead of reporting legitimate new stories as leaks.
@@ -229,6 +256,8 @@ try {
   const sitemapOk = sitemapResponse.ok && indexValid && parts.length > 0 && sitemaps.every((part) => part.status === 200 && part.duplicateUrls.length === 0 && part.errors.length === 0) && missingPaths.length === 0 && invalidExtraUrls.length === 0 && invalidNewsUrls.length === 0;
   const errors = [
     ...pages.flatMap((page) => page.errors),
+    ...linkChecks.flatMap(check => check.errors.map(error => `${check.path}: ${error}`)),
+    ...cityErrors,
     ...exclusions.filter((page) => !page.valid).map((page) => `Invalid indexing metadata: ${page.path}`),
     ...(cursorRedirect?.valid === false ? ["Invalid cursor redirect"] : []),
     ...crawlerChecks.flatMap((check) => check.errors.map((error) => `${check.userAgent} ${check.path}: ${error}`)),
@@ -238,11 +267,11 @@ try {
     ...(!sitemapOk ? ["Sitemap coverage or validation failed"] : []),
     ...(!feed.ok ? ["RSS failed"] : []),
   ];
-  const report = { at: new Date().toISOString(), base, canonicalOrigin: origin, mode: expectIndexable ? "read-only indexable check" : "preview, noindex retained", cacheRefreshed, errors, content: reportedContent, pages, discovery, exclusions, crawlerChecks, notFoundChecks, cursorRedirect, mediaRedirect, sitemap: { status: sitemapResponse.status, valid: sitemapOk, parts: sitemaps, totalUrls: allUrls.size, expectedUrls: new Set(expectedPaths).size, missingPaths: missingPaths.slice(0, 100), invalidExtraUrls, newsUrls: newsUrls.size, invalidNewsUrls }, feed: { status: feed.status, items: [...feedBody.matchAll(/<item>/g)].length }, limitations: ["Editorial duplicate groups are bounded to the top 20; text is never rewritten.", "Local schema checks are not Google's Rich Results Test.", "No Search Console or production index coverage is inspected.", "User-Agent checks test server HTML, not verified bot-IP access through Cloudflare WAF.", "One copied legacy hero is checked, not the entire media archive or historical resized variants.", "Archive sitemap cache TTL is one hour, news TTL is five minutes. Use --refresh-cache locally after updates."] };
+  const report = { at: new Date().toISOString(), base, canonicalOrigin: origin, mode: expectIndexable ? "read-only indexable check" : "preview, noindex retained", cacheRefreshed, errors, content: reportedContent, pages, discovery, exclusions, crawlerChecks, notFoundChecks, cursorRedirect, mediaRedirect, links: { discovered: linkPaths.length, checked: linkChecks.length, limit: linkLimit, checks: linkChecks }, sitemap: { status: sitemapResponse.status, valid: sitemapOk && cityErrors.length === 0, parts: sitemaps, totalUrls: allUrls.size, expectedUrls: expected.size, missingPaths: missingPaths.slice(0, 100), invalidExtraUrls, cityUrls: cityUrls.size, cityErrors, newsUrls: newsUrls.size, invalidNewsUrls }, feed: { status: feed.status, items: [...feedBody.matchAll(/<item>/g)].length }, limitations: ["Editorial duplicate groups are bounded to the top 20; text is never rewritten.", "Local schema checks are not Google's Rich Results Test.", "Sitemap structural checks use extraction; independent XML parser validation is required.", "Link coverage is bounded to 600 targets discovered on sampled pages and the city sitemap, not the entire article archive.", "City URL checks validate HTTP/canonical/indexability, not full database observation reconciliation.", "No Search Console or production index coverage is inspected by this script.", "User-Agent checks test server HTML, not verified bot-IP access through Cloudflare WAF.", "One copied legacy hero is checked, not the entire media archive or historical resized variants.", "Archive sitemap cache TTL is one hour, news TTL is five minutes. Use --refresh-cache locally after updates."] };
   mkdirSync(dir, { recursive: true });
   writeFileSync(resolve(dir, "latest.json"), JSON.stringify(report, null, 2));
   writeFileSync(resolve(dir, "latest.md"), `# SEO audit\n\n${report.at}\n\nApp: ${base}; canonical: ${origin}. Mode: ${report.mode}.\n\n- HTML/share pages: ${pages.length}; total errors: ${errors.length}.\n- Sitemap: ${report.sitemap.totalUrls} unique URLs in ${sitemaps.length} parts; full database coverage: ${sitemapOk ? "PASS" : "FAIL"}; recent news: ${newsUrls.size}.\n- Crawler HTML/head checks: ${crawlerChecks.length}; PASS: ${crawlerChecks.filter((check) => !check.errors.length).length}.\n- Missing/private URL checks: ${notFoundChecks.length}; PASS: ${notFoundChecks.filter((check) => check.valid).length}.\n- Legacy copied image redirect: ${mediaRedirect?.valid ? "PASS" : "not verified"}.\n- RSS: HTTP ${feed.status}, ${report.feed.items} items.\n- Public content: ${content.summary?.articles} articles; ${content.summary?.empty_excerpts} empty excerpts; ${content.summary?.missing_hero_images} without hero image.\n- Migration 29 present: ${content.migration29}.\n${errors.length ? `\nErrors:\n${errors.map((error) => `- ${error}`).join("\n")}\n` : ""}\nDetailed results and editorial duplicate groups: latest.json. External Google validation and Cloudflare bot-IP access are pending.\n`);
-  console.log(`Report: tests/reports/seo/latest.md; pages=${pages.length}, errors=${errors.length}, sitemap=${sitemapOk ? "PASS" : "FAIL"}`);
+  console.log(`Report: ${dir}/latest.md; pages=${pages.length}, links=${linkChecks.length}, errors=${errors.length}, sitemap=${report.sitemap.valid ? "PASS" : "FAIL"}`);
   if (errors.length) process.exitCode = 1;
 } catch (error) {
   console.error("SEO audit failed at", auditPhase, ":", error instanceof Error ? error.name : "unknown error");

@@ -559,6 +559,25 @@ describe("public sitemap queries (isolated Postgres fixtures)", () => {
     await pg.query("insert into media_assets(source_url, storage_key, provider) values ($1, $2, 'wordpress_origin')", [source, "news/2026/10/other-seo-fixture.webp"]);
     expect(await legacyMediaDestination(["2026", "10", "seo-fixture.jpg"])).toBeNull();
   });
+  it("uses public editorial dates for sitemap lastmod, ignoring imports and unpublished revisions", async () => {
+    const { sitemapEntries } = await import("../apps/web/lib/sitemap-data");
+    const { getArticleByPath } = await import("../apps/web/lib/queries");
+    const published = "2026-10-01T10:00:00.000Z";
+    const importedModification = "2026-10-02T12:00:00.000Z";
+    const revisionPublished = "2026-10-03T12:00:00.000Z";
+    await pg.query("update articles set published_at = $1, source_modified_at = null, updated_at = now() where id = any($2::uuid[])", [published, articleIds]);
+    await pg.query("update articles set source_modified_at = $1 where id = $2", [importedModification, articleIds[0]]);
+    await pg.query("update articles set published_revision = 2 where id = $1", [articleIds[1]]);
+    await pg.query("insert into publish_requests(idempotency_key, article_id, revision, created_at) values ($1, $2, 2, $3), ($4, $2, 3, now())", [randomUUID(), articleIds[1], revisionPublished, randomUUID()]);
+    const entries = await sitemapEntries("articles", 0);
+    const stored = await db.select({ id: schema.articles.id, path: schema.articles.path }).from(schema.articles).where(inArray(schema.articles.id, articleIds.slice(0, 3)));
+    for (const [id, expected] of [[articleIds[0], importedModification], [articleIds[1], revisionPublished], [articleIds[2], published]]) {
+      const path = stored.find(row => row.id === id)!.path;
+      const entry = entries.find(row => row.path === path)!;
+      expect(new Date(entry.updatedAt!).toISOString()).toBe(expected);
+      expect(new Date(entry.updatedAt!).toISOString()).toBe((await getArticleByPath(path))?.modifiedAt.toISOString());
+    }
+  });
   it("includes only public news from the last two days and ignores an old story modified today", async () => {
     const { newsSitemapCount, newsSitemapEntries } = await import("../apps/web/lib/sitemap-data");
     await pg.query("update articles set published_at = now() - interval '1 hour' where id = $1", [articleIds[0]]);
