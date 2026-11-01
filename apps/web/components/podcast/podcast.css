@@ -769,9 +769,27 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-podcast-show--panel .np-podcast-library-heading h2 { font-size: 0.9375rem; line-height: 1.25; }
   .np-podcast-show--panel .np-podcast-library-heading .np-podcast-eyebrow { font-size: 9px; }
   .np-podcast-show--panel .np-podcast-library-heading > span { font-size: 9px; }
-  .np-podcast-show--panel .np-podcast-episodes { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; gap: 6px; }
+  .np-podcast-show--panel .np-podcast-episodes {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--np-muted) 55%, transparent) transparent;
+    padding-right: 8px;
+    gap: 6px;
+  }
+  .np-podcast-show--panel .np-podcast-episodes::-webkit-scrollbar { width: 6px; }
+  .np-podcast-show--panel .np-podcast-episodes::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background-color: color-mix(in oklab, var(--np-muted) 55%, transparent);
+  }
   .np-podcast-show--panel .np-podcast-episode--row {
-    grid-template-columns: 48px minmax(0, 1fr) 34px;
+    flex: none;
+    grid-template-columns: 48px minmax(0, 1fr) 44px;
     gap: 8px;
     padding: 8px 10px;
     border-radius: 12px;
@@ -782,7 +800,7 @@ body:has(.np-podcast-theater) main + footer { margin-top: 0; position: relative;
   .np-podcast-show--panel .np-podcast-episode--row .np-podcast-category { font-size: 9px; }
   .np-podcast-show--panel .np-podcast-episode--row .np-podcast-episode-summary { font-size: 10px; margin-top: 2px; -webkit-line-clamp: 2; }
   .np-podcast-show--panel .np-podcast-episode--row .np-podcast-episode-meta { font-size: 10px; }
-  .np-podcast-show--panel .np-podcast-card-play { min-height: 34px; min-width: 34px; }
+  .np-podcast-show--panel .np-podcast-card-play { width: 44px; height: 44px; }
 }
 
 /* Signature audio: a restrained decorative ribbon, never a measured waveform. */
