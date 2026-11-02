@@ -132,7 +132,7 @@ export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSel
           </div>
         </header>
         <div ref={tabs} role="group" aria-label="LivePoint инструменти" className="np-mobile-lp-tabs">
-          {LIVEPOINT_MODULES.map(item => <button key={item} type="button" aria-label={MODULE_LABELS[item]} aria-pressed={module === item}
+          {LIVEPOINT_MODULES.filter(item => item !== "report").map(item => <button key={item} type="button" aria-label={MODULE_LABELS[item]} aria-pressed={module === item}
             onClick={() => { if (module !== item) onSelect(item); }}><span aria-hidden="true">{INFO[item].icon}</span><span>{INFO[item].short}</span></button>)}
         </div>
         <div data-lp-panel-body className="np-mobile-lp-body"><div key={displayed} className="np-mobile-lp-content">{renderContent(displayed)}</div></div>

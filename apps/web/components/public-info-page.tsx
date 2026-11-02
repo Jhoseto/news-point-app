@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ADVERTISING_MAIL_URL, PUBLIC_CONTACT, PUBLIC_INFO_PAGES } from "@/lib/public-contact";
 import { publicPageMetadata } from "@/lib/public-metadata";
 import { Breadcrumbs } from "./breadcrumbs";
@@ -42,11 +41,6 @@ export function PublicInfoPage({ kind }: { kind: InfoPage }) {
           </div>
         </section>
 
-        {!advertising ? <section className="np-mobile-info-note mt-6 rounded-2xl border border-line bg-surface-2 p-5 sm:p-7" aria-labelledby="np-info-report-title">
-          <h2 id="np-info-report-title" className="text-base font-extrabold text-ink">Имаш история?</h2>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted">Ако искаш да изпратиш сигнал до редакцията, използвай формата на NewsPoint.</p>
-          <Link href="/livepoint/report/" prefetch={false} className="mt-3 inline-flex min-h-11 min-w-11 items-center gap-3 text-sm font-bold text-link">Подай сигнал<ArrowRightIcon width={18} height={18} /></Link>
-        </section> : null}
       </div>
     </div>
   );

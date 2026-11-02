@@ -6,7 +6,7 @@ export const metadata = publicPageMetadata("myNews");
 
 export default function LivePointMyNewsPage() {
   return (
-    <LivePointPage title="Моята новина" lead="Отделен вход от „Подай сигнал“. Няма автоматично публикуване." wide>
+    <LivePointPage title="Моята новина" lead="Няма автоматично публикуване." wide>
       <MyNewsPanel />
     </LivePointPage>
   );
