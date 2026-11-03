@@ -2,6 +2,8 @@
 # One supervised worker for this app. Never start an extra Smart-only processor.
 set -euo pipefail
 [[ "$(id -un)" == np2 ]] || exit 1
+# Non-login service shells omit the account's FFmpeg/FFprobe installation.
+export PATH="$HOME/.local/bin:$PATH"
 APP="$HOME/newspoint-app"
 cd "$APP/apps/worker"
 mkdir -p "$APP/logs"

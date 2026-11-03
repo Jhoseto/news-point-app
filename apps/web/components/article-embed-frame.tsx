@@ -22,7 +22,7 @@ export function ArticleEmbedFrame({
   const playSrc = embedFrameUrl(src);
   const videoSrc = videoSourceUrl(src);
   if ((playSrc || (videoSrc && !videoSrc.startsWith("/"))) && !allowed) return <ExternalContentConsent id={id} title={title} sourceUrl={src} className={className} />;
-  if (videoSrc) return <div id={id} className={`${className} np-embed-canvas`} style={{ aspectRatio: "16/9" }}><video src={videoSrc} controls preload="metadata" playsInline className="h-full w-full bg-black object-contain" aria-label={title} /></div>;
+  if (videoSrc) return <video id={id} src={videoSrc} controls preload="metadata" playsInline className={`${className} np-native-video`} aria-label={title} />;
   if (!playSrc) return <a id={id} className={className} href={src} target="_blank" rel="noopener noreferrer">Виж публикацията в {provider}</a>;
   return (
     <div id={id} className={`${className} np-embed-canvas`} style={{ aspectRatio: embedAspectRatio(src) }}>

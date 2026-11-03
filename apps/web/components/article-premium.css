@@ -446,6 +446,11 @@
     min-height: 0;
     touch-action: manipulation;
   }
+  .np-article-embed-frame.np-native-video,
+  .np-article-hero-embed.np-native-video {
+    width: auto;
+    aspect-ratio: auto;
+  }
   .np-article-embed-frame iframe,
   .np-article-hero-embed iframe {
     position: absolute;
