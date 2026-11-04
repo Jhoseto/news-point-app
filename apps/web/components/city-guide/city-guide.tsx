@@ -51,6 +51,8 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
     {categories.map(category => {
       const story = stories[category.slug] ?? null;
       const activeTopics = category.topics.filter(topic => activeTopicsByCategory[category.slug]?.includes(topic.title));
+      const officialTitle = category.slug === "municipality" ? "Официални услуги" : category.slug === "adopt" ? "Общински приют" : null;
+      if (officialTitle && activeTopicsByCategory[category.slug]?.includes(officialTitle)) activeTopics.unshift({ title: officialTitle, detail: "Официални страници и следваща стъпка" });
       const matches = query ? activeTopics.filter(topic => matchesCityQuery(`${topic.title} ${topic.detail}`, query)) : activeTopics;
       const topics = matches.length ? matches : activeTopics;
       const expanded = openSlug === category.slug;
@@ -70,7 +72,7 @@ function CityPhotoAccordion({ categories, stories, query, activeTopicsByCategory
           <div className="city-photo-panel-details" id={detailsId}>
             <p>{category.lead}</p>
             <div className="city-photo-panel-topics" aria-label={`Теми в ${category.title}`}>{topics.slice(0, 3).map(topic => <Link key={topic.title} href={`${ROOT}/${category.slug}/${topicHrefByCategory[category.slug]?.[topic.title] ?? ""}`}>{cityReaderTopicLabel(topic.title)} <Arrow diagonal /></Link>)}</div>
-            <div className="city-photo-panel-bottom"><Link href={`${ROOT}/${category.slug}/`} className="city-photo-panel-all" aria-label={`${activeTopics.length} справки с данни в ${category.title}`}>Всички {activeTopics.length} теми <Arrow /></Link></div>
+            <div className="city-photo-panel-bottom"><Link href={`${ROOT}/${category.slug}/`} className="city-photo-panel-all" aria-label={officialTitle ? `Официални страници за ${category.title}` : `${activeTopics.length} справки с данни в ${category.title}`}>{officialTitle ? "Официални страници" : `Всички ${activeTopics.length} теми`} <Arrow /></Link></div>
           </div>
         </div>
       </article>;
@@ -134,7 +136,7 @@ export function CityCategoryView({ category, stories, observations }: { category
   const motionRoot = useCityReveals();
   const related = [...new Map(Object.values(stories).filter((story): story is CityStory => !!story).map(story => [story.path, story])).values()].slice(0, 3);
   const intro: Record<string, string> = {
-    municipality: "Предстоящи срокове, отворени обсъждания и условия за кандидатстване. Избери какво те интересува.",
+    municipality: "Намери общински услуги, документи, обяви и контакти по темата, която те интересува.",
     education: "Срокове за кандидатстване и записване, свободни места в градини, ясли и първи клас.",
     environment: "Показания за въздуха, мобилни пунктове и места за разделно събиране.",
     culture: "Планирай следващото излизане — театър, опера и изложби с конкретни дати и места.",

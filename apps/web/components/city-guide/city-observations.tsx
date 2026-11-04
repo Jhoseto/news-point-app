@@ -6,6 +6,7 @@ import { CityTransitTimetable } from "./city-transit-timetable";
 import { cityIntercityRoute } from "@newspoint/content/city-intercity";
 import { CityIntercityTimetable } from "./city-intercity-timetable";
 import { CityTransitDocuments } from "./city-transit-documents";
+import { CityOfficialDirectory } from "./city-official-directory";
 import { cityIntercitySources } from "@/lib/city-guide/intercity";
 import { cityTransitDocument } from "@/lib/city-guide/transit-documents";
 import Link from "next/link";
@@ -182,6 +183,7 @@ function ObservationGroup({ group, story, articles }: { group: CityObservation; 
 
 export function CityObservedData({ categorySlug, groups, stories, articles, extraSections = [] }: { extraSections?: CityWorkspaceSection[]; categorySlug: string; groups: CityObservation[]; stories: Record<string, CityStory | null>; articles: ArticleSummary[] }) {
   const visible = readerCityGroups(groups).filter(group => !cityIntercityRoute(group.sourceId));
+  const official: CityWorkspaceSection[] = categorySlug === "municipality" || categorySlug === "adopt" ? [{ id: "official-directory", title: categorySlug === "adopt" ? "Общински приют" : "Официални услуги", description: categorySlug === "adopt" ? "Животни и осиновяване" : "Услуги и общински документи", utility: false, count: 0, content: <CityOfficialDirectory category={categorySlug} /> }] : [];
   const intercity: CityWorkspaceSection | null = categorySlug === "transport" ? {
     id: "intercity-buses", title: "Междуградски автобуси", description: "Избери дестинация и дата за публикуваните курсове от Пловдив.", utility: false, count: 0,
     content: <article className="city-observed-group" id="nablyudavani-intercity-buses">
@@ -190,11 +192,11 @@ export function CityObservedData({ categorySlug, groups, stories, articles, extr
       <CityRelatedNews topic="Междуградски автобуси" stories={cityTopicStories(["Междуградски автобуси"], articles)} />
     </article>,
   } : null;
-  if (!visible.length && !extraSections.length && !intercity) return <section className="city-empty" role="status"><h2>Справката временно не е достъпна.</h2><p>Опитай отново след малко.</p></section>;
+  if (!visible.length && !official.length && !extraSections.length && !intercity) return <section className="city-empty" role="status"><h2>Няма потвърдена актуална справка за тази тема.</h2><p>Показваме данни само от достъпни и проверени източници.</p></section>;
   const sections: CityWorkspaceSection[] = visible.map(group => {
     const meta = CITY_PRESENTATION[group.sourceId];
     return { id: group.sourceId, title: meta?.title ?? SOURCE_NAMES[group.sourceId] ?? 'Справка', description: meta?.description ?? '', utility: !!meta?.utility, count: group.items.length, content: <><ObservationGroup group={group} story={stories[categorySlug === 'municipality' && group.sourceId === 'plovdiv-eco-signals' ? 'Къде да подам сигнал?' : SOURCE_TOPICS[group.sourceId] ?? ''] ?? null} articles={articles} />{group.sourceId !== "plovdiv-livetransport-gtfs" && !MUNICIPAL_RECORD_SOURCES.has(group.sourceId) ? <CityRelatedNews topic={meta?.title ?? SOURCE_TOPICS[group.sourceId] ?? "Градът в новините"} stories={["mall-plovdiv-parking", "markovo-tepe-parking"].includes(group.sourceId) ? cityParkingVenueStories(group.sourceId, articles) : cityTopicStories([SOURCE_TOPICS[group.sourceId] ?? ""], articles)} /> : null}</> };
   });
   if (intercity) sections.splice(visible.filter(group => (CITY_PRESENTATION[group.sourceId]?.order ?? 20) < 3).length, 0, intercity);
-  return <CityWorkspace sections={[...sections, ...extraSections]} />;
+  return <CityWorkspace sections={[...official, ...sections, ...extraSections]} />;
 }

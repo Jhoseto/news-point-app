@@ -7,14 +7,16 @@ function group(sourceId: string, status: CityObservation["status"] = "observed",
 }
 
 describe("city navigation coverage", () => {
+  const officialMunicipality = [{ title: "Официални услуги", href: "#nablyudavani-official-directory" }];
+  const officialAdopt = [{ title: "Общински приют", href: "#nablyudavani-official-directory" }];
   it("lists only topics with current records in catalog order", () => {
     expect(cityAvailableTopics("transport", [group("plovdiv-transit"), group("plovdiv-airport-flights"), group("plovdiv-livetransport-gtfs", "stale")])).toEqual([
       { title: "Извън града", href: "#nablyudavani-plovdiv-airport-flights" },
     ]);
   });
 
-  it("does not advertise empty or failed categories", () => {
-    expect(cityAvailableTopics("adopt", [group("plovdiv-dog-shelter", "unavailable"), group("plovdiv-adoption-guide", "observed", 0)])).toEqual([]);
+  it("keeps the official adoption directory available without advertising failed records", () => {
+    expect(cityAvailableTopics("adopt", [group("plovdiv-dog-shelter", "unavailable"), group("plovdiv-adoption-guide", "observed", 0)])).toEqual(officialAdopt);
   });
 
   it("opens the Youth Center panel only when a dated activity is present", () => {
@@ -33,19 +35,19 @@ describe("city navigation coverage", () => {
   });
 
   it("links municipal housing directly to verified guidance and hides a failed read", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-housing")])).toEqual([]);
-    expect(cityAvailableTopics("municipality", [group("plovdiv-housing", "unavailable")])).toEqual([]);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-housing")])).toEqual(officialMunicipality);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-housing", "unavailable")])).toEqual(officialMunicipality);
   });
   it("links public consultations only while an active dated record is present", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations")])).toEqual([]);
-    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations", "observed", 0)])).toEqual([]);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations")])).toEqual(officialMunicipality);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-public-consultations", "observed", 0)])).toEqual(officialMunicipality);
   });
   it("links management competitions only while an open record exists", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions")])).toEqual([]);
-    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions", "observed", 0)])).toEqual([]);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions")])).toEqual(officialMunicipality);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-management-competitions", "observed", 0)])).toEqual(officialMunicipality);
   });
   it("does not advertise contact-only references or docket numbers as substantive topics", () => {
-    expect(cityAvailableTopics("municipality", [group("plovdiv-eco-signals"), group("plovdiv-transport-signals"), group("plovdiv-council"), group("plovdiv-taxes")])).toEqual([]);
+    expect(cityAvailableTopics("municipality", [group("plovdiv-eco-signals"), group("plovdiv-transport-signals"), group("plovdiv-council"), group("plovdiv-taxes")])).toEqual(officialMunicipality);
     expect(cityAvailableTopics("environment", [group("plovdiv-eco-signals")])).toEqual([]);
   });
 });

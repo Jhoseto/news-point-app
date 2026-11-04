@@ -563,12 +563,33 @@ function parseLowEmissionZone(dom: Root): PilotSnapshot {
   ], ["This extracts one municipal information article, not the current legal text or a vehicle eligibility decision.", "Later temporary suspensions, permit status and live enforcement are not established by this page."], "uncertain");
 }
 
+function dzSearchForm(dom: Root) {
+  const forms = DomUtils.getElementsByTagName("form", dom).filter(form => form.attribs.id === "frmSearch");
+  const form = forms[0];
+  if (forms.length !== 1 || form?.attribs.action !== "https://dz-priem.plovdiv.bg/vacancies" || form.attribs.method?.toLowerCase() !== "get") throw new Error("dz-vacancies: search form changed");
+  const inputs = DomUtils.getElementsByTagName("input", form);
+  if (!inputs.some(input => input.attribs.type === "hidden" && input.attribs.name === "search" && input.attribs.value === "1")
+    || !inputs.some(input => input.attribs.name === "sHasVacancies" && input.attribs.value === "1" && Object.hasOwn(input.attribs, "checked"))) throw new Error("dz-vacancies: vacancy filter changed");
+  const rankings = DomUtils.getElementsByTagName("select", form).filter(select => select.attribs.id === "sRankingId" && select.attribs.name === "sRankingId");
+  const selected = rankings.length === 1 ? DomUtils.getElementsByTagName("option", rankings[0]!).filter(option => Object.hasOwn(option.attribs, "selected")) : [];
+  const rankingId = selected.length === 1 ? selected[0]?.attribs.value : undefined;
+  if (!rankingId || !/^[1-9]\d{0,5}$/u.test(rankingId)) throw new Error("dz-vacancies: selected ranking missing");
+  return rankingId;
+}
+
+export function dzVacanciesSearchUrl(html: string): string {
+  const rankingId = dzSearchForm(parseDocument(html));
+  return `https://dz-priem.plovdiv.bg/vacancies?${new URLSearchParams({ search: "1", sRankingId: rankingId, sHasVacancies: "1" })}`;
+}
+
 function parseDz(dom: Root): PilotSnapshot {
-  const ranking = DomUtils.getElementById("sRankingId", dom);
-  const selected = ranking && DomUtils.getElementsByTagName("option", ranking).find((option) => Object.hasOwn(option.attribs, "selected"));
-  const rankingId = selected?.attribs.value;
+  const rankingId = dzSearchForm(dom);
   const results = DomUtils.getElementById("vacancies_result", dom);
-  if (!rankingId || !results) throw new Error("dz-vacancies: ranking or result container missing");
+  if (!results) {
+    const messages = DomUtils.getElementsByTagName("div", dom).filter(node => node.attribs.id === "message");
+    if (messages.length !== 1 || text(messages[0]) !== "Няма резултати от търсенето") throw new Error("dz-vacancies: result container missing without verified empty result");
+    return { sourceId: "dz-vacancies", items: [], limitations: ["The selected ranking's public available-places search explicitly returned no results; this does not establish availability for other or future rankings."], completeness: "uncertain" };
+  }
   const items: PilotItem[] = [];
   for (const school of allByClass(results, "box-list-item")) {
     const link = DomUtils.findOne((node) => /\/school_details\/\d+/u.test(node.attribs.href ?? ""), school);

@@ -139,9 +139,9 @@ describe("local city observations", () => {
     expect(selectCityObservations("culture", preview("plovdiv-gallery-current", { items }), now)[0]?.items.map(item => item.key)).toEqual(["open"]);
     expect(selectCityObservations("culture", preview("plovdiv-gallery-current", { outcome: "unavailable", items }), now)[0]?.items).toEqual([]);
   });
-  it("hides the adoption guide while it has no reliable machine source", () => {
+  it("parses an adoption guide preview while release gating remains separate", () => {
     const item = { key: "bring", fields: { label: "Необходими вещи", detail: "Лична карта, нашийник и повод." } };
-    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { items: [item] }), now)).toEqual([]);
+    expect(selectCityObservations("adopt", preview("plovdiv-adoption-guide", { items: [item] }), now)[0]?.items).toEqual([item]);
   });
   it("shows only current and future flights after a recent successful board check", () => {
     const flights = [

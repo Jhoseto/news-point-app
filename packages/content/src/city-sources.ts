@@ -82,7 +82,7 @@ export const CITY_CATEGORY_SOURCES: Record<string, readonly string[]> = {
   environment: ["plovdiv-community-air", "chistota-bulky-waste", "balbok-plovdiv-campaigns", "ecopack-containers"],
   culture: ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-youth-centre", "epaygo-plovdiv-explicit"],
   nightlife: ["lohi-programme", "club-code-upcoming", "epaygo-plovdiv-explicit", "bilet-sinatra", "goliamata-maritsa-programme", "bilet-beebop", "bilet-download", "bilet-plovdiv-event-center", "bilet-colodrome", "bilet-elum", "bushido-programme", "plovdiv-live-club-events"],
-  adopt: [],
+  adopt: ["plovdiv-dog-shelter", "plovdiv-adoption-guide"],
 };
 
 export function citySourcePolicy(id: string) {

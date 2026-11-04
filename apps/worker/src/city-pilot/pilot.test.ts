@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { candidateSources } from "./catalog";
-import { parseClubEventDetail, parseEpayGoEventDetail, parseOperaDetail, parsePilotPage } from "./parse";
+import { dzVacanciesSearchUrl, parseClubEventDetail, parseEpayGoEventDetail, parseOperaDetail, parsePilotPage } from "./parse";
 import { runPilotSource } from "./run";
 import { previewAfterCheck } from "./preview";
 import { zipSync, strToU8 } from "fflate";
@@ -25,6 +25,25 @@ function response(body: string, status = 200, headers: Record<string, string> = 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("city source pilot", () => {
+  it("searches the selected public nursery ranking and accepts its explicit empty result", async () => {
+    const source = candidateSources.find(entry => entry.id === "dz-vacancies")!;
+    const form = '<form id="frmSearch" action="https://dz-priem.plovdiv.bg/vacancies" method="get"><input type="hidden" name="search" value="1"><input type="checkbox" name="sHasVacancies" value="1" checked="checked"><select id="sRankingId" name="sRankingId"><option value="243" selected="selected">2026/2027 - 19 Ноември</option></select></form>';
+    const empty = form + '<div id="message">Няма резултати от търсенето</div>';
+    const url = dzVacanciesSearchUrl(form);
+    expect(url).toBe("https://dz-priem.plovdiv.bg/vacancies?search=1&sRankingId=243&sHasVacancies=1");
+    const fetchMock = vi.fn().mockResolvedValueOnce(response(form)).mockResolvedValueOnce(response(empty));
+    vi.stubGlobal("fetch", fetchMock);
+    const observed = await runPilotSource(source, { failures: 0, items: { previous: "hash" } }, time);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[1]?.[0]).toBe(url);
+    expect(observed.journal).toMatchObject({ outcome: "parsed", httpStatus: 200, itemCount: 0 });
+    expect(observed.snapshot?.items).toEqual([]);
+    expect(observed.journal.changes).toMatchObject({ missing: ["previous"] });
+    const populated = form + '<div id="vacancies_result"><div class="box-list-item"><a href="/school_details/44">ДГ Пример</a><div class="list-group-item"><h4>I-ва група</h4><span class="badge--count">1</span><span class="badge--count">0</span><span class="badge--count">0</span><span class="badge--count">1</span></div></div></div>';
+    expect(parsePilotPage("dz-vacancies", populated).items[0]?.fields).toMatchObject({ rankingId: "243", schoolId: "44", total: 1 });
+    expect(() => parsePilotPage("dz-vacancies", form + '<div id="message">Временно недостъпно</div>')).toThrow("without verified empty result");
+    expect(() => dzVacanciesSearchUrl(form.replace('checked="checked"', ""))).toThrow("vacancy filter changed");
+  });
   it("uses the signed relay only after a configured source is blocked directly", async () => {
     const source = candidateSources.find(entry => entry.id === "lohi-programme")!;
     const html = `<main>Lo/Hi Craft Space. Rayko Daskalov 55, Plovdiv

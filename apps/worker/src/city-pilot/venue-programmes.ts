@@ -44,7 +44,13 @@ export function venueListing(sourceId: string, html: string): Entry[] {
     const url = new URL(link.attribs.href!, config.provider === "id24" ? "https://www.plovdiv24.bg" : config.url).href;
     result.set(url, { url, date });
   }
-  // An empty/changed listing is a failed check, never proof that all events were cancelled.
+  if (!result.size && sourceId === "bilet-sinatra") {
+    const titles = D.getElementsByTagName("title", dom);
+    const sections = D.getElementsByTagName("section", dom).filter(section => D.getElementsByTagName("h2", section).some(heading => clean(D.textContent(heading)) === "Събития"));
+    const empty = sections.length === 1 && D.getElementsByTagName("div", sections[0]!).filter(node => clean(D.textContent(node)) === "Няма намерени резултати").length === 1;
+    if (titles.length === 1 && clean(D.textContent(titles[0]!)) === "Пиано бар Синатра Пловдив | Bilet BG" && empty) return [];
+  }
+  // A changed listing or ambiguous empty page is never proof that events were cancelled.
   if (!result.size || result.size > 24) throw new Error("programme: missing listing or request budget exceeded");
   return [...result.values()];
 }

@@ -12,7 +12,7 @@ import { createHash, createHmac } from "node:crypto";
 import { appendFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { resolve, isAbsolute } from "node:path";
 import { pilotSources, type CandidateSource } from "./catalog";
-import { parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parseGalleryExhibitionDetail, parseOperaDetail, parsePilotPage, type PilotSnapshot } from "./parse";
+import { dzVacanciesSearchUrl, parseClubEventDetail, parseEcomapCollectionEvents, parseEcomapContainers, parseEcopackContainers, parseEpayGoEventDetail, parseGalleryExhibitionDetail, parseOperaDetail, parsePilotPage, type PilotSnapshot } from "./parse";
 import { previewAfterCheck, type LocalPreview } from "./preview";
 import { parsePlovdivGtfsArchive } from "./gtfs";
 import { parseKaratPlovdivSofia } from "./intercity";
@@ -110,6 +110,12 @@ async function requestSource(source: CandidateSource, previous: SourceState, req
         : target.origin === "https://www.plovdiv.bg" && (target.pathname === "/item/transport/mass-public-transport/"
           || /^\/wp-content\/uploads\/20\d{2}\/(?:0[1-9]|1[0-2])\/[A-Za-z0-9_-]+\.pdf$/iu.test(target.pathname));
       if (!approved || target.username || target.password || target.port || target.search || target.hash) throw new Error("transport request left the approved public source paths");
+    }
+    if (source.id === "dz-vacancies") {
+      const target = new URL(url);
+      const params = target.searchParams;
+      if (target.origin !== "https://dz-priem.plovdiv.bg" || target.pathname !== "/vacancies" || target.username || target.password || target.port || target.hash
+        || target.search && (params.size !== 3 || params.get("search") !== "1" || params.get("sHasVacancies") !== "1" || !/^[1-9]\d{0,5}$/u.test(params.get("sRankingId") ?? ""))) throw new Error("dz-vacancies: request left the approved public search");
     }
     const headers = new Headers({ Accept: source.format === "gtfs" ? "application/zip,application/octet-stream" : source.format === "pdf" ? "application/pdf" : source.format === "json" ? "application/json" : "text/html,application/xhtml+xml", "User-Agent": agent });
     if (!requireBody && previous.etag) headers.set("If-None-Match", previous.etag);
@@ -212,13 +218,13 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
   const started = Date.now();
   const unionRoute = unionIntercityRoute(source.id);
   const detailDriven = source.id === "club-code-upcoming" || source.id === "epaygo-plovdiv-explicit";
-  const alwaysParse = !!unionRoute || source.id === "plovdiv-transit-documents" || source.id === "karat-plovdiv-sofia" || source.id === "balbok-plovdiv-campaigns" || !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
+  const alwaysParse = !!unionRoute || source.id === "plovdiv-transit-documents" || source.id === "karat-plovdiv-sofia" || source.id === "balbok-plovdiv-campaigns" || !!PARKING_VENUES[source.id] || source.id === "lohi-programme" || !!VENUE_PROGRAMMES[source.id] || ["plovdiv-theatre", "plovdiv-opera", "plovdiv-gallery-current", "plovdiv-dog-shelter", "dz-vacancies"].includes(source.id) || source.id === "plovdiv-low-emission-permit" || source.id === "dz-admission-calendar" || source.id === "plovdiv-auction-list" || source.id === "plovdiv-youth-centre" || source.id === "plovdiv-public-consultations" || source.id === "plovdiv-management-competitions";
   const daySensitive = source.id === "plovdiv-livetransport-gtfs";
   const partitioned = source.id === "first-grade-vacancies";
   let httpStatus: number | null = null;
   let retryAfter: string | null = null;
   try {
-    const { response, finalUrl } = await requestSource(source, previous, requireSnapshot || detailDriven || daySensitive || partitioned || alwaysParse || !!unionRoute, unionRoute ? unionServiceDates(now)[0] : undefined);
+    let { response, finalUrl } = await requestSource(source, previous, requireSnapshot || detailDriven || daySensitive || partitioned || alwaysParse || !!unionRoute, unionRoute ? unionServiceDates(now)[0] : undefined);
     httpStatus = response.status;
     retryAfter = response.headers.get("retry-after");
     try { guardCityResponse(response); }
@@ -233,7 +239,21 @@ export async function runPilotSource(source: CandidateSource, previous: SourceSt
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const contentType = response.headers.get("content-type")?.toLowerCase() ?? "";
     if (source.format === "gtfs" ? !/(?:application\/zip|application\/octet-stream)/u.test(contentType) : source.format === "json" ? !contentType.includes("application/json") : !contentType.includes("text/html")) throw new Error("unexpected response content type");
-    const body = await bodyWithinLimit(response, source.id === "ecopack-containers" ? 8_000_000 : unionRoute ? 1_000_000 : maxBodyBytes);
+    let body = await bodyWithinLimit(response, source.id === "ecopack-containers" ? 8_000_000 : unionRoute ? 1_000_000 : maxBodyBytes);
+    if (source.id === "dz-vacancies") {
+      const searchUrl = dzVacanciesSearchUrl(decodeHtml(body, response.headers.get("content-type")));
+      const searched = await requestSource({ ...source, url: searchUrl }, { failures: 0, items: {} }, true);
+      httpStatus = searched.response.status;
+      retryAfter = searched.response.headers.get("retry-after") ?? retryAfter;
+      try { guardCityResponse(searched.response); }
+      catch (error) { await searched.response.body?.cancel(); throw error; }
+      if (searched.finalUrl !== searchUrl || !searched.response.headers.get("content-type")?.toLowerCase().includes("text/html")) {
+        await searched.response.body?.cancel(); throw new Error("dz-vacancies: search response changed");
+      }
+      body = await bodyWithinLimit(searched.response);
+      response = searched.response;
+      finalUrl = searched.finalUrl;
+    }
     const bodyHash = sha256(body);
     if (!requireSnapshot && !detailDriven && !daySensitive && !partitioned && !alwaysParse && !(source.id === "vik-outages" && !previous.partition) && bodyHash === previous.bodyHash && previous.lastParsedAt) {
       const state = { ...previous, failures: 0, lastCheckedAt: checkedAt, lastSuccessAt: checkedAt, nextDueAt: dueAfter(source, 0, null, now) };

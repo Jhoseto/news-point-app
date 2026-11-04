@@ -70,8 +70,9 @@ export const CITY_TOPIC_SOURCES: Record<string, Record<string, readonly string[]
 export function cityAvailableTopics(categorySlug: string, groups: CityObservation[]): { title: string; href: string }[] {
   const category = CITY_CATEGORIES.find(entry => entry.slug === categorySlug);
   if (!category) return [];
+  const official = categorySlug === "municipality" || categorySlug === "adopt" ? [{ title: categorySlug === "adopt" ? "Общински приют" : "Официални услуги", href: "#nablyudavani-official-directory" }] : [];
   const observed = new Set(readerCityGroups(groups).filter(group => !CITY_PRESENTATION[group.sourceId]?.utility).map(group => group.sourceId));
-  return category.topics.flatMap(topic => {
+  return [...official, ...category.topics.flatMap(topic => {
     const sourceId = CITY_TOPIC_SOURCES[categorySlug]?.[topic.title]?.find(id => {
       if (!observed.has(id)) return false;
       if (categorySlug === "nightlife" && NIGHT_PROGRAMME_SOURCES.includes(id)) {
@@ -91,5 +92,5 @@ export function cityAvailableTopics(categorySlug: string, groups: CityObservatio
     const kind = categorySlug === "nightlife" && sourceId === "epaygo-plovdiv-explicit" ? topic.title === "Музика на живо" ? "live" : "standup" : null;
     const firstMatching = kind ? groups.find(group => group.sourceId === sourceId)?.items.find(item => explicitNightEventKind(item.fields) === kind) : null;
     return [{ title: topic.title, href: firstMatching ? `#city-record-${sourceId}-${encodeURIComponent(firstMatching.key)}` : sourceId === "club-code-upcoming" ? "#city-agenda-title" : `#nablyudavani-${sourceId}` }];
-  });
+  })];
 }

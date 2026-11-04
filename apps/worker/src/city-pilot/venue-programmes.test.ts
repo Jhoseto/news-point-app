@@ -34,6 +34,13 @@ describe("venue programmes", () => {
     expect(venueListing("bilet-beebop", listing())).toEqual([entry]);
     expect(venueDetail("bilet-beebop", detail(), entry)?.fields).toMatchObject({ date: "2026-11-22", time: "20:00", doorsTime: "20:00", performanceTime: "21:00", eventKind: "live" });
   });
+  it("accepts only Sinatra's verified venue empty state", () => {
+    const empty = '<title>Пиано бар Синатра Пловдив | Bilet BG</title><section><h2>Събития</h2><div>Няма намерени резултати</div></section>';
+    expect(venueListing("bilet-sinatra", empty)).toEqual([]);
+    expect(() => venueListing("bilet-sinatra", empty.replace("Синатра Пловдив", "Синатра София"))).toThrow("missing listing");
+    expect(() => venueListing("bilet-sinatra", empty.replace("Няма намерени резултати", "Временно недостъпно"))).toThrow("missing listing");
+    expect(() => venueListing("bilet-beebop", empty)).toThrow("missing listing");
+  });
   it("rejects wrong city, wrong venue, broken dates and an unrelated canonical event", () => {
     for (const change of [
       { location: { ...event.location, address: { ...event.location.address, addressLocality: "Sofia" } } },

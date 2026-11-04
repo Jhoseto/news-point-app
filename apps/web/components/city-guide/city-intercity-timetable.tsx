@@ -5,8 +5,9 @@ import { transportDateLabel, type IntercitySourceView } from "@/lib/city-guide/i
 import "./city-bus-schedules.css";
 
 export function CityIntercityTimetable({ sources }: { sources: IntercitySourceView[] }) {
-  const [selectedSource, setSelectedSource] = useState(() => sources.find(source => source.status === "observed" && source.journeys.length)?.sourceId ?? sources[0]?.sourceId ?? "");
-  const source = sources.find(source => source.sourceId === selectedSource) ?? sources[0];
+  const available = sources.filter(source => source.status === "observed" && source.journeys.length > 0);
+  const [selectedSource, setSelectedSource] = useState(() => available[0]?.sourceId ?? "");
+  const source = available.find(source => source.sourceId === selectedSource) ?? available[0];
   const journeys = source?.status === "observed" ? source.journeys : [];
   const dates = [...new Set(journeys.map(journey => journey.date))].sort();
   const [selectedDate, setSelectedDate] = useState(dates[0] ?? "");
@@ -14,10 +15,10 @@ export function CityIntercityTimetable({ sources }: { sources: IntercitySourceVi
   const visible = journeys.filter(journey => journey.date === date).sort((a, b) => a.time.localeCompare(b.time));
   return <div className="city-bus-schedules">
     <p className="city-bus-coverage">Публикувани курсове от Пловдив. Справката не обхваща всички превозвачи и направления.</p>
-    <div className="city-bus-filters">
+    {available.length ? <div className="city-bus-filters">
     <label className="city-bus-picker">Дестинация
       <select aria-label="Дестинация на автобуса" value={source?.sourceId ?? ""} onChange={event => { setSelectedSource(event.target.value); setSelectedDate(""); }}>
-        {sources.map(source => <option key={source.sourceId} value={source.sourceId}>{source.destination}</option>)}
+        {available.map(source => <option key={source.sourceId} value={source.sourceId}>{source.destination}</option>)}
       </select>
     </label>
     {dates.length ? <label className="city-bus-picker">Дата на пътуване
@@ -25,10 +26,10 @@ export function CityIntercityTimetable({ sources }: { sources: IntercitySourceVi
         {dates.map(value => <option key={value} value={value}>{transportDateLabel(value)}</option>)}
       </select>
     </label> : null}
-    </div>
+    </div> : null}
     {source ? <p className="city-bus-source">Източник: {source.publisher}{source.checkedAt ? <>. <time dateTime={source.checkedAt}>{source.status === "observed" ? "Проверено" : "Последна проверка"} {new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Sofia" }).format(new Date(source.checkedAt))}</time></> : null}.</p> : null}
     {source?.publisher === "Юнион Ивкони" ? <p className="city-bus-coverage">Показваме публикуваните директни курсове за днес и утре. Пътуванията с прекачване не са включени.</p> : null}
-    {!visible.length ? <p role="status">В момента няма потвърдено разписание в справката. Това не означава, че няма автобуси.</p> : <>
+    {!visible.length ? <p role="status">Провери курса при превозвача за избраната дата.</p> : <>
       <h4 className="city-bus-date">Пловдив–{source?.destination} за {transportDateLabel(date!)}</h4>
       <ol className="city-bus-journeys" aria-label="Публикувани автобусни курсове">
         {visible.map(journey => <li key={journey.key}>
@@ -40,6 +41,7 @@ export function CityIntercityTimetable({ sources }: { sources: IntercitySourceVi
         </li>)}
       </ol>
     </>}
+    <p className="city-bus-coverage">Пълно търсене на курсове: <a href="https://karat-s.com/" target="_blank" rel="noreferrer">Карат-С</a> и <a href="https://union-ivkoni.com/bg" target="_blank" rel="noreferrer">Юнион Ивкони</a>.</p>
     <p className="city-bus-coverage">Часовете са планирани, по българско време. Няма информация за закъснения или свободни места. Провери точната спирка преди пътуване.</p>
   </div>;
 }
