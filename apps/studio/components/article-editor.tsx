@@ -8,7 +8,7 @@ import type { Conflict, Draft, MediaOption, PublishOutcome } from "@/lib/article
 import { callApi } from "@/lib/client-api";
 import { textToBody } from "@/lib/editor/body";
 import { documentWords } from "@/lib/editor/document";
-import { observeEmbedFrame, embedFrameUrl, localVideoUrl, sofiaWallToUtc, utcToSofiaWall, videoSourceUrl } from "@newspoint/content";
+import { observeEmbedFrame, embedFrameUrl, localVideoUrl, sofiaWallToUtc, utcToSofiaWall, videoSourceUrl, xPostUrl } from "@newspoint/content";
 import { VisualArticleEditor, type VisualEditorHandle } from "./visual-article-editor";
 import { parseEmbedInput } from "@/lib/editor/embed";
 import { AUTHOR_NAME_MAX, EXCERPT_MAX, publishProblems, TITLE_MAX } from "@/lib/editor/input";
@@ -20,6 +20,7 @@ import { ArticlePreview, type PreviewTheme } from "./article-preview";
 import { EditorDialog } from "./editor-dialog";
 import { MediaPicker } from "./media-picker";
 import { VideoUploadDialog } from "./video-upload-dialog";
+import { XPostEmbed } from "./x-post-embed";
 
 export interface EditorProps {
   socialStatus?: SocialStatus;
@@ -182,8 +183,8 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
 
   const applyHeroEmbed = () => {
     const parsed = parseEmbedInput(heroInput);
-    if (!parsed || !embedFrameUrl(parsed.url) && !videoSourceUrl(parsed.url)) {
-      setHeroError("Използвайте поддържан YouTube, Facebook, Vimeo, TikTok, Instagram или пряк MP4/WebM адрес.");
+    if (!parsed || !embedFrameUrl(parsed.url) && !xPostUrl(parsed.url) && !videoSourceUrl(parsed.url)) {
+      setHeroError("Използвайте поддържан YouTube, Facebook, Vimeo, TikTok, Instagram, X пост или пряк MP4/WebM адрес.");
       return;
     }
     setDraft(current => ({ ...current, heroEmbedUrl: parsed.url, heroMediaId: null }));
@@ -906,7 +907,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
       </EditorDialog> : null}
       {heroDialog ? <EditorDialog label="Водещ embed" onClose={() => setHeroDialog(false)}>
         <h3>Водещ embed</h3><label>HTTPS адрес или embed код<textarea autoFocus value={heroInput} onChange={event => { setHeroInput(event.target.value); setHeroError(""); }} /></label>
-        {parseEmbedInput(heroInput) && (embedFrameUrl(parseEmbedInput(heroInput)!.url) || videoSourceUrl(parseEmbedInput(heroInput)!.url)) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(heroInput)!.url) ? <video src={videoSourceUrl(parseEmbedInput(heroInput)!.url)!} controls preload="metadata" playsInline /> : <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen />}</div> : null}
+        {parseEmbedInput(heroInput) && (embedFrameUrl(parseEmbedInput(heroInput)!.url) || xPostUrl(parseEmbedInput(heroInput)!.url) || videoSourceUrl(parseEmbedInput(heroInput)!.url)) ? <div className="np-dialog-embed-preview">{videoSourceUrl(parseEmbedInput(heroInput)!.url) ? <video src={videoSourceUrl(parseEmbedInput(heroInput)!.url)!} controls preload="metadata" playsInline /> : xPostUrl(parseEmbedInput(heroInput)!.url) ? <XPostEmbed src={parseEmbedInput(heroInput)!.url} /> : <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(parseEmbedInput(heroInput)!.url)!} title="Преглед на водещия embed" allowFullScreen />}</div> : null}
         {heroError ? <p role="alert">{heroError}</p> : null}<button type="button" className="np-btn np-btn-primary" onClick={applyHeroEmbed}>Приложи</button>
       </EditorDialog> : null}
       {videoTarget ? <VideoUploadDialog onClose={() => setVideoTarget(null)} onUploaded={url => { if (!localVideoUrl(url)) return; if (videoTarget === "hero") setDraft(current => ({ ...current, heroEmbedUrl: url, heroMediaId: null })); else visualRef.current?.insertVideo(url); setVideoTarget(null); }} /> : null}

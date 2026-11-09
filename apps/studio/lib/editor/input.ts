@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { articleBody, homeHeroPositionSchema, embedFrameUrl, isArticleSlug, videoSourceUrl, publicationProblems, socialInput } from "@newspoint/content";
+import { articleBody, homeHeroPositionSchema, embedFrameUrl, isArticleSlug, videoSourceUrl, xPostUrl, publicationProblems, socialInput } from "@newspoint/content";
 import { SLUG_STORED_MAX } from "./slug";
 
 // Shared by the editor form and the API; the API always re-validates.
@@ -34,7 +34,7 @@ export const draftInput = z
     homeHeroExpectedPublishedRevision: z.int().nonnegative().nullable().optional(),
     primaryCategoryId: z.uuid().nullable(),
     heroMediaId: z.uuid().nullable(),
-    heroEmbedUrl: z.string().refine(value => !!embedFrameUrl(value) || !!videoSourceUrl(value), "Неподдържан водещ embed").nullable().optional(),
+    heroEmbedUrl: z.string().refine(value => !!embedFrameUrl(value) || !!xPostUrl(value) || !!videoSourceUrl(value), "Неподдържан водещ embed").nullable().optional(),
     authorKind: z.enum(["staff", "newsroom", "manual"]),
     authorUserId: z.string().min(1).nullable(),
     authorName,

@@ -294,6 +294,9 @@
   .studio-preview-gallery .studio-preview-image img { width: 100%; }
   .studio-preview-embed { overflow: hidden; margin: 1.2rem 0; border: 1px solid var(--np-line); border-radius: 1rem; background: var(--np-surface); }
   .studio-preview-embed iframe { display: block; width: 100%; min-height: 24rem; border: 0; }
+  .studio-preview-embed .np-x-post iframe { min-height:0; max-width:100%; }
+  .np-x-post button { display:block; margin:0 auto 0.75rem; padding:0.5rem 0.85rem; border:1px solid var(--np-line); border-radius:0.65rem; background:var(--np-surface); color:var(--np-ink); font-weight:600; cursor:pointer; }
+  .np-x-post button:focus-visible { outline:2px solid var(--np-accent); outline-offset:2px; }
   .studio-preview-embed.np-native-video { width: auto; height: auto; max-width: 100%; max-height: min(45rem, 85dvh); margin-inline: auto; background: transparent; }
   @media (max-width: 40rem) { .studio-preview-gallery { flex-wrap: wrap; } .studio-preview-gallery .studio-preview-image { flex-basis: calc(50% - .375rem); } }
 

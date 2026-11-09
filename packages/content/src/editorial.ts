@@ -56,6 +56,16 @@ export function embedProviderFromUrl(value: string): EmbedProvider {
   return "other";
 }
 
+/** Canonical public X post URL; never use an editor-provided script or iframe source. */
+export function xPostUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password || !["x.com", "www.x.com", "twitter.com", "www.twitter.com", "mobile.twitter.com"].includes(url.hostname.toLowerCase())) return null;
+    const post = /^\/([A-Za-z0-9_]{1,15}|i)\/status\/(\d{1,20})\/?$/.exec(url.pathname);
+    return post ? `https://x.com/${post[1]}/status/${post[2]}` : null;
+  } catch { return null; }
+}
+
 /** Only vetted provider endpoints become iframes. Other HTTPS URLs remain links. */
 export function embedFrameUrl(value: string): string | null {
   try {
@@ -144,13 +154,31 @@ function redditSnippetUrl(raw: string): string | null {
   return null;
 }
 
+/** X's official paste contains a blockquote and a script; retain only the post URL. */
+function xSnippetUrl(raw: string): string | null {
+  if (!/<blockquote\b/i.test(raw)) return null;
+  const sanitized = sanitizeHtml(raw, {
+    allowedTags: ["blockquote", "a"],
+    allowedAttributes: { blockquote: ["class"], a: ["href"] },
+    allowedClasses: { blockquote: ["twitter-tweet"] },
+    allowedSchemes: ["https"],
+  });
+  const quote = /<blockquote class="twitter-tweet">([\s\S]*?)<\/blockquote>/i.exec(sanitized)?.[1];
+  if (!quote) return null;
+  for (const link of quote.matchAll(/<a\b[^>]*\bhref="([^"]+)"/gi)) {
+    const post = xPostUrl(link[1]!.replace(/&amp;/gi, "&"));
+    if (post) return post;
+  }
+  return null;
+}
+
 export function parseEmbedInput(raw: string): { url: string; provider: EmbedProvider } | null {
   const match = raw.match(/<iframe\b[^>]*?\bsrc\s*=\s*["']([^"']+)["']/i);
-  const value = (match?.[1] ?? redditSnippetUrl(raw) ?? raw.trim().replace(/^["']|["']$/g, "")).replace(/&amp;|&#38;/gi, "&");
+  const value = (match?.[1] ?? xSnippetUrl(raw) ?? redditSnippetUrl(raw) ?? raw.trim().replace(/^["']|["']$/g, "")).replace(/&amp;|&#38;/gi, "&");
   try {
     const url = new URL(value);
     if (url.protocol !== "https:" || url.username || url.password || !url.hostname.includes(".")) return null;
-    return { url: embedFrameUrl(url.href) ?? url.href, provider: embedProviderFromUrl(url.href) };
+    return { url: xPostUrl(url.href) ?? embedFrameUrl(url.href) ?? url.href, provider: embedProviderFromUrl(url.href) };
   } catch { return null; }
 }
 
@@ -180,7 +208,7 @@ export function publicationProblems(draft: {
   if (draft.bodyBlocks === 0) problems.push("Текстът е празен.");
   if (!draft.excerpt.trim()) problems.push("Добавете кратко резюме на новината.");
   if (!draft.primaryCategoryId) problems.push("Изберете рубрика.");
-  if (draft.heroEmbedUrl ? !embedFrameUrl(draft.heroEmbedUrl) && !videoSourceUrl(draft.heroEmbedUrl) : !draft.heroMediaId) problems.push("Изберете основна снимка или поддържан водещ embed.");
+  if (draft.heroEmbedUrl ? !embedFrameUrl(draft.heroEmbedUrl) && !xPostUrl(draft.heroEmbedUrl) && !videoSourceUrl(draft.heroEmbedUrl) : !draft.heroMediaId) problems.push("Изберете основна снимка или поддържан водещ embed.");
   if (draft.authorKind === "manual" && (draft.authorName.trim().length < 2 || draft.authorName.length > 120 || /[<>\u0000-\u001f\u007f]/u.test(draft.authorName))) problems.push("Въведете валидно име на автора.");
   return problems;
 }

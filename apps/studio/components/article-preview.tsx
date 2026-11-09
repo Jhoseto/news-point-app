@@ -1,9 +1,10 @@
-import { articleSubtitle, bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, EMBED_PROVIDER_LABEL, observeEmbedFrame, embedAspectRatio, type Block } from "@newspoint/content";
+import { articleSubtitle, bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, EMBED_PROVIDER_LABEL, observeEmbedFrame, embedAspectRatio, xPostUrl, type Block } from "@newspoint/content";
 import type { MediaOption } from "@/lib/articles";
 import { documentWords } from "@/lib/editor/document";
 import { formatFull } from "@/lib/format";
 import { browserMediaSrc } from "@/lib/media-src";
 import { BrandLogoImg } from "@/components/brand-logo-img";
+import { XPostEmbed } from "./x-post-embed";
 import "@newspoint/content/composition.css";
 
 // Mirrors the article page of apps/web (components/article-page.tsx, article-body.tsx)
@@ -67,7 +68,7 @@ function PreviewBlock({ block, media }: { block: Block; media: MediaOption[] }) 
       const video = videoSourceUrl(block.url);
       const frame = embedFrameUrl(block.url);
       if (video) return <div className={layout.className} style={layout.style}><video className="studio-preview-embed np-native-video" src={browserMediaSrc(video)} controls preload="metadata" playsInline /></div>;
-      return <div className={`${layout.className} studio-preview-embed ${frame ? "np-embed-canvas" : ""}`} style={{ ...layout.style, aspectRatio: frame ? embedAspectRatio(block.url) : undefined }}>{frame ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={frame} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}</div>;
+      return <div className={`${layout.className} studio-preview-embed ${frame ? "np-embed-canvas" : ""}`} style={{ ...layout.style, aspectRatio: frame ? embedAspectRatio(block.url) : undefined }}>{xPostUrl(block.url) ? <XPostEmbed src={block.url} /> : frame ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={frame} title={`Вградено съдържание от ${block.provider}`} loading="lazy" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a className="np-embed-link" href={block.url} target="_blank" rel="noopener noreferrer">Виж публикацията в {EMBED_PROVIDER_LABEL[block.provider]}</a>}</div>;
     }
     case "divider": return <hr />;
     case "legacy_html": return <div className="np-legacy" dangerouslySetInnerHTML={{ __html: block.html }} />;
@@ -99,7 +100,7 @@ export function ArticlePreview({ article, theme, device = "desktop" }: { article
         ) : null}
         <div className={`relative overflow-hidden rounded-3xl shadow-card${heroVideo ? " mx-auto w-fit max-w-full" : ""}`}>
           {article.heroEmbedUrl ? (
-            heroVideo ? <video src={browserMediaSrc(heroVideo)} controls preload="metadata" playsInline className="np-native-video" /> : embedFrameUrl(article.heroEmbedUrl) ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
+            heroVideo ? <video src={browserMediaSrc(heroVideo)} controls preload="metadata" playsInline className="np-native-video" /> : xPostUrl(article.heroEmbedUrl) ? <XPostEmbed src={article.heroEmbedUrl} /> : embedFrameUrl(article.heroEmbedUrl) ? <iframe ref={observeEmbedFrame} referrerPolicy="strict-origin-when-cross-origin" src={embedFrameUrl(article.heroEmbedUrl)!} title="Вградено hero съдържание" className="aspect-[16/9] w-full border-0 bg-surface-2" allow="autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share" allowFullScreen /> : <a href={article.heroEmbedUrl} target="_blank" rel="noopener noreferrer">Виж водещата публикация</a>
           ) : article.hero ? (
             <img src={browserMediaSrc(article.hero.url)} alt={article.hero.alt} className="aspect-[16/9] w-full bg-surface-2 object-cover" />
           ) : (

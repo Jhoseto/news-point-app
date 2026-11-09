@@ -68,6 +68,9 @@ describe("structured visual document", () => {
     expect(draftInput.safeParse({ ...draft, body: [], bodyText: "" }).success).toBe(false);
     expect(draftInput.safeParse(draft).success).toBe(false);
     expect(publishProblems({ ...draft, excerpt: "Кратко резюме", bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: "https://youtu.be/dQw4w9WgXcQ" })).toEqual([]);
+    const xHero = "https://x.com/TouchlineX/status/218292706224988444";
+    expect(draftInput.safeParse({ ...draft, body: [], heroEmbedUrl: xHero }).success).toBe(true);
+    expect(publishProblems({ ...draft, excerpt: "Кратко резюме", bodyBlocks: 1, primaryCategoryId: "category", heroEmbedUrl: xHero })).toEqual([]);
   });
   it("bounds Facebook dimensions and rejects credentialed embedded targets", () => {
     const valid = "https://facebook.com/plugins/video.php?href=https%3A%2F%2Ffacebook.com%2Fwatch%2F%3Fv%3D123&width=99999&height=broken";

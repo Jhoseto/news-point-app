@@ -1,5 +1,32 @@
 # Load / spike tests
 
+## Public reader journey
+
+`public-reader-journey.mjs` models readers opening the public homepage and real
+published articles through Cloudflare. It runs only with `--execute`; without it,
+it prints the bounded schedule. `--preflight` checks the current homepage, Studio
+login and published article paths without load. Run with a Node installation that
+trusts the system certificate store, for example:
+
+```bash
+node --use-system-ca tests/load/public-reader-journey.mjs --preflight
+node --use-system-ca tests/load/public-reader-journey.mjs --execute
+```
+
+The stages are 10/50/100/250/500/1000 concurrent virtual sessions, five arrivals
+per second, with a 30-second hold per stage and 45-second pauses between further
+article opens. An independent process checks public Web and Studio every three
+seconds and stops after two failed or slow checks. The generator also stops on
+any non-200 response, network failure, repeated event-loop delay or its 12-minute
+deadline. The report is `tests/reports/public-reader-journey-latest.json`.
+
+This is HTTP traffic from one test IP. It does not execute browser JavaScript,
+count Clicky visits, test different networks, or prove 1000 real people can browse
+without problems. A Cloudflare challenge or rate limit is a result for this test
+source, not proof that the origin server is full. Do not disable protections to
+continue a stopped run. Run only during an authorized production test and check
+public and origin recovery afterward.
+
 ## Supervised HTTP/1.1 reader connections
 
 `h1-capacity.mjs` defaults to a dry run. The explicit `--execute` mode requires

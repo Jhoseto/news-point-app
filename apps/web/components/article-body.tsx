@@ -1,4 +1,4 @@
-import { bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, EMBED_PROVIDER_LABEL, type Block } from "@newspoint/content";
+import { bodyGroups, composition, embedFrameUrl, videoSourceUrl, standaloneVideoUrl, xPostUrl, EMBED_PROVIDER_LABEL, type Block } from "@newspoint/content";
 import type { Media } from "@/lib/queries";
 import { ArticleEmbedFrame } from "./article-embed-frame";
 import { ExternalIcon } from "./icons";
@@ -58,7 +58,7 @@ function BlockView({ block, media, index, gallery }: { block: Block; media: Map<
       );
     }
     case "embed":
-      return embedFrameUrl(block.url) || videoSourceUrl(block.url) ? (
+      return embedFrameUrl(block.url) || xPostUrl(block.url) || videoSourceUrl(block.url) ? (
         <div className={layout.className} style={layout.style}>
         <ArticleEmbedFrame
           id={articleSectionId(index)}

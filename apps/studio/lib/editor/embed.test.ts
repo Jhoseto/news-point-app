@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseEmbedInput } from "./embed";
+import { xPostUrl } from "@newspoint/content";
 
 describe("parseEmbedInput", () => {
   it("accepts a bare Facebook plugins URL", () => {
@@ -28,5 +29,22 @@ describe("parseEmbedInput", () => {
     expect(parseEmbedInput("")).toBeNull();
     expect(parseEmbedInput("<iframe src='http://example.com'></iframe>")).toBeNull();
     expect(parseEmbedInput("not a url")).toBeNull();
+  });
+
+  it("extracts a canonical X post from the official blockquote without retaining script or tracking parameters", () => {
+    const html = '<blockquote class="twitter-tweet" data-media-max-width="560"><p>Post</p><a href="https://x.com/TouchlineX/status/218292706224988444?ref_src=twsrc%5Etfw">November 5, 2026</a></blockquote><script async src="https://platform.x.com/widgets.js" charset="utf-8"></script>';
+    expect(parseEmbedInput(html)).toEqual({ url: "https://x.com/TouchlineX/status/218292706224988444", provider: "x" });
+    expect(parseEmbedInput("https://twitter.com/TouchlineX/status/218292706224988444?s=20")).toEqual({ url: "https://x.com/TouchlineX/status/218292706224988444", provider: "x" });
+  });
+
+  it("does not turn an unrelated or credentialed address in X-looking HTML into a widget", () => {
+    for (const url of [
+      "https://x.com.evil.test/TouchlineX/status/218292706224988444",
+      "https://user:secret@x.com/TouchlineX/status/218292706224988444",
+      "http://x.com/TouchlineX/status/218292706224988444",
+      "https://x.com/TouchlineX/status/not-a-number",
+      "https://x.com/TouchlineX/status/218292706224988444/extra",
+    ]) expect(xPostUrl(url)).toBeNull();
+    expect(parseEmbedInput('<blockquote class="twitter-tweet"><a href="https://evil.test/post">Post</a></blockquote><script src="https://platform.x.com/widgets.js"></script>')).toBeNull();
   });
 });
