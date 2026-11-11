@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PUBLIC_MENU, menuName, mobileRubricsMenuOrder } from "./menu";
+import { PUBLIC_MENU, PUBLIC_MENU_TEMPORARILY_HIDDEN, menuName, mobileRubricsMenuOrder, visiblePublicMenu } from "./menu";
 
 describe("public menu", () => {
   it("lists the rubrics in the agreed order, each once", () => {
@@ -24,8 +24,14 @@ describe("public menu", () => {
     expect(new Set(PUBLIC_MENU.map((entry) => entry.slug)).size).toBe(PUBLIC_MENU.length);
   });
 
+  it("hides temporarily removed rubrics from public nav without deleting them", () => {
+    expect(PUBLIC_MENU_TEMPORARILY_HIDDEN.has("izbori")).toBe(true);
+    expect(visiblePublicMenu().map((entry) => entry.slug)).not.toContain("izbori");
+    expect(visiblePublicMenu()).toHaveLength(PUBLIC_MENU.length - PUBLIC_MENU_TEMPORARILY_HIDDEN.size);
+  });
+
   it("puts analyses directly above Bulgaria in the mobile/PWA drawer only", () => {
-    const source = PUBLIC_MENU.map((entry) => ({ ...entry, path: `/${entry.slug}/` }));
+    const source = visiblePublicMenu().map((entry) => ({ ...entry, path: `/${entry.slug}/` }));
     const unchanged = source.map((entry) => entry.slug);
     const ordered = mobileRubricsMenuOrder(source);
     expect(ordered.map((entry) => entry.slug).slice(0, 6)).toEqual([

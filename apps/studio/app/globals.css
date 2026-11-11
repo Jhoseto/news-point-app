@@ -18,9 +18,10 @@
   pointer-events: auto;
 }
 
-/* Same tokens as the public site (apps/web, docs/DESIGN_SYSTEM.md), light mode. */
-:root {
-  --np-page: #f4f7fd;
+/* Match the public site's semantic palette; previews can override the Studio theme. */
+:root,
+[data-theme="light"] {
+  --np-page: #f6f9fe;
   --np-surface: #ffffff;
   --np-surface-2: #eef3fc;
   --np-line: #e2e8f5;
@@ -32,17 +33,24 @@
   --np-accent-2: #990fec;
   --np-magenta: #d63df2;
   --np-link: #2660fb;
+  --np-on-ink: #ffffff;
+  --np-on-accent: #ffffff;
   --np-danger: #c0263d;
   --np-success: #0f7a55;
   --np-warning: #9a5b00;
   --np-shell: #070d33;
+  --np-toolbar: #f6f7f7;
+  --np-toolbar-line: #dcdcde;
+  --np-toolbar-ink: #3c434a;
+  --np-toolbar-hover: #ffffff;
+  --np-toolbar-active: #dcdcde;
+  --np-toolbar-border: #8c8f94;
   --np-shadow: 0 1px 2px rgb(10 20 84 / 0.04), 0 8px 24px -12px rgb(10 20 84 / 0.12);
   --np-gradient: linear-gradient(90deg, #3818d6 0%, #990fec 55%, #d63df2 100%);
   --np-ring-gradient: conic-gradient(from 200deg, #2660fb, #3818d6, #990fec, #d63df2, #19c3c3, #2660fb);
   color-scheme: light;
 }
 
-/* Dark theme of the public site, used only inside previews. */
 [data-theme="dark"] {
   --np-page: #000516;
   --np-surface: #050b22;
@@ -56,6 +64,17 @@
   --np-accent-2: #b43cf5;
   --np-magenta: #ce06f8;
   --np-link: #b596f2;
+  --np-on-ink: #050b22;
+  --np-on-accent: #ffffff;
+  --np-danger: #ff8fa2;
+  --np-success: #61d8ab;
+  --np-warning: #ffd180;
+  --np-toolbar: #101832;
+  --np-toolbar-line: #263354;
+  --np-toolbar-ink: #d8deed;
+  --np-toolbar-hover: #1b2850;
+  --np-toolbar-active: #25345d;
+  --np-toolbar-border: #5f6e9b;
   --np-shadow: 0 0 0 1px rgb(118 104 255 / 0.14), 0 12px 32px -16px rgb(106 60 240 / 0.45);
   --np-gradient: linear-gradient(90deg, #6a3cf0 0%, #b43cf5 55%, #ce06f8 100%);
   color-scheme: dark;
@@ -74,6 +93,8 @@
   --color-accent-2: var(--np-accent-2);
   --color-magenta: var(--np-magenta);
   --color-link: var(--np-link);
+  --color-on-ink: var(--np-on-ink);
+  --color-on-accent: var(--np-on-accent);
   --color-danger: var(--np-danger);
   --color-success: var(--np-success);
   --color-warning: var(--np-warning);
@@ -87,6 +108,8 @@
     @apply bg-page font-sans text-body antialiased;
     font-feature-settings: "locl" 0;
   }
+
+  html { background: var(--np-page); }
 
   :focus-visible {
     outline: 2px solid var(--np-link);
@@ -130,6 +153,37 @@
   .np-label {
     @apply mb-1.5 block text-xs font-bold tracking-wide text-muted uppercase;
   }
+
+  .np-studio-theme-toggle {
+    display: inline-flex;
+    min-height: 36px;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 9px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: rgb(255 255 255 / .82);
+    padding: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .np-studio-theme-toggle:hover { color: #ffffff; }
+  .np-studio-theme-toggle--surface { color: var(--np-ink); }
+  .np-studio-theme-toggle--surface:hover { color: var(--np-accent); }
+  .np-studio-theme-toggle--compact { width: 56px; min-width: 56px; }
+  .np-studio-theme-track { position: relative; display: inline-flex; width: 54px; height: 32px; flex: none; align-items: center; justify-content: space-between; padding: 0 6px; border: 1px solid var(--np-line); border-radius: 999px; background: var(--np-surface-2); color: var(--np-faint); }
+  .np-studio-theme-knob { position: absolute; left: 2px; top: 2px; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; background: var(--np-surface); color: var(--np-accent); box-shadow: var(--np-shadow); transition: transform 200ms cubic-bezier(.22, 1, .36, 1), background-color 200ms cubic-bezier(.22, 1, .36, 1); }
+  .np-studio-theme-knob-moon { display: none; }
+  html[data-theme="dark"] .np-studio-theme-knob { transform: translateX(22px); background: var(--np-accent); color: var(--np-on-accent); }
+  html[data-theme="dark"] .np-studio-theme-knob-sun { display: none; }
+  html[data-theme="dark"] .np-studio-theme-knob-moon { display: block; }
+  .np-studio-theme-toggle:focus-visible { outline: 2px solid var(--np-link); outline-offset: 2px; }
+  .np-studio-theme-panel { display: flex; min-height: 46px; align-items: center; justify-content: space-between; gap: 6px; margin-top: 8px; padding: 4px 6px 4px 11px; border: 1px solid rgb(255 255 255 / .12); border-radius: 12px; background: rgb(255 255 255 / .045); }
+  .np-studio-theme-panel-label { color: rgb(255 255 255 / .78); font-size: 11px; font-weight: 700; }
+  .np-studio-theme-panel--collapsed { justify-content: center; padding: 3px 0; }
+  .np-studio-theme-panel--collapsed .np-studio-theme-toggle { width: 54px; min-width: 54px; padding: 0; }
 
   /* Compact editorial controls: keep metadata dense so the writing surface stays primary. */
   .studio-editor-split {
@@ -301,9 +355,9 @@
   @media (max-width: 40rem) { .studio-preview-gallery { flex-wrap: wrap; } .studio-preview-gallery .studio-preview-image { flex-basis: calc(50% - .375rem); } }
 
   .studio-editor-classic {
-    border: 1px solid #cfd4da;
-    background: #f6f7f7;
-    color: #3c434a;
+    border: 1px solid var(--np-toolbar-line);
+    background: var(--np-toolbar);
+    color: var(--np-toolbar-ink);
     font-family: Arial, sans-serif;
   }
   .studio-editor-classic-top {
@@ -312,25 +366,25 @@
     justify-content: space-between;
     min-height: 2.25rem;
     padding: 0.28rem 0.35rem 0;
-    border-bottom: 1px solid #cfd4da;
-    background: #fff;
+    border-bottom: 1px solid var(--np-toolbar-line);
+    background: var(--np-surface);
   }
   .studio-editor-media {
-    border: 1px solid #c3c4c7;
-    background: linear-gradient(#fff, #f0f0f1);
-    color: #3c434a;
+    border: 1px solid var(--np-toolbar-border);
+    background: var(--np-toolbar);
+    color: var(--np-toolbar-ink);
     cursor: pointer;
     font-size: 0.72rem;
     line-height: 1.8;
     padding: 0.08rem 0.5rem;
   }
   .studio-editor-media { align-self: center; border-radius: 2px; }
-  .studio-editor-media:hover { border-color: #8c8f94; background: #fff; color: #1d2327; }
-  .studio-editor-classic-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; padding: 0.28rem 0.35rem; border-bottom: 1px solid #dcdcde; }
-  .studio-editor-classic-tool, .studio-editor-classic-select { min-width: 1.8rem; height: 1.8rem; border: 1px solid transparent; border-radius: 2px; background: transparent; color: #3c434a; cursor: pointer; font-size: 0.78rem; font-weight: 600; text-align: center; }
-  .studio-editor-classic-tool:hover { border-color: #8c8f94; background: #fff; color: #1d2327; }
+  .studio-editor-media:hover { border-color: var(--np-toolbar-border); background: var(--np-toolbar-hover); color: var(--np-toolbar-ink); }
+  .studio-editor-classic-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem; padding: 0.28rem 0.35rem; border-bottom: 1px solid var(--np-toolbar-line); }
+  .studio-editor-classic-tool, .studio-editor-classic-select { min-width: 1.8rem; height: 1.8rem; border: 1px solid transparent; border-radius: 2px; background: transparent; color: var(--np-toolbar-ink); cursor: pointer; font-size: 0.78rem; font-weight: 600; text-align: center; }
+  .studio-editor-classic-tool:hover { border-color: var(--np-toolbar-border); background: var(--np-toolbar-hover); color: var(--np-toolbar-ink); }
   .studio-editor-classic-tool:disabled, .studio-editor-classic-select:disabled, .studio-editor-media:disabled { cursor: not-allowed; opacity: 0.5; }
-  .studio-editor-classic-select { width: 7rem; padding-inline: 0.35rem; border-color: #c3c4c7; background: #fff; font-size: 0.7rem; font-weight: 400; text-align: left; }
+  .studio-editor-classic-select { width: 7rem; padding-inline: 0.35rem; border-color: var(--np-toolbar-border); background: var(--np-surface); font-size: 0.7rem; font-weight: 400; text-align: left; }
 
   .np-btn {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-50;
@@ -525,3 +579,5 @@
 .np-brand-logo-mark--dark { display: none; }
 [data-theme="dark"] .np-brand-logo-mark--light { display: none; }
 [data-theme="dark"] .np-brand-logo-mark--dark { display: block; }
+[data-theme="light"] .np-brand-logo-mark--light { display: block; }
+[data-theme="light"] .np-brand-logo-mark--dark { display: none; }

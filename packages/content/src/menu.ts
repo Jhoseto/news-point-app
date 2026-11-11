@@ -18,6 +18,17 @@ export const PUBLIC_MENU: readonly { slug: string; name: string }[] = [
   { slug: "izbori", name: "Избори" },
 ];
 
+/**
+ * Temporary public hide list. Entries stay in PUBLIC_MENU (labels, Studio, direct URLs).
+ * Clear a slug here to show the rubric again in nav and homepage.
+ */
+export const PUBLIC_MENU_TEMPORARILY_HIDDEN: ReadonlySet<string> = new Set(["izbori"]);
+
+/** Public nav/homepage order without temporarily hidden rubrics. */
+export function visiblePublicMenu(): readonly { slug: string; name: string }[] {
+  return PUBLIC_MENU.filter((entry) => !PUBLIC_MENU_TEMPORARILY_HIDDEN.has(entry.slug));
+}
+
 const bySlug = new Map(PUBLIC_MENU.map((entry) => [entry.slug, entry.name]));
 
 /** Menu label for a rubric; other categories keep their stored name. */

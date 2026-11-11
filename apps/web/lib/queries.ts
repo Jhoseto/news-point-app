@@ -5,7 +5,7 @@ import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } 
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
 import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, publishRequests, staffUsers, storyThemeArticles, storyThemes } from "@newspoint/db";
-import { PUBLIC_MENU, menuName } from "./menu";
+import { menuName, visiblePublicMenu } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
 import { searchTerms } from "./search";
 import { CATEGORY_PAGE_SIZE, categoryCursorUrl, type CategoryCursor } from "./category-pagination";
@@ -202,13 +202,14 @@ async function summaryQuery(archive = false) {
 }
 
 const readMenuCategories = unstable_cache(async (): Promise<CategoryRef[]> => {
-  const slugs = PUBLIC_MENU.map((entry) => entry.slug);
+  const menu = visiblePublicMenu();
+  const slugs = menu.map((entry) => entry.slug);
   const rows = await getDb()
     .select({ id: categories.id, slug: categories.slug, name: categories.name, path: categories.path })
     .from(categories)
     .where(inArray(categories.slug, slugs));
   const bySlug = new Map(rows.map((row) => [row.slug, row]));
-  return PUBLIC_MENU.flatMap((entry) => {
+  return menu.flatMap((entry) => {
     const row = bySlug.get(entry.slug);
     return row ? [{ ...row, name: entry.name }] : [];
   });

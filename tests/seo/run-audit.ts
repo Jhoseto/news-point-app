@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import { createScriptDb, findRepoRoot } from "../../packages/db/src/node";
 import { decode, inspectSeoHtml } from "./html-audit";
 import { auditPublicLink, internalLinkPaths } from "./link-audit";
-import { PUBLIC_MENU } from "../../packages/content/src/menu";
+import { visiblePublicMenu } from "../../packages/content/src/menu";
 import { CAMERA_CATALOG } from "../../apps/web/lib/livepoint/cameras/catalog";
 import { featuredPeople } from "../../apps/web/lib/public-team";
 
@@ -57,7 +57,7 @@ try {
       union all select '/temi/' || slug || '/' from story_themes where is_published and published_at <= now()
       union all select '/livepoint/podcast/' || slug || '/' from podcasts where status = 'published' and published_at <= now()`)).map((row) => row.path);
     const sections = rows<{ path: string; slug: string }>(await tx.execute(sql`select path, slug from categories where kind = 'section'`));
-    const menu = new Set(PUBLIC_MENU.map((entry) => entry.slug));
+    const menu = new Set(visiblePublicMenu().map((entry) => entry.slug));
     expectedPaths.push(...sections.filter((section) => menu.has(section.slug)).map((section) => section.path), ...staticPaths, ...CAMERA_CATALOG.map((camera) => `/livepoint/cameras/${camera.slug}/`));
     const hiddenSamples = rows<{ id: string; path: string }>(await tx.execute(sql`select id, path from articles where not is_public or published_at > now() or published_at is null order by updated_at desc limit 3`));
     const hiddenPodcasts = rows<{ id: string; slug: string }>(await tx.execute(sql`select id, slug from podcasts where status <> 'published' or published_at > now() or published_at is null order by created_at desc limit 3`));

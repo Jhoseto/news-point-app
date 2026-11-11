@@ -143,7 +143,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
           {presets.map((preset) => {
             const active = query.from === preset.from && query.to === preset.to;
             return (
-              <Link key={preset.label} href={articleListHref(query, { from: preset.from, to: preset.to, page: 1 })} className={`rounded-full px-2 py-px font-semibold ${active ? "bg-ink text-white" : "bg-surface-2 text-muted hover:text-ink"}`} aria-current={active ? "true" : undefined}>
+              <Link key={preset.label} href={articleListHref(query, { from: preset.from, to: preset.to, page: 1 })} className={`rounded-full px-2 py-px font-semibold ${active ? "bg-ink text-on-ink" : "bg-surface-2 text-muted hover:text-ink"}`} aria-current={active ? "true" : undefined}>
                 {preset.label}
               </Link>
             );
@@ -248,7 +248,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
               {pageWindow(desk.page, desk.pageCount).map((item, index) => item === "gap" ? (
                 <span key={`gap-${index}`} className="px-0.5 text-muted">…</span>
               ) : (
-                <Link key={item} href={articleListHref(query, { page: item })} aria-current={item === desk.page ? "page" : undefined} className={`min-w-6 rounded px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums ${item === desk.page ? "bg-ink text-white" : "text-muted hover:bg-surface-2 hover:text-ink"}`}>{number.format(item)}</Link>
+                <Link key={item} href={articleListHref(query, { page: item })} aria-current={item === desk.page ? "page" : undefined} className={`min-w-6 rounded px-1.5 py-0.5 text-center text-[11px] font-semibold tabular-nums ${item === desk.page ? "bg-ink text-on-ink" : "text-muted hover:bg-surface-2 hover:text-ink"}`}>{number.format(item)}</Link>
               ))}
             </div>
             <Link href={articleListHref(query, { page: Math.min(desk.pageCount, desk.page + 1) })} aria-disabled={desk.page === desk.pageCount} className={`np-btn np-btn-secondary h-7 px-2 py-0 text-xs ${desk.page === desk.pageCount ? "pointer-events-none opacity-40" : ""}`}>Следваща</Link>

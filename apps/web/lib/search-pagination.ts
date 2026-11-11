@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { z } from "zod";
 import { archiveTimestampSchema } from "./category-pagination";
-import { PUBLIC_MENU } from "./menu";
+import { visiblePublicMenu } from "./menu";
 import { filteredSearchUrl, normalizeSearchQuery, SEARCH_PERIODS, type SearchFilters } from "./search";
 
 export type SearchParams = { q?: string | string[]; category?: string | string[]; period?: string | string[]; cursor?: string | string[] };
@@ -9,7 +9,7 @@ export function parseSearchFilters(params: SearchParams): SearchFilters {
   const query = normalizeSearchQuery((Array.isArray(params.q) ? params.q[0] : params.q) ?? "");
   const category = params.category ?? "";
   const period = params.period ?? "all";
-  if (typeof category !== "string" || (category !== "" && !PUBLIC_MENU.some(item => item.slug === category)) ||
+  if (typeof category !== "string" || (category !== "" && !visiblePublicMenu().some(item => item.slug === category)) ||
       typeof period !== "string" || !SEARCH_PERIODS.some(item => item.value === period)) throw new Error("Invalid search filters");
   return { query, category, period: period as SearchFilters["period"] };
 }

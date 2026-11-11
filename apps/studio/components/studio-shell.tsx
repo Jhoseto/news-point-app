@@ -7,6 +7,7 @@ import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
 import { studioSessionEnded } from "@/lib/session-probe";
+import { StudioThemeToggle } from "@/components/studio-theme";
 import { MONITORING_SEEN_EVENT, needsMonitoringAttention, seenKey, useMonitoring, type MonitoringSummary } from "@/lib/error-monitoring-client";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
@@ -189,7 +190,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
           <Icon d={collapsed ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} size={16} />
           {collapsed ? null : "Прибери менюто"}
         </button>
-        <nav className={`flex-1 space-y-0.5 ${collapsed ? "p-1.5" : "p-3"}`} aria-label="Studio">
+        <nav className={`min-h-0 flex-1 space-y-0.5 overflow-y-auto ${collapsed ? "p-1.5" : "p-3"}`} aria-label="Studio">
           {nav.map((item) => (
             <StudioNavLink
               key={item.href}
@@ -205,7 +206,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
             </StudioNavLink>
           ))}
         </nav>
-        <div className={`border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
+        <div className={`max-h-[calc(100dvh-5.75rem)] shrink-0 overflow-y-auto border-t border-white/10 ${collapsed ? "px-1.5 pt-2 pb-2" : "px-3 pt-3 pb-2.5"}`}>
           {canManageSocial && <Link href="/settings/social/" data-help={NAV_HELP["/settings/social/"]} className={`${navClass(collapsed)} mb-1`}><span aria-hidden="true">f</span>{!collapsed && "Facebook"}</Link>}
           {canManageUsers ? (
             <>
@@ -256,6 +257,10 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
               </span>
             )}
           </Link>
+          <div className={`np-studio-theme-panel ${collapsed ? "np-studio-theme-panel--collapsed" : ""}`} role="group" aria-label="Тема на Studio">
+            {collapsed ? null : <span className="np-studio-theme-panel-label">Тема</span>}
+            <StudioThemeToggle compact />
+          </div>
           <div className={`mt-2 flex ${collapsed ? "flex-col items-center gap-1" : "items-center justify-between gap-2"}`}>
             <a
               href={webUrl}
@@ -285,6 +290,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
       <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
         <BrandLogoImg className="h-7 w-auto max-w-[9rem] shrink-0 object-contain object-left" sizes="144px" />
         {canManageUsers ? <StudioNavLink href={MONITORING_LINK.href} aria-label={`${MONITORING_LINK.label}${monitoringAttention ? ` — ${monitoringTitle}` : ""}`} aria-current={isActive(MONITORING_LINK.href) ? "page" : undefined} data-help={NAV_HELP[MONITORING_LINK.href]} className="relative flex size-9 shrink-0 items-center justify-center rounded-lg text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"><Icon d={MONITORING_LINK.icon} />{monitoringBadge}</StudioNavLink> : null}
+        <StudioThemeToggle compact surface />
         <nav className="relative ml-auto flex min-w-0 items-center gap-1 overflow-x-auto" aria-label="Studio">
           {mobileNav.map((item) => (
             <StudioNavLink

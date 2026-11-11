@@ -353,9 +353,9 @@ export function ArrangeDesk({
   return (
     <div className="flex flex-col gap-4">
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <a href={withBase("/arrange/?page=home")} className={`rounded-full px-3 py-1 text-xs font-bold ${pageKey === HOME_PAGE_KEY ? "bg-ink text-white" : "bg-surface-2 text-muted"}`}>Начало</a>
+        <a href={withBase("/arrange/?page=home")} className={`rounded-full px-3 py-1 text-xs font-bold ${pageKey === HOME_PAGE_KEY ? "bg-ink text-on-ink" : "bg-surface-2 text-muted"}`}>Начало</a>
         {menu.map((item) => (
-          <a key={item.id} href={withBase(`/arrange/?page=${item.id}`)} className={`rounded-full px-3 py-1 text-xs font-semibold ${pageKey === item.id ? "bg-ink text-white" : "bg-surface-2 text-muted"}`}>{item.name}</a>
+          <a key={item.id} href={withBase(`/arrange/?page=${item.id}`)} className={`rounded-full px-3 py-1 text-xs font-semibold ${pageKey === item.id ? "bg-ink text-on-ink" : "bg-surface-2 text-muted"}`}>{item.name}</a>
         ))}
       </div>
 
@@ -389,7 +389,7 @@ export function ArrangeDesk({
         </label>
         <div className="flex flex-wrap gap-2">
           <button data-help="Записва подреждането като чернова. За показване на сайта натиснете Публикувай." type="button" disabled={busy} className="h-10 rounded-full bg-surface-2 px-5 text-sm font-bold text-ink" onClick={async () => { if (await send({ action: "save", pageKey, note: deskNote, document })) setMessage("Черновата е запазена."); }}>Запази чернова</button>
-          <button data-help="Записва и публикува текущото подреждане. Промяната се изпраща към отворените страници на читателите." type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-white" onClick={async () => {
+          <button data-help="Записва и публикува текущото подреждане. Промяната се изпраща към отворените страници на читателите." type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-on-ink" onClick={async () => {
             if (!await send({ action: "save", pageKey, note: deskNote, document })) return;
             if (await send({ action: "publish", pageKey })) setMessage("Подреждането е на сайта.");
           }}>Публикувай</button>
