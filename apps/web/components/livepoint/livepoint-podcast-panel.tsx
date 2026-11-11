@@ -1,13 +1,8 @@
 "use client";
 
-import { PodcastProvider } from "../podcast/provider";
 import { PodcastPanel } from "../podcast/show";
 
-/** Podcast panel needs player context; root layout no longer wraps every page. */
+/** The root player stays mounted as readers navigate between public pages. */
 export function LivePointPodcastPanel() {
-  return (
-    <PodcastProvider>
-      <PodcastPanel />
-    </PodcastProvider>
-  );
+  return <PodcastPanel />;
 }

@@ -1,9 +1,13 @@
 "use client";
 
-import { useId, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { playbackClock } from "@/lib/podcast-playback";
+import { PODCAST_WAVE_POINTS, PODCAST_WAVE_FFT_SIZE, podcastWavePaths } from "@/lib/podcast-waveform";
+import { usePodcastPlayer } from "./provider";
 
-/** Decorative motion: deliberately independent of the audio output and decoding. */
+const IDLE_WAVE = podcastWavePaths(new Uint8Array(PODCAST_WAVE_FFT_SIZE).fill(128), new Float32Array(PODCAST_WAVE_POINTS * 3));
+
+/** One seek control, a live signal and its fading peak memory. */
 export function PodcastTimeline({ current, duration, buffered, playing, waiting, disabled, onSeek }: {
   current: number; duration: number; buffered: number; playing: boolean; waiting: boolean; disabled: boolean;
   onSeek: (seconds: number) => void;
@@ -11,9 +15,65 @@ export function PodcastTimeline({ current, duration, buffered, playing, waiting,
   const id = useId().replaceAll(":", "");
   const dragging = useRef(false);
   const draftRef = useRef<number | null>(null);
+  const frontPath = useRef<SVGPathElement>(null);
+  const backPath = useRef<SVGPathElement>(null);
+  const waveHistory = useRef(new Float32Array(PODCAST_WAVE_POINTS * 3));
   const [draft, setDraft] = useState<number | null>(null);
+  const { episode, readWaveform } = usePodcastPlayer();
   const time = draft ?? current;
   const percent = duration ? time / duration * 100 : 0;
+  useEffect(() => {
+    waveHistory.current.fill(0);
+    frontPath.current?.setAttribute("d", IDLE_WAVE.front);
+    backPath.current?.setAttribute("d", IDLE_WAVE.back);
+    if (backPath.current) backPath.current.style.opacity = "0";
+  }, [episode?.id]);
+  useEffect(() => {
+    if (!playing || waiting || disabled || draft !== null || !frontPath.current || !backPath.current) return;
+    const front = frontPath.current;
+    const back = backPath.current;
+    const samples = new Uint8Array(PODCAST_WAVE_FFT_SIZE);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let visible = true;
+    let disposed = false;
+    let frame = 0;
+    let lastFrame = 0;
+    function sync() {
+      if (disposed) return;
+      if (reducedMotion.matches || document.hidden || !visible) {
+        if (frame) cancelAnimationFrame(frame);
+        frame = 0;
+      } else if (!frame) frame = requestAnimationFrame(tick);
+    }
+    function tick(now: number) {
+      frame = 0;
+      if (now - lastFrame >= 1000 / 30) {
+        const elapsedMs = lastFrame ? now - lastFrame : 33;
+        lastFrame = now;
+        if (readWaveform(samples)) {
+          const paths = podcastWavePaths(samples, waveHistory.current, elapsedMs);
+          front.setAttribute("d", paths.front);
+          back.setAttribute("d", paths.back);
+          back.style.opacity = String(paths.echoOpacity);
+        }
+      }
+      sync();
+    }
+    const observer = typeof IntersectionObserver === "function"
+      ? new IntersectionObserver(([entry]) => { visible = entry?.isIntersecting ?? false; sync(); })
+      : null;
+    observer?.observe(front);
+    reducedMotion.addEventListener("change", sync);
+    document.addEventListener("visibilitychange", sync);
+    sync();
+    return () => {
+      disposed = true;
+      if (frame) cancelAnimationFrame(frame);
+      observer?.disconnect();
+      reducedMotion.removeEventListener("change", sync);
+      document.removeEventListener("visibilitychange", sync);
+    };
+  }, [playing, waiting, disabled, draft, readWaveform]);
   function finish(commit: boolean) {
     if (!dragging.current) return;
     dragging.current = false;
@@ -21,13 +81,13 @@ export function PodcastTimeline({ current, duration, buffered, playing, waiting,
     draftRef.current = null;
     setDraft(null);
   }
-  return <div className="np-audio-timeline" data-moving={playing && draft === null} data-scrubbing={draft !== null}>
+  return <div className="np-audio-timeline" data-scrubbing={draft !== null}>
     <div className="np-audio-wave" style={{ "--seek": `${percent}%`, "--buffer": `${buffered}%` } as CSSProperties}>
       <svg viewBox="0 0 600 56" preserveAspectRatio="none" aria-hidden="true">
         <defs><linearGradient id={id}><stop stopColor="var(--np-podcast-wave-1)" /><stop offset=".55" stopColor="var(--np-accent)" /><stop offset="1" stopColor="var(--np-podcast-wave-2)" /></linearGradient></defs>
-        <g className="np-audio-wave-motion" fill="none" stroke={`url(#${id})`} strokeLinecap="round">
-          <path className="np-audio-wave-back" d="M0 28 C30 28 35 13 65 20 S105 45 140 29 S175 12 210 25 S250 42 285 28 S325 9 360 24 S400 44 435 29 S470 15 505 25 S555 36 600 28" />
-          <path className="np-audio-wave-front" d="M0 28 C25 28 40 36 65 28 S110 8 140 23 S180 43 210 28 S250 13 285 26 S325 43 360 29 S400 11 435 25 S480 40 505 28 S560 20 600 28" />
+        <g fill="none" stroke={`url(#${id})`} strokeLinecap="round">
+          <path ref={backPath} className="np-audio-wave-back" d={IDLE_WAVE.back} />
+          <path ref={frontPath} className="np-audio-wave-front" d={IDLE_WAVE.front} />
         </g>
       </svg>
       <div className="np-audio-wave-progress" aria-hidden="true" />

@@ -7,7 +7,7 @@ import { BrandLogoImg } from "./brand-logo-img";
 import { Logo } from "./logo";
 import { RubricsNav } from "./nav";
 import { RubricsButton } from "./rubrics-trigger";
-import { SiteSearch } from "./site-search";
+import { HeaderPodcastSearch } from "./podcast/header-podcast-search";
 import { HeaderUtilities } from "./header-utilities";
 import { MobileFooter } from "./mobile-footer";
 import { DesktopFooter } from "./desktop-footer";
@@ -35,7 +35,7 @@ export async function SiteHeader() {
           <>
             <div className="hidden min-w-0 lg:block" aria-hidden="true" />
             <div className="hidden min-w-0 lg:block">
-              <SiteSearch />
+              <HeaderPodcastSearch />
             </div>
           </>
         )}

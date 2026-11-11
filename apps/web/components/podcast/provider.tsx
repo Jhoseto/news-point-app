@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { PublicEpisode } from "@/lib/podcast-types";
 import { logClickyMedia } from "@/lib/clicky-track";
 import { adjacentEpisode, clampPlaybackTime } from "@/lib/podcast-playback";
+import { PODCAST_WAVE_FFT_SIZE } from "@/lib/podcast-waveform";
 
 type PlayerValue = {
   episode: PublicEpisode | null;
@@ -18,7 +19,9 @@ type PlayerValue = {
   sleepMin: number | null;
   error: string;
   waiting: boolean;
+  readWaveform: (target: Uint8Array<ArrayBuffer>) => boolean;
   play: (episode: PublicEpisode, queue: PublicEpisode[]) => void;
+  stop: () => void;
   toggle: () => void;
   seek: (seconds: number) => void;
   skip: (delta: number) => void;
@@ -30,6 +33,8 @@ type PlayerValue = {
 };
 
 const PlayerContext = createContext<PlayerValue | null>(null);
+
+type AudioGraph = { context: AudioContext; source: MediaElementAudioSourceNode | null; analyser: AnalyserNode | null };
 
 export function usePodcastPlayer() {
   const value = useContext(PlayerContext);
@@ -43,6 +48,7 @@ export function usePodcastPlayer() {
  */
 export function PodcastProvider({ children }: { children: ReactNode }) {
   const audio = useRef<HTMLAudioElement | null>(null);
+  const audioGraph = useRef<AudioGraph | null>(null);
   const [waiting, setWaiting] = useState(false);
   const [episode, setEpisode] = useState<PublicEpisode | null>(null);
   const [queue, setQueue] = useState<PublicEpisode[]>([]);
@@ -57,9 +63,52 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState("");
   const episodeRef = useRef(episode);
   const queueRef = useRef(queue);
+  const prepareAnalysis = useCallback(() => {
+    const node = audio.current;
+    if (!node || typeof window.AudioContext !== "function") return;
+    const existing = audioGraph.current;
+    if (existing) {
+      void existing.context.resume().catch(() => {});
+      return;
+    }
+    let context: AudioContext;
+    try { context = new AudioContext(); } catch { return; }
+    const graph: AudioGraph = { context, source: null, analyser: null };
+    audioGraph.current = graph;
+    // Resume before attaching the media element: a rejected context must not silence playback.
+    void context.resume().then(() => {
+      if (audioGraph.current !== graph || audio.current !== node) { void context.close().catch(() => {}); return; }
+      try {
+        const source = context.createMediaElementSource(node);
+        graph.source = source;
+        source.connect(context.destination);
+        try {
+          const analyser = context.createAnalyser();
+          analyser.fftSize = PODCAST_WAVE_FFT_SIZE;
+          source.connect(analyser);
+          graph.analyser = analyser;
+        } catch { /* Direct audio output is already connected. */ }
+      } catch {
+        audioGraph.current = null;
+        void context.close().catch(() => {});
+      }
+    }).catch(() => {
+      if (audioGraph.current === graph) audioGraph.current = null;
+      void context.close().catch(() => {});
+    });
+  }, []);
+  const readWaveform = useCallback((target: Uint8Array<ArrayBuffer>) => {
+    const graph = audioGraph.current;
+    const node = audio.current;
+    if (!graph?.analyser || graph.context.state !== "running" || !node || node.paused) return false;
+    if (node.muted || node.volume === 0) target.fill(128);
+    else graph.analyser.getByteTimeDomainData(target);
+    return true;
+  }, []);
   const startAudio = useCallback(() => {
     const node = audio.current;
     if (!node) return;
+    prepareAnalysis();
     setError("");
     if (node.error) {
       const resume = node.currentTime;
@@ -69,7 +118,7 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       }, { once: true });
       node.load();
     } else void node.play().catch(() => setError("Звукът не може да се пусне. Опитайте отново."));
-  }, []);
+  }, [prepareAnalysis]);
   useEffect(() => {
     episodeRef.current = episode;
     queueRef.current = queue;
@@ -94,6 +143,7 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     };
     const onMeta = () => setDuration(Number.isFinite(node.duration) ? node.duration : 0);
     const onPlay = () => {
+      if (audioGraph.current?.context.state === "suspended") void audioGraph.current.context.resume().catch(() => {});
       setPlaying(true);
       const current = episodeRef.current;
       if (current) logClickyMedia("play", node.currentTime, current.audioUrl, current.title);
@@ -145,6 +195,9 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       node.removeEventListener("ended", onEnded);
       node.pause();
       node.src = "";
+      audioGraph.current?.source?.disconnect();
+      if (audioGraph.current) void audioGraph.current.context.close().catch(() => {});
+      audioGraph.current = null;
       audio.current = null;
     };
   }, [step]);
@@ -214,7 +267,8 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
       if (!episodeRef.current || !audio.current) return;
       if (target?.closest("input, textarea, select, button, a, [contenteditable='true']")) return;
       const inside = !!target?.closest("[data-podcast-player]");
-      if (!inside && !playing) return;
+      // Playback now persists on every route; do not steal Space or arrows from article reading.
+      if (!inside) return;
       if (event.key === " " || event.key === "k") { event.preventDefault(); if (audio.current.paused) void audio.current.play(); else audio.current.pause(); }
       else if (event.key === "ArrowLeft") { event.preventDefault(); audio.current.currentTime = Math.max(0, audio.current.currentTime - 15); }
       else if (event.key === "ArrowRight") { event.preventDefault(); audio.current.currentTime = Math.min(audio.current.duration || 0, audio.current.currentTime + 15); }
@@ -222,17 +276,38 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [playing]);
+  }, []);
 
   const value = useMemo<PlayerValue>(() => ({
     episode, queue, playing, current, duration: duration || episode?.durationSec || 0, buffered, volume, muted, rate, sleepMin, error, waiting,
+    readWaveform,
     play: (next, list) => {
+      prepareAnalysis();
       setQueue(list);
       if (episodeRef.current?.id === next.id) {
         if (audio.current?.paused) startAudio(); else audio.current?.pause();
         return;
       }
       setBuffered(0); setPlaying(false); setEpisode(next); setError("");
+    },
+    stop: () => {
+      const node = audio.current;
+      node?.pause();
+      node?.removeAttribute("src");
+      node?.load();
+      if (audioGraph.current) void audioGraph.current.context.suspend().catch(() => {});
+      episodeRef.current = null;
+      queueRef.current = [];
+      setEpisode(null);
+      setQueue([]);
+      setPlaying(false);
+      setWaiting(false);
+      setCurrent(0);
+      setDuration(0);
+      setBuffered(0);
+      setSleepMin(null);
+      setError("");
+      if ("mediaSession" in navigator) navigator.mediaSession.metadata = null;
     },
     toggle: () => { const node = audio.current; if (!node) return; if (node.paused) startAudio(); else node.pause(); },
     seek: (seconds) => { const node = audio.current; if (node && node.readyState > 0) { const target = clampPlaybackTime(seconds, node.duration); setCurrent(target); node.currentTime = target; } },
@@ -242,7 +317,7 @@ export function PodcastProvider({ children }: { children: ReactNode }) {
     setMuted: setMutedState,
     setRate: setRateState,
     setSleep: setSleepMin,
-  }), [episode, queue, playing, current, duration, buffered, volume, muted, rate, sleepMin, error, waiting, step, startAudio]);
+  }), [episode, queue, playing, current, duration, buffered, volume, muted, rate, sleepMin, error, waiting, readWaveform, prepareAnalysis, step, startAudio]);
 
   return <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>;
 }

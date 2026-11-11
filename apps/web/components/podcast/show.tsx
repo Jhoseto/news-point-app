@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type MouseEvent, type TransitionEvent } from "react";
+import { createPortal } from "react-dom";
 import type { PublicEpisode } from "@/lib/podcast-types";
 import { displayedEpisode } from "@/lib/podcast-playback";
 import { PodcastPlayer, clock, usePodcastPlayer } from "./player";
+import { PodcastTimeline } from "./timeline";
 import { PodcastShareMenu } from "./share-menu";
 import { STUDIO_PHOTO } from "./studio-photo";
 import { ChevronRightIcon } from "../icons";
@@ -113,7 +115,9 @@ function PodcastPanelLayout({
 }
 
 function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutInitiallyOpen }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined; aboutInitiallyOpen: boolean }) {
-  const carousel = useRef<HTMLUListElement>(null);
+  const mainPlayer = useRef<HTMLDivElement>(null);
+  const [playerPassed, setPlayerPassed] = useState(false);
+  const player = usePodcastPlayer();
   const [aboutMounted, setAboutMounted] = useState(aboutInitiallyOpen);
   const [aboutOpen, setAboutOpen] = useState(aboutInitiallyOpen);
   const published = new Intl.DateTimeFormat("bg-BG", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Sofia" }).format(new Date(selected.publishedAt));
@@ -122,9 +126,17 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
     setAboutMounted(aboutInitiallyOpen);
     setAboutOpen(aboutInitiallyOpen);
   }, [selected.id, aboutInitiallyOpen]);
-  function moveCarousel(direction: 1 | -1) {
-    carousel.current?.scrollBy({ left: direction * Math.min(360, carousel.current.clientWidth * .82), behavior: "smooth" });
-  }
+  useEffect(() => {
+    const update = () => {
+      const node = mainPlayer.current;
+      if (!node) return;
+      setPlayerPassed(node.getBoundingClientRect().bottom < 0);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
+  }, []);
   function toggleAbout(event: MouseEvent<HTMLElement>) {
     event.preventDefault();
     if (aboutOpen) {
@@ -176,19 +188,15 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
             </div>
           </div>
         </details>
-        <PodcastPlayer theater suggested={selected} episodes={episodes} />
+        <div ref={mainPlayer} className="np-podcast-main-player"><PodcastPlayer theater suggested={selected} episodes={episodes} /></div>
       </div>
     </section>
     <section className="np-podcast-carousel" aria-labelledby="np-podcast-carousel-title">
       <div className="np-podcast-carousel-heading">
-        <div><p>Podcast</p><h2 id="np-podcast-carousel-title">Последни епизоди</h2></div>
-        <div className="np-podcast-carousel-actions">
-          {activeSlug && <Link href="/livepoint/podcast/">Виж всички</Link>}
-          <button onClick={() => moveCarousel(-1)} disabled={episodes.length < 2} aria-label="Предишни епизоди">←</button>
-          <button onClick={() => moveCarousel(1)} disabled={episodes.length < 2} aria-label="Следващи епизоди">→</button>
-        </div>
+        <div><p>NewsPoint Audio</p><h2 id="np-podcast-carousel-title">Всички епизоди</h2></div>
+        {activeSlug && <Link href="/livepoint/podcast/">Към подкастите</Link>}
       </div>
-      <ul ref={carousel}>{episodes.slice(0, 10).map((episode) => (
+      <ul>{episodes.map((episode) => (
         <EpisodeCard
           key={episode.id}
           episode={episode}
@@ -199,6 +207,12 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
         />
       ))}</ul>
     </section>
+    {playerPassed && player.episode && !player.error && createPortal(<div className="np-podcast-dock" role="region" aria-label="Плеър при скрол">
+      <div className="np-podcast-dock-art"><PodcastCover src={player.episode.coverUrl} /></div>
+      <div className="np-podcast-dock-info"><span>{player.playing ? "Слушате сега" : "На пауза"}</span><strong>{player.episode.title}</strong></div>
+      <div className="np-podcast-dock-timeline"><PodcastTimeline current={player.current} duration={player.duration} buffered={player.duration ? Math.min(100, player.buffered / player.duration * 100) : 0} playing={player.playing && !player.waiting} waiting={player.waiting} disabled={!player.duration} onSeek={player.seek} /></div>
+      <button className="np-podcast-dock-toggle" onClick={player.toggle} aria-label={player.playing ? "Пауза" : "Продължи слушането"}><AudioIcon name={player.playing ? "pause" : "play"} /></button>
+    </div>, document.body)}
   </div>;
 }
 

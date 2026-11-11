@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { PodcastProvider } from "./provider";
 
-/** Podcast playback context only on podcast routes — not the public homepage bundle. */
+/** One audio engine for the public site, retained by the shared root layout. */
 export function PodcastRoot({ children }: { children: ReactNode }) {
   return <PodcastProvider>{children}</PodcastProvider>;
 }
