@@ -6,6 +6,7 @@ import { MobileCanonicalFeed } from "@/components/mobile-rubric-feed";
 import { homeMobileFeed } from "@/lib/mobile-rubric-feed-server";
 import { getMenuCategories } from "@/lib/queries";
 import { HomeShineRoot } from "@/components/home-shine-root";
+import { HomePodcastLink } from "@/components/home-podcast-link";
 import { Fragment } from "react";
 import dynamic from "next/dynamic";
 import { carouselArticle } from "@/lib/carousel-article";
@@ -146,6 +147,7 @@ export default async function HomePage() {
           />
         ) : null}
 
+        {home.latestPodcast ? <HomePodcastLink episode={home.latestPodcast} /> : null}
         {mainSections.map((section) => {
           if (section.category.slug === "balgariya") {
             return (

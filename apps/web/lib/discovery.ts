@@ -15,7 +15,7 @@ function link(origin: string, path: string, title: string): string {
   return `- [${markdownText(title)}](<${origin}${path}>)`;
 }
 
-export function llmsText(origin: string, articles: { path: string; title: string; excerpt?: string; publishedAt?: Date }[], themes: { slug: string; title: string }[], cityPages: { path: string; title: string }[] = []): string {
+export function llmsText(origin: string, articles: { path: string; title: string; excerpt?: string; publishedAt?: Date }[], themes: { slug: string; title: string }[], cityPages: { path: string; title: string }[] = [], episodes: { path: string; title: string }[] = []): string {
   return [
     "# NewsPoint.bg", "",
     "> Независим новинарски портал за Пловдив, България и света. Публикациите са на български език.", "",
@@ -27,7 +27,8 @@ export function llmsText(origin: string, articles: { path: string; title: string
     link(origin, "/sitemap.xml", "Sitemap индекс — всички публични канонични адреси"),
     link(origin, "/feed/", "RSS — последни новини с дата и резюме"),
     link(origin, "/temi/", "Теми с продължение"),
-    link(origin, "/livepoint/podcast/", "Podcast"), "",
+    link(origin, "/livepoint/podcast/", "Каталог на подкастите"), "",
+    ...(episodes.length ? ["## Подкаст епизоди", "", ...episodes.map(episode => link(origin, episode.path, episode.title)), ""] : []),
     ...(cityPages.length ? ["## Моят Пловдив — градски справки и събития", "", "Практичен раздел на NewsPoint за Пловдив. Страниците показват наличните данни и произхода им. Времето на получаване не е гаранция, че няма последваща промяна. Планираните автобусни часове не са местоположение в реално време. Празна или недостъпна справка не доказва липса на аварии, услуги или събития.", "", ...cityPages.map(page => link(origin, page.path, page.title)), ""] : []),
     ...(themes.length ? ["## Публикувани теми", "", ...themes.map((theme) => link(origin, `/temi/${theme.slug}/`, theme.title)), ""] : []),
     ...(articles.length ? ["## Последни публикации", "", ...articles.map((article) => {

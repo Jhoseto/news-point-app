@@ -23,14 +23,13 @@ export default async function PodcastPage() {
   });
   const [episodes, desktop] = await Promise.all([publicEpisodes(), ssrDesktopViewport()]);
   const origin = shareOrigin();
-  const visibleEpisodes = episodes.slice(0, 10);
   const page = PUBLIC_SEO_PAGES.podcast;
   return (
     <PodcastPageShell>
       <JsonLd id="np-ld-podcast" data={[
-        podcastSeries(origin, page.description, visibleEpisodes),
-        collectionPage({ origin, path: page.path, title: page.title, description: page.description, items: visibleEpisodes }),
-        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: "Podcast" }]),
+        podcastSeries(origin, page.description, episodes),
+        collectionPage({ origin, path: page.path, title: page.title, description: page.description, items: episodes }),
+        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name: page.title }]),
       ]} />
       <PodcastShow episodes={episodes} publicOrigin={origin} aboutInitiallyOpen={desktop} />
     </PodcastPageShell>

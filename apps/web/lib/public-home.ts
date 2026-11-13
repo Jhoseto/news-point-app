@@ -11,6 +11,7 @@ import {
   nextArrangementChangeAt,
 } from "@newspoint/content";
 import { featuredPoll } from "@newspoint/db/polls";
+import { publicEpisodeLinks } from "./podcasts";
 import type { PublicPoll } from "@newspoint/db/poll-types";
 import { categoryFront, homeArrangement } from "./front-page";
 import { composeHome, composeLabelCarousel, type ComposedSection } from "./home-compose";
@@ -32,6 +33,7 @@ export interface PublicHome {
   topicsCarousel: ArticleSummary[];
   voiceCarousel: ArticleSummary[];
   poll: PublicPoll | null;
+  latestPodcast: { path: string; title: string } | null;
 }
 
 function reviveArticle(article: ArticleSummary): ArticleSummary {
@@ -41,7 +43,7 @@ function reviveArticle(article: ArticleSummary): ArticleSummary {
 async function queryPublicHomeInputs() {
   const menu = await getMenuCategories();
   const analysesCategory = menu.find((category) => category.slug === HOME_ANALYSES_RUBRIC_SLUG);
-  const [latest, featured, focusPool, voiceOfTruth, analysesPool, poll, placed] = await Promise.all([
+  const [latest, featured, focusPool, voiceOfTruth, analysesPool, poll, placed, podcasts] = await Promise.all([
     getLatest(50),
     getLabelled(LEADING_LABEL, 13),
     getLabelled(FOCUS_LABEL, 50),
@@ -52,6 +54,10 @@ async function queryPublicHomeInputs() {
       return null;
     }),
     homeArrangement(),
+    publicEpisodeLinks(1).catch((error: unknown) => {
+      console.error("[podcasts] homepage link unavailable", error instanceof Error ? error.message : "unknown");
+      return [];
+    }),
   ]);
   const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
   return {
@@ -65,10 +71,11 @@ async function queryPublicHomeInputs() {
     sections,
     document: placed.document,
     pinned: [...placed.pinned],
+    latestPodcast: podcasts[0] ?? null,
   };
 }
 
-const readPublicHomeInputs = unstable_cache(queryPublicHomeInputs, ["public-home-inputs"], { revalidate: 60, tags: ["public-listings"] });
+const readPublicHomeInputs = unstable_cache(queryPublicHomeInputs, ["public-home-inputs-v2"], { revalidate: 60, tags: ["public-listings"] });
 
 /** Cache the source pools, but evaluate placement windows against this request's clock. */
 export const loadPublicHome = cache(async (): Promise<PublicHome> => {
@@ -129,5 +136,6 @@ export const loadPublicHome = cache(async (): Promise<PublicHome> => {
       slotPrefix: HOME_VOICE_CAROUSEL_PREFIX,
     }),
     poll,
+    latestPodcast: input.latestPodcast,
   };
 });

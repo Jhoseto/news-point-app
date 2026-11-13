@@ -9,7 +9,8 @@ import { eq } from "drizzle-orm";
 import * as schema from "../../../packages/db/src/schema";
 import type { ScriptDb } from "@newspoint/db/node";
 import { cancelMediaUpload, checksum, claimMediaUpload, cleanExpiredUploads, completeMediaUpload, createMediaUpload, mediaUploadStatus, ownMediaUpload, putMediaChunk, uploadDirectory, uploadIntent } from "@newspoint/db/media-uploads";
-const mocks = vi.hoisted(() => ({ audio: vi.fn(), photo: vi.fn(), video: vi.fn(), write: vi.fn(), writeFromFile: vi.fn(), remove: vi.fn() }));
+const mocks = vi.hoisted(() => ({ audio: vi.fn(), photo: vi.fn(), video: vi.fn(), write: vi.fn(), writeFromFile: vi.fn(), remove: vi.fn(), refresh: vi.fn(async (_paths: string[]) => ({ triggered: true, reason: "ok" })) }));
+vi.mock("@newspoint/content", async (actual) => ({ ...await actual<typeof import("@newspoint/content")>(), triggerRevalidate: mocks.refresh }));
 vi.mock("@newspoint/content/audio", () => ({ preparePodcastAudio: mocks.audio }));
 vi.mock("@newspoint/content/upload-media", () => ({ optimizeVideo: mocks.video, prepareUploadedPhoto: mocks.photo, writeMediaFile: mocks.write, writeMediaFromFile: mocks.writeFromFile, removeMediaFile: mocks.remove }));
 import { processOneMediaUpload } from "./media-upload-worker";
@@ -39,10 +40,11 @@ beforeEach(async () => {
  mocks.photo.mockResolvedValue({ buffer: Buffer.from("webp"), width: 800, height: 600 });
  mocks.video.mockResolvedValue({ duration: 5, width: 1280, height: 720, bytes: 10 });
 });
-function intent(edit?: { id: string; revision: number }, audioOnly = false) {
+type FixtureMetadata = { id: string; revision: number } | { publish: true };
+function intent(edit?: FixtureMetadata, audioOnly = false) {
  return uploadIntent.parse({ kind: "podcast", files: [{ key: "audio", name: "fixture.wav", bytes: audio.length, type: "audio/wav", sha256: checksum(audio) }, ...(!audioOnly ? [{ key: "cover", name: "fixture.png", bytes: cover.length, type: "image/png", sha256: checksum(cover) }] : [])], metadata: { title: "Fixture episode", summary: "Fixture summary", categoryId: null, publish: false, ...edit } });
 }
-async function queued(edit?: { id: string; revision: number }, audioOnly = false) {
+async function queued(edit?: FixtureMetadata, audioOnly = false) {
  const input = intent(edit, audioOnly), row = await createMediaUpload(db, editor, input);
  for (const file of input.files) { const bytes = file.key === "audio" ? audio : cover; await putMediaChunk(db, editor, row.id, file.key, 0, checksum(bytes), bytes); }
  await completeMediaUpload(db, editor, row.id); return row;
@@ -53,15 +55,24 @@ it("stores one optimized delivery audio and reports stored rather than source by
  expect(result.episode.audioKey).toMatch(/\.m4a$/); expect(result.episode.bytes).toBe(3); expect(result.audioOptimization).toEqual({ originalBytes: audio.length, storedBytes: 3, savedBytes: audio.length - 3 });
  expect(mocks.write).toHaveBeenCalledTimes(2); expect(mocks.write.mock.calls[1]![1]).toEqual(Buffer.from("aac")); expect(mocks.remove).not.toHaveBeenCalled();
  const episodes = await db.select().from(schema.podcasts); expect(episodes).toHaveLength(1); expect(episodes[0]!.status).toBe("draft");
+ expect(mocks.refresh).not.toHaveBeenCalled();
 });
 it("completion and worker retries never insert a second episode", async () => {
  const row = await queued(); await completeMediaUpload(db, editor, row.id); await processOneMediaUpload(db); await completeMediaUpload(db, editor, row.id); expect(await processOneMediaUpload(db)).toBe(false); expect(await db.select().from(schema.podcasts)).toHaveLength(1);
+});
+it("refreshes the archive, sitemap, text directory and individual URL on direct publication", async () => {
+ const row = await queued({ publish: true });
+ await processOneMediaUpload(db);
+ const state = await mediaUploadStatus(db, editor, row.id);
+ expect(state.state).toBe("ready");
+ expect(mocks.refresh).toHaveBeenCalledWith(expect.arrayContaining(["/", "/livepoint/podcast/", `/livepoint/podcast/${state.result?.slug}/`, "/sitemap.xml", "/llms.txt"]));
 });
 it("updates audio while preserving existing cover, status and publication date", async () => {
  const first = await queued(); await processOneMediaUpload(db); const [old] = await db.select().from(schema.podcasts);
  await db.update(schema.podcasts).set({ status: "published", publishedAt: new Date("2026-10-01T12:00:00Z") }).where(eq(schema.podcasts.id, old!.id)); mocks.write.mockClear();
  const row = await queued({ id: old!.id, revision: old!.revision }, true); await processOneMediaUpload(db); const state = await mediaUploadStatus(db, editor, row.id); const result = state.result as any;
  expect(result.episode.coverKey).toBe(old!.coverKey); expect(result.episode.status).toBe("published"); expect(result.episode.publishedAt).toBe("2026-10-01T12:00:00.000Z"); expect(result.episode.revision).toBe(2); expect(mocks.write).toHaveBeenCalledTimes(1);
+ expect(mocks.refresh).toHaveBeenCalledWith(expect.arrayContaining(["/", "/livepoint/podcast/", `/livepoint/podcast/${old!.slug}/`, "/sitemap.xml", "/llms.txt"]));
 });
 it("optimistic revision conflict preserves both episode and only cleans new attempted files", async () => {
  await queued().then(() => processOneMediaUpload(db)); const [old] = await db.select().from(schema.podcasts); const row = await queued({ id: old!.id, revision: old!.revision });

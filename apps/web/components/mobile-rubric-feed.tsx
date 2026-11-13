@@ -12,6 +12,7 @@ import { articleImageAttrs } from "@/lib/article-image";
 import { MobileCompactRow, MobileHorizonCard, MobileLeadCard, MobileSmallPair, MobileSupportingCard } from "./mobile-home-cards";
 import { CompactList } from "./lists";
 import { HomeCategorySection } from "./home-category-section";
+import { HomePodcastLink } from "./home-podcast-link";
 import { SectionTitle } from "./ui";
 import { Breadcrumbs } from "./breadcrumbs";
 import { Logo } from "./logo";
@@ -91,6 +92,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
     </div>
     {plovdivSection ? renderMainSection(plovdivSection) : null}
     {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-right" }, "topics")}
+    {feed.latestPodcast ? anchor("latest-podcast", <HomePodcastLink episode={feed.latestPodcast} />, window) : null}
     {mainAfterPlovdiv.map((section) => (
       <Fragment key={section.category.id}>
         {renderMainSection(section)}

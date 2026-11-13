@@ -6,7 +6,7 @@ import { claimMediaUpload, cleanExpiredUploads, readUploadPart, UPLOAD_CHUNK_BYT
 import { mediaAssets, mediaUploadChunks, mediaUploadSessions, podcasts, staffUsers, studioAuditLogs, type ScriptDb } from "@newspoint/db/node";
 import { optimizeVideo, prepareUploadedPhoto, removeMediaFile, writeMediaFile, writeMediaFromFile } from "@newspoint/content/upload-media";
 import { preparePodcastAudio } from "@newspoint/content/audio";
-import { podcastSlug } from "@newspoint/content";
+import { podcastRevalidationPaths, podcastSlug, triggerRevalidate } from "@newspoint/content";
 
 /** One durable media job across workers; fifteen-minute lease, renewed every30s. */
 export async function processOneMediaUpload(db: ScriptDb): Promise<boolean> {
@@ -15,6 +15,7 @@ export async function processOneMediaUpload(db: ScriptDb): Promise<boolean> {
  const token = row.leaseToken!;
  const heartbeat = setInterval(() => { void db.update(mediaUploadSessions).set({ leaseUntil: new Date(Date.now() + 15 * 60_000), updatedAt: new Date() }).where(and(eq(mediaUploadSessions.id, row.id), eq(mediaUploadSessions.leaseToken, token), eq(mediaUploadSessions.state, "processing"), gt(mediaUploadSessions.leaseUntil, new Date()))).catch(error => console.error("[media-upload] lease renewal failed", error instanceof Error ? error.message : "unknown")); }, 30_000);
  let committed = false;
+ let publishedPodcastSlug: string | null = null;
  try {
   const attemptDirectory = resolve(uploadDirectory(row.id), token);
   await mkdir(attemptDirectory, { recursive: true, mode: 0o700 });
@@ -49,15 +50,18 @@ export async function processOneMediaUpload(db: ScriptDb): Promise<boolean> {
      ? await tx.update(podcasts).set({ ...values, revision: sql`${podcasts.revision} + 1` }).where(and(eq(podcasts.id, existing.id), eq(podcasts.revision, metadata.revision!))).returning()
      : await tx.insert(podcasts).values({ ...values, id: row.id, slug: podcastSlug(metadata.title!, row.id.slice(0, 6)), status: metadata.publish ? "published" : "draft", publishedAt: metadata.publish ? now : null, createdBy: row.ownerId }).returning();
     if (!episode) throw new Error("Епизодът е променен от друг редактор. Презаредете преди нов запис.");
+    if (episode.status === "published") publishedPodcastSlug = episode.slug;
     result = { id: episode.id, slug: episode.slug, episode: { ...episode, publishedAt: episode.publishedAt?.toISOString() ?? null, createdAt: episode.createdAt.toISOString(), updatedAt: episode.updatedAt.toISOString() }, ...(audio ? { audioOptimization: { originalBytes: audio.originalBytes, storedBytes: audio.buffer.length, savedBytes: audio.originalBytes - audio.buffer.length } } : {}) };
     return result;
    });
   }
   committed = true;
+  if (publishedPodcastSlug) {
+   const refresh = await triggerRevalidate(podcastRevalidationPaths(publishedPodcastSlug));
+   if (refresh.reason === "error") console.error("[media-upload] public podcast cache refresh failed");
+  }
   await rm(uploadDirectory(row.id), { recursive: true, force: true });
   await db.update(mediaUploadSessions).set({ cleanedAt: new Date() }).where(and(eq(mediaUploadSessions.id, row.id), eq(mediaUploadSessions.state, "ready")));
-  // Public web reads fresh data; route revalidation is best effort, never undoes the durable commit.
-  if (row.kind === "podcast") await refreshPublicPodcast().catch(error => console.error("[media-upload] refresh", error instanceof Error ? error.message : "unknown"));
  } catch (error) {
   if (!committed) {
    // COMMIT may have succeeded even if its acknowledgement was lost. Never delete on uncertainty.
@@ -97,12 +101,6 @@ async function assemble(db: ScriptDb, row: UploadSession, attemptDirectory: stri
   if (hash.digest("hex") !== file.sha256) throw new Error("Невалидна контролна сума на файла. Изберете файловете отново.");
  }
  return paths;
-}
-async function refreshPublicPodcast() {
- const origin = process.env.WEB_URL?.trim(); const secret = process.env.REVALIDATE_SECRET?.trim();
- if (!origin || !secret) return;
- const response = await fetch(new URL("/api/revalidate/", origin), { method: "POST", signal: AbortSignal.timeout(5000), headers: { "content-type": "application/json", "x-revalidate-secret": secret }, body: JSON.stringify({ paths: ["/", "/livepoint/podcast/"] }) });
- if (!response.ok) throw new Error(`HTTP ${response.status}`);
 }
 export { cleanExpiredUploads };
 

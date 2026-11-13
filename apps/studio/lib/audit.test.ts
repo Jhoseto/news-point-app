@@ -66,6 +66,15 @@ describe("Server audit boundary", () => {
     mocks.persist.mockResolvedValue(false);
     expect((await withStaffAudit(async () => Response.json({ ok: true }))(request({}, "/polls", "GET"))).status).toBe(200);
   });
+  it("allows selected GET heartbeats to skip persistence but always audits mutations", async () => {
+    const handler = vi.fn(async () => Response.json({ ok: true }));
+    const wrapped = withStaffAudit(handler, { skipRead: () => true });
+    expect((await wrapped(request({}, "/podcasts", "GET"))).status).toBe(200);
+    expect(mocks.persist).not.toHaveBeenCalled();
+    await wrapped(request({}, "/podcasts", "POST"));
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(mocks.persist).toHaveBeenCalledTimes(2);
+  });
   it("bounded metadata reads leave oversized JSON available to the original handler", async () => {
     const req = request({ note: "a".repeat(600_000) });
     expect(await auditRequestInput(req)).toEqual({}); expect((await req.json()).note).toHaveLength(600_000);

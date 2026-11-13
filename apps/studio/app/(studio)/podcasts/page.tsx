@@ -26,6 +26,7 @@ export default async function PodcastsPage() {
     slug: row.slug,
     summary: row.summary,
     coverKey: row.coverKey,
+    audioKey: row.audioKey,
     durationSec: row.durationSec,
     bytes: row.bytes,
     categoryId: row.categoryId,

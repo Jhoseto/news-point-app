@@ -16,6 +16,7 @@ vi.mock("@newspoint/db", () => ({
   pageArrangements: { document: "document", pageKey: "page_key", status: "status" },
 }));
 vi.mock("@newspoint/db/polls", () => ({ featuredPoll: async () => null }));
+vi.mock("./podcasts", () => ({ publicEpisodeLinks: async () => [{ title: "Test episode", path: "/livepoint/podcast/test-only/" }] }));
 vi.mock("./category-grid-balance.server", () => ({
   archiveBoundaryForArticle: async () => null,
   countCategoryArticlesAfter: async () => 0,
@@ -70,6 +71,7 @@ describe("cached listing inputs and placement clocks", () => {
     const previous = home.focusCarousel.map(serializeFeedArticle).map(reviveFeedArticle).map(carouselArticle);
     const model = homeMobileFeed(home, [category]);
     if (model.feed.kind !== "home") throw Error("Wrong fixture feed");
+    expect(model.feed.latestPodcast).toEqual({ title: "Test episode", path: "/livepoint/podcast/test-only/" });
     expect(model.feed.focusCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual(previous);
     expect(model.feed.topicsCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
     expect(model.feed.hero).toEqual(serializeFeedArticle(fixture));

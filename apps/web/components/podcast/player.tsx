@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useState } from "react";
 import type { PublicEpisode } from "@/lib/podcast-types";
-import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock } from "@/lib/podcast-playback";
+import { adjacentEpisode, clampPlaybackTime, displayedEpisode, playbackClock } from "../../lib/podcast-playback";
 import { ChevronRightIcon } from "../icons";
 import { AudioIcon, PodcastCover } from "./visuals";
 import { PodcastTimeline } from "./timeline";
@@ -19,8 +19,9 @@ export function clock(seconds: number) {
 
 export function PodcastPlayer({ compact = false, theater = false, suggested = null, episodes = [] }: { compact?: boolean; theater?: boolean; suggested?: PublicEpisode | null; episodes?: PublicEpisode[] }) {
   const player = usePodcastPlayer();
-  const episode = displayedEpisode(player.episode, suggested);
-  const loaded = !!player.episode;
+  const episode = theater ? suggested : displayedEpisode(player.episode, suggested);
+  const loaded = !!episode && episode.id === player.episode?.id;
+  const playing = loaded && player.playing;
   const duration = loaded ? player.duration : episode?.durationSec ?? 0;
   const current = loaded ? clampPlaybackTime(player.current, duration) : 0;
   const buffered = loaded && duration ? Math.min(100, player.buffered / duration * 100) : 0;
@@ -54,17 +55,17 @@ export function PodcastPlayer({ compact = false, theater = false, suggested = nu
     <label>Сила на звука<input type="range" min={0} max={1} step={0.05} value={player.muted ? 0 : player.volume} onChange={(event) => { player.setMuted(false); player.setVolume(Number(event.target.value)); }} /></label>
     <label>Таймер<select value={player.sleepMin ?? ""} onChange={(event) => player.setSleep(event.target.value ? Number(event.target.value) : null)}>{SLEEP.map((minutes) => <option key={minutes ?? "off"} value={minutes ?? ""}>{minutes ? `${minutes} мин` : "Изключен"}</option>)}</select></label>
   </div>;
-  const errorPanel = player.error
+  const errorPanel = loaded && player.error
     ? <div className="np-podcast-error" role="alert"><p>{player.error}</p><button onClick={start}>Опитай отново</button></div>
     : null;
 
   if (!episode) return null;
   if (theater) return (
-    <section data-podcast-player data-playing={player.playing} className="np-podcast-player np-podcast-player--theater" aria-label="Плеър за Podcast">
+    <section data-podcast-player data-playing={playing} className="np-podcast-player np-podcast-player--theater" aria-label="Плеър за Podcast">
       <div className="np-podcast-artwork"><PodcastCover src={episode.coverUrl} /></div>
-      <button className="np-podcast-play" onClick={start} aria-label={player.playing ? "Пауза" : "Слушай"}><AudioIcon name={player.playing ? "pause" : "play"} /></button>
+      <button className="np-podcast-play" onClick={start} aria-label={playing ? "Пауза" : "Слушай"}><AudioIcon name={playing ? "pause" : "play"} /></button>
       <div className="np-podcast-theater-timeline">
-        <PodcastTimeline current={current} duration={duration} buffered={buffered} playing={player.playing && !player.waiting} waiting={player.waiting} disabled={!loaded || !duration} onSeek={player.seek} />
+        <PodcastTimeline current={current} duration={duration} buffered={buffered} playing={playing && !player.waiting} waiting={loaded && player.waiting} disabled={!loaded || !duration} onSeek={player.seek} />
       </div>
       <div className="np-podcast-theater-controls">
         <label className="np-podcast-rate"><span className="sr-only">Скорост</span><select value={player.rate} aria-label="Скорост на възпроизвеждане" onChange={(event) => player.setRate(Number(event.target.value))}>{RATES.map((rate) => <option key={rate} value={rate}>{rate}×</option>)}</select></label>

@@ -17,6 +17,7 @@ const EP_A: StudioEpisode = {
   slug: "ubiyistvoto-na-iliyan-filipov-43719f",
   summary: "Анализ и коментар от студиото.",
   coverKey: "podcasts/2026/10/a.webp",
+  audioKey: "podcasts/2026/10/a.mp3",
   durationSec: 1818,
   bytes: 7_400_000,
   categoryId: "cat-plovdiv",

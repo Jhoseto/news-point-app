@@ -1,8 +1,17 @@
 import "server-only";
-import { listPublishedPodcasts, podcastsReady, publishedPodcastBySlug } from "@newspoint/db/podcasts";
+import { listPublishedPodcastLinks, listPublishedPodcasts, podcastsReady, publishedPodcastBySlug } from "@newspoint/db/podcasts";
 import type { PublicEpisode } from "./podcast-types";
 
 export type { PublicEpisode };
+
+function episodeLink({ title, slug }: { title: string; slug: string }) {
+  return { title, path: `/livepoint/podcast/${slug}/` };
+}
+
+export async function publicEpisodeLinks(limit?: number) {
+  if (!await podcastsReady()) return [];
+  return (await listPublishedPodcastLinks(limit)).map(episodeLink);
+}
 
 function present(row: {
   id: string;
@@ -17,9 +26,8 @@ function present(row: {
 }): PublicEpisode {
   return {
     id: row.id,
-    title: row.title,
+    ...episodeLink(row),
     slug: row.slug,
-    path: `/livepoint/podcast/${row.slug}/`,
     summary: row.summary,
     coverUrl: `/media/${row.coverKey}`,
     audioUrl: `/podcast-audio/${row.id}/`,

@@ -17,6 +17,12 @@
 
 const REVALIDATE_PATH = "/api/revalidate/";
 
+export function podcastRevalidationPaths(slug: string | null): string[] {
+  const paths = ["/", "/livepoint/podcast/", "/feed/", "/sitemap.xml", "/llms.txt"];
+  if (slug) paths.push(`/livepoint/podcast/${slug}/`, `/share/podcast/${slug}/`);
+  return paths;
+}
+
 export interface RevalidateResult {
   triggered: boolean;
   reason: "no_secret" | "no_base_url" | "ok" | "error";

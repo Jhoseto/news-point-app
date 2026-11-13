@@ -7,7 +7,11 @@ DIR="$HOME/availability-diagnostics"
 SERVICE="${1:-}"
 case "$SERVICE" in
   web) PORT=3100 ;;
-  studio) PORT=3101 ;;
+  studio)
+    PORT=3101
+    # Studio encodes podcast downloads with the account's FFmpeg installation.
+    export PATH="$HOME/.local/bin:$PATH"
+    ;;
   origin) ;;
   *) exit 2 ;;
 esac

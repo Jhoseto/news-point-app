@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type MouseEvent, type TransitionEvent } from "react";
 import { createPortal } from "react-dom";
 import type { PublicEpisode } from "@/lib/podcast-types";
-import { displayedEpisode } from "@/lib/podcast-playback";
+import { displayedEpisode } from "../../lib/podcast-playback";
 import { PodcastPlayer, clock, usePodcastPlayer } from "./player";
 import { PodcastTimeline } from "./timeline";
 import { PodcastShareMenu } from "./share-menu";
@@ -12,18 +13,28 @@ import { STUDIO_PHOTO } from "./studio-photo";
 import { ChevronRightIcon } from "../icons";
 import { AudioIcon, PodcastCover, PodcastOrbit } from "./visuals";
 
+function episodeTeaser(summary: string) {
+  const text = summary.trim();
+  if (text.length <= 140) return text;
+  const prefix = text.slice(0, 140);
+  const lastSpace = prefix.lastIndexOf(" ");
+  return (lastSpace > 0 ? prefix.slice(0, lastSpace) : prefix).trimEnd() + "…";
+}
+
 function EpisodeCard({
   episode,
   episodes,
   selected,
   compact,
   publicOrigin,
+  openAfterPlay,
 }: {
   episode: PublicEpisode;
   episodes: PublicEpisode[];
   selected: boolean;
   compact: boolean;
   publicOrigin?: string;
+  openAfterPlay?: () => void;
 }) {
   const player = usePodcastPlayer();
   const loaded = player.episode?.id === episode.id;
@@ -35,12 +46,12 @@ function EpisodeCard({
     <div className="np-podcast-episode-info">
       <p className="np-podcast-category">{episode.categoryName ?? "Podcast"}</p>
       <h3><Link href={episode.path}><span>{episode.title}</span></Link></h3>
-      <p className="np-podcast-episode-summary">{episode.summary}</p>
+      <p className="np-podcast-episode-summary">{episodeTeaser(episode.summary)}</p>
       <div className="np-podcast-episode-meta"><time dateTime={episode.publishedAt}>{published}</time><span>·</span><span>{clock(episode.durationSec)}</span></div>
       <span className="np-podcast-episode-status">{selected ? playing ? "Слушате" : loaded ? "На пауза" : "Избран" : ""}</span>
     </div>
     <div className="np-podcast-episode-actions">
-      <button className="np-podcast-card-play" onClick={() => player.play(episode, episodes)} aria-label={`${playing ? "Пауза" : "Слушай"}: ${episode.title}`}><AudioIcon name={playing ? "pause" : "play"} /></button>
+      <button className="np-podcast-card-play" onClick={() => { player.play(episode, episodes); openAfterPlay?.(); }} aria-label={`${playing ? "Пауза" : "Слушай"}: ${episode.title}`}><AudioIcon name={playing ? "pause" : "play"} /></button>
       {publicOrigin ? (
         <PodcastShareMenu
           url={shareUrl}
@@ -59,8 +70,11 @@ function EpisodeCard({
 export function PodcastShow({ episodes, compact = false, activeSlug = null, publicOrigin, aboutInitiallyOpen = true }: { episodes: PublicEpisode[]; compact?: boolean; activeSlug?: string | null; publicOrigin?: string; aboutInitiallyOpen?: boolean }) {
   const player = usePodcastPlayer();
   const suggested = episodes.find((episode) => episode.slug === activeSlug) ?? episodes[0] ?? null;
-  const selected = displayedEpisode(player.episode, suggested);
-  if (!episodes.length && !player.episode) return <PodcastState title="Историите скоро ще имат глас" description="Още няма публикувани епизоди. Тук ще откриете подкастите на NewsPoint." />;
+  const current = episodes.find(episode => episode.id === player.episode?.id) ?? null;
+  const selected = activeSlug ? suggested : displayedEpisode(current, suggested);
+  if (!episodes.length && (!compact || !player.episode)) {
+    return <PodcastState title={compact ? "Историите скоро ще имат глас" : "Подкасти на NewsPoint"} pageHeading={!compact} description="Още няма публикувани епизоди. Тук ще откриете подкастите на NewsPoint." />;
+  }
   if (!compact && selected) return <PodcastTheater episodes={episodes} selected={selected} activeSlug={activeSlug} publicOrigin={publicOrigin} aboutInitiallyOpen={aboutInitiallyOpen} />;
   // Only the LivePoint panel reaches this branch: the page always goes to the theatre.
   return <PodcastPanelLayout episodes={episodes} suggested={suggested} selected={selected} />;
@@ -115,6 +129,7 @@ function PodcastPanelLayout({
 }
 
 function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutInitiallyOpen }: { episodes: PublicEpisode[]; selected: PublicEpisode; activeSlug: string | null; publicOrigin: string | undefined; aboutInitiallyOpen: boolean }) {
+  const router = useRouter();
   const mainPlayer = useRef<HTMLDivElement>(null);
   const [playerPassed, setPlayerPassed] = useState(false);
   const player = usePodcastPlayer();
@@ -164,8 +179,13 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
     <div className="np-podcast-theater-shade" />
     <section className="np-podcast-feature" aria-labelledby="np-podcast-feature-title">
       <div className="np-podcast-feature-content">
-        <p className="np-podcast-feature-kicker"><span className="np-podcast-feature-kicker-line" />NewsPoint Audio <span>·</span> {selected.categoryName ?? "Подкаст"}</p>
-        <h1 id="np-podcast-feature-title">{selected.title}</h1>
+        {activeSlug ? <>
+          <p className="np-podcast-feature-kicker"><span className="np-podcast-feature-kicker-line" />NewsPoint Audio <span>·</span> {selected.categoryName ?? "Подкаст"}</p>
+          <h1 id="np-podcast-feature-title" className="np-podcast-feature-title">{selected.title}</h1>
+        </> : <>
+          <h1 className="np-podcast-feature-kicker"><span className="np-podcast-feature-kicker-line" />Подкасти на NewsPoint</h1>
+          <h2 id="np-podcast-feature-title" className="np-podcast-feature-title"><Link href={selected.path}>{selected.title}</Link></h2>
+        </>}
         <div className="np-podcast-feature-meta"><time dateTime={selected.publishedAt}>{published}</time><span aria-hidden="true">·</span><span>{clock(selected.durationSec)}</span></div>
         <div className="np-podcast-feature-actions">
           {publicOrigin ? (
@@ -184,7 +204,7 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
           <div className="np-podcast-feature-about-panel" onTransitionEnd={settleAbout}>
             <div className="np-podcast-feature-about">
               <PodcastCover src={selected.coverUrl} />
-              <p>{selected.summary}</p>
+              <p>{activeSlug ? selected.summary : episodeTeaser(selected.summary)}</p>
             </div>
           </div>
         </details>
@@ -203,6 +223,7 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
           episodes={episodes}
           compact
           selected={selected.id === episode.id}
+          {...(activeSlug && activeSlug !== episode.slug ? { openAfterPlay: () => router.push(episode.path, { scroll: false }) } : {})}
           {...(publicOrigin ? { publicOrigin } : {})}
         />
       ))}</ul>
@@ -216,9 +237,10 @@ function PodcastTheater({ episodes, selected, activeSlug, publicOrigin, aboutIni
   </div>;
 }
 
-function PodcastState({ title, description, retry, loading = false }: { title: string; description: string; retry?: () => void; loading?: boolean }) {
+function PodcastState({ title, description, retry, loading = false, pageHeading = false }: { title: string; description: string; retry?: () => void; loading?: boolean; pageHeading?: boolean }) {
+  const Heading = pageHeading ? "h1" : "h3";
   return <div className="np-podcast-state" role={retry ? "alert" : "status"} aria-busy={loading}>
-    <PodcastOrbit /><h3>{title}</h3><p>{description}</p>{retry && <button className="np-podcast-retry" onClick={retry}>Опитай отново</button>}
+    <PodcastOrbit /><Heading>{title}</Heading><p>{description}</p>{retry && <button className="np-podcast-retry" onClick={retry}>Опитай отново</button>}
   </div>;
 }
 

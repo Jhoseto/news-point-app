@@ -17,7 +17,8 @@ const poll = z.object({ id: z.string().max(80), question: text, description: tex
   endsAt: z.iso.datetime().nullable(), open: z.boolean(), adjusted: z.boolean(), total: z.number().int().nonnegative(),
   options: z.array(z.object({ id: z.string().max(80), label: text, count: z.number().int().nonnegative(), percent: z.number().min(0).max(100) }).strict()).max(6) }).strict();
 const home = z.object({ kind: z.literal("home"), hero: article.nullable(), support: articles, latestCarousel: latestCarouselArticles, main: z.array(section).max(24),
-  aside: z.array(section).max(24), focusCarousel: articles, topicsCarousel: articles, voiceCarousel: articles, poll: poll.nullable() }).strict();
+  aside: z.array(section).max(24), focusCarousel: articles, topicsCarousel: articles, voiceCarousel: articles, poll: poll.nullable(),
+  latestPodcast: z.object({ title: text, path }).strict().optional() }).strict();
 const pageStripItem = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("page"), page: z.number().int().min(1), href: path }).strict(),
   z.object({ kind: z.literal("current"), page: z.number().int().min(1) }).strict(),

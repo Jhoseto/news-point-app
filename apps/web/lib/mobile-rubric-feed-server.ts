@@ -34,6 +34,7 @@ export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {
     support: home.support.map(serializeFeedArticle), latestCarousel: latestCarouselArticles(home).map(serializeCarouselArticle),
     main: sections(home.main), aside: sections(home.aside),
     focusCarousel: home.focusCarousel.map(serializeCarouselArticle), topicsCarousel: home.topicsCarousel.map(serializeCarouselArticle),
+    ...(home.latestPodcast ? { latestPodcast: home.latestPodcast } : {}),
     voiceCarousel: home.voiceCarousel.map(serializeCarouselArticle), poll: home.poll }, home.nextChangeAt);
 }
 export function categoryMobileFeed(

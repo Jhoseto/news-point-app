@@ -37,8 +37,10 @@ export function auditSearchText(entry: Omit<AuditEntry, "searchText">) {
   return [entry.actorName, entry.actorEmail, entry.actorRole, AUDIT_AREAS[entry.area], entry.actionLabel, entry.entityId, entry.entityLabel, entry.ip, entry.path, JSON.stringify(entry.details)].join(" ");
 }
 
-export function withStaffAudit<Args extends unknown[]>(handler: (request: Request, ...args: Args) => Promise<Response>) {
+export function withStaffAudit<Args extends unknown[]>(handler: (request: Request, ...args: Args) => Promise<Response>, options?: { skipRead?: (request: Request) => boolean }) {
   return async (request: Request, ...args: Args): Promise<Response> => {
+    // Automatic progress reads are heartbeats. Their handler still authorizes the caller.
+    if (request.method === "GET" && options?.skipRead?.(request)) return handler(request, ...args);
     const startedAt = new Date().toISOString();
     const id = randomUUID();
     let actor: Awaited<ReturnType<typeof staffFromRequest>> = null;

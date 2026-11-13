@@ -10,7 +10,7 @@ export const SITE_OG_IMAGE_ALT = "NewsPoint.bg – Гласът на истин�
 export const PUBLIC_SEO_PAGES = {
   home: { path: "/", title: "Новини от Пловдив, България и света | NewsPoint.bg", description: "Последни новини от Пловдив и региона, България и света. Актуални събития, местни теми, спорт и култура от NewsPoint.bg." },
   themes: { path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg." },
-  podcast: { path: "/livepoint/podcast/", title: "Podcast · LivePoint", description: "Подкасти на NewsPoint за слушане." },
+  podcast: { path: "/livepoint/podcast/", title: "Подкасти на NewsPoint", description: "Всички публикувани подкаст епизоди на NewsPoint с аудио, дата и резюме." },
   weather: { path: "/livepoint/weather/", title: "Време · LivePoint", description: "Прогноза за Пловдив." },
   traffic: { path: "/livepoint/traffic/", title: "Трафик · LivePoint", description: "Карта и инциденти за Пловдив." },
   cameras: { path: "/livepoint/cameras/", title: "Камери · LivePoint", description: "Проверен каталог на публични камери около Пловдив." },

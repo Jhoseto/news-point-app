@@ -2,6 +2,7 @@ import type { AuditArea, AuditDetails, AuditValue } from "./audit-types";
 
 export type AuditInput = Record<string, unknown>;
 const actions: Record<string, string> = {
+  exportTikTok: "Създаване на TikTok версия", downloadTikTok: "Изтегляне на TikTok версия",
   create: "Създаване", save: "Запазване", edit: "Редактиране", publish: "Публикуване", unpublish: "Сваляне от сайта", hide: "Скриване",
   delete: "Изтриване", place: "Поставяне на позиция", revert: "Връщане на подреждане", correct: "Корекция на гласове",
   addArticle: "Добавяне на статия в тема", removeArticle: "Премахване на статия от тема", assignArticle: "Свързване на статия с тема",
@@ -15,6 +16,7 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   const clean = path.replace(/^\/admin(?=\/|$)/, "").replace(/(\/auth\/reset-password)\/[^/]+/g, "$1/[redacted]").replace(/\/+$/, "") || "/";
   const isRead = method === "GET" || method === "HEAD";
   const podcastSocialId = clean.match(/^\/api\/podcasts\/([^/]+)\/social$/)?.[1];
+  const podcastTikTokId = clean.match(/^\/api\/podcasts\/([^/]+)\/tiktok$/)?.[1];
   let area: AuditArea = "navigation";
   if (podcastSocialId) area = "podcasts";
   else if(clean.includes("/ai-settings")) area="ai";
@@ -32,9 +34,11 @@ export function auditDescriptor(path: string, method: string, input: AuditInput)
   else if (clean.includes("/submissions") || clean.includes("/my-news")) area = "submissions";
   else if (clean.includes("/auth") || clean === "/login") area = "auth";
   else if (clean.includes("/logs")) area = "logs";
-  const routeId = podcastSocialId ?? clean.match(/\/(?:articles|staff)\/([^/]+)/)?.[1] ?? "";
+  const routeId = podcastSocialId ?? podcastTikTokId ?? clean.match(/\/(?:articles|staff)\/([^/]+)/)?.[1] ?? "";
   let verb = textValue(input.action, 80) || (isRead ? "read" : method === "DELETE" ? "delete" : method === "PATCH" ? "edit" : "save");
   if (podcastSocialId && !isRead) verb = input.action === "retry" ? "retryFacebook" : "shareFacebook";
+  else if (podcastTikTokId && !isRead) verb = "exportTikTok";
+  else if (podcastTikTokId && input.download === "1") verb = "downloadTikTok";
   else if (area === "auth") verb = (clean.split("/auth/")[1] ?? verb).replace("/[redacted]", "");
   else if (method === "POST" && /^\/api\/editor\/articles\/[^/]+\/delete$/.test(clean)) verb = "delete";
   else if (method === "POST" && /^\/api\/uploads\/[^/]+\/cancel$/.test(clean)) verb = "cancel";

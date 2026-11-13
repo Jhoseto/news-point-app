@@ -11,7 +11,7 @@ const encoderOptions = new Map<string, Promise<string[]>>();
 export function acceptsVideoType(value: string): boolean { return VIDEO_TYPES.has(value.toLowerCase()); }
 
 /** Both supported software encoders produce browser-compatible H.264; no GPU assumption. */
-function videoEncoder(binary: string): Promise<string[]> {
+export function videoEncoder(binary: string): Promise<string[]> {
   let pending = encoderOptions.get(binary);
   if (!pending) {
     pending = run(binary, ["-hide_banner", "-encoders"], 20_000).then((listing) => {

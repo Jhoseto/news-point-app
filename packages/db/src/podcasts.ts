@@ -41,12 +41,23 @@ function listed() {
   return getDb().select(columns).from(podcasts).leftJoin(categories, eq(categories.id, podcasts.categoryId));
 }
 
+function isPublished() {
+  return and(eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`));
+}
+
 export async function listPublishedPodcasts() {
-  return listed().where(and(eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`))).orderBy(desc(podcasts.publishedAt));
+  return listed().where(isPublished()).orderBy(desc(podcasts.publishedAt), asc(podcasts.id));
+}
+
+/** The home page and public directories only need a title and a canonical slug. */
+export async function listPublishedPodcastLinks(limit?: number) {
+  const query = getDb().select({ title: podcasts.title, slug: podcasts.slug }).from(podcasts)
+    .where(isPublished()).orderBy(desc(podcasts.publishedAt), asc(podcasts.id));
+  return limit === undefined ? query : query.limit(limit);
 }
 
 export async function publishedPodcastBySlug(slug: string) {
-  const [row] = await listed().where(and(eq(podcasts.slug, slug), eq(podcasts.status, "published"), lte(podcasts.publishedAt, sql`now()`))).limit(1);
+  const [row] = await listed().where(and(eq(podcasts.slug, slug), isPublished())).limit(1);
   return row?.status === "published" ? row : null;
 }
 

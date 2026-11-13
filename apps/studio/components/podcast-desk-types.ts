@@ -7,6 +7,7 @@ export type StudioEpisode = {
   slug: string;
   summary: string;
   coverKey: string;
+  audioKey: string;
   durationSec: number;
   bytes: number;
   categoryId: string | null;

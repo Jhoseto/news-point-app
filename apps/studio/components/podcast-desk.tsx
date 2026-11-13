@@ -16,6 +16,7 @@ import {
 } from "./podcast-desk-utils";
 import type { Category, EpisodeFilter, StudioEpisode } from "./podcast-desk-types";
 import { PodcastSocialShare } from "./podcast-social-share";
+import { PodcastTikTokExport } from "./podcast-tiktok-export";
 import "./podcast-desk.css";
 
 export type { Category, StudioEpisode };
@@ -637,10 +638,16 @@ function EpisodeEditor({
       <div className="np-podcast-editor-foot">
         {error ? <span role="alert" className="np-podcast-alert np-podcast-alert--error">{error}</span> : null}
         {notice ? <span role="status" className="np-podcast-alert np-podcast-alert--ok">{notice}</span> : null}
-        <PodcastSocialShare key={`${episode.id}:${episode.revision}`} episodeId={episode.id} revision={episode.revision}
-          blockedReason={pending ? "Изчакай записването на епизода."
-            : fieldsDirty || filesDirty ? "Запиши промените, преди да споделиш епизода."
-            : !isPublished ? "Първо публикувай епизода в сайта." : undefined} />
+        <div className="np-podcast-distribution">
+          <PodcastSocialShare key={episode.revision} episodeId={episode.id} revision={episode.revision}
+            blockedReason={pending ? "Изчакай записването на епизода."
+              : fieldsDirty || filesDirty ? "Запиши промените, преди да споделиш епизода."
+              : !isPublished ? "Първо публикувай епизода в сайта." : undefined} />
+          <PodcastTikTokExport episodeId={episode.id} revision={episode.revision}
+            mediaKey={`${episode.id}:${episode.coverKey}:${episode.audioKey}`}
+            blockedReason={pending ? "Изчакай записването на епизода."
+              : filesDirty ? "Запиши новите файлове, преди да създадеш видеото." : undefined} />
+        </div>
         <button data-help="Отменя незавършеното качване. Избраният локален файл не се изтрива." type="button" onClick={() => void cancelResumableUpload("podcast", episode.id).then(() => setNotice("Качването е отменено.")).catch(e => setError(e.message))}>Отмени незавършеното качване</button>
         <div className="np-podcast-editor-foot-actions">
           {isPublished ? (

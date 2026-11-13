@@ -196,15 +196,14 @@ export function person(input: PersonPayload): JsonLdObject {
   return person;
 }
 
-export function podcastSeries(origin: string, description: string, episodes: Pick<PublicEpisode, "path" | "title">[]): JsonLdObject {
+export function podcastSeries(origin: string, description: string, episodes?: Pick<PublicEpisode, "path" | "title">[]): JsonLdObject {
   const url = `${origin}/livepoint/podcast/`;
   return {
     "@type": "PodcastSeries", "@id": `${url}#series`, url,
-    name: "Podcast", description, inLanguage: "bg-BG",
+    name: "Подкасти на NewsPoint", description, inLanguage: "bg-BG",
     publisher: { "@id": `${origin}/#organization` },
     isPartOf: { "@id": `${origin}/#website` },
-    // Only episodes represented in the visible page, without an invented total or numbering.
-    hasPart: episodes.map((episode) => ({ "@type": "PodcastEpisode", "@id": `${origin}${episode.path}#episode`, url: `${origin}${episode.path}`, name: episode.title })),
+    ...(episodes && { hasPart: episodes.map((episode) => ({ "@type": "PodcastEpisode", "@id": `${origin}${episode.path}#episode`, url: `${origin}${episode.path}`, name: episode.title })) }),
   };
 }
 
