@@ -8,6 +8,7 @@ import { slugify, SLUG_PATTERN } from "@/lib/editor/slug";
 import { isChronologicalThemeOrder, sortThemeArticlesChronologically } from "@/lib/story-theme-order";
 import { MediaPicker } from "@/components/media-picker";
 import { StoryArticleSearch } from "@/components/story-article-search";
+import { usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
 import type { MediaOption } from "@/lib/articles";
 import type { StoryThemeArticleEntry, StoryThemeDetail, StoryThemeInput } from "@/lib/story-theme-types";
 
@@ -47,6 +48,21 @@ function articleEntryToSelection(entry: StoryThemeArticleEntry): ArticleSelectio
     publishedAt: entry.publishedAt,
     isPublic: entry.isPublic,
   };
+}
+
+async function postTheme(payload: Record<string, unknown>) {
+  const res = await fetch(withBase("/api/stories/"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({})) as { id?: string; slug?: string; action?: string; error?: { message?: string; details?: unknown } };
+  if (!res.ok) {
+    const details = data.error?.details;
+    const extra = Array.isArray(details) ? ` ${details.filter(item => typeof item === "string").join(" ")}` : "";
+    throw new Error(`${data.error?.message ?? `Грешка ${res.status}`}${extra}`.trim());
+  }
+  return data;
 }
 
 export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mode; theme?: StoryThemeDetail; mediaOptions?: MediaOption[] }) {
@@ -102,14 +118,15 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
         summary !== (initialInput?.summary ?? "") ||
         intro !== (initialInput?.intro ?? "") ||
         cover.id !== (initialInput?.coverMediaId ?? null) ||
-        coverCaption !== (initialInput?.coverCaption ?? "") ||
-        JSON.stringify(articles.map((a) => a.id)) !== JSON.stringify(theme?.articles.map((a) => a.articleId) ?? [])
-      : title.length > 0;
+        coverCaption !== (initialInput?.coverCaption ?? "")
+      : Boolean(title || slug || summary || intro || cover.id || coverCaption || articles.length);
+  usePhoneUnsavedChanges((dirty || pending) && !created);
 
-  const send = async (action: "create" | "save" | "publish" | "unpublish" | "addArticle" | "removeArticle" | "reorder", extra?: Record<string, unknown>) => {
-    if (action !== "publish" && pending) return;
+  const send = async (action: "create" | "save" | "publish" | "unpublish") => {
+    if (pending) return;
     if (action === "create" && created) return;
-    if (action === "create" || action === "save") {
+    const saveMetadata = action === "create" || action === "save" || (action === "publish" && dirty);
+    if (saveMetadata) {
       if (title.trim().length < 5) {
         setFeedback({ kind: "err", text: "Заглавието трябва да е поне 5 символа." });
         return;
@@ -125,15 +142,16 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
     }
     setPending(true);
     setFeedback(null);
+    let metadataSaved = false;
     try {
       const payload: Record<string, unknown> = { action };
-      if (action === "create" || action === "save") {
-        payload.slug = slug;
-        payload.title = title;
-        payload.summary = summary;
-        payload.intro = intro;
-        payload.coverMediaId = cover.id;
-        payload.coverCaption = coverCaption;
+      if (action !== "create" && theme) payload.id = theme.id;
+      if (saveMetadata) {
+        const metadata = { slug, title, summary, intro, coverMediaId: cover.id, coverCaption };
+        if (action === "publish") {
+          await postTheme({ action: "save", id: theme?.id, ...metadata });
+          metadataSaved = true;
+        } else Object.assign(payload, metadata);
       }
       // Only `create` includes articleIds — `save` in edit mode must not
       // clobber the canonical article set that's already been committed via
@@ -141,22 +159,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
       if (action === "create") {
         payload.articleIds = articles.map((a) => a.id);
       }
-      if (action === "create" || action === "save" || action === "publish") {
-        if (theme?.id) payload.id = theme.id;
-      }
-      if (extra) Object.assign(payload, extra);
-      const res = await fetch(withBase("/api/stories"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: { message?: string; details?: unknown } };
-        const details = body.error?.details;
-        const extra = Array.isArray(details) ? ` ${details.filter((item) => typeof item === "string").join(" ")}` : "";
-        throw new Error(`${body.error?.message ?? `Грешка ${res.status}`}${extra}`.trim());
-      }
-      const data = (await res.json().catch(() => ({}))) as { id?: string; slug?: string; action?: string };
+      const data = await postTheme(payload);
       if (action === "create") {
         if (!data.id) throw new Error("Темата не беше записана. Опитайте отново.");
         setCreated(true);
@@ -167,40 +170,22 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
       setFeedback({ kind: "ok", text: successMessage(action, data) });
       startTransition(() => router.refresh());
     } catch (err) {
-      setFeedback({ kind: "err", text: err instanceof Error ? err.message : "Грешка при заявката." });
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const reorder = async (orderedIds: string[]) => {
-    if (!theme) return;
-    setPending(true);
-    try {
-      const res = await fetch(withBase("/api/stories"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "reorder", themeId: theme.id, articleIds: orderedIds }),
-      });
-      if (!res.ok) throw new Error(`Грешка ${res.status}`);
-      startTransition(() => router.refresh());
-    } catch (err) {
-      setFeedback({ kind: "err", text: err instanceof Error ? err.message : "Грешка при пренареждане." });
+      const message = err instanceof Error ? err.message : "Грешка при заявката.";
+      setFeedback({ kind: "err", text: metadataSaved ? `Черновата е записана. Публикуването не беше потвърдено. ${message}` : message });
+      if (metadataSaved) startTransition(() => router.refresh());
     } finally {
       setPending(false);
     }
   };
 
   const removeArticle = async (articleId: string) => {
-    if (!theme) return;
+    if (!theme) {
+      setArticles((current) => current.filter((article) => article.id !== articleId));
+      return;
+    }
     setPending(true);
     try {
-      const res = await fetch(withBase("/api/stories"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "removeArticle", themeId: theme.id, articleId }),
-      });
-      if (!res.ok) throw new Error(`Грешка ${res.status}`);
+      await postTheme({ action: "removeArticle", themeId: theme.id, articleId });
       setArticles((current) => current.filter((a) => a.id !== articleId));
       startTransition(() => router.refresh());
     } catch (err) {
@@ -218,24 +203,20 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
   const onPickerConfirm = (selected: ArticleSelection[]) => {
     const ordered = sortThemeArticlesChronologically(selected);
     setPickerOpen(false);
-    setArticles(ordered);
-    if (theme) void replaceArticles(ordered.map((a) => a.id));
+    void updateArticles(ordered, "replaceArticles");
   };
 
-  const replaceArticles = async (articleIds: string[]) => {
-    if (!theme) return;
+  const updateArticles = async (next: ArticleSelection[], action: "replaceArticles" | "reorder") => {
+    if (!theme) {
+      setArticles(next);
+      return;
+    }
+    const articleIds = next.map(article => article.id);
     setPending(true);
     setFeedback(null);
     try {
-      const res = await fetch(withBase("/api/stories"), {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "replaceArticles", themeId: theme.id, articleIds }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: { message?: string } };
-        throw new Error(body.error?.message ?? `Грешка ${res.status}`);
-      }
+      await postTheme({ action, themeId: theme.id, articleIds });
+      setArticles(next);
       setFeedback({ kind: "ok", text: `Записани са ${articleIds.length} статии.` });
       startTransition(() => router.refresh());
     } catch (err) {
@@ -250,28 +231,25 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
   const onSortChronologically = () => {
     if (alreadyChronological) return;
     const next = sortThemeArticlesChronologically(articles);
-    setArticles(next);
-    if (theme) void reorder(next.map((a) => a.id));
+    void updateArticles(next, "reorder");
   };
 
   const onMoveUp = (index: number) => {
     if (index === 0) return;
     const next = articles.slice();
     [next[index - 1], next[index]] = [next[index]!, next[index - 1]!];
-    setArticles(next);
-    if (theme) void reorder(next.map((a) => a.id));
+    void updateArticles(next, "reorder");
   };
 
   const onMoveDown = (index: number) => {
     if (index === articles.length - 1) return;
     const next = articles.slice();
     [next[index], next[index + 1]] = [next[index + 1]!, next[index]!];
-    setArticles(next);
-    if (theme) void reorder(next.map((a) => a.id));
+    void updateArticles(next, "reorder");
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="np-story-editor flex flex-col gap-5">
       <section className="np-card flex flex-col gap-4 p-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="np-label gap-1">
@@ -393,6 +371,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             <button data-help="Избира кои публикувани статии да влязат в хронологията на темата."
               type="button"
               onClick={() => openPicker(articles)}
+              disabled={pending}
               className="np-btn np-btn-secondary"
             >
               {articles.length === 0 ? "+ Добави статии" : "Управление на статиите"}
@@ -404,7 +383,7 @@ export function StoryThemeEditor({ mode, theme, mediaOptions = [] }: { mode: Mod
             {articles.map((article, index) => (
               <li
                 key={article.id}
-                className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2"
+                className="np-story-article-row flex items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2"
               >
                 <span className="font-mono text-xs text-faint tabular-nums w-6 text-right">
                   {index + 1}

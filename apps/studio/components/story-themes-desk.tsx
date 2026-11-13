@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { withBase } from "@/lib/paths";
+import { usePhoneDialog } from "./use-phone-dialog";
 import type { StoryThemeListItem } from "@/lib/story-theme-types";
 
 function formatDate(value: Date | string | null) {
@@ -78,7 +79,7 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
           {feedback.text}
         </div>
       ) : null}
-      <div className="np-card overflow-hidden">
+      <div className="np-story-list np-card overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-xs font-bold tracking-wide text-muted uppercase">
@@ -104,11 +105,11 @@ export function StoryThemesDesk({ themes }: { themes: StoryThemeListItem[] }) {
                     </Link>
                     <div className="mt-0.5 text-xs text-muted">/{theme.slug}</div>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-muted">{theme.articleCount}</td>
+                  <td className="px-4 py-3 text-right tabular-nums text-muted"><span className="np-story-field hidden">Статии</span>{theme.articleCount}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold ${status.cls}`}>{status.text}</span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted">{formatDate(theme.updatedAt)}</td>
+                  <td className="px-4 py-3 text-xs text-muted"><span className="np-story-field hidden">Обновена</span>{formatDate(theme.updatedAt)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1.5">
                       {theme.isPublished ? (
@@ -183,13 +184,15 @@ function ConfirmDialog({
   onConfirm: () => void;
   destructive: boolean;
 }) {
+  const layer = usePhoneDialog(true, onCancel);
   return (
     <div
+      ref={layer}
       role="dialog"
       aria-modal="true"
       aria-label="Потвърждение"
       onClick={onCancel}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      className="np-story-confirm fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
     >
       <div
         onClick={(event) => event.stopPropagation()}

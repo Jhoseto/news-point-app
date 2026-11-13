@@ -1,0 +1,64 @@
+@media (max-width: 767px), (orientation: landscape) and (max-width: 960px) and (max-height: 500px) and (pointer: coarse) {
+  .studio-article-desk-page { min-width: 0; }
+  .studio-article-desk-page > div:first-child { margin-bottom: 14px; }
+  .studio-article-desk-page h1 { font-size: 1.5rem; line-height: 1.2; letter-spacing: -.035em; }
+  .studio-article-desk-page > div:first-child p { margin-top: 4px; font-size: .75rem; }
+  .studio-article-desk-page > div:first-child a { min-height: 44px; padding-inline: 16px; }
+
+  .studio-article-filters { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding: 10px; }
+  .studio-article-filters > * { margin-block: 0; }
+  .studio-article-search { grid-area: 1 / 1; }
+  .studio-article-filter-toggle { display: inline-flex; grid-area: 1 / 2; }
+  .studio-article-filters :is(input:not([type=hidden]), select, button) { height: 44px; min-width: 0; }
+  .studio-article-filters :is(input,select) { font-size: 1rem; }
+  .studio-article-filters input::placeholder { font-size: .8125rem; }
+  .studio-article-filters button { font-size: .8rem; padding-inline: 10px; }
+  .studio-article-filter-fields, .studio-article-filter-dates { grid-column: 1 / -1; }
+  .studio-article-filter-fields { gap: 8px; }
+  .studio-article-filter-fields label > span { margin-bottom: 4px; font-size: .68rem; }
+  .studio-article-filter-dates a { display: inline-flex; align-items: center; min-height: 44px; }
+  .studio-article-filters[data-expanded="false"] :is(.studio-article-filter-fields,.studio-article-filter-dates) { display: none; }
+  .studio-article-desk-page nav[aria-label="Статус"] { flex-wrap: nowrap; gap: 6px; overflow-x: auto; margin: 10px 0; scrollbar-width: thin; }
+  .studio-article-desk-page nav[aria-label="Статус"] a { display: inline-flex; align-items: center; gap: 5px; flex: none; min-height: 44px; padding-inline: 12px; font-size: .78rem; }
+
+  .np-articles-desk { container-type: normal; overflow: visible; min-width: 0; }
+  .np-articles-desk table, .np-articles-desk :is(thead,tbody) { display: block; width: 100%; min-width: 0; }
+  .np-articles-desk colgroup { display: none; }
+  .np-articles-desk thead { border-radius: inherit; color: var(--np-muted); }
+  .np-articles-desk thead tr { display: flex; overflow-x: auto; align-items: center; gap: 8px; padding-inline: 12px; scrollbar-width: thin; }
+  .np-articles-desk thead th { display: none; }
+  .np-articles-desk thead th[aria-sort] { display: block; flex: none; padding: 0; }
+  .np-articles-desk thead a { min-height: 44px; font-size: .72rem; }
+  .np-articles-desk tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0,1fr) auto;
+    grid-template-areas: "number status visibility" "article article article" "actions actions actions";
+    align-items: center;
+    column-gap: 8px;
+    padding: 6px 14px 14px;
+  }
+  .np-articles-desk tbody td { padding: 0; }
+  .np-articles-desk tbody .np-articles-col-secondary { display: none; }
+  .np-articles-desk tbody td:nth-child(1) { grid-area: number; font-size: .75rem; }
+  .np-articles-desk tbody td:nth-child(1)::before { content: "№ "; }
+  .np-articles-desk tbody td:nth-child(2) { grid-area: visibility; }
+  .np-articles-desk tbody td:nth-child(2) > button { width: 44px; height: 44px; }
+  .np-articles-desk tbody td:nth-child(2) svg { width: 18px; height: 18px; }
+  .np-articles-desk tbody td:nth-child(3) { grid-area: article; }
+  .np-articles-desk tbody td:nth-child(3) > button { min-height: 44px; white-space: normal; overflow-wrap: anywhere; font-size: 1rem; font-weight: 750; line-height: 1.38; }
+  .np-articles-desk tbody td:nth-child(6) { grid-area: status; }
+  .np-articles-desk tbody td:nth-child(6) > span { padding: 3px 8px; font-size: .68rem; }
+  .np-articles-desk .np-articles-desk-extra { display: block; margin-top: 4px; white-space: normal; font-size: .72rem; line-height: 1.5; }
+  .np-articles-desk td.np-articles-actions { grid-area: actions; position: static; background: transparent; text-align: left; padding-top: 11px; }
+  .np-articles-desk tr:hover td.np-articles-actions { background: transparent; }
+  .np-articles-desk td.np-articles-actions > span { width: 100%; justify-content: flex-start; gap: 6px; }
+  .np-articles-desk td.np-articles-actions > span > :is(a, button) { min-height: 44px; padding-inline: 10px; font-size: .75rem; }
+  .np-articles-desk .studio-article-public-link { display: inline-flex; align-items: center; font-weight: 650; }
+  .np-articles-desk td.np-articles-actions > span > a.np-btn { order: -1; background: var(--np-surface-2); }
+  .np-articles-desk nav[aria-label="Страници"] a { display: inline-flex; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
+  .np-articles-desk .fixed { padding: max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)); }
+  body:has(.np-articles-desk [aria-modal="true"]) { overflow: hidden; }
+  .np-articles-desk .fixed > div { max-height: 100%; overflow-y: auto; text-align: left; }
+  .np-articles-desk .fixed :is(button, select, .np-btn) { min-height: 44px; }
+  .np-articles-desk .fixed select { font-size: 1rem; }
+}

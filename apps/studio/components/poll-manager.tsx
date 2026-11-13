@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useMobileDeskNavigation } from "./mobile-desk-navigation";
+import { usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
+import { STUDIO_PHONE_QUERY } from "../lib/studio-phone";
 import { pollInput, type PollInput, type Poll, type PublicPoll } from "@newspoint/db/poll-types";
 import { withBase } from "@/lib/paths";
 import { callApi } from "@/lib/client-api";
@@ -74,6 +77,8 @@ function iso(value: string) {
 }
 
 export function PollManager({ initial, canCorrect }: { initial: List; canCorrect: boolean }) {
+  const mobile = useMobileDeskNavigation();
+  const [mobileStatus, setMobileStatus] = useState("all");
   const [list, setList] = useState(initial);
   const [listPage, setListPage] = useState(0);
   const [draft, setDraft] = useState<PollInput | null>(null);
@@ -89,10 +94,11 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
   const dirty = !!draft && JSON.stringify(draft) !== saved;
   const correctionsDirty = !!details && JSON.stringify(deltas) !== JSON.stringify(details.poll.adjustments);
   const unsaved = dirty || correctionsDirty;
+  usePhoneUnsavedChanges(unsaved);
 
   useEffect(() => {
     const guard = (e: BeforeUnloadEvent) => {
-      if (unsaved) e.preventDefault();
+      if (unsaved && !window.matchMedia(STUDIO_PHONE_QUERY).matches) e.preventDefault();
     };
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
@@ -113,7 +119,11 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
     setDeltas(data.poll.adjustments);
   }
 
-  async function open(id: string, nextPage = 0) {
+  async function open(id: string, nextPage = 0, trigger?: HTMLElement) {
+    if (trigger && id === draft?.id && window.matchMedia(STUDIO_PHONE_QUERY).matches) {
+      mobile.showDetail(trigger);
+      return;
+    }
     if (unsaved && !window.confirm("Има незаписани промени. Да ги отхвърля ли?")) return;
     const request = ++currentRequest.current;
     setBusy(true);
@@ -123,6 +133,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
       if (request === currentRequest.current) {
         install(data);
         setPage(nextPage);
+        if (trigger) mobile.showDetail(trigger);
       }
     } catch (e) {
       setNotice(e instanceof Error ? e.message : "Неуспешно зареждане.");
@@ -136,8 +147,13 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
     setListPage(nextPage);
   }
 
-  function create(copy = false) {
+  function create(copy = false, trigger?: HTMLElement) {
+    if (trigger && !copy && draft && !draft.id && window.matchMedia(STUDIO_PHONE_QUERY).matches) {
+      mobile.showDetail(trigger);
+      return;
+    }
     if (unsaved && !window.confirm("Да отхвърля ли незаписаните промени?")) return;
+    if (trigger) mobile.showDetail(trigger);
     const next =
       copy && draft
         ? {
@@ -223,14 +239,14 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
   }, [list]);
 
   return (
-    <div className="np-polls">
+    <div className="np-polls" data-mobile-pane={mobile.pane}>
       <aside className="np-polls-sidebar">
         <div className="np-polls-side-head">
           <div className="np-polls-counter">
             <span className="np-polls-counter-num">{counts.all}</span>
             <span className="np-polls-counter-label">{counts.all === 1 ? "анкета" : "анкети"}</span>
           </div>
-          <button data-help="Започва нова анкета. Попълнете въпрос, отговори и състояние, после запазете." disabled={busy} onClick={() => create()} className="np-polls-new-btn" aria-label="Нова анкета">
+          <button data-help="Започва нова анкета. Попълнете въпрос, отговори и състояние, после запазете." disabled={busy} onClick={(event) => create(false, event.currentTarget)} className="np-polls-new-btn" aria-label="Нова анкета">
             <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true">
               <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" />
             </svg>
@@ -261,16 +277,24 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
           ))}
         </div>
 
+        <label data-mobile-control="" className="np-mobile-poll-filter">
+          Статус на тази страница
+          <select value={mobileStatus} onChange={event => setMobileStatus(event.target.value)}>
+            <option value="all">Всички ({counts.all})</option>
+            {Object.entries(STATUS_NAMES).map(([value, label]) => <option key={value} value={value}>{label} ({counts[value]})</option>)}
+          </select>
+        </label>
+        {list.items.length > 0 && mobileStatus !== "all" && !counts[mobileStatus] ? <p data-mobile-control="" className="np-desk-mobile-only np-polls-empty">Няма анкети с този статус на страницата.</p> : null}
         {list.items.length > 0 ? (
           <ul className="np-polls-list" role="listbox" aria-label="Анкети">
             {list.items.map((p) => (
-              <li key={p.id}>
+              <li key={p.id} data-mobile-filtered={mobileStatus !== "all" && p.status !== mobileStatus}>
                 <button
                   type="button"
                   role="option"
                   disabled={busy}
                   aria-selected={draft?.id === p.id}
-                  onClick={() => void open(p.id)}
+                  onClick={(event) => void open(p.id, 0, event.currentTarget)}
                   className="np-polls-list-item"
                 >
                   <span className="np-polls-list-row">
@@ -294,6 +318,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
           </div>
         )}
 
+        {notice && mobile.pane === "list" ? <p data-mobile-control="" className="np-desk-mobile-only np-polls-notice" role="status">{notice}</p> : null}
         <div className="np-polls-pagination">
           <button disabled={busy || listPage === 0} onClick={() => void refreshList(listPage - 1).catch((e) => setNotice(e.message))}>
             ←
@@ -306,6 +331,7 @@ export function PollManager({ initial, canCorrect }: { initial: List; canCorrect
       </aside>
 
       <div className="np-polls-main">
+        {mobile.backButton("Към анкетите")}
         {!draft ? (
           <div className="np-polls-empty-state">
             <div className="np-polls-empty-illu" aria-hidden="true">

@@ -28,8 +28,46 @@ import {
 } from "@newspoint/content";
 import type { ArrangementArticle, ArrangementHistoryItem, MenuCategory } from "@/lib/arrangement-types";
 import { withBase } from "@/lib/paths";
+import { usePhoneDialog } from "./use-phone-dialog";
+import { confirmPhoneLeave, usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
 
 const field = "h-8 w-full min-w-0 max-w-full rounded-md border border-white/15 bg-white/10 px-2 text-xs text-white outline-none placeholder:text-white/40 focus:border-white/40";
+
+function usePlacementSearch() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<ArrangementArticle[]>([]);
+  const [feedback, setFeedback] = useState("");
+  const request = useRef<AbortController | null>(null);
+  useEffect(() => () => request.current?.abort(), []);
+
+  function changeQuery(value: string) {
+    request.current?.abort();
+    setQuery(value);
+    setResults([]);
+    setFeedback("");
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
+    setResults([]);
+    setFeedback("Търсене…");
+    try {
+      const response = await fetch(withBase(`/api/arrangements/search/?q=${encodeURIComponent(query)}`), { cache: "no-store", signal: controller.signal });
+      const data = await response.json() as { articles?: ArrangementArticle[]; error?: { message?: string } };
+      if (!response.ok || !data.articles) throw new Error(data.error?.message ?? "Търсенето не успя.");
+      if (!controller.signal.aborted) {
+        setResults(data.articles);
+        setFeedback(data.articles.length ? "" : "Няма намерени новини.");
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) setFeedback(error instanceof TypeError ? "Няма връзка. Опитайте отново." : error instanceof Error ? error.message : "Търсенето не успя.");
+    }
+  }
+  return { query, changeQuery, submit, results, feedback };
+}
 
 const ACCENTS: Record<string, string> = {
   plovdiv: "#1396a3",
@@ -111,12 +149,16 @@ export function ArrangeDesk({
   const versionRef = useRef(version);
   const [document, setDocument] = useState(draft);
   const [deskNote, setDeskNote] = useState(note);
+  const [savedDraft, setSavedDraft] = useState({ document: draft, note });
   const [known, setKnown] = useState(articles);
   const [selected, setSelected] = useState<string | null>(null);
-  const [editItems, setEditItems] = useState<ArrangementItem[]>([]);
+  const inspectorLayer = usePhoneDialog(selected !== null);
+  const [inspectorDocument, setInspectorDocument] = useState<ArrangementDocument | null>(null);
+  const editItems = (selected && inspectorDocument?.slots[selected]?.items) || [];
+  usePhoneUnsavedChanges(document !== savedDraft.document || deskNote !== savedDraft.note ||
+    (inspectorDocument !== null && inspectorDocument !== document));
   const [inspectorError, setInspectorError] = useState("");
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ArrangementArticle[]>([]);
+  const search = usePlacementSearch();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -168,23 +210,21 @@ export function ArrangeDesk({
     }
   }
 
-  /** Writes the draft and publishes so the public site matches the desk. */
-  async function persistAndPublish(nextDocument: ArrangementDocument): Promise<string | null> {
-    setBusy(true);
-    setInspectorError("");
-    try {
-      const saved = await postArrangement({ action: "save", pageKey, note: deskNote, document: nextDocument });
-      if (!saved.ok) return saved.message;
-      const published = await postArrangement({ action: "publish", pageKey });
-      if (!published.ok) return `Черновата е записана, но сайтът не се обнови: ${published.message}`;
-      return null;
-    } finally {
-      setBusy(false);
-    }
+  async function saveDraft(nextDocument: ArrangementDocument) {
+    const result = await postArrangement({ action: "save", pageKey, note: deskNote, document: nextDocument });
+    if (result.ok) setSavedDraft({ document: nextDocument, note: deskNote });
+    return result;
   }
 
-  function slotItems(key: string): ArrangementItem[] {
-    return document.slots[key]?.items ?? [];
+  async function saveMap(publish: boolean) {
+    setBusy(true);
+    try {
+      const saved = await saveDraft(document);
+      if (!saved.ok) { setMessage(saved.message); return; }
+      if (!publish) { setMessage("Черновата е запазена."); return; }
+      const sent = await postArrangement({ action: "publish", pageKey });
+      setMessage(sent.ok ? "Подреждането е на сайта." : `Черновата е записана, но сайтът не се обнови: ${sent.message}`);
+    } finally { setBusy(false); }
   }
 
   function documentWithSlot(base: ArrangementDocument, key: string, items: ArrangementItem[]): ArrangementDocument {
@@ -194,9 +234,9 @@ export function ArrangeDesk({
     return { ...base, slots };
   }
 
-  function writeSlot(key: string, items: ArrangementItem[]) {
-    setDocument((current) => documentWithSlot(current, key, items));
-    setNow(Date.now());
+  function setEditItems(update: (items: ArrangementItem[]) => ArrangementItem[]) {
+    if (!selected) return;
+    setInspectorDocument(current => current ? documentWithSlot(current, selected, update(current.slots[selected]?.items ?? [])) : current);
   }
 
   function newPlacementItem(articleId: string): ArrangementItem {
@@ -213,8 +253,7 @@ export function ArrangeDesk({
       if (queue) return [...rest, blank].slice(0, 1 + ARRANGEMENT_QUEUE_LIMIT);
       return [blank, ...rest].slice(0, 1 + ARRANGEMENT_QUEUE_LIMIT);
     });
-    setResults([]);
-    setQuery("");
+    search.changeQuery("");
   }
 
   function updateEditItem(index: number, patch: Partial<ArrangementItem>) {
@@ -228,46 +267,51 @@ export function ArrangeDesk({
   }
 
   async function saveInspector() {
-    if (!selected || busy) return;
-    for (const item of editItems) {
-      if (item.startsAt && item.endsAt && Date.parse(item.startsAt) >= Date.parse(item.endsAt)) {
+    if (!selected || !inspectorDocument || busy) return;
+    for (const [key, slot] of Object.entries(inspectorDocument.slots)) {
+      if (slot !== document.slots[key] && slot.items.some(item => item.startsAt && item.endsAt && Date.parse(item.startsAt) >= Date.parse(item.endsAt))) {
+        setSelected(key);
         setInspectorError("Крайният час трябва да е след началния.");
         return;
       }
     }
-    const nextDocument = documentWithSlot(document, selected, editItems);
-    setDocument(nextDocument);
-    setNow(Date.now());
-    const error = await persistAndPublish(nextDocument);
-    if (error) {
-      setInspectorError(error);
-      setMessage(error);
-      return;
-    }
-    setMessage("Запазено и на сайта.");
-    closeInspector();
-    router.refresh();
+    const nextDocument = inspectorDocument;
+    setBusy(true);
+    setInspectorError("");
+    try {
+      const saved = await saveDraft(nextDocument);
+      if (!saved.ok) { setInspectorError(saved.message); return; }
+      setDocument(nextDocument);
+      setNow(Date.now());
+      const sent = await postArrangement({ action: "publish", pageKey });
+      if (!sent.ok) {
+        setInspectorError(`Черновата е записана, но сайтът не се обнови: ${sent.message}`);
+        return;
+      }
+      setMessage("Запазено и на сайта.");
+      closeInspector();
+      router.refresh();
+    } finally { setBusy(false); }
   }
 
   function openSlot(key: string) {
     setSelected(key);
-    setEditItems([...(document.slots[key]?.items ?? [])]);
+    setInspectorDocument(current => current ?? document);
     setInspectorError("");
-    setQuery("");
-    setResults([]);
+    search.changeQuery("");
     setNow(Date.now());
   }
 
   function closeInspector() {
     setSelected(null);
-    setEditItems([]);
+    setInspectorDocument(null);
     setInspectorError("");
-    setQuery("");
-    setResults([]);
+    search.changeQuery("");
   }
 
   function swapSlotKeys(keyA: string, keyB: string) {
-    setDocument((current) => {
+    setInspectorDocument((current) => {
+      if (!current) return null;
       const slots = { ...current.slots };
       const itemsA = slots[keyA]?.items ?? [];
       const itemsB = slots[keyB]?.items ?? [];
@@ -308,15 +352,8 @@ export function ArrangeDesk({
     return entry ? `${entry.group} · ${entry.label}` : key;
   }
 
-  async function search(event: FormEvent) {
-    event.preventDefault();
-    const response = await fetch(withBase(`/api/arrangements/search/?q=${encodeURIComponent(query)}`), { cache: "no-store" });
-    const data = await response.json() as { articles?: ArrangementArticle[] };
-    setResults(data.articles ?? []);
-  }
-
-  function titleFor(key: string) {
-    const item = activePlacement(document.slots[key], now, visible);
+  function titleFor(key: string, source = document) {
+    const item = activePlacement(source.slots[key], now, visible);
     return item ? known[item.articleId]?.title ?? "Новина" : null;
   }
 
@@ -333,33 +370,40 @@ export function ArrangeDesk({
   }
 
   const headEdit = editItems[0];
-  const headTitle = headEdit ? known[headEdit.articleId]?.title ?? "Новина" : selected ? titleFor(selected) : null;
+  const headTitle = headEdit ? known[headEdit.articleId]?.title ?? "Новина" : null;
   const active = selected ? activePlacement(document.slots[selected], now, visible) : null;
   const activeCarouselPrefix = selected ? homeCarouselSlotPrefix(selected) : null;
 
   useEffect(() => {
-    if (!selected) return;
+    if (!selected || busy) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeInspector();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selected]);
+  }, [selected, busy]);
 
   if (!ready) {
     return <p className="np-card p-4 text-sm text-muted">Екранът е готов. Приложете миграция 20_page_arrangements.sql и презаредете.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="mb-1 flex flex-wrap items-center gap-1.5">
+    <div className="np-arrangement flex flex-col gap-4">
+      <label className="np-arrange-picker hidden">
+        <span>Страница за подреждане</span>
+        <select className="np-input" value={pageKey} disabled={busy} onChange={(event) => { if (confirmPhoneLeave()) router.push(`/arrange/?page=${encodeURIComponent(event.target.value)}`); }}>
+          <option value={HOME_PAGE_KEY}>Начална страница</option>
+          {menu.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+        </select>
+      </label>
+      <div className="np-arrange-categories mb-1 flex flex-wrap items-center gap-1.5">
         <a href={withBase("/arrange/?page=home")} className={`rounded-full px-3 py-1 text-xs font-bold ${pageKey === HOME_PAGE_KEY ? "bg-ink text-on-ink" : "bg-surface-2 text-muted"}`}>Начало</a>
         {menu.map((item) => (
           <a key={item.id} href={withBase(`/arrange/?page=${item.id}`)} className={`rounded-full px-3 py-1 text-xs font-semibold ${pageKey === item.id ? "bg-ink text-on-ink" : "bg-surface-2 text-muted"}`}>{item.name}</a>
         ))}
       </div>
 
-      <div className="overflow-hidden rounded-[1.6rem] bg-[#070b22] p-4 text-white shadow-[0_30px_80px_-40px_rgb(7_11_34)] ring-1 ring-white/10">
+      <div className="np-arrange-map overflow-hidden rounded-[1.6rem] bg-[#070b22] p-4 text-white shadow-[0_30px_80px_-40px_rgb(7_11_34)] ring-1 ring-white/10">
         <p className="mb-3 text-[11px] font-semibold tracking-[0.16em] text-white/50 uppercase">{pageKey === HOME_PAGE_KEY ? "Начална страница" : category?.name ?? "Рубрика"} · кликнете кутията</p>
         {pageKey === HOME_PAGE_KEY ? (
           <HomeMap
@@ -388,11 +432,8 @@ export function ArrangeDesk({
           <textarea data-help="Бележка към подреждането за редакционния екип. Не се показва на сайта." value={deskNote} onChange={(event) => setDeskNote(event.target.value)} maxLength={400} rows={2} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink outline-none focus:border-accent" />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button data-help="Записва подреждането като чернова. За показване на сайта натиснете Публикувай." type="button" disabled={busy} className="h-10 rounded-full bg-surface-2 px-5 text-sm font-bold text-ink" onClick={async () => { if (await send({ action: "save", pageKey, note: deskNote, document })) setMessage("Черновата е запазена."); }}>Запази чернова</button>
-          <button data-help="Записва и публикува текущото подреждане. Промяната се изпраща към отворените страници на читателите." type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-on-ink" onClick={async () => {
-            if (!await send({ action: "save", pageKey, note: deskNote, document })) return;
-            if (await send({ action: "publish", pageKey })) setMessage("Подреждането е на сайта.");
-          }}>Публикувай</button>
+          <button data-help="Записва подреждането като чернова. За показване на сайта натиснете Публикувай." type="button" disabled={busy} className="h-10 rounded-full bg-surface-2 px-5 text-sm font-bold text-ink" onClick={() => void saveMap(false)}>Запази чернова</button>
+          <button data-help="Записва и публикува текущото подреждане. Промяната се изпраща към отворените страници на читателите." type="button" disabled={busy} className="h-10 rounded-full bg-ink px-5 text-sm font-bold text-on-ink" onClick={() => void saveMap(true)}>Публикувай</button>
         </div>
         {message ? <p className="text-sm font-semibold text-ink">{message}</p> : null}
         <ExcludeBox document={document} known={known} onChange={setDocument} onKnow={(article) => setKnown((current) => ({ ...current, [article.id]: article }))} light />
@@ -413,8 +454,9 @@ export function ArrangeDesk({
 
       {selected ? (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-[rgb(7_11_34/0.72)] p-0 sm:items-center sm:p-4"
-          onClick={closeInspector}
+          ref={inspectorLayer}
+          className="np-arrange-slot-sheet fixed inset-0 z-50 flex items-end justify-center bg-[rgb(7_11_34/0.72)] p-0 sm:items-center sm:p-4"
+          onClick={() => { if (!busy) closeInspector(); }}
         >
           <div
             role="dialog"
@@ -430,29 +472,30 @@ export function ArrangeDesk({
                 <p className="mt-1 text-xs text-white/60">{headEdit ? (headEdit.endsAt === null ? "Постоянно" : remaining(headEdit.endsAt, now)) : metaFor(selected)}{active?.placedBy && !headEdit ? ` · ${active.placedBy}` : ""}</p>
                 {duplicates.includes(active?.articleId ?? "") ? <p className="mt-2 text-xs font-semibold text-amber-300">Тази новина вече е и на друго място.</p> : null}
               </div>
-              <button type="button" className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold" onClick={closeInspector}>Затвори</button>
+              <button type="button" disabled={busy} className="shrink-0 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold" onClick={closeInspector}>Затвори</button>
             </div>
 
-            <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-3">
+            <div inert={busy} className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-3">
               {activeCarouselPrefix ? (
                 <CarouselOrderPanel
                   title={CAROUSEL_ROW_TITLES[activeCarouselPrefix]}
                   slotPrefix={activeCarouselPrefix}
                   count={HOME_CAROUSEL_COUNT}
-                  titleFor={titleFor}
+                  titleFor={key => titleFor(key, inspectorDocument ?? document)}
                   onMove={(index, delta) => moveCarouselSlot(activeCarouselPrefix, index, delta)}
                   onPick={openSlot}
                   activeKey={selected}
                 />
               ) : null}
 
-              <form onSubmit={search} className="mt-3 flex min-w-0 gap-1.5">
-                <input data-help="Търси публикувана новина по заглавие, за да я сложите на това място." value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Търсете новина" className={`${field} flex-1`} />
+              <form onSubmit={search.submit} className="mt-3 flex min-w-0 gap-1.5">
+                <input data-help="Търси публикувана новина по заглавие, за да я сложите на това място." value={search.query} onChange={(event) => search.changeQuery(event.target.value)} placeholder="Търсете новина" className={`${field} flex-1`} />
                 <button type="submit" className="h-8 shrink-0 rounded-md bg-white px-3 text-xs font-bold text-[#101735]">Търси</button>
               </form>
-              {results.length ? (
+              {search.feedback ? <p role="status" className="mt-2 text-xs text-white/70">{search.feedback}</p> : null}
+              {search.results.length ? (
                 <ul className="mt-2 max-h-40 divide-y divide-white/10 overflow-y-auto">
-                  {results.map((article) => (
+                  {search.results.map((article) => (
                     <li key={article.id} className="flex items-center gap-2 py-1.5">
                       <span className="min-w-0 flex-1 truncate text-xs">{article.title}</span>
                       <button data-help="Добавя новината към избраното място без краен срок. Приложете с бутона Запази на сайта." type="button" className="rounded-full bg-white px-2 py-1 text-[11px] font-bold text-[#101735]" onClick={() => pickArticle(article, false)}>Сложи</button>
@@ -476,7 +519,7 @@ export function ArrangeDesk({
                         От сега
                       </button>
                     </div>
-                    <input data-help="Начало на показване на това място. Празно поле означава веднага след публикуване на подреждането."
+                    <input aria-label="Начало на показване" data-help="Начало на показване на това място. Празно поле означава веднага след публикуване на подреждането."
                       type="datetime-local"
                       value={toLocalInput(headEdit.startsAt)}
                       className={field}
@@ -485,7 +528,7 @@ export function ArrangeDesk({
                     <p className="mt-1 text-[10px] text-white/40">Празно „От“ = веднага. „От сега“ попълва текущия час.</p>
                   </div>
                   <div className="min-w-0">
-                    <label className="mb-1 flex min-w-0 items-center gap-2 text-[11px] text-white/55">
+                    <div className="mb-1 flex min-w-0 items-center gap-2 text-[11px] text-white/55">
                       <span>До</span>
                       <label className="ml-auto flex shrink-0 items-center gap-1.5 text-xs font-semibold text-white/80">
                         <input data-help="Оставя новината на мястото без краен час. Важи след публикуване на подреждането."
@@ -497,8 +540,8 @@ export function ArrangeDesk({
                         />
                         Без краен срок
                       </label>
-                    </label>
-                    <input data-help="Край на показване на това място. След него се използва следващата допустима новина."
+                    </div>
+                    <input aria-label="Край на показване" data-help="Край на показване на това място. След него се използва следващата допустима новина."
                       type="datetime-local"
                       disabled={headEdit.endsAt === null}
                       value={toLocalInput(headEdit.endsAt)}
@@ -528,15 +571,16 @@ export function ArrangeDesk({
             <div className="flex flex-wrap items-center gap-2 border-t border-white/10 px-4 py-3">
               <button data-help="Премахва ръчно избраните новини от това място. Приложете с бутона Запази на сайта."
                 type="button"
+                disabled={busy}
                 className="text-xs font-semibold text-white/60 underline-offset-2 hover:text-white hover:underline"
                 onClick={() => {
-                  setEditItems([]);
+                  setEditItems(() => []);
                   setInspectorError("");
                 }}
               >
                 Автоматично
               </button>
-              <button type="button" className="ml-auto rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white" onClick={closeInspector}>Отказ</button>
+              <button type="button" disabled={busy} className="ml-auto rounded-full bg-white/10 px-4 py-2 text-xs font-bold text-white" onClick={closeInspector}>Отказ</button>
               <button data-help="Записва редакцията на това място и публикува текущото подреждане на сайта." type="button" disabled={busy} className="rounded-full bg-white px-5 py-2 text-xs font-bold text-[#101735] disabled:opacity-50" onClick={() => void saveInspector()}>{busy ? "Запис…" : "Запази на сайта"}</button>
             </div>
           </div>
@@ -599,30 +643,25 @@ function ExcludeBox({
   onKnow: (article: ArrangementArticle) => void;
   light?: boolean;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<ArrangementArticle[]>([]);
+  const search = usePlacementSearch();
   const inputClass = light
     ? "h-8 w-full rounded-md border border-line bg-surface px-2 text-xs text-ink outline-none focus:border-accent"
     : field;
   return (
     <details className={light ? "border-t border-line pt-3" : "border-t border-white/10 pt-3"}>
       <summary data-help="Новините в този списък няма да се избират автоматично за тази страница. Ръчното поставяне е отделно." className={`cursor-pointer text-[11px] font-semibold tracking-[0.14em] uppercase ${light ? "text-muted" : "text-white/45"}`}>Без автоматично място</summary>
-      <form className="mt-2 flex gap-1.5" onSubmit={async (event) => {
-        event.preventDefault();
-        const response = await fetch(withBase(`/api/arrangements/search/?q=${encodeURIComponent(query)}`), { cache: "no-store" });
-        const data = await response.json() as { articles?: ArrangementArticle[] };
-        setResults(data.articles ?? []);
-      }}>
-        <input data-help="Търси новина за изключване от автоматичния избор на тази страница." value={query} onChange={(event) => setQuery(event.target.value)} className={inputClass} placeholder="Заглавие" />
+      <form className="mt-2 flex gap-1.5" onSubmit={search.submit}>
+        <input data-help="Търси новина за изключване от автоматичния избор на тази страница." value={search.query} onChange={(event) => search.changeQuery(event.target.value)} className={inputClass} placeholder="Заглавие" />
         <button className={`h-8 shrink-0 rounded-md px-2 text-xs font-bold ${light ? "bg-surface-2 text-ink" : "bg-white/10 text-white"}`} type="submit">Търси</button>
       </form>
+      {search.feedback ? <p role="status" className="mt-2 text-xs">{search.feedback}</p> : null}
       <ul className="mt-2 space-y-1 text-xs">
-        {results.map((article) => (
+        {search.results.map((article) => (
           <li key={article.id}>
             <button data-help="Изключва новината от автоматичния избор за тази страница след публикуване на подреждането." type="button" className="text-left font-semibold" onClick={() => {
               onKnow(article);
               if (!document.excluded.includes(article.id)) onChange({ ...document, excluded: [...document.excluded, article.id] });
-              setResults([]);
+              search.changeQuery("");
             }}>{article.title}</button>
           </li>
         ))}
@@ -716,7 +755,7 @@ function CarouselRow({
           </button>
         ) : null}
       </div>
-      <div className="grid grid-cols-5 gap-2 xl:grid-cols-10">
+      <div className="np-arrange-carousel grid grid-cols-5 gap-2 xl:grid-cols-10">
         {Array.from({ length: count }, (_, index) => {
           const key = `${slotPrefix}-${index}`;
           return (
@@ -770,16 +809,16 @@ function HomeMap({
   const afterSplit = planned.main.filter((section, index) => section.wide && index > balIndex && !HOME_RUBRIC_SECTIONS_CUSTOM.has(section.slug));
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid h-[22rem] grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_13rem] gap-3">
+      <div className="np-arrange-leads grid h-[22rem] grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)_13rem] gap-3">
         <Tile slotKey="hero" position={1} imageUrl={imageFor("hero")} label="Водеща" title={titleFor("hero")} meta={metaFor("hero")} selected={selected === "hero"} color="#5b6cff" className="h-full min-h-0" onSelect={onSelect} />
-        <div className="grid min-h-0 grid-rows-[1.35fr_1fr] gap-3">
+        <div className="np-arrange-support grid min-h-0 grid-rows-[1.35fr_1fr] gap-3">
           <Tile slotKey="support-0" position={2} imageUrl={imageFor("support-0")} label="До водещата" title={titleFor("support-0")} meta={metaFor("support-0")} selected={selected === "support-0"} color="#7c5cff" className="min-h-0" onSelect={onSelect} />
           <div className="grid min-h-0 grid-cols-2 gap-3">
             <Tile slotKey="support-1" position={3} imageUrl={imageFor("support-1")} label="Малка" title={titleFor("support-1")} meta={metaFor("support-1")} selected={selected === "support-1"} color="#9b6bff" className="min-h-0" onSelect={onSelect} />
             <Tile slotKey="support-2" position={4} imageUrl={imageFor("support-2")} label="Малка" title={titleFor("support-2")} meta={metaFor("support-2")} selected={selected === "support-2"} color="#c46bff" className="min-h-0" onSelect={onSelect} />
           </div>
         </div>
-        <div className="flex min-h-0 flex-col gap-2 rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
+        <div className="np-arrange-latest flex min-h-0 flex-col gap-2 rounded-2xl bg-white/5 p-2 ring-1 ring-white/10">
           <p className="px-1 text-[10px] font-bold tracking-[0.14em] text-white/50 uppercase">Последни</p>
           {Array.from({ length: HOME_LATEST_PIN_COUNT }, (_, index) => {
             const key = `latest-${index}`;
@@ -821,7 +860,7 @@ function HomeMap({
       {bulgaria ? (
         <>
           <StaticBlock title="Анкета" detail="Активната анкета от Studio → Анкети. Без слотове за подреждане." className="min-h-16" />
-          <div className="grid grid-cols-[minmax(0,1fr)_16rem] gap-4">
+          <div className="np-arrange-sections grid grid-cols-[minmax(0,1fr)_16rem] gap-4">
             <div className="flex flex-col gap-3">
               <SectionBlock section={bulgaria} selected={selected} onSelect={onSelect} titleFor={titleFor} metaFor={metaFor} />
               <StaticBlock
@@ -888,7 +927,7 @@ function SectionBlock({
           ))}
         </div>
       ) : section.layout === "feature" ? (
-        <div className="grid grid-cols-[1.4fr_1fr] gap-2">
+        <div className="np-arrange-feature grid grid-cols-[1.4fr_1fr] gap-2">
           <Tile slotKey={keys[0]!} label="Голяма" title={titleFor(keys[0]!)} meta={metaFor(keys[0]!)} selected={selected === keys[0]} color={color} className="min-h-40" onSelect={onSelect} />
           <div className="grid grid-cols-2 gap-2">
             {keys.slice(1).map((key, index) => (
@@ -937,7 +976,7 @@ function CategoryMap({
     <div className="flex flex-col gap-3">
       <Tile slotKey="lead" label="Голяма карта" title={titleFor("lead")} meta={metaFor("lead")} selected={selected === "lead"} color={color} className="min-h-52" onSelect={onSelect} />
       <p className="text-[10px] font-bold tracking-[0.14em] text-white/50 uppercase">Още от {name}</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="np-arrange-next grid grid-cols-3 gap-2">
         {Array.from({ length: CATEGORY_NEXT_COUNT }, (_, index) => {
           const key = `next-${index}`;
           return <Tile key={key} slotKey={key} label={`Следваща ${index + 1}`} title={titleFor(key)} meta={metaFor(key)} selected={selected === key} color={color} className="min-h-28" onSelect={onSelect} />;

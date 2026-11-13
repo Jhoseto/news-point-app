@@ -47,9 +47,14 @@ describe("home top-news map", () => {
         { id: "bg", slug: "balgariya", name: "България", path: "/balgariya/" },
       ],
     }));
-    const voice = html.split("Гласът на истината").length - 1;
-    const bulgaria = html.indexOf("България");
-    const voiceAt = html.indexOf("Гласът на истината");
+    // Count placements on the page map. The same rubric is also a navigation destination.
+    const mapStart = html.indexOf('class="np-arrange-map ');
+    expect(mapStart).toBeGreaterThan(-1);
+    const map = html.slice(mapStart);
+    const voice = map.split("Гласът на истината").length - 1;
+    const bulgaria = map.indexOf("България");
+    const voiceAt = map.indexOf("Гласът на истината");
+    expect(bulgaria).toBeGreaterThan(-1);
     expect(voice).toBe(1);
     expect(voiceAt).toBeGreaterThan(bulgaria);
     expect(html).toContain("Подреди карусела");

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { STUDIO_PHONE_QUERY } from "../lib/studio-phone";
+import { useMobileDeskNavigation } from "./mobile-desk-navigation";
 import { withBase } from "@/lib/paths";
 import {
   countByStatus,
@@ -19,6 +21,7 @@ import "./submissions-manager.css";
 export type { Submission, SubmissionStatus };
 
 export function SubmissionsManager({ initial }: { initial: Submission[] }) {
+  const mobile = useMobileDeskNavigation();
   const [items, setItems] = useState(initial);
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterKind, setFilterKind] = useState<string>("all");
@@ -41,10 +44,11 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
 
   // Keep the selection visible when filters change.
   useEffect(() => {
+    if (mobile.pane === "detail" && window.matchMedia(STUDIO_PHONE_QUERY).matches) return;
     if (!selected || !filtered.some((item) => item.id === selected.id)) {
       setSelectedId(filtered[0]?.id ?? null);
     }
-  }, [filtered, selected]);
+  }, [filtered, selected, mobile.pane]);
 
   async function change(item: Submission, next: string) {
     setPending(true);
@@ -62,13 +66,15 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
       }
       setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, status: next as SubmissionStatus } : entry)));
       setNotice({ tone: "success", text: `Статусът е „${LABELS[next] ?? next}".` });
+    } catch {
+      setNotice({ tone: "error", text: "Няма връзка със сървъра. Опитайте отново." });
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="np-submissions">
+    <div className="np-submissions" data-mobile-pane={mobile.pane}>
       <aside className="np-submissions-sidebar">
         <div className="np-submissions-side-head">
           <div className="np-submissions-counter">
@@ -140,7 +146,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
                   type="button"
                   role="option"
                   aria-selected={item.id === selected?.id}
-                  onClick={() => setSelectedId(item.id)}
+                  onClick={(event) => { setSelectedId(item.id); mobile.showDetail(event.currentTarget); }}
                   className="np-submissions-list-item"
                 >
                   <span className="np-submissions-list-row">
@@ -168,6 +174,7 @@ export function SubmissionsManager({ initial }: { initial: Submission[] }) {
       </aside>
 
       <div className="np-submissions-main">
+        {mobile.backButton("Към сигналите", pending)}
         {selected ? (
           <article data-help="Данните и прикачените файлове от читателския сигнал. Прегледайте ги преди редакционно решение." className="np-submissions-detail">
             <header className="np-submissions-detail-head">

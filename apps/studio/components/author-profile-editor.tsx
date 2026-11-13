@@ -10,6 +10,8 @@ import { ROLE_LABELS } from "@/lib/editor/roles";
 import { PASSWORD_MAX, PASSWORD_RULES, passwordProblems } from "@/lib/password-policy";
 import { withBase } from "@/lib/paths";
 import { ProfilePhotoCropper } from "./profile-photo-cropper";
+import { usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
+import { STUDIO_PHONE_QUERY } from "../lib/studio-phone";
 import "./author-profile-editor.css";
 
 export function AuthorProfileEditor({ staff, initial }: { staff: { email: string; role: StaffRole }; initial: AuthorProfileInput & { hasPhoto: boolean } }) {
@@ -29,10 +31,13 @@ export function AuthorProfileEditor({ staff, initial }: { staff: { email: string
   const [passwordPending, setPasswordPending] = useState(false);
   const [passwordNotice, setPasswordNotice] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const dirty = JSON.stringify(profile) !== JSON.stringify(saved);
+  usePhoneUnsavedChanges(dirty || Boolean(cropFile || currentPassword || newPassword || confirmPassword));
   const initials = profile.name.split(/\s+/).map((part) => part[0]).join("").slice(0, 2).toUpperCase();
 
   useEffect(() => {
-    const guard = (event: BeforeUnloadEvent) => { if (dirty || cropFile) event.preventDefault(); };
+    const guard = (event: BeforeUnloadEvent) => {
+      if ((dirty || cropFile) && !window.matchMedia(STUDIO_PHONE_QUERY).matches) event.preventDefault();
+    };
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
   }, [dirty, cropFile]);

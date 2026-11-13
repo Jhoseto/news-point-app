@@ -326,7 +326,7 @@ export function UsersManager({ actor, canManageAccounts, users }: { actor: Actor
                         </span>
                       )}
                     </td>
-                    <td className="np-users-activity">
+                    <td className="np-users-activity" data-label="Активност">
                       {user.lastActiveAt ? `Активен ${formatWhen(user.lastActiveAt)}` : "Още не е влизал"}
                     </td>
                     <td className="np-users-actions">

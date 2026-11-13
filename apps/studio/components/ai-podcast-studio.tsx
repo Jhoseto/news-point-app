@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AI_PODCAST_VOICES, PODCAST_AUDIO_ACCEPT, scriptWords, targetWords, transcript, type AiPodcastSegment, type AiPodcastSettings, type AiPodcastSource, type AiPodcastWarning } from "@newspoint/content";
 import { withBase } from "@/lib/paths";
+import { confirmPhoneLeave, usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
 import type { Category } from "./podcast-desk-types";
 import "./ai-podcast-studio.css";
 
@@ -76,6 +77,7 @@ function Monitor({ project, job, jobs, message, error, nextStep, busy, onRetry, 
 export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId, onOpenProject }: {
   mode: Mode; categories: Category[]; webUrl: string; role: string; openProjectId?: string | null; onOpenProject?: (id: string | null) => void;
 }) {
+  const [mobilePanel, setMobilePanel] = useState<"projects" | "work" | "monitor">("work");
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(openProjectId ?? null);
   const [project, setProject] = useState<Project | null>(null);
@@ -94,28 +96,46 @@ export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId,
   const [segments, setSegments] = useState<AiPodcastSegment[]>([]);
   const [directions, setDirections] = useState<Record<string, string>>({});
   const [assets, setAssets] = useState<Asset[]>([]);
-  const [voices, setVoices] = useState<Voice>(null);
+  const [savedVoices, setSavedVoices] = useState<Voice>(null);
+  const [voiceDraft, setVoices] = useState<Voice>(null);
+  const voices = voiceDraft ?? savedVoices;
   const [musicJobs, setMusicJobs] = useState<Job[]>([]);
   const [preset, setPreset] = useState<"daily" | "evening" | "breaking">("daily");
   const [musicPrompt, setMusicPrompt] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const editorRevision = useRef<{ id: string; revision: number } | null>(null);
+  const [editorBase, setEditorBase] = useState<Project | null>(null);
   const currentProjectId = useRef<string | null>(openProjectId ?? null);
+  const unsaved = Boolean(editorBase && (title !== (editorBase.title ?? "") || summary !== (editorBase.summary ?? "") || JSON.stringify(editorialText(segments)) !== JSON.stringify(editorialText(editorBase.segments))));
+  const editor = useRef({ base: editorBase, unsaved });
+  useLayoutEffect(() => { editor.current = { base: editorBase, unsaved }; }, [editorBase, unsaved]);
+  const newestRevision = useRef<{ id: string; revision: number } | null>(null);
+  const revisionConflict = Boolean(project && editorBase?.id === project.id && editorBase.revision !== project.revision && unsaved);
+  const newSettingsDirty = !selectedId && JSON.stringify(settings) !== JSON.stringify(defaults);
+  const voiceDirty = voiceDraft && (voiceDraft.alexVoice !== savedVoices?.alexVoice || voiceDraft.mayaVoice !== savedVoices?.mayaVoice);
+  const draftDirty = busy || unsaved || newSettingsDirty || Boolean(musicFile || coverFile || voiceDirty) ||
+    (project ? musicPrompt !== suggestedMusicPrompt(project) : Boolean(musicPrompt));
+  usePhoneUnsavedChanges(draftDirty);
 
   const loadProjects = useCallback(async () => { const data = await api<{ projects: ProjectItem[] }>("?view=projects"); setProjects(data.projects); }, []);
+  const installDraft = useCallback((next: Project) => {
+    setEditorBase(next);
+    setTitle(next.title ?? ""); setSummary(next.summary ?? ""); setSegments(next.segments);
+  }, []);
   const loadProject = useCallback(async (id: string, reset = false) => {
     const data = await api<{ project: Project; jobs: Job[]; episode: Episode | null; musicAsset: { id: string; storageKey: string; prompt: string } | null; mixedMusicAssetId: string | null; voices: Voice }>(`?view=project&id=${id}`);
     if (currentProjectId.current !== id) return;
-    setProject(data.project); setJobs(data.jobs); setEpisode(data.episode); setMusicAsset(data.musicAsset); setMixedMusicAssetId(data.mixedMusicAssetId); setVoices(data.voices);
-    if (reset || editorRevision.current?.id !== id || editorRevision.current.revision !== data.project.revision) {
-      setTitle(data.project.title ?? ""); setSummary(data.project.summary ?? ""); setSegments(data.project.segments);
+    if (newestRevision.current?.id === id && newestRevision.current.revision > data.project.revision) return;
+    newestRevision.current = { id, revision: data.project.revision };
+    setProject(data.project); setJobs(data.jobs); setEpisode(data.episode); setMusicAsset(data.musicAsset); setMixedMusicAssetId(data.mixedMusicAssetId); setSavedVoices(data.voices);
+    const { base, unsaved: hasEdits } = editor.current;
+    if (reset || base?.id !== id || (!hasEdits && base.revision !== data.project.revision)) {
+      installDraft(data.project);
       if (reset) setMusicPrompt(suggestedMusicPrompt(data.project));
     }
-    editorRevision.current = { id, revision: data.project.revision };
-  }, []);
-  const loadAssets = useCallback(async () => { const data = await api<{ assets: Asset[]; voices: Voice; jobs: Job[] }>("?view=assets"); setAssets(data.assets); setVoices(data.voices); setMusicJobs(data.jobs); }, []);
+  }, [installDraft]);
+  const loadAssets = useCallback(async () => { const data = await api<{ assets: Asset[]; voices: Voice; jobs: Job[] }>("?view=assets"); setAssets(data.assets); setSavedVoices(data.voices); setMusicJobs(data.jobs); }, []);
 
   useEffect(() => { void (mode === "music" ? loadAssets() : loadProjects()).catch((cause) => setError((cause as Error).message)); }, [mode, loadAssets, loadProjects]);
   useEffect(() => { if (mode !== "studio") return; const timer = setTimeout(() => { void api<{ articles: Article[] }>(`?view=articles&q=${encodeURIComponent(query)}`).then((data) => setArticles(data.articles)).catch((cause) => setError((cause as Error).message)); }, 250); return () => clearTimeout(timer); }, [mode, query]);
@@ -129,7 +149,11 @@ export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId,
       await api("", action);
       setNotice(message);
       if (action.action === "produce" || action.action === "remix" || action.action === "music" || action.action === "regenerateCover" || action.action === "regenerateSegment") setPanel("production");
-      if (mode === "music") await loadAssets();
+      if (mode === "music") {
+        await loadAssets();
+        if (action.action === "setVoices") setVoices(null);
+        if (action.action === "music") setMusicPrompt("");
+      }
       else if (selectedId) { await loadProject(selectedId, action.action === "edit"); await loadProjects(); }
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
@@ -188,14 +212,13 @@ export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId,
 
   const active = jobs.some((job) => job.status === "queued" || job.status === "running");
   const latest = jobs[0];
-  const unsaved = Boolean(project && (title !== (project.title ?? "") || summary !== (project.summary ?? "") || JSON.stringify(editorialText(segments)) !== JSON.stringify(editorialText(project.segments))));
   const words = scriptWords(segments);
   const plannedWords = project ? targetWords(project.settings) : 0;
   const wordReady = project ? words >= plannedWords * .9 && words <= plannedWords * 1.1 : false;
   const musicReady = !project || project.settings.music === "none" || Boolean(musicAsset);
   const musicAwaitingMix = Boolean(project?.status === "ready" && episode && project.settings.music === "custom" && musicAsset && mixedMusicAssetId !== musicAsset.id);
   const durationOutsideTarget = Boolean(project && episode && (episode.durationSec < project.settings.minutes * 60 * .9 || episode.durationSec > project.settings.minutes * 60 * 1.1));
-  const canEdit = Boolean(project && ["review", "ready"].includes(project.status) && !active && !busy);
+  const canEdit = Boolean(project && ["review", "ready"].includes(project.status) && !active && !busy && !revisionConflict);
   const canProduce = Boolean(canEdit && !unsaved && wordReady && musicReady && voices && segments.length);
   let nextStep = "Изберете 3–5 публикувани статии и създайте сценарий.";
   if (project) {
@@ -211,18 +234,39 @@ export function AiPodcastStudio({ mode, categories, webUrl, role, openProjectId,
     else if (project.status === "scripting") nextStep = "Изчакайте генерирането и фактологичната проверка на сценария.";
   }
 
-  const selectProject = (id: string) => { currentProjectId.current = id; setSelectedId(id); onOpenProject?.(id); setProject(null); setJobs([]); setEpisode(null); setMusicAsset(null); setMixedMusicAssetId(null); setMusicFile(null); setPanel("script"); setError(""); setNotice(""); };
-  return <div className="np-ai-workspace">
-    <aside className="np-ai-projects np-ai-card"><div className="np-ai-row"><h2>Проекти</h2><button type="button" className="np-ai-link" onClick={() => { currentProjectId.current = null; setSelectedId(null); onOpenProject?.(null); setProject(null); setJobs([]); setEpisode(null); setMusicAsset(null); setSettings(defaults); setError(""); setNotice(""); }}>+ Нов</button></div><div className="np-ai-project-list">{projects.map((item) => <button type="button" key={item.id} className={`np-ai-project ${selectedId === item.id ? "is-active" : ""}`} onClick={() => selectProject(item.id)}><strong>{item.title || "Нов AI епизод"}</strong><small>{statusText[item.status] || item.status}</small></button>)}</div>{!projects.length && <p>Няма AI проекти.</p>}</aside>
+  function selectProject(id: string | null) {
+    if (id !== selectedId) {
+      if (!confirmPhoneLeave()) return;
+      currentProjectId.current = id;
+      setSelectedId(id);
+      onOpenProject?.(id);
+      setProject(null); setEditorBase(null); setJobs([]); setEpisode(null); setMusicAsset(null); setMixedMusicAssetId(null);
+      setMusicFile(null); setCoverFile(null); setMusicPrompt(""); setDirections({}); setSettings(defaults);
+      setPanel("script"); setError(""); setNotice("");
+    }
+    setMobilePanel("work");
+  }
+  return <div className="np-ai-workspace" data-mobile-panel={mobilePanel}>
+    <nav data-mobile-control="" className="np-mobile-ai-nav" aria-label="AI работно място">
+      {([["projects", "Проекти"], ["work", "Редактор"], ["monitor", "Монитор"]] as const).map(([value, label]) => (
+        <button key={value} type="button" aria-pressed={mobilePanel === value} onClick={() => setMobilePanel(value)}>{label}{value === "monitor" && active ? " •" : ""}</button>
+      ))}
+    </nav>
+    {mobilePanel !== "monitor" && (error || notice) && <p data-mobile-control="" role={error ? "alert" : "status"} className="np-desk-mobile-only np-mobile-ai-message">{error || notice}</p>}
+    <aside className="np-ai-projects np-ai-card"><div className="np-ai-row"><h2>Проекти</h2><button type="button" className="np-ai-link" onClick={() => selectProject(null)}>+ Нов</button></div><div className="np-ai-project-list">{projects.map((item) => <button type="button" key={item.id} className={`np-ai-project ${selectedId === item.id ? "is-active" : ""}`} onClick={() => selectProject(item.id)}><strong>{item.title || "Нов AI епизод"}</strong><small>{statusText[item.status] || item.status}</small></button>)}</div>{!projects.length && <p>Няма AI проекти.</p>}</aside>
 
     <main className="np-ai-main">
+      {revisionConflict && project && <div className="np-ai-card" role="alert">
+        <p>Има по-нова записана версия. Можете да копирате своите промени, преди да заредите новата версия.</p>
+        <button className="np-ai-secondary" type="button" onClick={() => installDraft(project)}>Зареди новата версия</button>
+      </div>}
       {!selectedId ? <section className="np-ai-card"><small className="np-ai-eyebrow">НОВ ЕПИЗОД</small><h2>Източници и настройки</h2><p>Изберете 3–5 публикувани статии. След генерирането ще прегледате сценария, преди да се създаде аудио.</p><label>Търсене на статии<input data-help="Търси публикувани статии за източници на новия AI епизод." type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Заглавие или тема" /></label><div className="np-ai-articles">{articles.map((article) => <label key={article.id}><input data-help="Избира статия за основа на сценария. Изберете общо 3–5 статии." type="checkbox" checked={settings.articleIds.includes(article.id)} disabled={!settings.articleIds.includes(article.id) && settings.articleIds.length >= 5} onChange={() => setSettings((old) => ({ ...old, articleIds: old.articleIds.includes(article.id) ? old.articleIds.filter((id) => id !== article.id) : [...old.articleIds, article.id] }))} />{article.title}</label>)}</div><p>Избрани: {settings.articleIds.length} от 3–5.</p>
         <div className="np-ai-grid"><label>Продължителност<select data-help="Желаната продължителност на разговора. Готовото аудио може да е с различна дължина." value={settings.minutes} onChange={(event) => setSettings({ ...settings, minutes: Number(event.target.value) as AiPodcastSettings["minutes"] })}>{[5, 10, 15, 25].map((n) => <option key={n} value={n}>{n} минути</option>)}</select></label><label>Стил<select data-help="Тонът на разговора между водещите: естествен, сериозен, аналитичен или динамичен." value={settings.style} onChange={(event) => setSettings({ ...settings, style: event.target.value as AiPodcastSettings["style"] })}><option value="natural">Естествен разговор</option><option value="serious">Сериозен</option><option value="analytical">Аналитичен</option><option value="dynamic">Динамичен</option></select></label><label>Увод<select data-help="Избира дали уводът да се създаде автоматично, или да се използва вашият точен текст." value={settings.introMode} onChange={(event) => setSettings({ ...settings, introMode: event.target.value as AiPodcastSettings["introMode"] })}><option value="automatic">Автоматичен</option><option value="exact">Мой точен текст</option></select></label><label>Музика<select data-help="Избира фонова музика за епизода или оставя разговора без музика." value={settings.music} onChange={(event) => setSettings({ ...settings, music: event.target.value as AiPodcastSettings["music"] })}><option value="none">Без музика</option><option value="daily">Daily</option><option value="evening">Evening</option><option value="breaking">Breaking</option><option value="custom">Нова за епизода</option></select></label><label>Рубрика<select data-help="Рубриката, с която да бъде свързан новият епизод." value={settings.categoryId ?? ""} onChange={(event) => setSettings({ ...settings, categoryId: event.target.value || null })}><option value="">Без рубрика</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label></div>
         {settings.introMode === "exact" && <label>Точен увод<textarea data-help="Точният увод, който искате да се използва в сценария." value={settings.intro} onChange={(event) => setSettings({ ...settings, intro: event.target.value })} rows={3} /></label>}<label>Допълнителна насока<textarea data-help="Допълнителна насока за сценария: какво да подчертае или какъв подход да използва." value={settings.direction} onChange={(event) => setSettings({ ...settings, direction: event.target.value })} rows={2} /></label><button data-help="Изпраща избраните статии за създаване на AI сценарий. Ще го прегледате преди озвучаване." type="button" className="np-ai-primary" disabled={busy || settings.articleIds.length < 3 || (settings.introMode === "exact" && settings.intro.trim().length < 2)} onClick={() => void create()}>Създай сценарий</button></section> : project ? <>
         <header className="np-ai-project-head np-ai-card"><small className="np-ai-eyebrow">{statusText[project.status] || project.status}</small><h2>{project.title || "Нов AI епизод"}</h2><div className="np-ai-sources">{project.sources.map((source) => <a key={source.id} href={`${webUrl}${source.path}`} target="_blank" rel="noopener noreferrer">{source.title}</a>)}</div><div className="np-ai-panel-tabs" role="tablist" aria-label="Работа по епизода"><button type="button" role="tab" aria-selected={panel === "script"} className={panel === "script" ? "is-active" : ""} onClick={() => setPanel("script")}>Сценарий</button><button type="button" role="tab" aria-selected={panel === "production"} className={panel === "production" ? "is-active" : ""} onClick={() => setPanel("production")}>Медии и чернова</button></div></header>
         {panel === "script" ? <section className="np-ai-card np-ai-script-panel"><div className="np-ai-script-heading"><div><small className="np-ai-eyebrow">РЕДАКТОР</small><h2>Сценарий</h2></div><p>{words} думи · цел {plannedWords} · {project.settings.minutes} минути</p></div>
           {project.warnings.length > 0 && <details className="np-ai-warning-box"><summary>Фактологични предупреждения · {project.warnings.length}</summary>{project.warnings.map((warning, index) => <p key={index}><strong>„{warning.claim}“</strong> — {warning.reason}{warning.excerpt && <small> Пасаж: „{warning.excerpt}“</small>}{project.sources.find((source) => source.id === warning.sourceId) && <a href={`${webUrl}${project.sources.find((source) => source.id === warning.sourceId)!.path}`} target="_blank" rel="noopener noreferrer">Виж статията ↗</a>}</p>)}</details>}
-          {segments.length ? <><div className="np-ai-grid"><label>Заглавие<input data-help="Заглавието на AI епизода. Запазете редакцията, преди да продължите." value={title} onChange={(event) => setTitle(event.target.value)} /></label><label>Резюме<textarea data-help="Кратко представяне на AI епизода за бъдещата му публична страница." value={summary} onChange={(event) => setSummary(event.target.value)} rows={2} /></label></div><div className="np-ai-script-scroll">{segments.map((segment, segmentIndex) => <details key={segment.id} className="np-ai-segment"><summary><span>{segmentIndex + 1}. {segment.label}</span><small>{segment.lines.length} реплики</small></summary><div className="np-ai-segment-body"><div className="np-ai-row"><label>Заглавие на сюжета<input data-help="Името на този сюжет в сценария." value={segment.label} onChange={(event) => setSegments((old) => old.map((item) => item.id === segment.id ? { ...item, label: event.target.value } : item))} /></label><button type="button" className="np-ai-link" disabled={segmentIndex === 0} onClick={() => setSegments((old) => move(old, segmentIndex, -1))}>Премести нагоре</button><button type="button" className="np-ai-link" disabled={segmentIndex === segments.length - 1} onClick={() => setSegments((old) => move(old, segmentIndex, 1))}>Премести надолу</button><button type="button" className="np-ai-link" disabled={segments.length === 1} onClick={() => setSegments((old) => old.filter((item) => item.id !== segment.id))}>Премахни</button></div>{segment.lines.map((line, index) => <div key={index} className="np-ai-line"><select data-help="Избира гласа за тази реплика: Алекс или Мая." aria-label={`Говорител на реплика ${index + 1}`} value={line.speaker} onChange={(event) => lineChange(segment.id, index, { speaker: event.target.value as "alex" | "maya" })}><option value="alex">Алекс</option><option value="maya">Мая</option></select><div><textarea data-help="Точният текст, който избраният говорител ще произнесе в тази реплика." aria-label={`Реплика ${index + 1}`} value={line.text} rows={2} onChange={(event) => lineChange(segment.id, index, { text: event.target.value })} /><input aria-label={`Насока за реплика ${index + 1}`} value={line.direction} onChange={(event) => lineChange(segment.id, index, { direction: event.target.value })} placeholder="Насока за изговор" /></div></div>)}<div className="np-ai-row"><button type="button" className="np-ai-link" onClick={() => setSegments((old) => old.map((item) => item.id === segment.id ? { ...item, lines: [...item.lines, { speaker: "maya", text: "", direction: "" }] } : item))}>+ Реплика</button>{segment.sourceId && <><input data-help="Насока как AI да пренапише само този сюжет. Изпраща се с AI пренапиши." aria-label="Насока за пренаписване" value={directions[segment.id] || ""} onChange={(event) => setDirections({ ...directions, [segment.id]: event.target.value })} placeholder="Насока за промяна на сюжета" /><button data-help="Изпраща само този сюжет за пренаписване според въведената насока. Прегледайте новия текст." type="button" className="np-ai-link" disabled={busy || active || (directions[segment.id] || "").trim().length < 2} onClick={() => void act({ action: "rewrite", projectId: project.id, segmentId: segment.id, direction: directions[segment.id] }, "Пренаписването е заявено.")}>AI пренапиши</button></>}{project.status === "ready" && <button data-help="Генерира отново звука за този сюжет. Не създава нов сценарий за целия епизод." type="button" className="np-ai-link" disabled={busy || active} onClick={() => void act({ action: "regenerateSegment", projectId: project.id, segmentId: segment.id }, "Повторното озвучаване е заявено.")}>Регенерирай звук</button>}</div></div></details>)}</div><div className="np-ai-script-actions"><div><button data-help="Записва редакциите и проверява променените сюжети преди следващата стъпка." type="button" className="np-ai-primary" disabled={!canEdit || !unsaved || segments.some((segment) => segment.lines.some((line) => !line.text.trim()))} onClick={() => void act({ action: "edit", projectId: project.id, revision: project.revision, title, summary, segments }, "Редакцията е записана. Проверяват се променените сюжети.")}>Запази и провери</button><button data-help="Одобрява сценария и започва генериране на аудио с избраните гласове." type="button" className="np-ai-primary" disabled={!canProduce} onClick={() => void act({ action: "produce", projectId: project.id }, "Озвучаването е заявено. Следете работния монитор.")}>Одобри и озвучи</button></div><p>{nextStep}</p></div></> : <p>Сценарият още не е готов. Следете работния монитор.</p>}
+          {segments.length ? <><div className="np-ai-grid"><label>Заглавие<input data-help="Заглавието на AI епизода. Запазете редакцията, преди да продължите." value={title} onChange={(event) => setTitle(event.target.value)} /></label><label>Резюме<textarea data-help="Кратко представяне на AI епизода за бъдещата му публична страница." value={summary} onChange={(event) => setSummary(event.target.value)} rows={2} /></label></div><div className="np-ai-script-scroll">{segments.map((segment, segmentIndex) => <details key={segment.id} className="np-ai-segment"><summary><span>{segmentIndex + 1}. {segment.label}</span><small>{segment.lines.length} реплики</small></summary><div className="np-ai-segment-body"><div className="np-ai-row"><label>Заглавие на сюжета<input data-help="Името на този сюжет в сценария." value={segment.label} onChange={(event) => setSegments((old) => old.map((item) => item.id === segment.id ? { ...item, label: event.target.value } : item))} /></label><button type="button" className="np-ai-link" disabled={segmentIndex === 0} onClick={() => setSegments((old) => move(old, segmentIndex, -1))}>Премести нагоре</button><button type="button" className="np-ai-link" disabled={segmentIndex === segments.length - 1} onClick={() => setSegments((old) => move(old, segmentIndex, 1))}>Премести надолу</button><button type="button" className="np-ai-link" disabled={segments.length === 1} onClick={() => setSegments((old) => old.filter((item) => item.id !== segment.id))}>Премахни</button></div>{segment.lines.map((line, index) => <div key={index} className="np-ai-line"><select data-help="Избира гласа за тази реплика: Алекс или Мая." aria-label={`Говорител на реплика ${index + 1}`} value={line.speaker} onChange={(event) => lineChange(segment.id, index, { speaker: event.target.value as "alex" | "maya" })}><option value="alex">Алекс</option><option value="maya">Мая</option></select><div><textarea data-help="Точният текст, който избраният говорител ще произнесе в тази реплика." aria-label={`Реплика ${index + 1}`} value={line.text} rows={2} onChange={(event) => lineChange(segment.id, index, { text: event.target.value })} /><input aria-label={`Насока за реплика ${index + 1}`} value={line.direction} onChange={(event) => lineChange(segment.id, index, { direction: event.target.value })} placeholder="Насока за изговор" /></div></div>)}<div className="np-ai-row"><button type="button" className="np-ai-link" onClick={() => setSegments((old) => old.map((item) => item.id === segment.id ? { ...item, lines: [...item.lines, { speaker: "maya", text: "", direction: "" }] } : item))}>+ Реплика</button>{segment.sourceId && <><input data-help="Насока как AI да пренапише само този сюжет. Изпраща се с AI пренапиши." aria-label="Насока за пренаписване" value={directions[segment.id] || ""} onChange={(event) => setDirections({ ...directions, [segment.id]: event.target.value })} placeholder="Насока за промяна на сюжета" /><button data-help="Изпраща само този сюжет за пренаписване според въведената насока. Прегледайте новия текст." type="button" className="np-ai-link" disabled={busy || active || (directions[segment.id] || "").trim().length < 2} onClick={() => void act({ action: "rewrite", projectId: project.id, segmentId: segment.id, direction: directions[segment.id] }, "Пренаписването е заявено.")}>AI пренапиши</button></>}{project.status === "ready" && <button data-help="Генерира отново звука за този сюжет. Не създава нов сценарий за целия епизод." type="button" className="np-ai-link" disabled={busy || active} onClick={() => void act({ action: "regenerateSegment", projectId: project.id, segmentId: segment.id }, "Повторното озвучаване е заявено.")}>Регенерирай звук</button>}</div></div></details>)}</div><div className="np-ai-script-actions"><div><button data-help="Записва редакциите и проверява променените сюжети преди следващата стъпка." type="button" className="np-ai-primary" disabled={!canEdit || !unsaved || segments.some((segment) => segment.lines.some((line) => !line.text.trim()))} onClick={() => void act({ action: "edit", projectId: project.id, revision: editorBase?.revision, title, summary, segments }, "Редакцията е записана. Проверяват се променените сюжети.")}>Запази и провери</button><button data-help="Одобрява сценария и започва генериране на аудио с избраните гласове." type="button" className="np-ai-primary" disabled={!canProduce} onClick={() => void act({ action: "produce", projectId: project.id }, "Озвучаването е заявено. Следете работния монитор.")}>Одобри и озвучи</button></div><p>{nextStep}</p></div></> : <p>Сценарият още не е готов. Следете работния монитор.</p>}
         </section> : <div className="np-ai-stack"><section className="np-ai-card"><small className="np-ai-eyebrow">ВИЗИЯ</small><h2>Обложка</h2><div className="np-ai-cover-row">{project.coverKey && <img src={media(project.coverKey)} alt="Обложка на епизода" width={160} height={160} />}<div><button data-help="Изпраща заявка за нова AI обложка на епизода." type="button" className="np-ai-secondary" disabled={!canEdit} onClick={() => void act({ action: "regenerateCover", projectId: project.id }, "Новата обложка се генерира.")}>Нова AI обложка</button><label>Своя обложка<input data-help="Избира ваша снимка за обложка. Потвърдете с Качи обложка." type="file" accept="image/*" onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)} /></label><button data-help="Качва избраната снимка като обложка на епизода." type="button" className="np-ai-secondary" disabled={!coverFile || !canEdit} onClick={() => void uploadCover()}>Качи обложка</button></div></div></section>
           <section className="np-ai-card"><small className="np-ai-eyebrow">АУДИО</small><h2>Фонова музика</h2><p>Изберете подходящ инструментален фон. След прослушване го смесете с готовия разговор; гласовете няма да се генерират повторно.</p>
             <label>Описание за AI музика<input data-help="Опишете желаната фонова музика, например настроение, темпо и инструменти." value={musicPrompt} onChange={(event) => setMusicPrompt(event.target.value)} placeholder="Спокоен, съвременен новинарски инструментал без вокали" /></label>

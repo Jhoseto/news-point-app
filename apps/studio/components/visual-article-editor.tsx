@@ -137,10 +137,11 @@ function moveSelected(editor: Editor, direction: -1 | 1) {
   editor.view.dispatch(tr); editor.commands.focus();
 }
 
-export function VisualArticleEditor({ value, onChange, media, readOnly: externalReadOnly, onOpenMedia, onOpenVideo, handleRef, onValidityChange, onMediaImported }: {
+export function VisualArticleEditor({ value, onChange, media, readOnly: externalReadOnly, onOpenMedia, onOpenVideo, handleRef, onValidityChange, onMediaImported, phoneSave }: {
   value: ArticleBody; onChange: (body: ArticleBody) => void; media: MediaOption[]; readOnly: boolean;
   onOpenMedia: () => void; onOpenVideo: () => void; onValidityChange: (valid: boolean) => void; handleRef: React.RefObject<VisualEditorHandle | null>;
   onMediaImported: (items: MediaOption[]) => void;
+  phoneSave: { disabled: boolean; saving: boolean; run: () => void } | null;
 }) {
   const [pasteBusy, setPasteBusy] = useState(false);
   const pasteBusyRef = useRef(false);
@@ -153,6 +154,7 @@ export function VisualArticleEditor({ value, onChange, media, readOnly: external
   const lastBody = useRef(JSON.stringify(value));
   const pastePlain = useRef(false);
   const [plainPaste, setPlainPaste] = useState(false);
+  const [phoneTool, setPhoneTool] = useState<"format" | "media" | "block" | null>(null);
   const [, redraw] = useState(0);
   const [dialog, setDialog] = useState<"embed" | "link" | "symbol" | "help" | null>(null);
   const [url, setUrl] = useState("");
@@ -277,7 +279,15 @@ export function VisualArticleEditor({ value, onChange, media, readOnly: external
   const textType = selected?.node.type.name;
   const indent = (direction: -1 | 1) => { if (editor.isActive("listItem")) { direction > 0 ? editor.chain().focus().sinkListItem("listItem").run() : editor.chain().focus().liftListItem("listItem").run(); return; } if (textType && ["paragraph", "heading", "blockquote"].includes(textType)) editor.chain().focus().updateAttributes(textType, { indent: Math.max(0, Math.min(3, (selected?.node.attrs.indent ?? 0) + direction)) }).run(); };
   return <div className="np-visual-editor">
-    <div className="np-editor-chrome">
+    <div className="np-editor-chrome" data-phone-tool={phoneTool ?? ""}>
+    <div className="np-phone-tools hidden" role="group" aria-label="Инструменти за текста">
+      {([["format", "Формат"], ["media", "Медия"], ["block", "Блок"]] as const).map(([tool, label]) => (
+        <button type="button" key={tool} aria-expanded={phoneTool === tool} disabled={tool === "block" && (!selected || (readOnly && !block))} onMouseDown={event => event.preventDefault()} onClick={() => setPhoneTool(current => current === tool ? null : tool)}>
+          {label}<span aria-hidden="true">{phoneTool === tool ? "−" : "+"}</span>
+        </button>
+      ))}
+      {phoneSave ? <button type="button" className="np-phone-save" disabled={phoneSave.disabled} onMouseDown={event => event.preventDefault()} onClick={phoneSave.run}>{phoneSave.saving ? "Запис…" : "Запиши"}</button> : null}
+    </div>
     <div className="np-visual-toolbar" role="toolbar" aria-label="Форматиране на материала">
       <div className="np-editor-media-row">
         <button data-help="Избира снимки от библиотеката или качва нови на текущото място в текста." type="button" className="studio-editor-media np-editor-media-button" disabled={readOnly} onMouseDown={event => event.preventDefault()} onClick={onOpenMedia}><EditorToolIcon label="Добави медия" />Добави медия</button>

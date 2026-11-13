@@ -13,6 +13,7 @@ import { menuCategories } from "@/lib/arrangements";
 import { listStaffProfiles } from "@/lib/users";
 import { formatStamp } from "@/lib/format";
 import { withBase } from "@/lib/paths";
+import "./article-desk-mobile.css";
 
 export const metadata: Metadata = { title: "Материали" };
 export const dynamic = "force-dynamic";
@@ -76,7 +77,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
   ];
 
   return (
-    <div>
+    <div className="studio-article-desk-page">
       <div className="mb-2 flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 data-help="Всички материали: чернови, публикувани новини и редакции, които още не са на сайта." className="text-base font-bold leading-none text-ink">Материали</h1>
@@ -89,18 +90,18 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
         </a>
       </div>
 
-      <ArticleFilterForm>
+      <ArticleFilterForm active={Boolean(query.category || query.author || query.from || query.to || query.pageSize !== 50)}>
         <input type="hidden" name="sort" value={query.sort} />
         <input type="hidden" name="dir" value={query.dir} />
         {query.status !== "all" ? <input type="hidden" name="status" value={query.status} /> : null}
-        <div className="flex gap-1.5">
+        <div className="studio-article-search flex gap-1.5">
           <label className="min-w-0 flex-1">
             <span className="sr-only">Търсене</span>
             <input data-help="Търси в заглавие, адрес, резюме и автор. Натиснете Търси, за да приложите думите." name="q" type="search" defaultValue={query.q} placeholder="Заглавие, адрес, резюме или автор" className={control} />
           </label>
           <button type="submit" className="np-btn np-btn-primary h-8 shrink-0 px-2.5 py-0 text-xs">Търси</button>
         </div>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
+        <div id="article-filter-fields" className="studio-article-filter-fields grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
           <label className="min-w-0">
             <span className={caption}>Рубрика</span>
             <select data-help="Показва само материалите от избраната рубрика." name="category" defaultValue={query.category} className={control}>
@@ -138,7 +139,7 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
             <input data-help="Филтрира по последна промяна, включително черновите. Датите са по българско време." name="to" type="date" defaultValue={query.to} className={control} />
           </label>
         </div>
-        <div className="flex flex-wrap items-center gap-1 text-[11px]">
+        <div id="article-filter-dates" className="studio-article-filter-dates flex flex-wrap items-center gap-1 text-[11px]">
           <span className="mr-1 text-faint">Последна промяна:</span>
           {presets.map((preset) => {
             const active = query.from === preset.from && query.to === preset.to;
@@ -226,6 +227,9 @@ export default async function ArticlesPage({ searchParams }: { searchParams: Pro
                   <td className="np-articles-col-secondary px-2 py-2 text-right text-xs text-muted tabular-nums">{formatStamp(item.updatedAt)}</td>
                   <td className="np-articles-actions px-2 py-2 text-right">
                     <span className="inline-flex flex-wrap items-center justify-end gap-1">
+                      {item.isPublic ? (
+                        <a href={`${web}${item.path.startsWith("/") ? item.path : `/${item.path}`}`} target="_blank" rel="noreferrer" className="studio-article-public-link hidden text-link">На сайта ↗</a>
+                      ) : null}
                       <PlaceArticle articleId={item.id} publicArticle={item.isPublic} menu={menu} />
                       <a href={withBase(`/articles/${item.id}/`)} className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]">Редакция</a>
                       <DeleteArticleButton id={item.id} title={item.title} />

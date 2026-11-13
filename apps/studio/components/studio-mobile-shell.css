@@ -1,0 +1,212 @@
+.np-phone-header,
+.np-phone-dock,
+.np-phone-menu { display: none; }
+
+@media (max-width: 767px), (orientation: landscape) and (max-width: 960px) and (max-height: 500px) and (pointer: coarse) {
+  html:has(.np-studio-shell) {
+    --studio-mobile-header-height: calc(56px + env(safe-area-inset-top, 0px));
+    --studio-mobile-nav-height: calc(58px + env(safe-area-inset-bottom, 0px));
+    --studio-mobile-active: var(--np-accent);
+    scroll-padding-top: var(--studio-mobile-header-height);
+    scroll-padding-bottom: var(--studio-mobile-nav-height);
+  }
+  html[data-theme="dark"]:has(.np-studio-shell) { --studio-mobile-active: var(--np-link); }
+  .np-studio-shell {
+    min-width: 0;
+    padding-bottom: var(--studio-mobile-nav-height);
+    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+    transition: none;
+  }
+  .np-studio-tablet-header, .np-wide-signout-error { display: none; }
+  .np-phone-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: var(--studio-mobile-header-height);
+    padding: env(safe-area-inset-top, 0px) 12px 0;
+    border-bottom: 1px solid var(--np-line);
+    background: var(--np-surface);
+    color: var(--np-ink);
+  }
+  .np-phone-brand, .np-phone-profile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    border-radius: 8px;
+  }
+  .np-phone-logo { width: 100px; height: auto; }
+  .np-phone-location {
+    min-width: 0;
+    padding-left: 12px;
+    border-left: 1px solid var(--np-line);
+    font-size: .875rem;
+    font-weight: 750;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .np-phone-profile { margin-left: auto; }
+  .np-phone-profile > span {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--np-ink);
+    color: var(--np-on-ink);
+    font-size: .75rem;
+    font-weight: 800;
+  }
+  .np-phone-dock {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: var(--studio-mobile-nav-height);
+    padding: 0 max(4px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(4px, env(safe-area-inset-left, 0px));
+    border-top: 1px solid var(--np-line);
+    background: var(--np-surface);
+  }
+  html[data-studio-keyboard] .np-phone-dock { display: none; }
+  .np-phone-tab {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: 44px;
+    border-radius: 6px;
+    color: var(--np-muted);
+    font-size: .6875rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .np-phone-tab[aria-current], .np-phone-tab[data-selected] { color: var(--studio-mobile-active); }
+  .np-phone-tab[aria-current]::before, .np-phone-tab[data-selected]::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 22px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: currentColor;
+  }
+  .np-phone-tab-icon {
+    position: relative;
+    display: grid;
+    width: 32px;
+    height: 27px;
+    place-items: center;
+  }
+  .np-phone-compose {
+    border-radius: 8px;
+    background: var(--np-accent);
+    color: var(--np-on-accent);
+  }
+  html:has(.np-phone-menu[open]) { overflow: hidden; }
+  .np-phone-menu[open] {
+    position: fixed;
+    inset: auto 0 0;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 38rem;
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 10px);
+    margin: 0 auto;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--np-line);
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+    background: var(--np-surface);
+    color: var(--np-ink);
+  }
+  .np-phone-menu::backdrop { background: rgb(7 13 51 / .5); }
+  .np-phone-menu-head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 62px;
+    padding-inline: 18px 10px;
+    border-bottom: 1px solid var(--np-line);
+  }
+  .np-phone-menu-head h2 { font-size: 1.25rem; font-weight: 800; letter-spacing: -.025em; }
+  .np-phone-menu-close {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--np-muted);
+  }
+  .np-phone-menu-scroll {
+    min-height: 0;
+    padding: 8px max(12px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  .np-phone-menu-links, .np-phone-menu-account {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2px 5px;
+  }
+  .np-phone-menu-link {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 46px;
+    padding: 6px;
+    border-radius: 8px;
+    color: var(--np-body);
+    text-align: left;
+    overflow-wrap: anywhere;
+    font-size: .8125rem;
+    font-weight: 650;
+    line-height: 1.3;
+  }
+  .np-phone-menu-icon {
+    position: relative;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    flex: none;
+    place-items: center;
+    color: var(--np-muted);
+  }
+  .np-phone-menu-link[aria-current] {
+    background: var(--np-surface-2);
+    color: var(--studio-mobile-active);
+    font-weight: 800;
+  }
+  .np-phone-menu-link[aria-current] .np-phone-menu-icon { color: inherit; }
+  .np-phone-group-title {
+    margin: 8px 0 2px;
+    padding: 12px 6px 4px;
+    border-top: 1px solid var(--np-line);
+    color: var(--np-muted);
+    font-size: .75rem;
+    font-weight: 750;
+  }
+  .np-phone-menu-account {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--np-line);
+  }
+  .np-phone-menu-account .np-studio-theme-toggle { min-height: 46px; padding-inline: 6px; }
+  .np-phone-menu-account .np-studio-theme-toggle:hover { color: var(--studio-mobile-active); }
+  .np-phone-menu-account .np-phone-menu-link svg { margin-inline: 4px; flex: none; }
+  :is(.np-phone-header, .np-phone-dock, .np-phone-menu) :is(a, button):focus-visible {
+    outline: 2px solid var(--np-link);
+    outline-offset: -2px;
+  }
+  :is(.np-phone-menu-link, .np-phone-menu-close, .np-phone-tab):active { background: var(--np-surface-2); }
+}

@@ -3,11 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { withBase } from "@/lib/paths";
+import { usePhoneDialog } from "./use-phone-dialog";
 
 export function DeleteArticleButton({ id, title }: { id: string; title: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const layer = usePhoneDialog(open, () => { if (!busy) setOpen(false); });
   const [error, setError] = useState<string | null>(null);
   const label = title.trim() || "Без заглавие";
 
@@ -45,6 +47,7 @@ export function DeleteArticleButton({ id, title }: { id: string; title: string }
       {open ? (
         <div
           role="dialog"
+          ref={layer}
           aria-modal="true"
           aria-labelledby="delete-article-title"
           aria-describedby="delete-article-desc"

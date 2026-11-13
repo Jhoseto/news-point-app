@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { STUDIO_PHONE_QUERY } from "../lib/studio-phone";
+import { useMobileDeskNavigation } from "./mobile-desk-navigation";
 import { withBase } from "@/lib/paths";
 import {
   countByStatus,
@@ -32,6 +34,7 @@ type ApiRow = {
 };
 
 export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; newArticleHref: string }) {
+  const mobile = useMobileDeskNavigation();
   const [items, setItems] = useState<MyNewsSubmission[]>(() => sortByDate(initial.map(normalizeSubmission)));
   const [filter, setFilter] = useState<"all" | MyNewsStatus>("all");
   const [query, setQuery] = useState("");
@@ -49,10 +52,11 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
   );
 
   useEffect(() => {
+    if (mobile.pane === "detail" && window.matchMedia(STUDIO_PHONE_QUERY).matches) return;
     if (!selected || !filtered.some((item) => item.id === selected.id)) {
       setSelectedId(filtered[0]?.id ?? null);
     }
-  }, [filtered, selected]);
+  }, [filtered, selected, mobile.pane]);
 
   async function patchStatus(item: MyNewsSubmission, status: MyNewsStatus) {
     if (!isEditorialUpdateValid({ status })) return;
@@ -101,13 +105,16 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
         return;
       }
       setNotice({ tone: "success", text: trimmed ? "Свързано е със статия." : "Връзката е премахната." });
+    } catch {
+      setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, articleId: previousArticleId } : entry)));
+      setNotice({ tone: "error", text: "Няма връзка със сървъра. Опитайте отново." });
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="np-mynews">
+    <div className="np-mynews" data-mobile-pane={mobile.pane}>
       <aside className="np-mynews-sidebar">
         <div className="np-mynews-side-head">
           <div className="np-mynews-counter">
@@ -166,7 +173,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
                     type="button"
                     role="option"
                     aria-selected={item.id === selected?.id}
-                    onClick={() => setSelectedId(item.id)}
+                    onClick={(event) => { setSelectedId(item.id); mobile.showDetail(event.currentTarget); }}
                     className="np-mynews-list-item"
                   >
                     <span className="np-mynews-list-row">
@@ -213,6 +220,7 @@ export function MyNewsManager({ initial, newArticleHref }: { initial: ApiRow[]; 
       </aside>
 
       <div className="np-mynews-main">
+        {mobile.backButton("Към материалите", pending)}
         {selected ? (
           <SubmissionDetail
             key={selected.id}

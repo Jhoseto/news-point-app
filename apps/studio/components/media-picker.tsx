@@ -6,6 +6,8 @@ import { browserMediaSrc } from "@/lib/media-src";
 import { acceptedDevicePhotos, uploadDevicePhoto } from "@/lib/device-photo-upload";
 import { withBase } from "@/lib/paths";
 import { imageFilesFromDataTransfer } from "./media-picker-paste";
+import { STUDIO_PHONE_QUERY } from "@/lib/studio-phone";
+import "./media-picker-mobile.css";
 
 type LibraryImage = MediaOption & { name: string };
 type MediaYear = { year: string; months: string[] };
@@ -67,10 +69,15 @@ export function MediaPicker({
 
   const defaultUploadName = (file: File) => file.name.replace(/\.[^.]+$/, "").trim().slice(0, 240) || "Снимка";
 
-  const setUploadFileList = (files: File[]) => {
-    const { accepted, rejected } = acceptedDevicePhotos(files);
-    setUploadFiles(accepted);
-    setUploadNames(accepted.map(defaultUploadName));
+  const queueUploadFiles = (files: File[], append = multiple) => {
+    if (!files.length || uploadBusy.current) return;
+    const { accepted, rejected } = acceptedDevicePhotos(multiple ? files : files.slice(0, 1));
+    setMode("upload");
+    if (accepted.length) {
+      setUploadFiles(current => append ? [...current, ...accepted] : accepted);
+      const newNames = accepted.map(defaultUploadName);
+      setUploadNames(current => append ? [...current, ...newNames] : newNames);
+    }
     setError(rejected.length === 1
       ? `„${rejected[0]!.name}“ е над допустимите 25 MB и няма да бъде качена. Изберете по-малка снимка.`
       : rejected.length > 1 ? `${rejected.length} снимки са над допустимите 25 MB и няма да бъдат качени.` : "");
@@ -111,7 +118,8 @@ export function MediaPicker({
       }
       const items = uploadedItems.current;
       uploadedItems.current = [];
-      setUploadFileList([]);
+      setUploadFiles([]);
+      setUploadNames([]);
       if (multiple && onSelectMany) onSelectMany(items);
       else if (items[0]) (onUpload ?? onSelect)(items[0]);
     } catch (problem) {
@@ -147,7 +155,14 @@ export function MediaPicker({
   };
 
   useEffect(() => {
-    dialog.current?.showModal();
+    const element = dialog.current;
+    if (!element) return;
+    if (window.matchMedia(STUDIO_PHONE_QUERY).matches) {
+      const heading = element.querySelector("h2");
+      heading?.setAttribute("tabindex", "-1");
+      heading?.setAttribute("autofocus", "");
+    }
+    element.showModal();
   }, []);
 
   useEffect(() => {
@@ -223,12 +238,6 @@ export function MediaPicker({
     pickOne(item);
   };
 
-  const queueUploadFiles = (files: File[]) => {
-    if (!files.length || uploading) return;
-    setMode("upload");
-    setUploadFileList(multiple ? [...uploadFiles, ...files] : files.slice(0, 1));
-  };
-
   const insertMany = () => {
     if (!onSelectMany || !selectedMany.length || optimizeBusy.current) return;
     const chosen = selectedMany.map(id => chosenItems.current.get(id)).filter((item): item is LibraryImage => !!item);
@@ -256,7 +265,8 @@ export function MediaPicker({
         if (event.target === event.currentTarget && !uploading) onClose();
       }}
       aria-labelledby="media-heading"
-      className="m-auto flex max-h-[85dvh] w-[min(56rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
+      data-mode={mode}
+      className="studio-media-picker m-auto flex max-h-[85dvh] w-[min(56rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface p-0 shadow-2xl backdrop:bg-shell/60 backdrop:backdrop-blur-sm"
     >
       <div className="flex shrink-0 items-center gap-3 border-b border-line px-5 py-4">
         <h2 id="media-heading" className="text-lg font-extrabold text-ink">
@@ -290,7 +300,12 @@ export function MediaPicker({
           }}
         >
         <div className="rounded-xl border border-dashed border-accent/35 bg-accent/5 p-6 text-center">
-          <input data-help="Качва нов файл до 25 MB в медийната библиотека. След качване можете да го изберете за материала." id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => setUploadFileList(Array.from(event.target.files ?? []))} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
+          <input data-help="Качва нов файл до 25 MB в медийната библиотека. След качване можете да го изберете за материала." id="media-upload-files" aria-label="Файлове за качване" disabled={uploading} type="file" accept="image/jpeg,image/png,image/webp,image/gif" multiple={multiple} onChange={(event) => {
+            const input = event.currentTarget;
+            const append = multiple && window.matchMedia(STUDIO_PHONE_QUERY).matches;
+            queueUploadFiles(Array.from(input.files ?? []), append);
+            if (append) input.value = "";
+          }} className="mx-auto block max-w-full text-xs text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-accent file:px-3 file:py-2 file:font-bold file:text-white" />
           {uploadFiles.length ? <p className="mt-3 text-xs font-semibold text-ink">{uploadFiles.length} избрани файла · задайте име за търсене в архива</p> : <p className="mt-3 text-xs text-muted">Изберете снимки до 25 MB, плъзнете ги тук или поставете с Ctrl+V / ⌘V. Качването минава през оптимизация и проверка.</p>}
           {uploadPreviews.length ? (
             <div className="mt-4 grid grid-cols-1 gap-3 text-left sm:grid-cols-2">
@@ -340,7 +355,13 @@ export function MediaPicker({
         </div>
       ) : null}
       {mode === "library" ? (
-        <div className="flex min-h-0 flex-1">
+        <div className="studio-media-library flex min-h-0 flex-1">
+          <select className="studio-phone-folder np-input hidden" aria-label="Папка в хранилището" value={folder} onChange={event => selectFolder(event.target.value)}>
+            <option value="">{yearsLoading ? "Зареждане на папките…" : "Целият архив"}</option>
+            {years.map(year => <optgroup key={year.year} label={year.year}>
+              {year.months.map(month => <option key={month} value={`news/${year.year}/${month}`}>{month} / {year.year}</option>)}
+            </optgroup>)}
+          </select>
           <nav aria-label="Папки в хранилището" className="w-44 shrink-0 overflow-y-auto border-r border-line bg-surface-2/50 p-2 text-xs">
             <p className="px-2 py-1 text-[10px] font-bold tracking-wide text-faint uppercase">Хранилище</p>
             <button data-help="Показва снимките от всички години и месеци."
@@ -392,9 +413,10 @@ export function MediaPicker({
                     onClick={() => pick(item)}
                     onDoubleClick={(event) => {
                       event.preventDefault();
-                      pickOne(item);
+                      if (!window.matchMedia(STUDIO_PHONE_QUERY).matches) pickOne(item);
                     }}
                     disabled={optimizing || libraryLoading || queryPending || renameBusy}
+                    aria-label={item.alt || item.name}
                     aria-pressed={multiple ? selectedMany.includes(item.id) : item.id === selected}
                     className="group block w-full text-left"
                   >
@@ -411,7 +433,7 @@ export function MediaPicker({
                         onChange={(event) => setRenameDraft(event.target.value)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") { event.preventDefault(); void saveRename(item); }
-                          if (event.key === "Escape") setRenamingId(null);
+                          if (event.key === "Escape") { event.preventDefault(); setRenamingId(null); }
                         }}
                         className="np-input w-full py-1 text-xs"
                       />
@@ -455,7 +477,7 @@ export function MediaPicker({
       </div>
       {multiple ? (
         <div className="flex shrink-0 items-center justify-end gap-2 border-t border-line px-5 py-3">
-          <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани · двоен клик добавя веднага</span>
+          <span className="mr-auto text-xs text-muted">{selectedMany.length} избрани<span className="studio-double-click-tip"> · двоен клик добавя веднага</span></span>
           <button data-help="Вмъква избраните снимки заедно в материала."
             type="button"
             disabled={!selectedMany.length || optimizing || uploading || libraryLoading || queryPending || mode !== "library"}

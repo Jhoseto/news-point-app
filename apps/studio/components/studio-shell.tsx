@@ -6,12 +6,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { BrandLogoImg } from "@/components/brand-logo-img";
 import { withBase } from "@/lib/paths";
+import { STUDIO_PHONE_QUERY } from "@/lib/studio-phone";
+import { confirmPhoneLeave } from "./use-phone-unsaved-changes";
 import { studioSessionEnded } from "@/lib/session-probe";
 import { StudioThemeToggle } from "@/components/studio-theme";
 import { MONITORING_SEEN_EVENT, needsMonitoringAttention, seenKey, useMonitoring, type MonitoringSummary } from "@/lib/error-monitoring-client";
+import "./studio-mobile-shell.css";
 
 // A separate editor document lets beforeunload protect Back/Forward and tab closing.
-function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; "data-help"?: string | undefined }) {
+function StudioNavLink({ href, ...props }: Pick<ComponentProps<"a">, "children" | "className" | "title" | "aria-label" | "aria-current"> & { href: string; onClick?: () => void; "data-help"?: string | undefined }) {
   return href.startsWith("/articles/") ? <a href={withBase(href)} {...props} /> : <Link href={href} {...props} />;
 }
 
@@ -60,6 +63,140 @@ const SITE_ICON = "M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1
 const EXIT_ICON = "M10 17l5-5-5-5M15 12H3M14 4h5a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-5";
 const NAV_STORAGE = "np-studio-nav-collapsed";
 
+const PHONE_TABS = [
+  { href: "/", label: "Материали", icon: "M4 5h16v14H4zM7 9h10M7 13h6" },
+  { href: "/arrange", label: "Подредба", icon: "M3.5 4h17v16h-17zM3.5 10h17M11 10v10" },
+  { href: "/articles/new", label: "Създай", icon: "M12 5v14M5 12h14" },
+  { href: "/podcasts", label: "Подкасти", icon: "M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" },
+];
+
+type PhoneNavProps = {
+  pathname: string;
+  links: typeof NAV;
+  userName: string;
+  initials: string;
+  webUrl: string;
+  monitoringBadge: ReactNode;
+  signOut: () => Promise<void>;
+  signOutStatus: "idle" | "pending" | "failed";
+};
+
+const SIGN_OUT_ERROR = "Не успяхме да прекратим сесията. Проверете връзката и опитайте отново.";
+
+function PhoneNavigation({ pathname, links, userName, initials, webUrl, monitoringBadge, signOut, signOutStatus }: PhoneNavProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menu = useRef<HTMLDialogElement>(null);
+  const isCurrent = (href: string) => pathname === href.replace(/(.)\/+$/, "$1") || (href !== "/" && pathname.startsWith(href.replace(/\/$/, "") + "/"));
+  const inArticle = /^\/articles\/(?!new$)[^/]+/.test(pathname);
+  const activeTab = inArticle ? "/" : PHONE_TABS.find(item => isCurrent(item.href))?.href;
+  const heading = inArticle ? "Редактор" : pathname === "/profile" ? "Моят профил" : links.find(item => isCurrent(item.href))?.label;
+
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const root = document.documentElement;
+    const phone = window.matchMedia(STUDIO_PHONE_QUERY);
+    const clear = () => {
+      root.removeAttribute("data-studio-keyboard");
+      root.style.removeProperty("--studio-visual-height");
+      root.style.removeProperty("--studio-visual-top");
+    };
+    // Input focus can change between pointerdown and click. Reserve the dock's space
+    // and react to the actual keyboard so the control being tapped stays in place.
+    const syncKeyboard = () => {
+      const keyboardOpen = phone.matches && viewport.scale === 1 && window.innerHeight - viewport.height > 120;
+      if (keyboardOpen) {
+        root.setAttribute("data-studio-keyboard", "");
+        root.style.setProperty("--studio-visual-height", `${Math.floor(viewport.height)}px`);
+        root.style.setProperty("--studio-visual-top", `${viewport.offsetTop}px`);
+      } else if (root.hasAttribute("data-studio-keyboard")) clear();
+    };
+    syncKeyboard();
+    viewport.addEventListener("resize", syncKeyboard);
+    viewport.addEventListener("scroll", syncKeyboard);
+    return () => {
+      viewport.removeEventListener("resize", syncKeyboard);
+      viewport.removeEventListener("scroll", syncKeyboard);
+      clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen || !menu.current) return;
+    const dialog = menu.current;
+    const device = window.matchMedia(STUDIO_PHONE_QUERY);
+    const closeOnResize = () => { if (!device.matches) dialog.close(); };
+    device.addEventListener("change", closeOnResize);
+    closeOnResize();
+    return () => device.removeEventListener("change", closeOnResize);
+  }, [menuOpen]);
+
+  function menuLinks(items: typeof NAV) {
+    return items.map(item => (
+      <StudioNavLink key={item.href} href={item.href} aria-current={isCurrent(item.href) ? "page" : undefined}
+        className="np-phone-menu-link" onClick={() => menu.current?.close()} data-help={NAV_HELP[item.href]}>
+        <span className="np-phone-menu-icon"><Icon d={item.icon} size={19} />{item.href === MONITORING_LINK.href && monitoringBadge}</span>
+        {item.label}
+      </StudioNavLink>
+    ));
+  }
+
+  function openMenu() {
+    menu.current?.showModal();
+    setMenuOpen(true);
+  }
+
+  return <>
+    <header className="np-phone-header">
+      <Link href="/" className="np-phone-brand" aria-label="NewsPoint Studio — Материали">
+        <BrandLogoImg className="np-phone-logo" sizes="100px" />
+      </Link>
+      <span className="np-phone-location">{heading ?? "Studio"}</span>
+      <Link href="/profile" aria-label={`Моят профил — ${userName}`} aria-current={pathname === "/profile" ? "page" : undefined} className="np-phone-profile">
+        <span aria-hidden="true">{initials}</span>
+      </Link>
+    </header>
+    <nav className="np-phone-dock" aria-label="Бърза навигация">
+      {PHONE_TABS.map(item => <StudioNavLink key={item.href} href={item.href} aria-label={item.href === "/articles/new" ? "Създай нов материал" : item.label}
+        aria-current={activeTab === item.href ? (inArticle ? "location" : "page") : undefined} className="np-phone-tab" data-help={NAV_HELP[item.href]}>
+        <span className={`np-phone-tab-icon${item.href === "/articles/new" ? " np-phone-compose" : ""}`}><Icon d={item.icon} size={20} /></span>
+        <span>{item.label}</span>
+      </StudioNavLink>)}
+      <button type="button" className="np-phone-tab" aria-haspopup="dialog" aria-expanded={menuOpen} aria-controls="np-phone-menu"
+        data-selected={!activeTab || undefined} onClick={openMenu}>
+        <span className="np-phone-tab-icon"><Icon d="M4 6h16M4 12h16M4 18h16" size={20} />{monitoringBadge}</span>
+        <span>Меню</span>
+      </button>
+    </nav>
+    <dialog ref={menu} id="np-phone-menu" className="np-phone-menu" aria-labelledby="np-phone-menu-title" onClose={() => setMenuOpen(false)}
+      onClick={event => {
+        if (event.target !== event.currentTarget) return;
+        const box = event.currentTarget.getBoundingClientRect();
+        if (event.clientY < box.top || event.clientY > box.bottom || event.clientX < box.left || event.clientX > box.right) event.currentTarget.close();
+      }}>
+      <div className="np-phone-menu-head">
+        <h2 id="np-phone-menu-title">Меню</h2>
+        <button type="button" aria-label="Затвори менюто" className="np-phone-menu-close" onClick={() => menu.current?.close()}><Icon d="m6 6 12 12M18 6 6 18" /></button>
+      </div>
+      {menuOpen && <div className="np-phone-menu-scroll">
+        <nav aria-label="Редакция" className="np-phone-menu-links">{menuLinks(NAV)}</nav>
+        {links.length > NAV.length && <>
+          <h3 className="np-phone-group-title">Администрация</h3>
+          <nav aria-label="Администрация" className="np-phone-menu-links">{menuLinks(links.slice(NAV.length))}</nav>
+        </>}
+        <div className="np-phone-menu-account">
+          <Link href="/profile" className="np-phone-menu-link" onClick={() => menu.current?.close()}><Icon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0" />Моят профил</Link>
+          <StudioThemeToggle surface />
+          <a href={webUrl} target="_blank" rel="noreferrer" className="np-phone-menu-link"><Icon d={SITE_ICON} />Към сайта</a>
+          <button type="button" className="np-phone-menu-link" disabled={signOutStatus === "pending"}
+            onClick={() => { if (confirmPhoneLeave()) void signOut(); }}><Icon d={EXIT_ICON} />Изход</button>
+          {signOutStatus === "failed" && <p role="alert" className="col-span-full px-2 text-sm text-danger">{SIGN_OUT_ERROR}</p>}
+        </div>
+      </div>}
+    </dialog>
+  </>;
+}
+
 function navClass(collapsed: boolean) {
   return [
     "group relative flex items-center rounded-lg text-[13px] font-semibold transition hover:bg-white/6 hover:text-white aria-[current=page]:bg-white/10 aria-[current=page]:text-white",
@@ -67,7 +204,7 @@ function navClass(collapsed: boolean) {
   ].join(" ");
 }
 
-/** Desktop: dark side menu like WordPress admin. Phone: top bar with the same links. */
+/** Share editorial destinations and staff permissions across Studio navigation layouts. */
 export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = false, children }: { user: { id?: string; name: string; role: string }; webUrl: string; canManageUsers: boolean; canManageSocial?: boolean; children: ReactNode }) {
   const pathname = usePathname().replace(/(.)\/+$/, "$1");
   const nav = NAV;
@@ -80,6 +217,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   const [collapsed, setCollapsed] = useState(wide);
   const [sessionEnded, setSessionEnded] = useState(false);
   const signingOut = useRef(false);
+  const [signOutStatus, setSignOutStatus] = useState<PhoneNavProps["signOutStatus"]>("idle");
   const monitoring = useMonitoring<MonitoringSummary>(true, canManageUsers);
   const [monitoringSeen, setMonitoringSeen] = useState<string | null>(null);
   const monitoringKey = seenKey(user.id ?? user.name);
@@ -153,8 +291,17 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
   }
 
   async function signOut() {
+    if (signingOut.current) return;
     signingOut.current = true;
-    await authClient.signOut();
+    setSignOutStatus("pending");
+    try {
+      const result = await authClient.signOut();
+      if (result.error) throw new Error("sign_out_failed");
+    } catch {
+      signingOut.current = false;
+      setSignOutStatus("failed");
+      return;
+    }
     router.replace("/login");
     router.refresh();
   }
@@ -167,7 +314,8 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
     .toUpperCase();
 
   return (
-    <div className={`min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-[4.25rem]" : "lg:pl-64"}`}>
+    <div className={`np-studio-shell min-h-dvh transition-[padding] duration-200 ${collapsed ? "lg:pl-[4.25rem]" : "lg:pl-64"}`}>
+      {signOutStatus === "failed" && <p role="alert" className="np-wide-signout-error fixed right-3 top-3 z-50 max-w-sm rounded-xl border border-line bg-surface p-3 text-sm text-danger shadow-xl">{SIGN_OUT_ERROR}</p>}
       {sessionEnded ? <div role="alert" className="fixed inset-x-3 top-3 z-50 rounded-xl border border-warning/40 bg-surface px-4 py-3 text-sm font-semibold text-ink shadow-xl sm:left-auto sm:max-w-md">
         Сесията приключи или профилът е отворен от друго място. Ако останахте тук заради незаписан текст, копирайте го; записването вече не е възможно. <button type="button" className="ml-1 text-link underline" onClick={() => window.location.replace(withBase("/login/?session=changed"))}>Влезте отново</button>
       </div> : null}
@@ -287,7 +435,7 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
         </div>
       </aside>
 
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
+      <header className="np-studio-tablet-header sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line bg-surface/95 px-3 backdrop-blur lg:hidden">
         <BrandLogoImg className="h-7 w-auto max-w-[9rem] shrink-0 object-contain object-left" sizes="144px" />
         {canManageUsers ? <StudioNavLink href={MONITORING_LINK.href} aria-label={`${MONITORING_LINK.label}${monitoringAttention ? ` — ${monitoringTitle}` : ""}`} aria-current={isActive(MONITORING_LINK.href) ? "page" : undefined} data-help={NAV_HELP[MONITORING_LINK.href]} className="relative flex size-9 shrink-0 items-center justify-center rounded-lg text-muted aria-[current=page]:bg-surface-2 aria-[current=page]:text-ink"><Icon d={MONITORING_LINK.icon} />{monitoringBadge}</StudioNavLink> : null}
         <StudioThemeToggle compact surface />
@@ -315,6 +463,9 @@ export function StudioShell({ user, webUrl, canManageUsers, canManageSocial = fa
           </button>
         </nav>
       </header>
+
+      <PhoneNavigation key={pathname} pathname={pathname} links={canManageUsers ? [...mobileNav, MONITORING_LINK] : mobileNav}
+        userName={user.name} initials={initials} webUrl={webUrl} monitoringBadge={monitoringBadge} signOut={signOut} signOutStatus={signOutStatus} />
 
       <main className={wide ? "" : desk ? "px-3 py-3 lg:px-4 lg:py-3" : "mx-auto max-w-[1400px] px-3 py-3 sm:px-4 lg:px-5 lg:py-3"}>{children}</main>
     </div>

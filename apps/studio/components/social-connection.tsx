@@ -16,7 +16,7 @@ export function SocialConnection({ ready, provider, connection, pages, selection
     if (result.data.url) window.location.assign(result.data.url);
     else window.location.assign("/admin/settings/social/");
   }
-  return <div className="max-w-xl space-y-4">
+  return <div className="np-social-settings max-w-xl space-y-4">
     <h1 data-help="Свързване на редакционната Facebook страница и проверка на проблеми при изпращане." className="text-xl font-bold">Facebook</h1>
     {!ready ? <p>Първо приложете миграция 39.</p> : <>
       <p>{connection ? `${connection.name} · ${connection.status === "connected" ? provider === "make" ? "Свързана чрез Make" : "Свързана" : "Необходимо е свързване"}` : provider === "make" ? "Make още не е настроен в сървърната конфигурация." : "Страницата още не е свързана."}</p>

@@ -6,6 +6,7 @@ import { ArticlePreview } from "@/components/article-preview";
 import { getPreview } from "@/lib/articles";
 import { requireStaff } from "@/lib/session";
 import { withBase } from "@/lib/paths";
+import "./preview-mobile.css";
 
 // DEC-108: preview lives only in Studio, behind the session, never cached.
 export const metadata: Metadata = { title: "Преглед" };
@@ -21,7 +22,7 @@ export default async function PreviewPage({ params, searchParams }: PageProps<"/
 
   return (
     <div className="min-h-dvh bg-page">
-      <div className="sticky top-0 z-20 border-b border-white/10 bg-shell text-white">
+      <div className="studio-preview-bar sticky top-0 z-20 border-b border-white/10 bg-shell text-white">
         <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-3 px-4 py-2.5 text-sm sm:px-6">
           <span className="np-gradient-bg rounded-full px-2.5 py-0.5 text-xs font-extrabold tracking-wide uppercase">Преглед</span>
           <span className="text-white/75">

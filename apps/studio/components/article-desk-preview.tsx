@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import type { Block } from "@newspoint/content";
 import { ArticlePreview, type PreviewArticle } from "@/components/article-preview";
 import { withBase } from "@/lib/paths";
+import { usePhoneDialog } from "./use-phone-dialog";
 
 export function ArticleDeskPreview({ id, title }: { id: string; title: string }) {
   const [open, setOpen] = useState(false);
+  const layer = usePhoneDialog(open);
   const [article, setArticle] = useState<PreviewArticle | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +55,7 @@ export function ArticleDeskPreview({ id, title }: { id: string; title: string })
         {title}
       </button>
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/45 p-3 sm:p-6" onClick={() => setOpen(false)}>
+        <div ref={layer} className="fixed inset-0 z-50 flex items-start justify-center bg-ink/45 p-3 sm:p-6" onClick={() => setOpen(false)}>
           <div
             role="dialog"
             aria-modal="true"

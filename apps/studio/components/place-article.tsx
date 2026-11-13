@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { HOME_PAGE_KEY, categorySlotCatalog, homeSlotCatalog, type SlotLabel } from "@newspoint/content";
 import type { MenuCategory } from "@/lib/arrangement-types";
 import { withBase } from "@/lib/paths";
+import { usePhoneDialog } from "./use-phone-dialog";
 
 export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: string; publicArticle: boolean; menu: MenuCategory[] }) {
   const [open, setOpen] = useState(false);
@@ -12,6 +13,7 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
   const [message, setMessage] = useState("");
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState<"place" | "draft" | null>(null);
+  const layer = usePhoneDialog(open, () => { if (!busy) setOpen(false); });
   const slots: SlotLabel[] = pageKey === HOME_PAGE_KEY ? homeSlotCatalog(menu) : categorySlotCatalog();
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {
@@ -64,8 +66,8 @@ export function PlaceArticle({ articleId, publicArticle, menu }: { articleId: st
     <>
       <button data-help="Поставя тази публикувана новина на избрано място в началната страница или рубрика." type="button" className="np-btn np-btn-secondary inline-flex h-7 items-center px-2 py-0 text-[11px]" onClick={() => { setOpen(true); setMessage(""); setOk(false); }}>На място</button>
       {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => !busy && setOpen(false)}>
-          <div className="np-card w-full max-w-md p-4 text-left" role="dialog" aria-labelledby="place-title" onClick={(event) => event.stopPropagation()}>
+        <div ref={layer} className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={() => !busy && setOpen(false)}>
+          <div className="np-card w-full max-w-md p-4 text-left" role="dialog" aria-modal="true" aria-labelledby="place-title" onClick={(event) => event.stopPropagation()}>
             <h2 id="place-title" className="text-sm font-bold text-ink">На място</h2>
             <label className="mt-3 block text-[11px] text-muted">Страница
               <select data-help="Страницата, на която искате да закрепите новината." disabled={!!busy} className="mt-1 h-8 w-full rounded-md border border-line bg-surface px-2 text-xs" value={pageKey} onChange={(event) => {

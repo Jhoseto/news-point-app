@@ -1,11 +1,11 @@
+import { withStaffAudit } from "../../../lib/audit";
 import { staffFromRequest } from "../../../lib/session";
 import { canReadLogs } from "../../../lib/editor/roles";
 import { readErrorMonitoring } from "../../../lib/error-monitoring";
 
 export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store", "Vary": "Cookie" };
-// Read-only system polling; do not fill the editorial audit table with heartbeat reads.
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const staff = await staffFromRequest(request);
     if (!staff) return Response.json({ error: "Влезте отново." }, { status: 401, headers });
@@ -17,3 +17,6 @@ export async function GET(request: Request) {
     return Response.json(data, { headers });
   } catch { return Response.json({ error: "Диагностиката временно не е достъпна." }, { status: 503, headers }); }
 }
+
+// Both the menu summary and open dashboard poll this private, read-only endpoint.
+export const GET = withStaffAudit(handleGET, { skipRead: () => true });

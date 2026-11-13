@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { STUDIO_PHONE_QUERY } from "@/lib/studio-phone";
 
 const DELAY = 1000;
 type Help = { anchor: HTMLElement; text: string };
@@ -18,6 +19,7 @@ export function StudioHelp() {
   useEffect(() => {
     let anchor: HTMLElement | null = null;
     let shown = false;
+    let touchingPhone = false;
     let showTimer: ReturnType<typeof setTimeout> | undefined;
     let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const clear = () => { clearTimeout(showTimer); clearTimeout(hideTimer); showTimer = undefined; };
@@ -45,15 +47,19 @@ export function StudioHelp() {
       if (find(event.target) === find(event.relatedTarget) || insideTooltip(event.relatedTarget)) return;
       closeSoon.current();
     };
-    const focus = (event: FocusEvent) => schedule(find(event.target));
+    const focus = (event: FocusEvent) => { if (!touchingPhone) schedule(find(event.target)); };
     const blur = (event: FocusEvent) => { if (!insideTooltip(event.relatedTarget)) hide(); };
     const key = (event: KeyboardEvent) => {
+      touchingPhone = false;
       if (event.key !== "Escape") return;
       // Dismiss the visible help before Escape reaches an underlying editor/dialog.
       if (shown) { event.preventDefault(); event.stopPropagation(); }
       hide();
     };
-    const press = (event: PointerEvent) => { if (!insideTooltip(event.target)) hide(); };
+    const press = (event: PointerEvent) => {
+      touchingPhone = event.pointerType === "touch" && window.matchMedia(STUDIO_PHONE_QUERY).matches;
+      if (!insideTooltip(event.target)) hide();
+    };
     document.addEventListener("pointerover", over);
     document.addEventListener("pointerout", out);
     document.addEventListener("focusin", focus);

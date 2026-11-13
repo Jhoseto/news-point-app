@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { browserMediaSrc } from "@/lib/media-src";
+import { usePhoneDialog } from "./use-phone-dialog";
 import { withBase } from "@/lib/paths";
 import { sortThemeArticlesChronologically } from "@/lib/story-theme-order";
 import type { StoryThemeArticleSearchResult } from "@/lib/story-theme-types";
@@ -31,6 +32,7 @@ function mergeCatalog(current: Map<string, Selection>, extras: Selection[]) {
 }
 
 export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props) {
+  const layer = usePhoneDialog(open, onClose);
   const initialIds = useMemo(() => new Set(initial.map((a) => a.id)), [initial]);
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Selection[]>([]);
@@ -40,6 +42,7 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const searching = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -49,22 +52,30 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
 
   useEffect(() => {
     if (!open) return;
+    setLoading(true);
+    setResults([]);
+    setHasMore(false);
+    setError(null);
     const handle = setTimeout(() => {
       void loadPage(search, 0, false);
     }, 250);
-    return () => clearTimeout(handle);
+    return () => { clearTimeout(handle); searching.current?.abort(); };
     // loadPage is stable enough for this picker; search/open are the triggers.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, open]);
 
   const loadPage = async (query: string, offset: number, append: boolean) => {
+    searching.current?.abort();
+    const controller = new AbortController();
+    searching.current = controller;
     setLoading(true);
     setError(null);
     try {
       const url = withBase(
         `/api/stories/search-articles?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${offset}`,
       );
-      const res = await fetch(url, { cache: "no-store" });
+      const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+      if (controller.signal.aborted) return;
       if (res.status === 401) {
         setSessionExpired(true);
         setError("Сесията изтече. Избраното е запазено тук; влезте отново в отделния прозорец и повторете търсенето.");
@@ -73,13 +84,14 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
       if (!res.ok) throw new Error(`Грешка ${res.status}`);
       setSessionExpired(false);
       const data = (await res.json()) as { articles: Selection[]; hasMore?: boolean };
+      if (controller.signal.aborted) return;
       setResults((current) => (append ? [...current, ...data.articles] : data.articles));
       setCatalog((current) => mergeCatalog(current, data.articles));
       setHasMore(Boolean(data.hasMore));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Грешка при търсене.");
+      if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Грешка при търсене.");
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
@@ -113,8 +125,9 @@ export function StoryArticleSearch({ open, initial, onClose, onConfirm }: Props)
       role="dialog"
       aria-modal="true"
       aria-label="Управление на статии в тема"
+      ref={layer}
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      className="np-story-search-layer fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
     >
       <div
         onClick={(event) => event.stopPropagation()}

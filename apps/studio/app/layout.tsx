@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { withBase } from "@/lib/paths";
 import "@fontsource-variable/manrope";
 import "./globals.css";
+import "./studio-mobile.css";
+import "../components/studio-mobile-desks.css";
 import { StudioHelp } from "@/components/studio-help";
 import { StudioThemeScript } from "@/components/studio-theme";
 
@@ -16,6 +18,13 @@ const wordmark = localFont({
   variable: "--font-wordmark",
   adjustFontFallback: false,
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-visual",
+};
 
 export const metadata: Metadata = {
   title: { default: "NewsPoint Studio", template: "%s · NewsPoint Studio" },

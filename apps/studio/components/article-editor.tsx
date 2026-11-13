@@ -21,6 +21,9 @@ import { EditorDialog } from "./editor-dialog";
 import { MediaPicker } from "./media-picker";
 import { VideoUploadDialog } from "./video-upload-dialog";
 import { XPostEmbed } from "./x-post-embed";
+import { STUDIO_PHONE_QUERY } from "@/lib/studio-phone";
+import { usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
+import "./article-editor-mobile.css";
 
 export interface EditorProps {
   socialStatus?: SocialStatus;
@@ -101,7 +104,11 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const [device, setDevice] = useState<Device>("desktop");
   const [theme, setTheme] = useState<PreviewTheme>("light");
   const [mobileTab, setMobileTab] = useState<"edit" | "preview">("edit");
-  const [previewCollapsed, setPreviewCollapsed] = useState(false);
+  const [phoneSettings, setPhoneSettings] = useState(false);
+  const [layout, setLayout] = useState<"phone" | "tabs" | "split">("tabs");
+  const [collapsedPreference, setPreviewCollapsed] = useState(false);
+  const previewCollapsed = collapsedPreference && layout === "split";
+  const settingsOpen = layout === "phone" && phoneSettings && mobileTab === "edit";
   const [availableMedia, setAvailableMedia] = useState(media);
   const [storyThemeId, setStoryThemeId] = useState<string | null>(initialStoryThemeId);
   const [savedStoryThemeId, setSavedStoryThemeId] = useState<string | null>(initialStoryThemeId);
@@ -118,11 +125,21 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const [heroError, setHeroError] = useState("");
 
   useEffect(() => {
+    const phone = window.matchMedia(STUDIO_PHONE_QUERY);
+    const split = window.matchMedia("(min-width: 64rem)");
+    const updateViewport = () => setLayout(phone.matches ? "phone" : split.matches ? "split" : "tabs");
+    updateViewport();
+    phone.addEventListener("change", updateViewport);
+    split.addEventListener("change", updateViewport);
     try {
       if (localStorage.getItem("np-studio-preview-collapsed") === "1") setPreviewCollapsed(true);
     } catch {
       /* ignore */
     }
+    return () => {
+      phone.removeEventListener("change", updateViewport);
+      split.removeEventListener("change", updateViewport);
+    };
   }, []);
 
   function togglePreview() {
@@ -141,7 +158,9 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const bodyLocked = readOnly || !article.editableBody;
   const storyThemeDirty = storyThemeId !== savedStoryThemeId;
   const dirty = !sameDraft(draft, saved) || storyThemeDirty;
+  usePhoneUnsavedChanges(dirty, { guardLinks: false, guardUnload: false });
   const busy = phase !== "idle";
+  const saveDisabled = busy || !editorValid || Boolean(conflict) || (!dirty && Boolean(articleId));
   const hero = availableMedia.find((item) => item.id === draft.heroMediaId) ?? null;
   const body = useMemo(() => draft.body ?? textToBody(draft.bodyText), [draft.body, draft.bodyText]);
   const words = documentWords(body);
@@ -149,6 +168,13 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const previewSource = useDeferredValue(draft);
   const previewBlocks = useMemo(() => previewSource.body ?? textToBody(previewSource.bodyText), [previewSource.body, previewSource.bodyText]);
   const previewCategory = sections.find((section) => section.id === previewSource.primaryCategoryId)?.name ?? null;
+
+  // Feedback lives in the editing pane, including when publishing from the preview.
+  useEffect(() => {
+    if (window.matchMedia(STUDIO_PHONE_QUERY).matches && (conflict || notice || problems.length)) {
+      setMobileTab("edit");
+    }
+  }, [conflict, notice, problems]);
 
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
     setDraft((current) => {
@@ -378,6 +404,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
       const destination = new URL(anchor.href, window.location.href);
       if (destination.origin !== window.location.origin || destination.pathname === window.location.pathname) return;
       event.preventDefault(); event.stopPropagation();
+      anchor.closest<HTMLDialogElement>("#np-phone-menu[open]")?.close();
       setLeaveDestination(destination.href);
     };
     document.addEventListener("click", onNavigate, true);
@@ -404,9 +431,9 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
   const previewUrl = `${webUrl.replace(/\/$/, "")}/${draft.slug || "adres-na-statiyata"}/`;
 
   return (
-    <div className="flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh">
-      <div className="sticky top-14 z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2 sm:px-5">
+    <div className="studio-article-editor flex min-h-[calc(100dvh-3.5rem)] flex-col lg:min-h-dvh" data-phone-settings={settingsOpen}>
+      <div className="studio-article-bar sticky top-14 z-20 border-b border-line bg-surface/95 backdrop-blur lg:top-0">
+        <div className="studio-article-bar-main flex flex-wrap items-center gap-x-2.5 gap-y-1.5 px-4 py-2 sm:px-5">
           <Link href="/" className="text-sm font-bold text-muted hover:text-ink">
             ← Материали
           </Link>
@@ -438,12 +465,12 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
 
           {articleId ? <button data-help="Показва запазените версии. Можете да заредите стара версия за редакция." type="button" disabled={busy || historyLoading} className="np-btn np-btn-secondary px-3 py-1.5 text-xs" onClick={() => void openHistory()}>{historyLoading ? "Зареждане…" : "Версии"}</button> : null}
           {!readOnly ? (
-            <div className="ml-auto flex items-center gap-1.5">
+            <div className="studio-article-save-actions ml-auto flex items-center gap-1.5">
               <label className="inline-flex items-center gap-2 pr-1 text-xs font-bold text-ink">
                 <input data-help="Разрешава на читателите да слушат тази новина чрез функцията за прочитане." type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={(event) => update("listenEnabled", event.target.checked)} />
                 Позволи слушане
               </label>
-              <button data-help="Записва черновата. Промените няма да се появят на сайта, докато не ги публикувате." type="button" disabled={busy || !editorValid || Boolean(conflict) || (!dirty && Boolean(articleId))} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
+              <button data-help="Записва черновата. Промените няма да се появят на сайта, докато не ги публикувате." type="button" disabled={saveDisabled} onClick={() => void save()} className="np-btn np-btn-secondary px-3 py-1.5 text-xs">
                 {phase === "saving" ? "Записване…" : "Запиши"}
               </button>
               <button data-help="Публикува текущата редакция или я насрочва за избрания час. Проверете съдържанието преди натискане." type="button" disabled={busy || !editorValid || Boolean(conflict)} onClick={() => void publish()} className="np-btn np-btn-primary px-4 py-1.5 text-xs">
@@ -464,14 +491,17 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               key={tab}
               type="button"
               role="tab"
-              aria-selected={mobileTab === tab}
-              onClick={() => setMobileTab(tab)}
+              aria-selected={mobileTab === tab && !settingsOpen}
+              onClick={() => { setPhoneSettings(false); setMobileTab(tab); }}
               className="relative flex-1 py-2.5 text-sm font-bold text-muted aria-selected:text-ink"
             >
               {label}
-              {mobileTab === tab ? <span className="np-gradient-bg absolute inset-x-6 bottom-0 h-0.5 rounded-full" aria-hidden="true" /> : null}
+              {mobileTab === tab && !settingsOpen ? <span className="np-gradient-bg absolute inset-x-6 bottom-0 h-0.5 rounded-full" aria-hidden="true" /> : null}
             </button>
           ))}
+          <button type="button" role="tab" aria-selected={settingsOpen} className="studio-article-settings-tab hidden text-sm font-bold text-muted" onClick={() => { setPhoneSettings(true); setMobileTab("edit"); }}>
+            Настройки
+          </button>
         </div>
       </div>
 
@@ -537,6 +567,13 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           ) : null}
 
           <div className="studio-publish studio-meta np-card overflow-hidden">
+            <h2 className="studio-phone-section-title hidden">Публикуване</h2>
+            <div className="studio-phone-publication-tools hidden">
+              {articleId ? <button type="button" disabled={busy || historyLoading} className="np-btn np-btn-secondary" onClick={() => void openHistory()}>{historyLoading ? "Зареждане…" : "Версии"}</button> : null}
+              {published.isPublic ? <a href={`${webUrl}${published.path}`} target="_blank" rel="noreferrer" className="np-btn np-btn-secondary">На сайта ↗</a> : null}
+              {!readOnly ? <label><input type="checkbox" checked={draft.listenEnabled ?? article.listenEnabled} onChange={event => update("listenEnabled", event.target.checked)} /> Позволи слушане</label> : null}
+              {hasUnpublished ? <p className="text-xs font-bold text-warning">Има промени, които не са на сайта</p> : null}
+            </div>
             <fieldset className="studio-meta-fields" disabled={readOnly}>
               <label htmlFor="author-kind" className="studio-meta-field">
                 <span>Автор</span>
@@ -640,6 +677,7 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
           </div>
 
           <div className="studio-meta np-card overflow-hidden">
+            <h2 className="studio-phone-section-title hidden">Рубрика и водеща медия</h2>
             <div className="studio-meta-fields">
               <label htmlFor="category" className="studio-meta-field">
                 <span>Рубрика</span>
@@ -753,8 +791,8 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
             </div>
           </div>
 
-          <div className="np-card p-3">
-            <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          <div className="studio-article-writing np-card p-3">
+            <div className="studio-article-position mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
               <label htmlFor="home-hero-position" className="flex min-w-0 max-w-full flex-wrap items-center gap-x-2 gap-y-1 font-semibold text-muted">
                 Позиция в топ новини
                 <select data-help="Избира място 1–4 в топ новините при публикуване. Без срок; заменя новините и опашката на това място." id="home-hero-position" aria-describedby="home-hero-hint" className="np-home-hero-position h-8 min-w-0 max-w-full rounded-md border border-line bg-surface px-2 text-xs text-ink" disabled={readOnly || busy || !homeHeroReady} value={draft.homeHeroPosition ?? ""} onChange={event => update("homeHeroPosition", event.target.value ? Number(event.target.value) as 1 | 2 | 3 | 4 : null)}>
@@ -802,7 +840,9 @@ export function ArticleEditor({ socialStatus = { ready: false, connected: false,
               <span className="text-xs text-faint tabular-nums">{words} думи</span>
             </div>
             {!article.editableBody ? <p className="mt-2 text-sm text-warning">Текстът съдържа елементи, които този редактор още не поддържа.</p> : null}
-            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} onMediaImported={rememberMedia} />
+            <VisualArticleEditor value={body} onChange={(value) => update("body", value)} media={availableMedia} readOnly={bodyLocked} onValidityChange={setEditorValid} onOpenMedia={() => openMediaPicker("body")} onOpenVideo={() => setVideoTarget("body")} handleRef={visualRef} onMediaImported={rememberMedia}
+              phoneSave={readOnly ? null : { disabled: saveDisabled, saving: phase === "saving", run: () => void save() }}
+            />
             <p className="mt-2 text-xs text-muted">{words} думи · Ctrl+S записва ръчно</p>
           </div>
         </div>

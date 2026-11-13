@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { confirmPhoneLeave, usePhoneUnsavedChanges } from "./use-phone-unsaved-changes";
+import { useMobileDeskNavigation } from "./mobile-desk-navigation";
+import { STUDIO_PHONE_QUERY } from "../lib/studio-phone";
 import { withBase } from "@/lib/paths";
 import { uploadResumable, cancelResumableUpload } from "@/lib/resumable-upload";
 import { PODCAST_AUDIO_ACCEPT } from "@newspoint/content";
@@ -25,12 +28,15 @@ type Tab = "editor" | "new" | "empty";
 
 const sortedByDate = sortByPublishedAtDesc;
 
-export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEpisode[]; categories: Category[]; webUrl: string }) {
-  const [episodes, setEpisodes] = useState(initial);
+export function PodcastDesk({ episodes, setEpisodes, categories, webUrl }: {
+  episodes: StudioEpisode[]; setEpisodes: Dispatch<SetStateAction<StudioEpisode[]>>;
+  categories: Category[]; webUrl: string;
+}) {
+  const mobile = useMobileDeskNavigation();
   const [filter, setFilter] = useState<"all" | "published" | "draft">("all");
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(initial[0]?.id ?? null);
-  const [tab, setTab] = useState<Tab>(initial.length === 0 ? "empty" : "editor");
+  const [selectedId, setSelectedId] = useState<string | null>(episodes[0]?.id ?? null);
+  const [tab, setTab] = useState<Tab>(episodes.length === 0 ? "empty" : "editor");
 
   const filtered = useMemo(
     () => sortedByDate(filterEpisodes(episodes, filter, query)),
@@ -44,24 +50,28 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
     draft: episodes.filter((episode) => episode.status === "draft").length,
   }), [episodes]);
 
-  function openEditor(id: string) {
+  function openEditor(id: string, trigger: HTMLElement) {
+    if ((tab !== "editor" || selectedId !== id) && !confirmPhoneLeave()) return;
     setSelectedId(id);
     setTab("editor");
+    mobile.showDetail(trigger);
   }
 
-  function openNew() {
+  function openNew(trigger?: HTMLElement) {
+    if (tab !== "new" && !confirmPhoneLeave()) return;
     setTab("new");
+    if (trigger) mobile.showDetail(trigger);
   }
 
   return (
-    <div className="np-podcast-desk">
+    <div className="np-podcast-desk" data-mobile-pane={mobile.pane}>
       <aside className="np-podcast-sidebar">
         <div className="np-podcast-sidebar-head">
           <div className="np-podcast-counter">
             <span className="np-podcast-counter-num">{counts.all}</span>
             <span className="np-podcast-counter-label">{counts.all === 1 ? "епизод" : "епизода"}</span>
           </div>
-          <button data-help="Започва нов епизод с аудио, заглавие, резюме и обложка." type="button" onClick={openNew} className="np-podcast-new-btn" aria-label="Нов епизод">
+          <button data-help="Започва нов епизод с аудио, заглавие, резюме и обложка." type="button" onClick={(event) => openNew(event.currentTarget)} className="np-podcast-new-btn" aria-label="Нов епизод">
             <svg viewBox="0 0 24 24" width={14} height={14} aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" /></svg>
             Нов епизод
           </button>
@@ -107,7 +117,7 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
                   type="button"
                   role="option"
                   aria-selected={episode.id === selectedId && tab === "editor"}
-                  onClick={() => openEditor(episode.id)}
+                  onClick={(event) => openEditor(episode.id, event.currentTarget)}
                   className="np-podcast-list-item"
                 >
                   <img
@@ -145,7 +155,10 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
       </aside>
 
       <div className="np-podcast-main">
-        {tab === "empty" ? <EmptyState onCreate={openNew} /> : null}
+        {mobile.backButton("Към епизодите")}
+        {tab === "empty" && (episodes.length
+          ? <p className="np-podcast-empty">Изберете епизод за редакция.</p>
+          : <EmptyState onCreate={() => openNew()} />)}
         {tab === "new" ? (
           <NewEpisodeForm
             categories={categories}
@@ -156,7 +169,7 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
               setQuery("");
               setTab("editor");
             }}
-            onCancel={episodes.length > 0 ? () => setTab(initial.length === 0 ? "empty" : "editor") : () => undefined}
+            onCancel={() => { setTab(current ? "editor" : "empty"); mobile.showList(); }}
           />
         ) : null}
         {tab === "editor" && current ? (
@@ -169,10 +182,9 @@ export function PodcastDesk({ initial, categories, webUrl }: { initial: StudioEp
               setEpisodes((rows) => rows.map((row) => (row.id === current.id ? { ...row, ...patch } : row)));
             }}
             onRemove={() => {
-              const next = episodes.filter((row) => row.id !== current.id);
-              setEpisodes(next);
-              setSelectedId(next[0]?.id ?? null);
-              setTab(next.length === 0 ? "empty" : "editor");
+              setSelectedId(null);
+              setTab("empty");
+              mobile.showList();
             }}
           />
         ) : null}
@@ -222,6 +234,7 @@ function NewEpisodeForm({
   const [notice, setNotice] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
+  usePhoneUnsavedChanges(Boolean(title || summary || categoryId || coverFile || audioFile || submitting));
 
   useEffect(() => {
     if (!coverFile) {
@@ -393,6 +406,7 @@ function EpisodeEditor({
   const [summary, setSummary] = useState(episode.summary);
   const [categoryId, setCategoryId] = useState(episode.categoryId ?? "");
   const [dirty, setDirty] = useState(false);
+  const editor = useRef<HTMLElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -446,6 +460,7 @@ function EpisodeEditor({
 
   const fieldsDirty = isEditorDirty({ title, summary, categoryId }, episode);
   const filesDirty = coverFile !== null || audioFile !== null;
+  usePhoneUnsavedChanges(fieldsDirty || filesDirty || pending);
   const canSave = (fieldsDirty || filesDirty) && !pending;
   const isPublished = episode.status === "published";
 
@@ -515,6 +530,7 @@ function EpisodeEditor({
     function onKey(event: KeyboardEvent) {
       const isMeta = event.metaKey || event.ctrlKey;
       if (isMeta && event.key.toLowerCase() === "s") {
+        if (window.matchMedia(STUDIO_PHONE_QUERY).matches && !editor.current?.getClientRects().length) return;
         event.preventDefault();
         if (canSave) void save();
       }
@@ -525,7 +541,7 @@ function EpisodeEditor({
   }, [canSave, title, summary, categoryId, coverFile, audioFile]);
 
   return (
-    <article className="np-podcast-editor">
+    <article ref={editor} className="np-podcast-editor">
       <header className="np-podcast-editor-head">
         <div className="np-podcast-editor-head-left">
           <span className={`np-podcast-status np-podcast-status--${episode.status}`}>
