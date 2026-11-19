@@ -1,0 +1,99 @@
+.np-camera-workspace {
+  --camera-control-duration: 160ms;
+  --camera-control-ease: cubic-bezier(.16, 1, .3, 1);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 16.25rem;
+  min-width: 0;
+  min-height: 0;
+  gap: 1rem;
+  color: var(--np-ink);
+}
+.np-camera-workspace--panel { height: 100%; }
+.np-camera-workspace--page { padding: 1.25rem; border: 1px solid var(--np-line); border-radius: 1.25rem; background: var(--np-surface); }
+.np-camera-stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.np-camera-heading { display: flex; flex-wrap: wrap; align-items: flex-start; gap: .625rem; min-width: 0; padding: .25rem 0 .875rem; }
+.np-camera-heading > div { flex: 1; min-width: 0; }
+.np-camera-heading h3 { margin: 0; font-size: 1.125rem; font-weight: 800; line-height: 1.35; letter-spacing: -.025em; text-wrap: balance; }
+.np-camera-heading p { margin: .25rem 0 0; font-size: .75rem; line-height: 1.5; color: var(--np-muted); }
+.np-camera-status { display: inline-flex; align-items: center; gap: .375rem; flex: none; min-height: 1.5rem; color: var(--np-muted); font-size: .6875rem; font-weight: 700; }
+.np-camera-status > span { width: .375rem; height: .375rem; border-radius: 50%; background: currentColor; }
+.np-camera-status[data-state="playing"] { color: var(--np-link); }
+.np-camera-screen { position: relative; display: grid; place-items: center; min-width: 0; min-height: 0; flex: 1; aspect-ratio: 16/9; overflow: hidden; border-radius: .875rem; background: #050b22; }
+.np-camera-screen > * { width: 100%; height: 100%; min-height: 0; aspect-ratio: auto; border: 0; border-radius: 0; box-shadow: none; }
+.np-camera-screen :is(video, iframe, img) { object-fit: contain; }
+.np-camera-screen .np-camera-consent { padding: .75rem; gap: .5rem; }
+.np-camera-workspace--page .np-camera-screen { min-height: 18rem; }
+.np-camera-selector { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding-left: 1rem; border-left: 1px solid var(--np-line); }
+.np-camera-selector-heading { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .25rem 0 .625rem; }
+.np-camera-selector-heading h3 { margin: 0; font-size: .9375rem; font-weight: 800; }
+.np-camera-selector-heading > span { color: var(--np-muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
+.np-camera-groups { display: flex; flex-wrap: wrap; gap: .25rem; padding-bottom: .75rem; }
+.np-camera-groups button { min-height: 2.75rem; padding: .375rem .625rem; border: 1px solid transparent; border-radius: .5rem; color: var(--np-muted); font-size: .6875rem; font-weight: 700; transition: color var(--camera-control-duration) var(--camera-control-ease), background-color var(--camera-control-duration) var(--camera-control-ease); }
+.np-camera-groups button:hover { color: var(--np-ink); background: var(--np-surface-2); }
+.np-camera-groups button[aria-pressed="true"] { color: var(--np-on-accent); background: var(--np-accent); }
+.np-camera-list { display: flex; flex: 1; flex-direction: column; gap: .125rem; min-height: 0; margin: 0; padding: 0; list-style: none; }
+.np-camera-list li { min-width: 0; }
+.np-camera-list button { display: flex; align-items: center; gap: .625rem; width: 100%; height: 4rem; min-height: 4rem; padding: .25rem .5rem; border: 1px solid transparent; border-radius: .625rem; color: var(--np-body); text-align: left; transition: color var(--camera-control-duration) var(--camera-control-ease), background-color var(--camera-control-duration) var(--camera-control-ease); }
+.np-mobile-lp-sheet[data-module="cameras"] .np-camera-list button { padding-block: .25rem; }
+.np-camera-list button:hover { color: var(--np-ink); background: var(--np-surface-2); }
+.np-camera-list button[aria-pressed="true"] { color: var(--np-ink); background: color-mix(in srgb, var(--np-accent) 9%, var(--np-surface)); }
+.np-camera-row-mark { width: 3px; height: 1.5rem; flex: none; border-radius: 2px; background: transparent; }
+.np-camera-list button[aria-pressed="true"] .np-camera-row-mark { background: var(--np-accent); }
+.np-camera-row-copy { display: flex; flex: 1; flex-direction: column; gap: .25rem; min-width: 0; }
+.np-camera-row-copy strong { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: .75rem; line-height: 1.4; font-weight: 800; }
+.np-camera-row-copy > span { overflow: hidden; color: var(--np-muted); font-size: .625rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.np-camera-list button > svg { flex: none; color: var(--np-muted); }
+.np-camera-pagination { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex: none; margin-top: .625rem; padding-top: .625rem; border-top: 1px solid var(--np-line); }
+.np-camera-pagination button { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border: 1px solid var(--np-line); border-radius: .625rem; color: var(--np-ink); background: var(--np-surface); }
+.np-camera-pagination button:hover:not(:disabled) { background: var(--np-surface-2); }
+.np-camera-pagination button:disabled { color: var(--np-faint); cursor: default; }
+.np-camera-pagination > span { font-size: .6875rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--np-muted); }
+.np-camera-workspace button:focus-visible { outline: 2px solid var(--np-accent); outline-offset: 2px; }
+.np-camera-empty { margin: 0; padding: 2rem 1rem; text-align: center; color: var(--np-muted); }
+html[data-reduced-motion="true"] .np-camera-groups button, html[data-reduced-motion="true"] .np-camera-list button { transition: none; }
+.np-lp-cameras-body { flex: 1; min-height: 0; overflow: hidden; padding: 1rem 1.25rem 1.25rem; }
+.np-lp-cameras { height: min(38.5rem, var(--camera-modal-height, 78dvh)); }
+.np-mobile-lp-sheet[data-module="cameras"] { max-width: 60rem; }
+.np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-body { overflow: hidden; padding: .75rem; scrollbar-gutter: auto; }
+.np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-content { height: 100%; min-height: 0; }
+.np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-header { padding-bottom: .5rem; }
+.np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-heading p { display: none; }
+.np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-tabs { padding-bottom: .375rem; }
+@media (max-width: 699px) {
+  .np-mobile-lp-sheet[data-module="cameras"] { top: max(.5rem, env(safe-area-inset-top)); }
+  .np-camera-workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: .625rem; }
+  .np-camera-workspace--page { padding: .75rem; grid-template-rows: auto auto; }
+  .np-camera-heading { padding: 0 0 .5rem; gap: .375rem; }
+  .np-camera-heading h3 { font-size: .9375rem; }
+  .np-camera-heading p { font-size: .6875rem; margin-top: .125rem; }
+  .np-camera-status { font-size: .625rem; }
+  .np-camera-screen { flex: 1; }
+  .np-camera-workspace--page .np-camera-screen { flex: none; min-height: 0; aspect-ratio: 16/9; }
+  .np-camera-selector { padding: .5rem 0 0; border-left: 0; border-top: 1px solid var(--np-line); }
+  .np-camera-selector-heading { display: none; }
+  .np-camera-groups { gap: .125rem; padding: 0 0 .375rem; flex-wrap: nowrap; }
+  .np-camera-groups button { flex: 1; min-width: 0; min-height: 2.75rem; padding: .25rem .1875rem; font-size: .625rem; }
+  .np-camera-list { gap: 0; }
+  .np-camera-list button { height: 2.75rem; min-height: 2.75rem; gap: .5rem; padding: .25rem; border-radius: .375rem; }
+  .np-camera-row-copy { gap: .125rem; }
+  .np-camera-row-copy strong { -webkit-line-clamp: 1; font-size: .6875rem; }
+  .np-camera-row-copy > span { font-size: .625rem; }
+  .np-camera-pagination { margin-top: .25rem; padding-top: .25rem; }
+  .np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-module-icon { width: 2rem; height: 2rem; }
+  .np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-tabs button { min-height: 2.5rem; }
+  .np-mobile-lp-sheet[data-module="cameras"] .np-mobile-lp-tabs button svg { display: none; }
+}
+@media (min-width: 700px) and (max-width: 1023px) and (max-height: 600px) {
+  .np-mobile-lp-sheet[data-module="cameras"] { top: max(.5rem, env(safe-area-inset-top)); }
+}
+@media (max-height: 640px) {
+  .np-camera-workspace--panel .np-camera-consent p:nth-of-type(2) { display: none; }
+}
+@media (max-height: 740px) and (min-width: 700px) {
+  .np-camera-groups { gap: .125rem; padding-bottom: .375rem; }
+  .np-camera-groups button { min-height: 2.25rem; }
+  .np-camera-pagination { margin-top: .25rem; padding-top: .25rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .np-camera-groups button, .np-camera-list button { transition: none; }
+}

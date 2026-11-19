@@ -13,7 +13,7 @@ export const PUBLIC_SEO_PAGES = {
   podcast: { path: "/livepoint/podcast/", title: "Подкасти на NewsPoint", description: "Всички публикувани подкаст епизоди на NewsPoint с аудио, дата и резюме." },
   weather: { path: "/livepoint/weather/", title: "Време · LivePoint", description: "Прогноза за Пловдив." },
   traffic: { path: "/livepoint/traffic/", title: "Трафик · LivePoint", description: "Карта и инциденти за Пловдив." },
-  cameras: { path: "/livepoint/cameras/", title: "Камери · LivePoint", description: "Проверен каталог на публични камери около Пловдив." },
+  cameras: { path: "/livepoint/cameras/", title: "Камери · LivePoint", description: "Публични камери от Пловдив и региона, Пампорово, Банско и пътни камери с връзки към източниците." },
   report: { path: "/livepoint/report/", title: "Подай сигнал · LivePoint", description: "Сигнал към редакцията на NewsPoint." },
   myNews: { path: "/livepoint/my-news/", title: "Моята новина · LivePoint", description: "Изпратете авторски материал към редакцията." },
   team: { path: "/team/", title: "За нас", description: "NewsPoint.bg е независим новинарски портал за Пловдив, региона и страната.", image: "/brand/team-office-1-1600-f2f61151.webp" },

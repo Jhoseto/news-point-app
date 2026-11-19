@@ -9,7 +9,7 @@ import "./cookie-consent.css";
 const categories = [
   { key: "preferences", title: "Удобства", text: "Запомня последните ви търсения само в този браузър. Търсенето работи и без тази история." },
   { key: "statistics", title: "Статистика", text: "Включва собствения брояч на прочитанията. Clicky и Google Analytics работят и без тази категория." },
-  { key: "external", title: "Външно съдържание", text: "Зарежда вградените видеа и камери. Доставчиците им получават технически данни и може да използват свои бисквитки. При изключване остава връзка към източника." },
+  { key: "external", title: "Външно съдържание", text: "Зарежда вградените видеа и камери. Доставчиците им получават технически данни и може да използват свои бисквитки. Можете да промените избора по всяко време." },
 ] as const;
 
 export function CookieConsent() {
@@ -20,11 +20,13 @@ export function CookieConsent() {
   const dialog = useRef<HTMLDialogElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
   const trigger = useRef<HTMLElement | null>(null);
+  const focusFallback = useRef<HTMLElement | null>(null);
   const id = useId();
 
   useEffect(() => {
     const show = () => {
       trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      focusFallback.current = trigger.current?.closest<HTMLElement>("[data-cookie-focus-fallback]") ?? null;
       setChoices({ ...(currentCookieConsent() ?? NO_OPTIONAL_CONSENT) });
       setOpen(true);
     };
@@ -49,6 +51,7 @@ export function CookieConsent() {
     return () => {
       node.close(); document.body.style.overflow = previous;
       if (trigger.current?.isConnected) trigger.current.focus({ preventScroll: true });
+      else if (focusFallback.current?.isConnected) focusFallback.current.focus({ preventScroll: true });
     };
   }, [open]);
 

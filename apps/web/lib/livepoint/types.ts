@@ -79,8 +79,9 @@ export interface TrafficIncidentsPayload {
 }
 
 export type CameraCategory = "traffic" | "city" | "region";
+export type CameraGroup = "plovdiv" | "pamporovo" | "bansko" | "roads";
 export type CameraAccess = "link" | "iframe";
-export type CameraStreamStatus = "verified" | "unverified" | "unavailable";
+export type CameraStreamStatus = "verified" | "snapshot" | "unverified" | "unavailable";
 
 export interface CameraEntry {
   slug: string;
@@ -88,6 +89,7 @@ export interface CameraEntry {
   place: string;
   direction: string | null;
   category: CameraCategory;
+  group?: CameraGroup;
   owner: string;
   sourceUrl: string;
   access: CameraAccess;

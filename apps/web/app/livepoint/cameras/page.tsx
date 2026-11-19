@@ -6,7 +6,7 @@ export const metadata = publicPageMetadata("cameras");
 
 export default function LivePointCamerasPage() {
   return (
-    <LivePointPage title="Камери · Пловдив" full compact>
+    <LivePointPage title="Камери · Пловдив, планини и пътища" full compact>
       <CamerasPanel />
     </LivePointPage>
   );

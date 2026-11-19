@@ -24,7 +24,7 @@ import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, ty
 const PANEL_MAX: Record<LivePointModule, number> = {
   weather: 880,
   traffic: 1120,
-  cameras: 880,
+  cameras: 1120,
   report: 880,
   "my-news": 880,
   podcast: 880,
@@ -92,7 +92,7 @@ const DETAIL_LABELS: Record<LivePointModule, string> = {
 const PANEL_SUBTITLES: Record<LivePointModule, string> = {
   weather: "Пловдив · прогноза",
   traffic: "Пловдив · пътна обстановка",
-  cameras: "Пловдив и регион",
+  cameras: "Пловдив, Пампорово и Банско",
   report: "Сигнал до редакцията",
   "my-news": "Материал за редакцията",
   podcast: "Гласът на истината",
@@ -266,8 +266,8 @@ export function LivePointProvider({
   useEffect(() => {
     if (!active) return;
     const onKey = (event: KeyboardEvent) => {
-      // The native location dialog is in the top layer and owns focus/Escape while open.
-      if (event.target instanceof Element && event.target.closest("[data-report-location-dialog]")) return;
+      // Native dialogs own focus and Escape above the LivePoint panel.
+      if (document.querySelector("dialog[open]")) return;
       if (event.key === "Escape") {
         event.preventDefault();
         close();
@@ -343,8 +343,8 @@ export function LivePointProvider({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={titleId}
-                className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "podcast" ? "np-podcast-panel" : active === "traffic" ? "np-lp-traffic" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
-                style={{ maxHeight: place ? `min(${active === "traffic" ? "86dvh" : "78dvh"}, calc(100dvh - ${place.top + 16}px))` : "min(78dvh, 44rem)" }}
+                className={`np-lp-panel np-card relative flex w-full min-w-0 flex-col overflow-hidden ${active === "podcast" ? "np-podcast-panel" : active === "traffic" ? "np-lp-traffic" : active === "cameras" ? "np-lp-cameras" : active === "report" || active === "my-news" ? "np-lp-submission-panel" : ""}`}
+                style={{ maxHeight: place ? `min(${active === "traffic" || active === "cameras" ? "86dvh" : "78dvh"}, calc(100dvh - ${place.top + 16}px))` : "min(78dvh, 44rem)" }}
               >
                 <div className={`flex shrink-0 items-center gap-3 border-b border-line px-4 py-3 sm:px-5 ${active === "traffic" ? "sm:py-3" : "sm:py-4"}`}>
                   <h2
@@ -367,7 +367,7 @@ export function LivePointProvider({
                     <CloseIcon width={18} height={18} />
                   </button>
                 </div>
-                <div data-lp-panel-body className={`${active === "podcast" ? "np-podcast-panel-body min-h-0 flex-1" : active === "traffic" ? "min-h-0 flex-1 overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-3" : "np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"}`}>
+                <div data-lp-panel-body className={`${active === "podcast" ? "np-podcast-panel-body min-h-0 flex-1" : active === "cameras" ? "np-lp-cameras-body" : active === "traffic" ? "min-h-0 flex-1 overflow-hidden px-2.5 py-2.5 sm:px-4 sm:py-3" : "np-scroll-soft min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5 sm:py-5"}`}>
                   {active === "weather" ? <WeatherPanel initial={weather} /> : null}
                   {active === "traffic" ? <TrafficPanel connected={trafficConnected} /> : null}
                   {active === "cameras" ? <CamerasPanel variant="panel" /> : null}
@@ -375,7 +375,7 @@ export function LivePointProvider({
                   {active === "my-news" ? <MyNewsPanel onDirtyChange={setDirty} /> : null}
                   {active === "podcast" ? <PodcastPanel /> : null}
                 </div>
-                {active !== "traffic" && <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
+                {active !== "traffic" && active !== "cameras" && <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
                   <Link
                     href={MODULE_PATHS[active]}
                     onClick={(event) => {

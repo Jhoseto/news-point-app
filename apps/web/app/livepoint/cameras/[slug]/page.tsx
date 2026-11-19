@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const camera = getCamera(slug);
   if (!camera) notFound();
-  return publicMetadata({ path: `/livepoint/cameras/${camera.slug}/`, title: `${camera.name} · Камери`, description: `Публична камера: ${camera.name}. Източник и възможности за гледане в LivePoint.`, imagePath: `/share/camera/${camera.slug}/` });
+  return publicMetadata({ path: `/livepoint/cameras/${camera.slug}/`, title: `${camera.name} · Камери`, description: `Публична камера: ${camera.name}. Гледайте картината директно в LivePoint.`, imagePath: `/share/camera/${camera.slug}/` });
 }
 
 export default async function LivePointCameraDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -21,7 +21,7 @@ export default async function LivePointCameraDetailPage({ params }: { params: Pr
   const camera = getCamera(slug);
   if (!camera) notFound();
 
-  const nearby = CAMERA_CATALOG.filter((item) => item.slug !== camera.slug && item.category === camera.category).slice(0, 3);
+  const nearby = CAMERA_CATALOG.filter((item) => item.slug !== camera.slug && canPlayInApp(item) && item.category === camera.category).slice(0, 3);
 
   return (
     <div className="np-container max-w-3xl py-8">
@@ -41,15 +41,15 @@ export default async function LivePointCameraDetailPage({ params }: { params: Pr
         {camera.direction ? ` · ${camera.direction}` : ""}
       </p>
       {canPlayInApp(camera) && camera.embedUrl ? (
-        <div className="mt-4">
+        <section className="mt-4" aria-label={camera.name} data-cookie-focus-fallback tabIndex={-1}>
           <CameraLiveEmbed title={camera.name} embedUrl={camera.embedUrl} sourceUrl={camera.sourceUrl} />
-        </div>
+        </section>
       ) : (
         <p className="mt-4 text-sm text-body">Потокът не е наличен в приложението.</p>
       )}
       {nearby.length ? (
         <section className="mt-10">
-          <h2 className="text-lg font-extrabold text-ink">Близки камери</h2>
+          <h2 className="text-lg font-extrabold text-ink">Още камери</h2>
           <ul className="mt-3 flex flex-col gap-2">
             {nearby.map((item) => (
               <li key={item.slug}>
