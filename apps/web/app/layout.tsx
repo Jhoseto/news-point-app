@@ -8,6 +8,7 @@ import { MobileChromeIsland } from "@/components/mobile-chrome-island";
 import { cityGuideEnabled } from "@/lib/city-guide/access";
 import { DeferredChrome } from "@/components/deferred-chrome";
 import { ViewportShellGate } from "@/components/viewport-shell-gate";
+import { SmoothScroll } from "@/components/smooth-scroll";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { ThemeScript } from "@/components/theme-script";
 import { PwaSplash } from "@/components/pwa-splash";
@@ -115,6 +116,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <ThemeScript />
         <PwaSplash />
         <ViewportShellGate ssrDesktop={desktop} />
+        <SmoothScroll />
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:rounded-lg focus:bg-surface focus:px-4 focus:py-2 focus:font-semibold focus:text-ink"
