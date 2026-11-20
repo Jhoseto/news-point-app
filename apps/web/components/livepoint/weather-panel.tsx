@@ -76,9 +76,6 @@ export function WeatherPanel({ initial, initialCityId, variant = "panel", mobile
           <div className="flex min-h-52 items-center justify-center rounded-2xl border border-line bg-surface-2 px-5 text-sm text-muted">Зареждане на времето за {city.name}…</div>
         ) : <WeatherContent data={data} variant={variant} mobile={mobile} />}
       </div>
-      <p className="text-xs leading-relaxed text-muted">
-        Прогнозни данни: <a href="https://www.met.no/" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">MET Norway</a>, обобщени от NewsPoint. Координати: <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">GeoNames</a>. Лиценз <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink">CC BY 4.0</a>.
-      </p>
     </div>
   );
 }
