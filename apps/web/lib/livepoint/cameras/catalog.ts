@@ -1,6 +1,6 @@
 import type { CameraEntry } from "../types";
 
-/** Public sources checked 2026-11-19. `verified` means video; `snapshot` means updating still images. */
+/** Check dates belong to each source. `verified` means video; `snapshot` means updating still images. */
 export const CAMERA_CATALOG: readonly CameraEntry[] = [
   {
     slug: "plovdiv-komatevo",
@@ -28,6 +28,20 @@ export const CAMERA_CATALOG: readonly CameraEntry[] = [
     embedUrl: "https://www.youtube.com/embed/rQYOztq_7FI",
     streamStatus: "verified",
     lastChecked: "2026-11-19",
+    notes: null,
+  },
+  {
+    slug: "plovdiv-komatevo-park",
+    name: "Коматево — Малкият парк",
+    place: "кв. Коматево, Пловдив",
+    direction: null,
+    category: "city",
+    owner: "Rosen Dimitrov / Star Net",
+    sourceUrl: "https://www.youtube.com/watch?v=G0HAN_YUJE0",
+    access: "iframe",
+    embedUrl: "https://www.youtube.com/embed/G0HAN_YUJE0",
+    streamStatus: "verified",
+    lastChecked: "2026-11-20",
     notes: null,
   },
   {
@@ -141,6 +155,20 @@ export const CAMERA_CATALOG: readonly CameraEntry[] = [
     streamStatus: "verified",
     lastChecked: "2026-11-19",
     notes: null,
+  },
+  {
+    slug: "plovdiv-trakia-osvobozhdenie",
+    name: "Тракия — бул. „Освобождение“",
+    place: "жк „Тракия“, Пловдив",
+    direction: null,
+    category: "traffic",
+    owner: "webcamsbg.com",
+    sourceUrl: "https://www.webcamsbg.com/plovdiv-trakia-metro-live-kamera.html",
+    access: "iframe",
+    embedUrl: "https://www.webcamsbg.com/cams/pics/plovdiv-trakia2",
+    streamStatus: "snapshot",
+    lastChecked: "2026-11-20",
+    notes: "Обновявани снимки към бул. „Освобождение“.",
   },
   {
     slug: "plovdiv-trakia-rooftop",

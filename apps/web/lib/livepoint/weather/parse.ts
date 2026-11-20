@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PLOVDIV } from "../config";
+import { DEFAULT_WEATHER_CITY, type WeatherCity } from "./cities";
 import type { WeatherDay, WeatherForecast, WeatherHour, WeatherInstant } from "../types";
 
 const detailsSchema = z
@@ -22,7 +23,7 @@ const periodSchema = z
   .optional();
 
 const timeseriesEntrySchema = z.object({
-  time: z.string(),
+  time: z.iso.datetime(),
   data: z.object({
     instant: z.object({ details: detailsSchema }),
     next_1_hours: periodSchema,
@@ -35,7 +36,7 @@ export const metCompactSchema = z.object({
   type: z.literal("Feature"),
   properties: z.object({
     meta: z.object({
-      updated_at: z.string(),
+      updated_at: z.iso.datetime(),
       units: z.record(z.string(), z.string()).optional(),
     }),
     timeseries: z.array(timeseriesEntrySchema).min(1),
@@ -58,13 +59,21 @@ function precipOf(entry: z.infer<typeof timeseriesEntrySchema>): number | null {
   return typeof amount === "number" ? amount : null;
 }
 
-export function parseMetCompact(raw: unknown, now = new Date()): WeatherForecast {
+export function parseMetCompact(raw: unknown, now = new Date(), city: WeatherCity = DEFAULT_WEATHER_CITY): WeatherForecast {
   const parsed = metCompactSchema.parse(raw);
   const series = parsed.properties.timeseries;
-  const currentEntry = series[0]!;
+  // A cached response starts at its original issue hour. Advance the current model
+  // hour without another upstream request, and never present an exhausted forecast.
+  const nowMs = now.getTime();
+  const currentIndex = series.findLastIndex((entry) => Date.parse(entry.time) <= nowMs);
+  const currentEntry = series[Math.max(0, currentIndex)]!;
   const details = currentEntry.data.instant.details;
   if (typeof details.air_temperature !== "number") {
     throw new Error("Forecast response has no air_temperature");
+  }
+  if (!Number.isFinite(nowMs) || Date.parse(currentEntry.time) > nowMs + 60 * 60_000 ||
+      (currentIndex === series.length - 1 && nowMs >= Date.parse(currentEntry.time) + 60 * 60_000)) {
+    throw new Error("Forecast response does not cover the current hour");
   }
 
   const current: WeatherInstant = {
@@ -79,7 +88,10 @@ export function parseMetCompact(raw: unknown, now = new Date()): WeatherForecast
     precipitationMm: precipOf(currentEntry),
   };
 
-  const hours: WeatherHour[] = series.slice(0, 24).flatMap((entry) => {
+  const firstHourMs = Date.parse(currentEntry.time);
+  const hours: WeatherHour[] = series.slice(Math.max(0, currentIndex)).filter((entry) =>
+    Date.parse(entry.time) < firstHourMs + 24 * 60 * 60_000,
+  ).flatMap((entry) => {
     const temp = entry.data.instant.details.air_temperature;
     if (typeof temp !== "number") return [];
     return [
@@ -119,7 +131,8 @@ export function parseMetCompact(raw: unknown, now = new Date()): WeatherForecast
     }));
 
   return {
-    place: PLOVDIV.name,
+    cityId: city.id,
+    place: city.name,
     updatedAt: parsed.properties.meta.updated_at,
     current,
     hours,

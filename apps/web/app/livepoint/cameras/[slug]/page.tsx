@@ -42,7 +42,7 @@ export default async function LivePointCameraDetailPage({ params }: { params: Pr
       </p>
       {canPlayInApp(camera) && camera.embedUrl ? (
         <section className="mt-4" aria-label={camera.name} data-cookie-focus-fallback tabIndex={-1}>
-          <CameraLiveEmbed title={camera.name} embedUrl={camera.embedUrl} sourceUrl={camera.sourceUrl} />
+          <CameraLiveEmbed title={camera.name} embedUrl={camera.embedUrl} sourceUrl={camera.sourceUrl} kind={camera.streamStatus === "snapshot" ? "snapshot" : "iframe"} />
         </section>
       ) : (
         <p className="mt-4 text-sm text-body">Потокът не е наличен в приложението.</p>

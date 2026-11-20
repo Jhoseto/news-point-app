@@ -19,6 +19,7 @@ import { isLivePointModule, MODULE_LABELS, MODULE_PATHS, type LivePointModule } 
 import type { DataEnvelope, LatestHeadline, WeatherForecast } from "@/lib/livepoint/types";
 import { CloseIcon } from "../icons";
 import { MOBILE_OVERLAY_CHANGE, MOBILE_OVERLAY_REQUEST, requestMobileOverlay, type MobileOverlay } from "@/lib/mobile-overlays";
+import { useWeather } from "./use-weather";
 
 /** Keep LivePoint desktop panels in a similar footprint under their strip buttons. */
 const PANEL_MAX: Record<LivePointModule, number> = {
@@ -64,6 +65,7 @@ export type LivePointData = {
 };
 
 type LivePointContextValue = LivePointData & {
+  weatherCityName: string;
   active: LivePointModule | null;
   open: (module: LivePointModule) => void;
   close: () => void;
@@ -90,7 +92,7 @@ const DETAIL_LABELS: Record<LivePointModule, string> = {
 };
 
 const PANEL_SUBTITLES: Record<LivePointModule, string> = {
-  weather: "Пловдив · прогноза",
+  weather: "Прогноза по градове",
   traffic: "Пловдив · пътна обстановка",
   cameras: "Пловдив, Пампорово и Банско",
   report: "Сигнал до редакцията",
@@ -138,6 +140,8 @@ export function LivePointProvider({
   camerasLiveLabel,
   latest,
 }: LivePointData & { children: ReactNode }) {
+  const selectedWeather = useWeather(weather);
+  const weatherDetailHref = `${MODULE_PATHS.weather}?city=${selectedWeather.city.id}`;
   const pathname = usePathname();
   const titleId = useId();
   const [active, setActive] = useState<LivePointModule | null>(null);
@@ -301,14 +305,14 @@ export function LivePointProvider({
   }, [active, mobile]);
 
   const value = useMemo<LivePointContextValue>(
-    () => ({ weather, trafficConnected, camerasLiveLabel, latest, active, open, close }),
-    [weather, trafficConnected, camerasLiveLabel, latest, active, open, close],
+    () => ({ weather: selectedWeather.data, weatherCityName: selectedWeather.city.name, trafficConnected, camerasLiveLabel, latest, active, open, close }),
+    [selectedWeather.data, selectedWeather.city.name, trafficConnected, camerasLiveLabel, latest, active, open, close],
   );
 
   return (
     <LivePointContext.Provider value={value}>
       {children}
-      {mobile && mounted ? <MobileLivePointPanel module={active} titleId={titleId} panelRef={panel} onClose={close} onSelect={open}
+      {mobile && mounted ? <MobileLivePointPanel module={active} titleId={titleId} panelRef={panel} onClose={close} onSelect={open} weatherDetailHref={weatherDetailHref} weatherCityName={selectedWeather.city.name}
         onDetail={(event) => {
           if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да отворя подробната страница?")) event.preventDefault();
         }}
@@ -356,7 +360,7 @@ export function LivePointProvider({
                     {active === "podcast" ? <PodcastOrbit className="np-podcast-mark" /> : <span className="np-ring" aria-hidden="true" />}
                     {MODULE_LABELS[active]}
                   </h2>
-                  <span className="hidden text-xs font-semibold text-muted sm:inline">{PANEL_SUBTITLES[active]}</span>
+                  <span className="hidden text-xs font-semibold text-muted sm:inline">{active === "weather" ? selectedWeather.city.name : PANEL_SUBTITLES[active]}</span>
                   {active === "traffic" && <Link href={MODULE_PATHS.traffic} aria-label="Подробности за трафика" className="inline-flex shrink-0 rounded-full border border-accent/30 bg-surface-2 px-3 py-2 text-xs font-extrabold text-link transition-colors hover:bg-accent hover:text-on-accent sm:px-4"><span className="sm:hidden">Още ↗</span><span className="hidden sm:inline">Подробности за трафика ↗</span></Link>}
                   <button
                     type="button"
@@ -377,7 +381,7 @@ export function LivePointProvider({
                 </div>
                 {active !== "traffic" && active !== "cameras" && <div className="flex shrink-0 justify-end border-t border-line px-4 py-3 sm:px-5">
                   <Link
-                    href={MODULE_PATHS[active]}
+                    href={active === "weather" ? weatherDetailHref : MODULE_PATHS[active]}
                     onClick={(event) => {
                       if (dirtyRef.current && !window.confirm("Имате незапазен текст. Да отворя подробната страница?")) {
                         event.preventDefault();

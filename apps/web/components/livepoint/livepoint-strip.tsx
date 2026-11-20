@@ -14,17 +14,20 @@ function StripItem({
   icon,
   children,
   className,
+  title,
 }: {
   module: LivePointModule;
   icon: ReactNode;
   children: ReactNode;
   className?: string;
+  title?: string;
 }) {
   const { active, open } = useLivePoint();
   const on = active === module;
   return (
     <button
       type="button"
+      title={title}
       onClick={() => open(module)}
       data-lp-module={module}
       aria-haspopup="dialog"
@@ -100,7 +103,7 @@ function StripScroller({ children }: { children: ReactNode }) {
 }
 
 export function LivePointStrip({ cityEnabled = false }: { cityEnabled?: boolean }) {
-  const { weather, latest } = useLivePoint();
+  const { weather, weatherCityName, latest } = useLivePoint();
   const pathname = usePathname();
   const cityActive = pathname === "/moyat-plovdiv" || pathname.startsWith("/moyat-plovdiv/");
   const forecast = weather.status === "ok" || weather.status === "stale" ? weather.payload : null;
@@ -143,7 +146,7 @@ export function LivePointStrip({ cityEnabled = false }: { cityEnabled?: boolean 
           <StripItem module="podcast" icon={<HeadphonesIcon width={17} height={17} />}>
             Podcast
           </StripItem>
-          <StripItem module="weather" icon={<CloudSunIcon width={17} height={17} />}>
+          <StripItem module="weather" title={`Времето в ${weatherCityName}`} icon={<CloudSunIcon width={17} height={17} />}>
             Време{forecast ? ` ${formatTempC(forecast.current.temperatureC)}` : ""}
           </StripItem>
           <StripItem module="traffic" icon={<CarIcon width={17} height={17} />}>

@@ -9,14 +9,14 @@ import { CameraIcon, CarIcon, CloseIcon, CloudSunIcon, FeatherIcon, HeadphonesIc
 const EXIT_MS = 200;
 const INFO: Record<LivePointModule, { short: string; subtitle: string; detail: string; icon: ReactNode }> = {
   podcast: { short: "Подкаст", subtitle: "Истории с глас", detail: "Всички епизоди", icon: <HeadphonesIcon width={20} height={20} /> },
-  weather: { short: "Време", subtitle: "Прогнозата за Пловдив", detail: "Подробна прогноза", icon: <CloudSunIcon width={20} height={20} /> },
+  weather: { short: "Време", subtitle: "Прогноза по градове", detail: "Подробна прогноза", icon: <CloudSunIcon width={20} height={20} /> },
   traffic: { short: "Трафик", subtitle: "Пътната обстановка в Пловдив", detail: "Отвори голямата карта", icon: <CarIcon width={20} height={20} /> },
   cameras: { short: "Камери", subtitle: "Пловдив, Пампорово и Банско", detail: "Всички камери", icon: <CameraIcon width={20} height={20} /> },
   report: { short: "Сигнал", subtitle: "Свържете се с редакцията", detail: "Отвори формата на цял екран", icon: <MegaphoneIcon width={20} height={20} /> },
   "my-news": { short: "Новина", subtitle: "Вашият разказ до редакцията", detail: "Отвори формата на цял екран", icon: <FeatherIcon width={20} height={20} /> },
 };
 
-export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSelect, onDetail, renderContent }: {
+export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSelect, onDetail, renderContent, weatherDetailHref, weatherCityName }: {
   module: LivePointModule | null;
   titleId: string;
   panelRef: RefObject<HTMLDivElement | null>;
@@ -24,6 +24,8 @@ export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSel
   onSelect: (module: LivePointModule) => void;
   onDetail: (event: MouseEvent<HTMLAnchorElement>) => void;
   renderContent: (module: LivePointModule) => ReactNode;
+  weatherDetailHref?: string;
+  weatherCityName?: string;
 }) {
   const [retained, setRetained] = useState(module);
   const [visible, setVisible] = useState(false);
@@ -127,7 +129,7 @@ export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSel
           <div className="np-mobile-lp-handle" aria-hidden="true"><span /></div>
           <div className="np-mobile-lp-heading">
             <span className="np-mobile-lp-module-icon" aria-hidden="true">{info.icon}</span>
-            <div><h2 ref={title} id={titleId} data-autofocus tabIndex={-1}>{MODULE_LABELS[displayed]}</h2><p>{info.subtitle}</p></div>
+            <div><h2 ref={title} id={titleId} data-autofocus tabIndex={-1}>{MODULE_LABELS[displayed]}</h2><p>{displayed === "weather" && weatherCityName ? weatherCityName : info.subtitle}</p></div>
             <button type="button" aria-label="Затвори" className="np-mobile-lp-close" onClick={onClose}><CloseIcon width={20} height={20} /></button>
           </div>
         </header>
@@ -136,7 +138,7 @@ export function MobileLivePointPanel({ module, titleId, panelRef, onClose, onSel
             onClick={() => { if (module !== item) onSelect(item); }}><span aria-hidden="true">{INFO[item].icon}</span><span>{INFO[item].short}</span></button>)}
         </div>
         <div data-lp-panel-body className="np-mobile-lp-body"><div key={displayed} className="np-mobile-lp-content">{renderContent(displayed)}</div></div>
-        {displayed !== "cameras" && <footer className="np-mobile-lp-footer"><Link href={MODULE_PATHS[displayed]} onClick={onDetail}>{info.detail}<span aria-hidden="true">↗</span></Link></footer>}
+        {displayed !== "cameras" && <footer className="np-mobile-lp-footer"><Link href={displayed === "weather" && weatherDetailHref ? weatherDetailHref : MODULE_PATHS[displayed]} onClick={onDetail}>{info.detail}<span aria-hidden="true">↗</span></Link></footer>}
       </div>
     </div>, document.body,
   );

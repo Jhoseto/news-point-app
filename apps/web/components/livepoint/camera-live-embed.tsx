@@ -78,7 +78,7 @@ function CameraFeed({ title, embedUrl, kind, onPlaybackState }: CameraPlayerProp
         )}
       </div>
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 px-3 text-xs text-white/75">
-        <p>{snapshot ? "Обновявани снимки. Часът на кадъра остава видим." : manualPlay ? "Натиснете Play във видеото, за да тръгне камерата." : "Ако видеото не тръгне автоматично, натиснете Play."}</p>
+        <p>{snapshot ? "Обновявани снимки. Картината се обновява автоматично." : manualPlay ? "Натиснете Play във видеото, за да тръгне камерата." : "Ако видеото не тръгне автоматично, натиснете Play."}</p>
         <button type="button" onClick={() => setAttempt((value) => value + 1)} className="min-h-11 shrink-0 px-1 font-semibold text-white hover:underline">Презареди</button>
       </div>
     </div>

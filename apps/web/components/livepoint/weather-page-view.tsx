@@ -163,15 +163,15 @@ export function WeatherPageView({ forecast, staleMessage }: { forecast: WeatherF
 
       <section
         data-mood={mood}
-        className="np-weather-hero np-lp-window relative isolate overflow-hidden rounded-3xl border border-line shadow-card"
+        className="np-weather-hero np-lp-window relative isolate overflow-hidden rounded-3xl border border-line bg-[#0a1454] shadow-card"
       >
-        <img src={PLOVDIV_VIEW} alt="" className="absolute inset-0 size-full scale-105 object-cover np-weather-hero-zoom" />
+        {forecast.cityId === "plovdiv" ? <img src={PLOVDIV_VIEW} alt="" className="absolute inset-0 size-full scale-105 object-cover np-weather-hero-zoom" /> : null}
         <div className="np-lp-window-veil absolute inset-0" aria-hidden="true" />
         <div className="np-weather-sky-fx pointer-events-none absolute inset-0" aria-hidden="true" data-mood={mood} />
 
         <div className="relative grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.85fr)] lg:p-8">
           <div>
-            <p className="text-xs font-bold tracking-[0.16em] text-white/75 uppercase">Пловдив · LivePoint</p>
+            <h2 className="text-xl font-bold text-white">{forecast.place}</h2>
             <div className="mt-3 flex flex-wrap items-end gap-4">
               <p className="text-[4.5rem] font-extrabold leading-none tracking-tighter text-white sm:text-[5.5rem]">
                 {formatTempC(forecast.current.temperatureC)}

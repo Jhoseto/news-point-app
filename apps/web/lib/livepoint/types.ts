@@ -51,6 +51,7 @@ export interface WeatherDay {
 }
 
 export interface WeatherForecast {
+  cityId: string;
   place: string;
   updatedAt: string;
   current: WeatherInstant;
