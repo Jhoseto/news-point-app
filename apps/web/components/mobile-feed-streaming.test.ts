@@ -27,7 +27,6 @@ vi.mock("./lists", () => ({ CompactList: () => null }));
 vi.mock("./home-category-section", () => ({ HomeCategorySection: () => createElement("section", { "data-test-static-tail": true }, "Test-only static tail section") }));
 vi.mock("./home-podcast-link", () => ({ HomePodcastLink: () => null }));
 vi.mock("./breadcrumbs", () => ({ Breadcrumbs: () => null }));
-vi.mock("./logo", () => ({ Logo: () => null }));
 
 const asOfMs = Date.parse("2026-11-23T10:30:00Z");
 const category = { id: "test-only-category", slug: "balgariya", name: "Test-only rubric", path: "/balgariya/" };
@@ -83,7 +82,6 @@ describe("mobile first-screen streaming", () => {
     expect(canonicalShell).toContain('style="min-height:100svh"');
     expect(canonicalShell).not.toContain("data-test-static-tail");
     expect(canonicalShell).not.toContain("data-test-dynamic");
-    expect(canonicalShell).not.toContain("Защото истината");
     expect(html).toContain("data-test-static-tail");
     expect(html.match(/data-test-dynamic="carousel"/g)).toHaveLength(4);
     expect(html.match(/data-test-dynamic="poll"/g)).toHaveLength(1);

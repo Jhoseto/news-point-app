@@ -139,7 +139,7 @@ export function LivePointStrip({ cityEnabled = false }: { cityEnabled?: boolean 
             <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
           </div>
 
-          {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} data-active={cityActive || undefined} aria-current={cityActive ? "page" : undefined} className="np-lp-item group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2">
+          {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} data-active={cityActive || undefined} aria-current={cityActive ? "page" : undefined} className="np-lp-item np-lp-city-highlight group flex min-h-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-center text-[0.625rem] leading-tight font-bold whitespace-nowrap text-body sm:text-xs lg:h-full lg:min-w-0 lg:flex-row lg:gap-1 lg:px-1.5 lg:py-0 lg:text-[0.8125rem] lg:font-semibold xl:gap-1.5 xl:px-2">
             <span className="np-lp-item-icon" aria-hidden="true"><MapIcon width={17} height={17} /></span>
             <span className="np-lp-item-label">Моят Пловдив</span>
           </Link> : null}

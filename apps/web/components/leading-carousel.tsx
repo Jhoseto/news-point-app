@@ -138,7 +138,7 @@ export function LeadingCarousel({
       data-mobile-pager-ignore
       onFocusCapture={prepareLoop}
       onPointerDownCapture={prepareLoop}
-      className={`group/carousel min-w-0${mobileOnly ? " np-home-carousel" : compactCards ? " np-carousel-compact" : ""}`}
+      className={`group/carousel min-w-0${mobileOnly ? ` np-home-carousel${compactCards ? "" : " np-home-carousel--wide"}` : compactCards ? " np-carousel-compact" : ""}`}
     >
       <div className={`np-section-heading flex items-center justify-between gap-4 ${compactCards ? "mb-3" : "mb-5"}`} style={categoryAccentStyle(accentSlug)}>
         <h2 id={headingId} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">

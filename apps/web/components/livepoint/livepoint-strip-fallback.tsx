@@ -49,7 +49,7 @@ export function LivePointStripFallback({ weather, latest, onModuleActivate, city
           </div>
           <span className="hidden h-4 w-px shrink-0 bg-line sm:block" aria-hidden="true" />
         </div>
-        {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} className={itemClass}>
+        {cityEnabled ? <Link href="/moyat-plovdiv/" prefetch={false} className={`${itemClass} np-lp-city-highlight`}>
           <span className="np-lp-item-icon" aria-hidden="true"><MapIcon width={17} height={17} /></span>
           <span className="np-lp-item-label np-lp-word">Моят Пловдив</span>
         </Link> : null}

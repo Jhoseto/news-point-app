@@ -8,9 +8,11 @@ function episodeLink({ title, slug }: { title: string; slug: string }) {
   return { title, path: `/livepoint/podcast/${slug}/` };
 }
 
+const episodeCoverUrl = (coverKey: string) => `/media/${coverKey}`;
+
 export async function publicEpisodeLinks(limit?: number) {
   if (!await podcastsReady()) return [];
-  return (await listPublishedPodcastLinks(limit)).map(episodeLink);
+  return (await listPublishedPodcastLinks(limit)).map(row => ({ ...episodeLink(row), coverUrl: episodeCoverUrl(row.coverKey) }));
 }
 
 function present(row: {
@@ -29,7 +31,7 @@ function present(row: {
     ...episodeLink(row),
     slug: row.slug,
     summary: row.summary,
-    coverUrl: `/media/${row.coverKey}`,
+    coverUrl: episodeCoverUrl(row.coverKey),
     audioUrl: `/podcast-audio/${row.id}/`,
     durationSec: row.durationSec,
     publishedAt: (row.publishedAt ?? row.createdAt).toISOString(),

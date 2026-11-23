@@ -45,7 +45,10 @@ export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {
     // Aside lists retain every story, independently of the main-section cap.
     main: sections(main, 4), aside: sections(home.aside),
     focusCarousel: home.focusCarousel.map(serializeCarouselArticle), topicsCarousel: home.topicsCarousel.map(serializeCarouselArticle),
-    ...(home.latestPodcast ? { latestPodcast: home.latestPodcast } : {}),
+    ...(home.latestPodcast ? { latestPodcast: {
+      title: home.latestPodcast.title, path: home.latestPodcast.path,
+      ...(home.latestPodcast.coverUrl ? { coverUrl: home.latestPodcast.coverUrl } : {}),
+    } } : {}),
     voiceCarousel: home.voiceCarousel.map(serializeCarouselArticle), poll: home.poll }, home.nextChangeAt);
 }
 export function categoryMobileFeed(

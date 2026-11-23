@@ -21,7 +21,7 @@ it("shows historical and newly published episodes on all discovery surfaces and 
     const slugs = (rows: { slug: string }[]) => rows.map(row => row.slug);
     expect(slugs(await listPublishedPodcastLinks())).toEqual(["new-fixture", "old-fixture"]);
     expect(slugs(await listPublishedPodcasts())).toEqual(["new-fixture", "old-fixture"]);
-    expect(slugs(await listPublishedPodcastLinks(1))).toEqual(["new-fixture"]);
+    expect(await listPublishedPodcastLinks(1)).toEqual([{ title: "new-fixture", slug: "new-fixture", coverKey: "podcasts/2026/10/ab.webp" }]);
     expect(await publishedPodcastBySlug("future-fixture")).toBeNull();
     expect(await publishedPodcastBySlug("draft-fixture")).toBeNull();
     await engine.exec("update podcasts set status = 'published', published_at = now() where slug = 'draft-fixture'");

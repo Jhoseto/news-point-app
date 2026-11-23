@@ -16,7 +16,10 @@ vi.mock("@newspoint/db", () => ({
   pageArrangements: { document: "document", pageKey: "page_key", status: "status" },
 }));
 vi.mock("@newspoint/db/polls", () => ({ featuredPoll: async () => null }));
-vi.mock("./podcasts", () => ({ publicEpisodeLinks: async () => [{ title: "Test episode", path: "/livepoint/podcast/test-only/" }] }));
+vi.mock("@newspoint/db/podcasts", () => ({
+  podcastsReady: async () => true,
+  listPublishedPodcastLinks: async () => [{ title: "Test episode", slug: "test-only", coverKey: "podcasts/2026/11/ab.webp", audioKey: "test-only-private-audio.mp3", summary: "Unused fixture summary" }],
+}));
 vi.mock("./category-grid-balance.server", () => ({
   archiveBoundaryForArticle: async () => null,
   countCategoryArticlesAfter: async () => 0,
@@ -39,7 +42,7 @@ vi.mock("./queries", () => ({
 import { loadPublicHome } from "./public-home";
 import { loadPublicCategory } from "./public-category";
 import { categoryMobileFeed, homeMobileFeed } from "./mobile-rubric-feed-server";
-import { reviveFeedArticle, serializeFeedArticle } from "./mobile-rubric-feed";
+import { mobileRubricFeedSchema, reviveFeedArticle, serializeFeedArticle } from "./mobile-rubric-feed";
 import { carouselArticle } from "./carousel-article";
 
 const category: CategoryRef = { id: "0f1e2c8a-1b2d-4c3e-9a10-111111111111", slug: "plovdiv", name: "Fixture rubric", path: "/plovdiv/" };
@@ -77,7 +80,7 @@ describe("cached listing inputs and placement clocks", () => {
     const previous = home.focusCarousel.map(serializeFeedArticle).map(reviveFeedArticle).map(carouselArticle);
     const model = homeMobileFeed(home, [category]);
     if (model.feed.kind !== "home") throw Error("Wrong fixture feed");
-    expect(model.feed.latestPodcast).toEqual({ title: "Test episode", path: "/livepoint/podcast/test-only/" });
+    expect(model.feed.latestPodcast).toEqual({ title: "Test episode", path: "/livepoint/podcast/test-only/", coverUrl: "/media/podcasts/2026/11/ab.webp" });
     expect(model.feed.focusCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual(previous);
     expect(model.feed.topicsCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
     expect(model.feed.voiceCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
@@ -92,6 +95,23 @@ describe("cached listing inputs and placement clocks", () => {
     expect(JSON.stringify(model.feed)).not.toContain("Fixture excerpt");
     expect(home).toEqual(originalHome);
     expect(fixture.hero.variants).toHaveLength(6); expect(fixture.excerpt).not.toBe("");
+  });
+  it("projects only public podcast thumbnail fields and accepts snapshots from before covers were added", async () => {
+    const home = await loadPublicHome();
+    const episode = { title: "Test episode", path: "/livepoint/podcast/test-only/", coverUrl: "/media/podcasts/2026/11/ab.webp" };
+    expect(home.latestPodcast).toEqual(episode);
+    const extraPodcastFields = { ...episode, audioUrl: "/test-only-private-audio/", summary: "Unused fixture summary" };
+    const model = homeMobileFeed({ ...home, latestPodcast: extraPodcastFields }, [category]);
+    if (model.feed.kind !== "home") throw Error("Wrong fixture feed");
+    expect(model.feed.latestPodcast).toEqual(episode);
+    const legacyEpisode = { title: episode.title, path: episode.path };
+    const legacy = homeMobileFeed({ ...home, latestPodcast: legacyEpisode }, [category]);
+    expect(legacy.feed.kind === "home" && legacy.feed.latestPodcast).toEqual(legacyEpisode);
+    expect(mobileRubricFeedSchema.safeParse(JSON.parse(JSON.stringify(legacy))).success).toBe(true);
+    expect(model.contentVersion).not.toBe(legacy.contentVersion);
+    const withPodcast = (latestPodcast: unknown) => ({ ...model, feed: { ...model.feed, latestPodcast } });
+    expect(mobileRubricFeedSchema.safeParse(withPodcast({ ...episode, coverUrl: "javascript:alert(1)" })).success).toBe(false);
+    expect(mobileRubricFeedSchema.safeParse(withPodcast(extraPodcastFields)).success).toBe(false);
   });
   it("preserves the category feed projection, including excerpts, independently of home", async () => {
     state.pool = Array.from({ length: 7 }, (_, index) => ({ ...article(`${automaticId.slice(0, -1)}${index}`), excerpt: "Test-only archive excerpt" }));

@@ -15,12 +15,12 @@ import { HomeCategorySection } from "./home-category-section";
 import { HomePodcastLink } from "./home-podcast-link";
 import { SectionTitle } from "./ui";
 import { Breadcrumbs } from "./breadcrumbs";
-import { Logo } from "./logo";
 import { LATEST_CAROUSEL_SPEED } from "@/lib/carousel-autoplay";
 import { carouselArticle } from "@/lib/carousel-article";
 
 const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
 const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
+const MOBILE_HOME_CAROUSEL_SPEED = 20;
 // Canonical home tails get one boundary so pending widgets do not hold the
 // first screen or reveal incomplete geometry between already-visible sections.
 
@@ -52,7 +52,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
   const carousel = (articles: typeof feed.focusCarousel, props: { title?: string; href?: string; accentSlug?: string; motion?: "to-left" | "to-right"; compactCards?: boolean; exactTime?: boolean; speed?: number }, id: string) => {
     const position = window?.[id]?.carousel;
     const rotated = position ? [...articles.slice(position.index), ...articles.slice(0, position.index)] : articles;
-    return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(article => carouselArticle(reviveFeedArticle(article)))} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} {...props} /></div></Block> : null;
+    return articles.length ? <Block id={id} {...(window ? { window } : {})}><div data-mobile-pager-ignore data-mobile-feed-anchor={id}><LeadingCarousel articles={(preview ? rotated.slice(0, 4) : articles).map(article => carouselArticle(reviveFeedArticle(article)))} mobileOnly preview={preview} previewOffset={position?.offset ?? 0} headingId={`${namespace}-${id}`} speed={MOBILE_HOME_CAROUSEL_SPEED} {...props} /></div></Block> : null;
   };
   const renderMainSection = (section: MobileHomeMainSection) => {
     if (section.category.slug !== "balgariya" && !section.wide) return null;
@@ -87,7 +87,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       {feed.focusCarousel.length ? carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus") : null}
     </div>
     {plovdivSection ? renderMainSection(plovdivSection) : null}
-    {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-right" }, "topics")}
+    {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-left", speed: 18 }, "topics")}
     {feed.latestPodcast ? anchor("latest-podcast", <HomePodcastLink episode={feed.latestPodcast} />, window) : null}
     {mainAfterPlovdiv.map((section) => (
       <Fragment key={section.category.id}>
@@ -98,10 +98,6 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       </Fragment>
     ))}
     {feed.aside.length ? <aside className="flex flex-col gap-6" aria-label="Още новини">{feed.aside.map(section => <Block key={section.category.id} id={`section-${section.category.id}`} {...(window ? { window } : {})}><div data-mobile-feed-anchor={`section-${section.category.id}`}><CompactList title={section.category.name} accentSlug={section.category.slug} href={section.category.path} articles={section.articles.map(reviveFeedArticle)} /></div></Block>)}</aside> : null}
-    <Block id="brand" {...(window ? { window } : {})}><section aria-label="NewsPoint.bg" className="relative isolate overflow-hidden rounded-3xl border border-line bg-surface px-6 py-8 shadow-card sm:px-10">
-      <div className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40" aria-hidden="true" />
-      <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between"><Logo className="h-12 sm:h-14" /><p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Защото истината <span className="np-gradient-text">има значение.</span></p></div>
-    </section></Block>
   </>;
   return <div className={`np-mobile-home np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
     <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>

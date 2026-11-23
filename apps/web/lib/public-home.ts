@@ -33,7 +33,7 @@ export interface PublicHome {
   topicsCarousel: ArticleSummary[];
   voiceCarousel: ArticleSummary[];
   poll: PublicPoll | null;
-  latestPodcast: { path: string; title: string } | null;
+  latestPodcast: { path: string; title: string; coverUrl?: string } | null;
 }
 
 function reviveArticle(article: ArticleSummary): ArticleSummary {
@@ -75,7 +75,7 @@ async function queryPublicHomeInputs() {
   };
 }
 
-const readPublicHomeInputs = unstable_cache(queryPublicHomeInputs, ["public-home-inputs-v2"], { revalidate: 60, tags: ["public-listings"] });
+const readPublicHomeInputs = unstable_cache(queryPublicHomeInputs, ["public-home-inputs-v3"], { revalidate: 60, tags: ["public-listings"] });
 
 /** Cache the source pools, but evaluate placement windows against this request's clock. */
 export const loadPublicHome = cache(async (): Promise<PublicHome> => {

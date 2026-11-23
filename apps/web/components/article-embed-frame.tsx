@@ -23,7 +23,16 @@ export function ArticleEmbedFrame({
   const playSrc = embedFrameUrl(src);
   const xPost = xPostUrl(src);
   const videoSrc = videoSourceUrl(src);
-  if ((playSrc || xPost || (videoSrc && !videoSrc.startsWith("/"))) && !allowed) return <ExternalContentConsent id={id} title={title} sourceUrl={src} className={className} />;
+  if ((playSrc || xPost || (videoSrc && !videoSrc.startsWith("/"))) && !allowed) {
+    // Reserve the same canvas during SSR and consent hydration as the player.
+    // Otherwise a returning reader sees the short notice expand into the video.
+    if (playSrc && !videoSrc && !xPost) return (
+      <div id={id} className={`${className} np-embed-canvas np-embed-consent`} style={{ aspectRatio: embedAspectRatio(src) }}>
+        <div className="np-embed-consent-slot"><ExternalContentConsent title={title} sourceUrl={src} /></div>
+      </div>
+    );
+    return <ExternalContentConsent id={id} title={title} sourceUrl={src} className={className} />;
+  }
   if (videoSrc) return <video id={id} src={videoSrc} controls preload="metadata" playsInline className={`${className} np-native-video`} aria-label={title} />;
   if (xPost) return <XPostEmbed src={xPost} id={id} className={className} />;
   if (!playSrc) return <a id={id} className={className} href={src} target="_blank" rel="noopener noreferrer">Виж публикацията в {provider}</a>;

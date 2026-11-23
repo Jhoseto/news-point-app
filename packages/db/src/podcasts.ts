@@ -49,9 +49,9 @@ export async function listPublishedPodcasts() {
   return listed().where(isPublished()).orderBy(desc(podcasts.publishedAt), asc(podcasts.id));
 }
 
-/** The home page and public directories only need a title and a canonical slug. */
+/** Public discovery needs only the title, canonical slug and existing cover. */
 export async function listPublishedPodcastLinks(limit?: number) {
-  const query = getDb().select({ title: podcasts.title, slug: podcasts.slug }).from(podcasts)
+  const query = getDb().select({ title: podcasts.title, slug: podcasts.slug, coverKey: podcasts.coverKey }).from(podcasts)
     .where(isPublished()).orderBy(desc(podcasts.publishedAt), asc(podcasts.id));
   return limit === undefined ? query : query.limit(limit);
 }
