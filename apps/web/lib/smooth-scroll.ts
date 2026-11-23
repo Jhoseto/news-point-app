@@ -10,6 +10,7 @@ export const WHEEL_MOTION = {
   exponent: 10,
   linePixels: 100 / 6,
   positionTolerance: 1,
+  settleTolerance: 0.5,
 } as const;
 
 // Keep the first 93.85% of travel exactly as approved. Only the remaining
@@ -60,6 +61,7 @@ export function attachSmoothScroll(win: Window): () => void {
   let current = from;
   let target = from;
   let lastWritten = from;
+  let quantizedScroll = false;
   let startedAt = 0;
   let sampledAt = 0;
   let activeUrl = win.location.href;
@@ -137,14 +139,19 @@ export function attachSmoothScroll(win: Window): () => void {
     }
     const eased = wheelEasing(time - startedAt);
     current = clamp(from + (target - from) * eased, maximum);
+    // The last subpixel creep can occupy dozens of RAFs with no visible
+    // movement on an integer scroll grid. Finish once it is visually settled.
+    const settled = quantizedScroll && Math.abs(target - current) <= WHEEL_MOTION.settleTolerance;
+    if (settled) current = target;
     sampledAt = time;
-    if (current !== lastWritten) {
+    if (current !== lastWritten && (settled || !quantizedScroll || Math.abs(current - lastWritten) >= WHEEL_MOTION.settleTolerance)) {
       win.scrollTo({ top: current, left: win.scrollX, behavior: "instant" });
       lastWritten = win.scrollY;
+      if (Math.abs(lastWritten - current) >= 0.1) quantizedScroll = true;
     }
     // The browser may reach an exact target before the subpixel tail expires.
     // Stop then; do not infer its pixel grid (zoom/high-DPI can be fractional).
-    if (eased === 1 || from === target || lastWritten === target) {
+    if (settled || eased === 1 || from === target || lastWritten === target) {
       frame = null;
       from = current = target = lastWritten;
     } else {
