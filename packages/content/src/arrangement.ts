@@ -30,7 +30,7 @@ export const HOME_FOCUS_RUBRIC_SLUG = "na-fokus";
 export const HOME_ANALYSES_RUBRIC_SLUG = "ot-soczialnite-mrezhi";
 export const HOME_VOICE_RUBRIC_SLUG = "glasat-na-istinata";
 export const HOME_RUBRIC_SECTIONS_ON_CAROUSEL = new Set<string>([HOME_FOCUS_RUBRIC_SLUG, HOME_ANALYSES_RUBRIC_SLUG]);
-export const HOME_RUBRIC_SECTIONS_CUSTOM = new Set<string>([HOME_VOICE_RUBRIC_SLUG, ...HOME_RUBRIC_SECTIONS_ON_CAROUSEL]);
+export const HOME_RUBRIC_SECTIONS_CUSTOM = new Set<string>([HOME_VOICE_RUBRIC_SLUG, "mestna-politika", ...HOME_RUBRIC_SECTIONS_ON_CAROUSEL]);
 
 export const HOME_CAROUSEL_SLOT_PREFIXES = [
   HOME_FOCUS_CAROUSEL_PREFIX,

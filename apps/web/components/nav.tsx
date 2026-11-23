@@ -67,6 +67,7 @@ type IconComponent = (props: SVGProps<SVGSVGElement>) => ReactNode;
 const RUBRIC_ICONS: Record<string, IconComponent> = {
   plovdiv: PinIcon,
   "regionalni-novini": MapIcon,
+  "mestna-politika": ColumnsIcon,
   "na-fokus": EyeIcon,
   balgariya: FlagIcon,
   politika: ColumnsIcon,
@@ -102,8 +103,8 @@ function RubricMark({ slug }: { slug: string }) {
   );
 }
 
-/** „Близо до вас“ are the two local rubrics; the rest are also rubrics. */
-const LOCAL_SLUGS = new Set(["plovdiv", "regionalni-novini"]);
+/** Local rubrics appear together in public menu order. */
+const LOCAL_SLUGS = new Set(["plovdiv", "regionalni-novini", "mestna-politika"]);
 
 function groupRubrics(items: NavItem[]) {
   const local = items.filter((item) => LOCAL_SLUGS.has(item.slug));

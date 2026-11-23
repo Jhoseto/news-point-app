@@ -64,7 +64,7 @@ function HomeAsideLists({
 export default async function HomePage() {
   const [home, menu, ssrDesktop] = await Promise.all([loadPublicHome(), getMenuCategories(), ssrDesktopViewport()]);
   const mobile = homeMobileFeed(home, menu);
-  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, voiceCarousel, poll } = home;
+  const { asOfMs, hero, support, latest, main: mainSections, aside: asideSections, focusCarousel, topicsCarousel, localPoliticsCarousel, voiceCarousel, poll } = home;
 
   const shine = createHomeShine();
   const bandHero = hero ? shine.nextCard() : undefined;
@@ -146,6 +146,7 @@ export default async function HomePage() {
             accentSlug={HOME_ANALYSES_RUBRIC_SLUG}
           />
         ) : null}
+        {localPoliticsCarousel.length ? <LeadingCarousel articles={localPoliticsCarousel.map(carouselArticle)} title="Местна политика" headingId="sec-mestna-politika" href="/mestna-politika/" accentSlug="mestna-politika" motion="to-left" /> : null}
 
         {home.latestPodcast ? <HomePodcastLink episode={home.latestPodcast} /> : null}
         {mainSections.map((section) => {

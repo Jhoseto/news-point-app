@@ -87,6 +87,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       {feed.focusCarousel.length ? carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus") : null}
     </div>
     {plovdivSection ? renderMainSection(plovdivSection) : null}
+    {carousel(feed.localPoliticsCarousel ?? [], { title: "Местна политика", href: "/mestna-politika/", accentSlug: "mestna-politika", motion: "to-left" }, "local-politics")}
     {carousel(feed.topicsCarousel, { title: "Анализи и коментари", href: "/ot-soczialnite-mrezhi/", accentSlug: "ot-soczialnite-mrezhi", motion: "to-left", speed: 18 }, "topics")}
     {feed.latestPodcast ? anchor("latest-podcast", <HomePodcastLink episode={feed.latestPodcast} />, window) : null}
     {mainAfterPlovdiv.map((section) => (

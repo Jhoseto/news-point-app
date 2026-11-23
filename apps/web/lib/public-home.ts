@@ -31,6 +31,7 @@ export interface PublicHome {
   aside: ComposedSection[];
   focusCarousel: ArticleSummary[];
   topicsCarousel: ArticleSummary[];
+  localPoliticsCarousel: ArticleSummary[];
   voiceCarousel: ArticleSummary[];
   poll: PublicPoll | null;
   latestPodcast: { path: string; title: string; coverUrl?: string } | null;
@@ -43,6 +44,7 @@ function reviveArticle(article: ArticleSummary): ArticleSummary {
 async function queryPublicHomeInputs() {
   const menu = await getMenuCategories();
   const analysesCategory = menu.find((category) => category.slug === HOME_ANALYSES_RUBRIC_SLUG);
+  const localPoliticsCategory = menu.find((category) => category.slug === "mestna-politika");
   const [latest, featured, focusPool, voiceOfTruth, analysesPool, poll, placed, podcasts] = await Promise.all([
     getLatest(50),
     getLabelled(LEADING_LABEL, 13),
@@ -60,12 +62,14 @@ async function queryPublicHomeInputs() {
     }),
   ]);
   const sections = await Promise.all(menu.map(async (category) => ({ category, pool: await getByCategory(category.id, 16) })));
+  const localPoliticsPool = localPoliticsCategory ? await getByCategory(localPoliticsCategory.id, HOME_RUBRIC_POOL) : [];
   return {
     latest,
     featured,
     focusPool,
     voiceOfTruth,
     analysesPool,
+    localPoliticsPool,
     menu,
     poll,
     sections,
@@ -86,6 +90,7 @@ export const loadPublicHome = cache(async (): Promise<PublicHome> => {
   const { menu, poll, document } = input;
   const latest = revive(input.latest), featured = revive(input.featured), focusPool = revive(input.focusPool);
   const voiceOfTruth = revive(input.voiceOfTruth), analysesPool = revive(input.analysesPool);
+  const localPoliticsPool = revive(input.localPoliticsPool);
   const voiceCategory = menu.find((category) => category.slug === HOME_VOICE_RUBRIC_SLUG);
   const voiceFront = voiceCategory ? await categoryFront(voiceCategory.id, now) : null;
   const voicePinIds = new Set(voiceFront?.pinnedIds ?? []);
@@ -128,6 +133,7 @@ export const loadPublicHome = cache(async (): Promise<PublicHome> => {
       now,
       slotPrefix: HOME_TOP_THEMES_CAROUSEL_PREFIX,
     }),
+    localPoliticsCarousel: localPoliticsPool,
     voiceCarousel: composeLabelCarousel({
       pool: voicePool,
       document,

@@ -2,6 +2,7 @@
 export const PUBLIC_MENU: readonly { slug: string; name: string }[] = [
   { slug: "plovdiv", name: "Пловдив" },
   { slug: "regionalni-novini", name: "Регион" },
+  { slug: "mestna-politika", name: "Местна политика" },
   { slug: "na-fokus", name: "На Фокус" },
   { slug: "glasat-na-istinata", name: "Гласът на истината" },
   { slug: "balgariya", name: "България" },
