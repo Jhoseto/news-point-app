@@ -12,6 +12,7 @@ export function HomeCategorySection({
   wide,
   shine,
   idPrefix = "",
+  showLeadExcerpt = true,
 }: {
   category: CategoryRef;
   articles: ArticleSummary[];
@@ -19,6 +20,7 @@ export function HomeCategorySection({
   wide: boolean;
   shine?: HomeShineAllocator;
   idPrefix?: string;
+  showLeadExcerpt?: boolean;
 }) {
   const [first, ...rest] = articles;
   if (!first) return null;
@@ -36,7 +38,7 @@ export function HomeCategorySection({
         <div
           className={`grid gap-5 ${rest.length ? `lg:grid-cols-[1.6fr_1fr] ${twoLists ? "2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]" : "3xl:grid-cols-[1.9fr_1fr]"}` : ""}`}
         >
-          <FeatureCard article={first} {...shineDelayProp(shine?.nextCard())} />
+          <FeatureCard article={first} showExcerpt={showLeadExcerpt} {...shineDelayProp(shine?.nextCard())} />
           {rest.length ? (
             <div className={`np-card grid content-start gap-4 p-4 ${twoLists ? "2xl:grid-cols-2 2xl:gap-x-6" : ""}`}>
               {rest.map((article, index) => (

@@ -2130,6 +2130,104 @@ html[data-reduced-motion="true"] .np-title-float-tip[data-open] {
   }
 }
 
+/* Only the mobile homepage owns these classes (including its swipe preview).
+   Container units match the unchanged two-column top pair, even with a scrollbar. */
+.np-mobile-home {
+  container-type: inline-size;
+  gap: 1.5rem;
+  padding-top: .5rem;
+}
+.np-mobile-home-top { gap: .625rem; }
+@media (max-height: 44rem) {
+  .np-mobile-home-top { gap: .5rem; }
+}
+.np-mobile-home-top--four {
+  display: grid;
+  grid-template-rows: minmax(min-content, 1fr) auto auto;
+  min-height: min(50rem, calc(100svh - var(--np-header-h) - var(--np-bottom-nav-h) - 1rem));
+}
+.np-mobile-home-lead { height: 100%; background: #020826; }
+.np-mobile-home-lead-link {
+  position: relative;
+  display: flex;
+  min-height: 10rem;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.np-mobile-home-top--four .np-mobile-home-lead-link { min-height: 0; }
+.np-mobile-home-lead-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 30%;
+}
+.np-mobile-home-lead-labels {
+  position: absolute;
+  z-index: 1;
+  inset: .625rem .75rem auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem;
+}
+.np-mobile-home-lead-copy {
+  position: relative;
+  padding: 2rem .875rem .75rem;
+  color: #fff;
+  background: linear-gradient(180deg, rgb(2 8 38 / 0), rgb(2 8 38 / .78) 2rem, rgb(2 8 38 / .96));
+}
+.np-mobile-home-lead-title {
+  font-size: 1.375rem;
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -.012em;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+  text-shadow: 0 1px 4px rgb(2 8 38 / .8);
+}
+.np-mobile-home-lead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: .75rem;
+  row-gap: .125rem;
+  margin-top: .375rem;
+  font-size: .6875rem;
+  color: rgb(255 255 255 / .85);
+}
+.np-mobile-home-lead-meta > span { color: inherit; font-size: inherit; }
+.np-mobile-home-support > a {
+  gap: .75rem;
+  min-height: clamp(8rem, 18svh, 10rem);
+  padding: 0;
+}
+.np-mobile-home-support > a > div:first-child {
+  align-self: stretch;
+  width: 40%;
+}
+.np-mobile-home-support .np-img {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  object-fit: cover;
+}
+.np-mobile-home-support > a > div:last-child { padding: .625rem .75rem .625rem 0; }
+.np-mobile-home .np-section-heading { margin-bottom: .75rem; }
+.np-mobile-home > aside { gap: 1.5rem; }
+.np-mobile-home .np-mobile-home-pre-focus { gap: 1.5rem; }
+.np-home-carousel-card {
+  width: calc((100cqw - .75rem) / 2);
+  flex-basis: calc((100cqw - .75rem) / 2);
+}
+.np-home-carousel .np-carousel-viewport { padding-bottom: 0; }
+.np-home-carousel .np-carousel-viewport > div > div { gap: .75rem; padding-right: .75rem; }
+.np-home-carousel-card h3 { min-height: 4.125em; }
+.np-home-carousel-card .np-carousel-exact-time { margin-top: auto; font-size: .6875rem; line-height: 1.25; }
+
 /* Desktop carousels only: smaller story cards. Phones keep the sizes above. */
 @media (min-width: 64rem) {
   .np-carousel-mobile-card {

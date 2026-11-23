@@ -34,13 +34,13 @@ function preloadLeadHero(hero: ReturnType<typeof reviveFeedArticle>["hero"], ena
   });
 }
 
-export type PreviewWindow = Record<string, { top: number; left: number; width: number; carousel?: { index: number; offset: number } }>;
-function Block({ id, window, children }: { id: string; window?: PreviewWindow; children: React.ReactNode }) {
+export type PreviewWindow = Record<string, { top: number; left: number; width: number; height?: number; carousel?: { index: number; offset: number } }>;
+function Block({ id, window, children, preserveHeight = false }: { id: string; window?: PreviewWindow; children: React.ReactNode; preserveHeight?: boolean }) {
   const box = window?.[id];
   if (window && !box) return null;
-  return <div className={window ? undefined : "contents"} data-mobile-preview-block={id} {...(box ? { style: { position: "absolute" as const, top: box.top, left: box.left, width: box.width } } : {})}>{children}</div>;
+  return <div className={window ? undefined : "contents"} data-mobile-preview-block={id} {...(box ? { style: { position: "absolute" as const, top: box.top, left: box.left, width: box.width, ...(preserveHeight && box.height !== undefined ? { height: box.height } : {}) } } : {})}>{children}</div>;
 }
-const anchor = (id: string, child: React.ReactNode, window?: PreviewWindow) => <Block key={id} id={id} {...(window ? { window } : {})}><div className="contents" data-mobile-feed-anchor={id}>{child}</div></Block>;
+const anchor = (id: string, child: React.ReactNode, window?: PreviewWindow, preserveHeight = false) => <Block key={id} id={id} preserveHeight={preserveHeight} {...(window ? { window } : {})}><div className="contents" data-mobile-feed-anchor={id}>{child}</div></Block>;
 export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home", window, now = new Date() }: { feed: Extract<MobileFeedContent, { kind: "home" }>; preview?: boolean; namespace?: string; window?: PreviewWindow; now?: Date }) {
   const hero = feed.hero ? reviveFeedArticle(feed.hero) : null;
   preloadLeadHero(hero?.hero ?? null, !preview && !window);
@@ -71,17 +71,18 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
               layout={section.category.slug === "balgariya" ? "grid" : section.layout === "feature" ? "feature" : "grid"}
               wide={section.category.slug !== "balgariya"}
               idPrefix={`${namespace}-`}
+              showLeadExcerpt={false}
             />
           </div>
         </Block>
       </Fragment>
     );
   };
-  return <div className={`np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
+  return <div className={`np-mobile-home np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
     <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>
-    <div className="flex flex-col gap-5">
-      {hero ? anchor(hero.id, <MobileLeadCard article={hero} priority={!preview && !window} now={now} />, window) : null}
-      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} now={now} />, window) : null}
+    <div className={`np-mobile-home-top flex flex-col gap-5${hero && support.length === 3 ? " np-mobile-home-top--four" : ""}`}>
+      {hero ? anchor(hero.id, <MobileLeadCard article={hero} overlay priority={!preview && !window} now={now} />, window, true) : null}
+      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} featured now={now} />, window) : null}
       {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
       {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
       {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}

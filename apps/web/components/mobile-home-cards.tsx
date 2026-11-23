@@ -1,25 +1,44 @@
 import Link from "next/link";
 import type { ArticleSummary } from "@/lib/queries";
 import { categoryAccentStyle } from "@/lib/category-accent";
-import { isRecentArticle } from "@/lib/format";
+import { formatExactPublishTime, isRecentArticle, isoDate } from "@/lib/format";
+import { ClockIcon } from "./icons";
 import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
 import { ClampedTitleTip } from "./clamped-title-tip";
 
 /**
- * Mobile lead card: image up top with category overlay, title BELOW the image.
- * Per MOBILE_PLAN.md the title is never ellipsised on the first screen — long
- * titles keep reading with scroll. The image shrinks to its floor (16rem) for
- * very long titles so the headline stays visible without scrolling.
+ * Archives keep the image above the headline. The homepage opts into an
+ * on-photo headline; its in-flow text can grow rather than being clipped.
  */
 export function MobileLeadCard({
   article,
   priority = false,
   now = new Date(),
+  overlay = false,
 }: {
   article: ArticleSummary;
   priority?: boolean;
   now?: Date;
+  overlay?: boolean;
 }) {
+  if (overlay) return (
+    <article className="np-mobile-home-lead group np-news-card relative isolate overflow-hidden rounded-3xl border border-line shadow-card" style={categoryAccentStyle(article.category?.slug)}>
+      <Link href={article.path} prefetch={false} aria-label={article.title} className="np-mobile-home-lead-link">
+        <ArticleImage media={article.hero} priority={priority} sizes="100vw" className="np-mobile-home-lead-image" />
+        <div className="np-mobile-home-lead-labels">
+          {article.category ? <CategoryPill category={article.category} glass={!!article.hero} /> : null}
+          {isRecentArticle(article.publishedAt, now) ? <NewBadge publishedAt={article.publishedAt} compact /> : null}
+        </div>
+        <div className="np-mobile-home-lead-copy">
+          <Heading level="h2" className="np-mobile-home-lead-title" text={article.title} />
+          <div className="np-mobile-home-lead-meta">
+            <TimeMeta date={article.publishedAt} relative now={now} />
+            <span className="truncate">{article.authorName}</span>
+          </div>
+        </div>
+      </Link>
+    </article>
+  );
   return (
     <article
       className="group np-news-card relative isolate min-h-[20rem] overflow-hidden rounded-3xl border border-line bg-surface shadow-card"
@@ -62,10 +81,10 @@ export function MobileLeadCard({
  * right. The image is small (~7.5rem) and 16/9 so it sits beside the title
  * without dominating it.
  */
-export function MobileSupportingCard({ article, priority = false, now = new Date() }: { article: ArticleSummary; priority?: boolean; now?: Date }) {
+export function MobileSupportingCard({ article, priority = false, now = new Date(), featured = false }: { article: ArticleSummary; priority?: boolean; now?: Date; featured?: boolean }) {
   return (
     <article
-      className="group np-news-card overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
+      className={`group np-news-card overflow-hidden rounded-2xl border border-line bg-surface shadow-card${featured ? " np-mobile-home-support" : ""}`}
       style={categoryAccentStyle(article.category?.slug)}
     >
       <Link href={article.path} prefetch={false} aria-label={article.title} className="flex items-stretch gap-3 p-2.5">
@@ -73,7 +92,7 @@ export function MobileSupportingCard({ article, priority = false, now = new Date
           <ArticleImage
             media={article.hero}
             priority={priority}
-            sizes="120px"
+            sizes={featured ? "(min-width: 640px) 40vw, 144px" : "120px"}
             className="aspect-[16/9] w-[7.5rem] rounded-xl object-cover"
           />
         </div>
@@ -83,7 +102,7 @@ export function MobileSupportingCard({ article, priority = false, now = new Date
             level="h3"
             className="text-base leading-snug font-extrabold tracking-[-0.012em] text-balance text-ink"
             text={article.title}
-            clampLines={2}
+            clampLines={featured ? 3 : 2}
           />
           <TimeMeta date={article.publishedAt} relative now={now} className="mt-auto text-xs" />
         </div>
@@ -160,17 +179,18 @@ export function MobileCompactRow({ article, now = new Date() }: { article: Artic
  * 2-up grid (`MobileSmallPair`) so each card stays readable on a 360 px
  * viewport.
  */
-export function MobileSmallCard({ article, priority = false, now = new Date() }: { article: ArticleSummary; priority?: boolean; now?: Date }) {
+export function MobileSmallCard({ article, priority = false, now = new Date(), tabbable = true, liteMedia = false, exactTime = false }: { article: ArticleSummary; priority?: boolean; now?: Date; tabbable?: boolean; liteMedia?: boolean; exactTime?: boolean }) {
   return (
     <article
       className="group np-news-card relative isolate flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
       style={categoryAccentStyle(article.category?.slug)}
     >
-      <Link href={article.path} prefetch={false} aria-label={article.title} className="flex h-full flex-col">
+      <Link href={article.path} prefetch={false} aria-label={article.title} tabIndex={tabbable ? undefined : -1} className="flex h-full flex-col">
         <div className="relative">
           <ArticleImage
             media={article.hero}
             priority={priority}
+            lite={liteMedia}
             sizes="(min-width: 360px) 45vw, 50vw"
             className="aspect-[4/3] w-full object-cover object-[center_30%]"
           />
@@ -185,7 +205,11 @@ export function MobileSmallCard({ article, priority = false, now = new Date() }:
             text={article.title}
             clampLines={3}
           />
-          <TimeMeta date={article.publishedAt} relative now={now} className="mt-auto text-[0.6875rem]" />
+          {exactTime ? (
+            <time dateTime={isoDate(article.publishedAt)} className="np-carousel-exact-time mt-auto text-[0.6875rem]">
+              <ClockIcon width={13} height={13} />{formatExactPublishTime(article.publishedAt)}
+            </time>
+          ) : <TimeMeta date={article.publishedAt} relative now={now} className="mt-auto text-[0.6875rem]" />}
         </div>
       </Link>
     </article>

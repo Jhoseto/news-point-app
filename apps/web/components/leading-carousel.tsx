@@ -7,12 +7,14 @@ import { categoryAccentStyle } from "@/lib/category-accent";
 import { CAROUSEL_SPEED, startCarouselAutoplay } from "@/lib/carousel-autoplay";
 import { whenNearViewport } from "@/lib/deferred-page-work";
 import { ArticleCard } from "./article-card";
+import { MobileSmallCard } from "./mobile-home-cards";
 import { ArrowRightIcon, ChevronLeftIcon, ChevronRightIcon } from "./icons";
 import { useReducedMotion } from "./reader-preferences";
 import { carouselCloneCount } from "@/lib/carousel-clones";
 
 const DRAG_THRESHOLD = 5;
 const CarouselCard = memo(ArticleCard);
+const MobileCarouselCard = memo(MobileSmallCard);
 
 export function LeadingCarousel({
   articles,
@@ -117,16 +119,16 @@ export function LeadingCarousel({
         key={`${duplicate ? "copy" : "original"}-${article.id}`}
         data-carousel-card
         aria-hidden={duplicate || undefined}
-        className={compactCards ? "np-carousel-mobile-card np-carousel-mobile-card--compact shrink-0" : "np-carousel-mobile-card w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"}
+        className={mobileOnly ? "np-home-carousel-card shrink-0" : compactCards ? "np-carousel-mobile-card np-carousel-mobile-card--compact shrink-0" : "np-carousel-mobile-card w-[17rem] shrink-0 sm:w-[18rem] xl:w-[19rem] 2xl:w-[20rem]"}
       >
-        <CarouselCard
+        {mobileOnly ? <MobileCarouselCard article={article} tabbable={!duplicate} liteMedia exactTime={exactTime} /> : <CarouselCard
           article={article}
           tabbable={!duplicate}
           // Carousels are below the LCP fold; skip srcset on every card (not only clones).
           liteMedia
           exactTime={exactTime}
           {...shineDelayProp(duplicate ? undefined : shineDelays?.[index])}
-        />
+        />}
       </div>
     ));
 
@@ -136,7 +138,7 @@ export function LeadingCarousel({
       data-mobile-pager-ignore
       onFocusCapture={prepareLoop}
       onPointerDownCapture={prepareLoop}
-      className={`group/carousel min-w-0${compactCards ? " np-carousel-compact" : ""}`}
+      className={`group/carousel min-w-0${mobileOnly ? " np-home-carousel" : compactCards ? " np-carousel-compact" : ""}`}
     >
       <div className={`np-section-heading flex items-center justify-between gap-4 ${compactCards ? "mb-3" : "mb-5"}`} style={categoryAccentStyle(accentSlug)}>
         <h2 id={headingId} className="flex min-w-0 items-center gap-2.5 text-lg font-extrabold tracking-tight text-ink sm:text-xl">

@@ -177,7 +177,7 @@ export function ArticleCard({
 }
 
 /** Horizontal feature: big photo left, text right. */
-export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummary; shineDelaySec?: number }) {
+export function FeatureCard({ article, shineDelaySec, showExcerpt = true }: { article: ArticleSummary; shineDelaySec?: number; showExcerpt?: boolean }) {
   const shine = cardShineStyle(shineDelaySec);
   return (
     <article data-spotlight className="group np-card np-news-card np-card-ring np-spotlight relative overflow-hidden" style={categoryAccentStyle(article.category?.slug)}>
@@ -199,7 +199,7 @@ export function FeatureCard({ article, shineDelaySec }: { article: ArticleSummar
           <ClampedTitleTip className="line-clamp-3 text-xl leading-snug font-extrabold tracking-[-0.015em] text-ink transition-colors duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:text-logo">
             {article.title}
           </ClampedTitleTip>
-          {article.excerpt ? (
+          {showExcerpt && article.excerpt ? (
             <p className="line-clamp-6 text-sm leading-relaxed text-muted sm:text-[0.9375rem]">
               {article.excerpt}
             </p>
