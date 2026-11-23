@@ -16,6 +16,12 @@ function serializeCarouselArticle(value: ArticleSummary) {
   return serializeFeedArticle(carouselArticle(reviveFeedArticle(serializeFeedArticle(value))));
 }
 
+function serializeHomeArticle(value: ArticleSummary) {
+  // Homepage cards show headlines and metadata only. Keep the shared/category
+  // serializer intact and omit unused prose from the canonical + preview model.
+  return { ...serializeFeedArticle(value), excerpt: "" };
+}
+
 function envelope(canonicalPath: string, asOfMs: number, menu: CategoryRef[], feed: MobileFeedContent, nextChangeAt: number | null): MobileRubricFeed {
   const rubrics = mobileRubrics(menu.map(({ name, path }) => ({ name, path })));
   return mobileRubricFeedSchema.parse({ schemaVersion: 1, canonicalPath, menuVersion: rubricMenuVersion(rubrics),
@@ -29,10 +35,15 @@ function latestCarouselArticles(home: PublicHome): ArticleSummary[] {
 }
 
 export function homeMobileFeed(home: PublicHome, menu: CategoryRef[]) {
-  const sections = (items: PublicHome["main"]) => items.map(({ category, articles, layout, wide }) => ({ category, articles: articles.map(serializeFeedArticle), layout, wide }));
-  return envelope("/", home.asOfMs, menu, { kind: "home", hero: home.hero ? serializeFeedArticle(home.hero) : null,
-    support: home.support.map(serializeFeedArticle), latestCarousel: latestCarouselArticles(home).map(serializeCarouselArticle),
-    main: sections(home.main), aside: sections(home.aside),
+  const sections = (items: PublicHome["main"], limit?: number) => items.map(({ category, articles, layout, wide }) => ({ category, articles: articles.slice(0, limit).map(serializeHomeArticle), layout, wide }));
+  // Match MobileHomeFeed's existing renderMainSection gate; no rendered cards
+  // or links are removed, including the independently rendered aside lists.
+  const main = home.main.filter(section => section.category.slug === "balgariya" || section.wide);
+  return envelope("/", home.asOfMs, menu, { kind: "home", hero: home.hero ? serializeHomeArticle(home.hero) : null,
+    support: home.support.map(serializeHomeArticle), latestCarousel: latestCarouselArticles(home).map(serializeCarouselArticle),
+    // The mobileOnly main grid/feature renders four stories, including Plovdiv.
+    // Aside lists retain every story, independently of the main-section cap.
+    main: sections(main, 4), aside: sections(home.aside),
     focusCarousel: home.focusCarousel.map(serializeCarouselArticle), topicsCarousel: home.topicsCarousel.map(serializeCarouselArticle),
     ...(home.latestPodcast ? { latestPodcast: home.latestPodcast } : {}),
     voiceCarousel: home.voiceCarousel.map(serializeCarouselArticle), poll: home.poll }, home.nextChangeAt);

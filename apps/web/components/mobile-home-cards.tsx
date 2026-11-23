@@ -4,7 +4,6 @@ import { categoryAccentStyle } from "@/lib/category-accent";
 import { formatExactPublishTime, isRecentArticle, isoDate } from "@/lib/format";
 import { ClockIcon } from "./icons";
 import { ArticleImage, CategoryLabel, CategoryPill, NewBadge, TimeMeta } from "./ui";
-import { ClampedTitleTip } from "./clamped-title-tip";
 
 /**
  * Archives keep the image above the headline. The homepage opts into an
@@ -245,12 +244,5 @@ function Heading({
   const clampClass =
     clampLines === 2 ? "line-clamp-2" : clampLines === 3 ? "line-clamp-3" : "";
   const merged = `${clampClass} ${className ?? ""}`.trim();
-  if (clampLines) {
-    return (
-      <ClampedTitleTip as={level} className={merged}>
-        {text}
-      </ClampedTitleTip>
-    );
-  }
   return <Tag className={merged}>{text}</Tag>;
 }

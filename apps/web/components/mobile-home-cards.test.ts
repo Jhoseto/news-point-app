@@ -4,13 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ArticleSummary } from "../lib/queries";
 import { MobileLeadCard, MobileSmallCard, MobileSupportingCard } from "./mobile-home-cards";
 import { FeatureCard } from "./article-card";
+import { useReducedMotion } from "./reader-preferences";
 
 vi.mock("next/link", () => ({ default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: ReactNode; prefetch?: boolean }) => createElement("a", { href, ...props }, children) }));
 vi.mock("@/lib/category-accent", () => import("../lib/category-accent"));
 vi.mock("@/lib/format", () => import("../lib/format"));
 vi.mock("@/lib/article-image", () => import("../lib/article-image"));
 vi.mock("@/lib/shine-style", () => import("../lib/shine-style"));
-vi.mock("./reader-preferences", () => ({ useReducedMotion: () => true }));
+vi.mock("./reader-preferences", () => ({ useReducedMotion: vi.fn(() => true) }));
 
 const now = new Date("2026-11-23T10:30:00Z");
 const article: ArticleSummary = {
@@ -67,6 +68,17 @@ describe("mobile homepage card variants", () => {
     expect(original).not.toContain("tabindex=");
     expect(original).toMatch(/srcset=/i);
     expect(original).toContain("преди 1 час");
+  });
+
+  it("keeps mobile clamped headings static without subscribing to desktop tooltip preferences", () => {
+    vi.mocked(useReducedMotion).mockClear();
+    const supporting = renderToStaticMarkup(createElement(MobileSupportingCard, { article, now }));
+    const small = renderToStaticMarkup(createElement(MobileSmallCard, { article, now }));
+    expect(supporting).toMatch(/<h3 class="line-clamp-2 [^"]+">/);
+    expect(small).toMatch(/<h3 class="line-clamp-3 [^"]+">/);
+    expect(small).toContain(`>${article.title}</h3>`);
+    expect(small).toContain(`aria-label="${article.title}"`);
+    expect(useReducedMotion).not.toHaveBeenCalled();
   });
 
   it("removes the section lead excerpt only when explicitly requested", () => {

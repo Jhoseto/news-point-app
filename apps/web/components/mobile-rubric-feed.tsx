@@ -72,6 +72,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
               wide={section.category.slug !== "balgariya"}
               idPrefix={`${namespace}-`}
               showLeadExcerpt={false}
+              mobileOnly
             />
           </div>
         </Block>

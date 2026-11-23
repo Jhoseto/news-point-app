@@ -13,6 +13,7 @@ export function HomeCategorySection({
   shine,
   idPrefix = "",
   showLeadExcerpt = true,
+  mobileOnly = false,
 }: {
   category: CategoryRef;
   articles: ArticleSummary[];
@@ -21,6 +22,8 @@ export function HomeCategorySection({
   shine?: HomeShineAllocator;
   idPrefix?: string;
   showLeadExcerpt?: boolean;
+  /** Exclusive mobile SSR does not need the hidden desktop mosaic/list slots. */
+  mobileOnly?: boolean;
 }) {
   const [first, ...rest] = articles;
   if (!first) return null;
@@ -41,7 +44,7 @@ export function HomeCategorySection({
           <FeatureCard article={first} showExcerpt={showLeadExcerpt} {...shineDelayProp(shine?.nextCard())} />
           {rest.length ? (
             <div className={`np-card grid content-start gap-4 p-4 ${twoLists ? "2xl:grid-cols-2 2xl:gap-x-6" : ""}`}>
-              {rest.map((article, index) => (
+              {(mobileOnly ? rest.slice(0, 3) : rest).map((article, index) => (
                 <div key={article.id} className={index >= 3 ? (twoLists ? "hidden 2xl:block" : "hidden") : ""}>
                   <CompactCard article={article} {...shineDelayProp(shine?.nextCard())} />
                 </div>
@@ -49,7 +52,7 @@ export function HomeCategorySection({
             </div>
           ) : null}
         </div>
-      ) : !mosaic ? (
+      ) : !mosaic || mobileOnly ? (
         <div className={`grid grid-cols-1 gap-5 sm:grid-cols-2 ${wide ? "xl:grid-cols-4" : "3xl:grid-cols-4"}`}>
           {articles.slice(0, 4).map((article) => (
             <ArticleCard key={article.id} article={article} {...shineDelayProp(shine?.nextCard())} />

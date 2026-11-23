@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MOBILE_OVERLAY_CHANGE, type MobileOverlay } from "@/lib/mobile-overlays";
 const CityMobileDock = dynamic(() => import("./city-guide/city-mobile-dock").then(m => m.CityMobileDock), { ssr: false });
 
 const BottomNav = dynamic(() => import("./nav").then((m) => m.BottomNav), {
@@ -37,6 +38,7 @@ export function MobileChromeIsland({ rubrics, cityEnabled = false }: { rubrics: 
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
   const [latestOpen, setLatestOpen] = useState(false);
+  const [latestMounted, setLatestMounted] = useState(false);
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 63.999rem)");
@@ -73,8 +75,30 @@ export function MobileChromeIsland({ rubrics, cityEnabled = false }: { rubrics: 
     };
   }, []);
 
-  const openLatest = useCallback(() => setLatestOpen(value => !value), []);
+  const openLatest = useCallback(() => {
+    // Fetch the sheet only when it is first requested. Keep it mounted after
+    // closing so its exit animation and the reader's list position survive.
+    setLatestMounted(true);
+    setLatestOpen(value => !value);
+  }, []);
   const closeLatest = useCallback(() => setLatestOpen(false), []);
+
+  useEffect(() => {
+    // A reader can select another sheet while the first LatestPanel chunk is
+    // still loading. Observe switches here so that late import cannot reopen it.
+    if (!ready) return;
+    const switchPanel = (event: Event) => {
+      if ((event as CustomEvent<MobileOverlay>).detail !== "latest" && !event.defaultPrevented) closeLatest();
+    };
+    window.addEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
+    window.addEventListener("np:search", closeLatest);
+    window.addEventListener("np:rubrics", closeLatest);
+    return () => {
+      window.removeEventListener(MOBILE_OVERLAY_CHANGE, switchPanel);
+      window.removeEventListener("np:search", closeLatest);
+      window.removeEventListener("np:rubrics", closeLatest);
+    };
+  }, [ready, closeLatest]);
 
   if (!ready) return null;
   if (cityEnabled && (pathname === "/moyat-plovdiv" || pathname.startsWith("/moyat-plovdiv/"))) return <><MobileSearch showHeaderTrigger={false} /><MobileRubricsSheet items={rubrics} /><CityMobileDock /></>;
@@ -83,7 +107,7 @@ export function MobileChromeIsland({ rubrics, cityEnabled = false }: { rubrics: 
       <MobileSearch showHeaderTrigger={false} />
       <MobileRubricsSheet items={rubrics} />
       <BottomNav onOpenLatest={openLatest} latestOpen={latestOpen} onNavigate={closeLatest} />
-      <LatestPanel open={latestOpen} onClose={closeLatest} />
+      {latestMounted ? <LatestPanel open={latestOpen} onClose={closeLatest} /> : null}
       <MobileRubricPager />
       <MobilePushPrompt />
     </>

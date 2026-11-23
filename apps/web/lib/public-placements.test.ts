@@ -59,7 +59,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("cached listing inputs and placement clocks", () => {
-  it("projects only mobile carousel payloads without changing any rendered card", async () => {
+  it("omits unused mobile home prose while preserving every card field that is rendered", async () => {
     const home = await loadPublicHome();
     const fixture = { ...article(automaticId), excerpt: "Fixture excerpt ".repeat(100), hero: {
       url: "/media/news/2026/fixture.webp", width: 1600, height: 1000, alt: "Fixture image", caption: "Fixture caption", credit: "Fixture credit",
@@ -68,16 +68,39 @@ describe("cached listing inputs and placement clocks", () => {
     home.hero = fixture; home.support = [fixture];
     home.focusCarousel = [fixture, { ...fixture, id: pinnedId, hero: null }];
     home.topicsCarousel = [fixture];
+    home.voiceCarousel = [fixture];
+    const sectionStories = Array.from({ length: 7 }, (_, index) => ({ ...fixture, id: `test-only-section-${index}`, path: `/test-only-section-${index}/`, title: `Test-only section story ${index}` }));
+    const section = (slug: string, wide: boolean) => ({ category: { ...category, slug, path: `/${slug}/` }, articles: sectionStories, pool: sectionStories, layout: "feature" as const, wide });
+    home.main = [section("plovdiv", true), section("balgariya", false), section("test-only-unrendered-main", false)];
+    home.aside = [section("test-only-aside", false)];
+    const originalHome = structuredClone(home);
     const previous = home.focusCarousel.map(serializeFeedArticle).map(reviveFeedArticle).map(carouselArticle);
     const model = homeMobileFeed(home, [category]);
     if (model.feed.kind !== "home") throw Error("Wrong fixture feed");
     expect(model.feed.latestPodcast).toEqual({ title: "Test episode", path: "/livepoint/podcast/test-only/" });
     expect(model.feed.focusCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual(previous);
     expect(model.feed.topicsCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
-    expect(model.feed.hero).toEqual(serializeFeedArticle(fixture));
-    expect(model.feed.support).toEqual([serializeFeedArticle(fixture)]);
+    expect(model.feed.voiceCarousel.map(reviveFeedArticle).map(carouselArticle)).toEqual([previous[0]]);
+    const headlineOnly = { ...serializeFeedArticle(fixture), excerpt: "" };
+    expect(model.feed.hero).toEqual(headlineOnly);
+    expect(model.feed.support).toEqual([headlineOnly]);
+    expect(model.feed.main.map(section => section.category.slug)).toEqual(["plovdiv", "balgariya"]);
+    const sectionCards = sectionStories.map(story => ({ ...serializeFeedArticle(story), excerpt: "" }));
+    expect(model.feed.main.map(section => section.articles)).toEqual([sectionCards.slice(0, 4), sectionCards.slice(0, 4)]);
+    expect(model.feed.aside).toEqual([{ category: home.aside[0]!.category, articles: sectionCards, layout: "feature", wide: false }]);
     expect(JSON.stringify(model.feed.focusCarousel).length).toBeLessThan(JSON.stringify(home.focusCarousel.map(serializeFeedArticle)).length);
+    expect(JSON.stringify(model.feed)).not.toContain("Fixture excerpt");
+    expect(home).toEqual(originalHome);
     expect(fixture.hero.variants).toHaveLength(6); expect(fixture.excerpt).not.toBe("");
+  });
+  it("preserves the category feed projection, including excerpts, independently of home", async () => {
+    state.pool = Array.from({ length: 7 }, (_, index) => ({ ...article(`${automaticId.slice(0, -1)}${index}`), excerpt: "Test-only archive excerpt" }));
+    const view = await loadPublicCategory(category, null);
+    const model = categoryMobileFeed(category, view, null);
+    if (model.feed.kind !== "category") throw Error("Wrong fixture feed");
+    expect(model.feed.articles).toEqual(view.articles.map(serializeFeedArticle));
+    expect(model.feed.articles).toHaveLength(7);
+    expect(model.feed.articles[0]?.excerpt).toBe("Test-only archive excerpt");
   });
   it("restores the homepage's automatic order at the exact end within one cached minute", async () => {
     placement("hero", end);
