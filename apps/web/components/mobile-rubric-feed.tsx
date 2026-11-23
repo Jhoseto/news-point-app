@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CategoryArchivePageLink } from "./category-archive-pagination";
 import { CategoryArchiveNav } from "./category-archive-nav";
 import dynamic from "next/dynamic";
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
 import { preload } from "react-dom";
 import { MobileFeedBoundary } from "./mobile-feed-boundary";
 import type { MobileRubricFeed as Feed, MobileFeedContent, MobileHomeMainSection } from "@/lib/mobile-rubric-feed";
@@ -21,6 +21,8 @@ import { carouselArticle } from "@/lib/carousel-article";
 
 const LeadingCarousel = dynamic(() => import("./leading-carousel").then((m) => m.LeadingCarousel));
 const HomePoll = dynamic(() => import("./home-poll").then((m) => m.HomePoll));
+// Canonical home tails get one boundary so pending widgets do not hold the
+// first screen or reveal incomplete geometry between already-visible sections.
 
 /** Start the mobile LCP image fetch in parallel with HTML/CSS (same attrs as ArticleImage). */
 function preloadLeadHero(hero: ReturnType<typeof reviveFeedArticle>["hero"], enabled: boolean) {
@@ -79,15 +81,7 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       </Fragment>
     );
   };
-  return <div className={`np-mobile-home np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
-    <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>
-    <div className={`np-mobile-home-top flex flex-col gap-5${hero && support.length === 3 ? " np-mobile-home-top--four" : ""}`}>
-      {hero ? anchor(hero.id, <MobileLeadCard article={hero} overlay priority={!preview && !window} now={now} />, window, true) : null}
-      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} featured now={now} />, window) : null}
-      {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
-      {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
-      {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
-    </div>
+  const tail = <>
     <div className="np-mobile-home-pre-focus flex flex-col gap-4">
       {feed.latestCarousel.length ? carousel(feed.latestCarousel, { title: "Последни новини", motion: "to-left", compactCards: true, exactTime: true, speed: LATEST_CAROUSEL_SPEED }, "latest") : null}
       {feed.focusCarousel.length ? carousel(feed.focusCarousel, { href: "/na-fokus/", accentSlug: "na-fokus", title: "На Фокус" }, "focus") : null}
@@ -108,6 +102,17 @@ export function MobileHomeFeed({ feed, preview = false, namespace = "mobile-home
       <div className="absolute -top-24 -right-16 -z-10 size-72 rounded-full opacity-25 blur-3xl np-gradient-bg dark:opacity-40" aria-hidden="true" />
       <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between"><Logo className="h-12 sm:h-14" /><p className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">Защото истината <span className="np-gradient-text">има значение.</span></p></div>
     </section></Block>
+  </>;
+  return <div className={`np-mobile-home np-container flex flex-col gap-10 pt-6 pb-10${window ? " relative" : ""}`}>
+    <h1 tabIndex={-1} data-mobile-feed-heading className="sr-only">NewsPoint.bg – новини от Пловдив, България и света</h1>
+    <div className={`np-mobile-home-top flex flex-col gap-5${hero && support.length === 3 ? " np-mobile-home-top--four" : ""}`}>
+      {hero ? anchor(hero.id, <MobileLeadCard article={hero} overlay priority={!preview && !window} now={now} />, window, true) : null}
+      {support[0] ? anchor(support[0].id, <MobileSupportingCard article={support[0]} featured now={now} />, window) : null}
+      {support[1] && support[2] ? anchor(support[1].id, <MobileSmallPair left={support[1]} right={support[2]} now={now} />, window) : null}
+      {support.length > 3 ? <Block id="support-rows" {...(window ? { window } : {})}><div className="np-card flex flex-col divide-y divide-line overflow-hidden">{support.slice(3).map(article => anchor(article.id, <MobileCompactRow article={article} now={now} />))}</div></Block> : null}
+      {!hero && !support.length ? <Block id="empty" {...(window ? { window } : {})}><p className="np-card p-6 text-body">Все още няма публикувани новини.</p></Block> : null}
+    </div>
+    {preview || window ? tail : <Suspense fallback={<div data-mobile-feed-pending style={{ minHeight: "100svh" }} role="status" aria-label="Зареждане на новините"><span className="sr-only">Зареждане на новините…</span></div>}>{tail}</Suspense>}
   </div>;
 }
 export function MobileCategoryFeed({ feed, preview = false, window, now = new Date() }: { feed: Extract<MobileFeedContent, { kind: "category" }>; preview?: boolean; window?: PreviewWindow; now?: Date }) {

@@ -9,6 +9,7 @@ import { MobileRubricCache } from "@/lib/mobile-rubric-cache";
 import { MobileFeedPositions, type FeedPosition } from "@/lib/mobile-rubric-scroll";
 import { MOBILE_OVERLAY_REQUEST } from "@/lib/mobile-overlays";
 import { afterCriticalPageLoad } from "@/lib/deferred-page-work";
+import { mobileFeedPending } from "@/lib/mobile-feed-readiness";
 import { MOBILE_RUBRIC_NAVIGATE, MOBILE_RUBRIC_STATUS, commitSwipe, idlePager, mobileRoutePath, pagerTransition, rubricMenuVersion, rubricNeighbour, rubricRoute, swipeIntent, type MobileRubric, type PagerEvent } from "@/lib/mobile-rubric-nav";
 
 type Visual = { token: number; origin: MobileRubricFeed; target: MobileRubricFeed | null; targetPath: string | null;
@@ -124,7 +125,7 @@ export function MobileRubricPager() {
     };
     const setView = (value: Visual | null) => { visualRef.current = value; setVisual(value); };
     const savePosition = (allowChangedUrl: unknown = false) => {
-      if (!model || (sourceKey !== key() && allowChangedUrl !== true) || visualRef.current) return;
+      if (!model || mobileFeedPending(main) || (sourceKey !== key() && allowChangedUrl !== true) || visualRef.current) return;
       const top = headerBottom();
       const candidates = [...main.querySelectorAll<HTMLElement>("[data-mobile-feed-anchor]")];
       const anchored = candidates.find(element => (element.firstElementChild ?? element).getBoundingClientRect().bottom > top + 1);
@@ -144,6 +145,7 @@ export function MobileRubricPager() {
       const apply = () => {
         restoreFrame = 0;
         if (disposed || key() !== destination || (visualRef.current && !immediate)) return;
+        if (mobileFeedPending(main)) { pendingRestore = { key: destination, fromTop }; return; }
         if (hash) {
           let element: HTMLElement | null = null; try { element = document.getElementById(decodeURIComponent(hash.slice(1))); } catch {}
           element?.scrollIntoView(); return;
@@ -218,7 +220,7 @@ export function MobileRubricPager() {
         restTimer = 0;
         const run = () => {
           restIdle = 0;
-          if (disposed || operation.phase !== "idle" || blocked() || !model || !currentRoute().swipe) return;
+          if (disposed || operation.phase !== "idle" || blocked() || mobileFeedPending(main) || !model || !currentRoute().swipe) return;
           savePosition();
           const index = currentRoute().index;
           setTargets(([-1, 1] as const).flatMap(direction => {
@@ -265,6 +267,9 @@ export function MobileRubricPager() {
     const readCanonical = () => {
       const script = main.querySelector<HTMLScriptElement>("[data-mobile-rubric-model]");
       if (!script) { model = null; signature = ""; if (operation.phase !== "idle") cancel(); return; }
+      // Preserve the previous model and pending Back/anchor restore until the
+      // same canonical tree's complete tail replaces its streaming fallback.
+      if (mobileFeedPending(main)) { prepared = null; return; }
       const nextSignature = `${location.pathname}:${script.parentElement?.dataset.contentVersion}:${script.parentElement?.dataset.menuVersion}:${script.parentElement?.dataset.freshUntil}`;
       if (signature === nextSignature) {
         sourceKey = key();
@@ -297,6 +302,7 @@ export function MobileRubricPager() {
       });
     };
     const showVisual = (origin: MobileRubricFeed, targetPath: string | null, direction: -1 | 1, distant = false, warm = false) => {
+      if (mobileFeedPending(main)) return;
       // An early gesture may precede the optional renderer download. Keep the
       // canonical page visible and allow navigation, never cover it with blank UI.
       if (!renderer.current) { preparePreview(); return; }
@@ -404,7 +410,7 @@ export function MobileRubricPager() {
       if (!items.some(item => item.path === path) || path === routePath() || blocked()) return;
       if (operation.committed) { queuedTap = path; return; }
       if (operation.phase !== "idle") cancel();
-      if (!model || !currentRoute().swipe || !renderer.current) { preparePreview(); savePosition(); pendingRestore = { key: path, fromTop: true }; router.push(path, { scroll: false }); return; }
+      if (!model || mobileFeedPending(main) || !currentRoute().swipe || !renderer.current) { preparePreview(); savePosition(); pendingRestore = { key: path, fromTop: true }; router.push(path, { scroll: false }); return; }
       savePosition(); update({ type: "track", token: ++token }); configure(path);
       const from = currentRoute().index, index = items.findIndex(item => item.path === path);
       const direction = index > from ? 1 : -1;
@@ -415,7 +421,7 @@ export function MobileRubricPager() {
     };
     const down = (event: PointerEvent) => {
       if (gesture && event.pointerId !== gesture.id) { cancel(); return; }
-      if (main.inert || operation.phase !== "idle" || !event.isPrimary || event.button !== 0 || !model || !currentRoute().swipe || blocked()) return;
+      if (main.inert || operation.phase !== "idle" || !event.isPrimary || event.button !== 0 || !model || mobileFeedPending(main) || !currentRoute().swipe || blocked()) return;
       if (event.clientX < 22 || event.clientX > innerWidth - 10 || event.composedPath().some(element => element instanceof HTMLElement && element.matches(IGNORE))) return;
       cancelRest(); update({ type: "track", token: ++token });
       gesture = { id: event.pointerId, x: event.clientX, y: event.clientY, time: event.timeStamp, width: 0,
