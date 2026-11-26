@@ -10,7 +10,8 @@ const { path, title } = PUBLIC_SEO_PAGES.compass;
 const name = "Политически компас";
 const description = `Отговори на ${voteQuestions.length} въпроса и сравни възгледите си с реални гласувания на партиите в Народното събрание. Безплатен тест без регистрация.`;
 export const metadata = {
-  ...publicMetadata({ path, title, description, imagePath: "/share/page/compass/", imageAlt: title }),
+  ...publicMetadata({ path, title, description, imagePath: "/share/politicheski-kompas-v1.jpg",
+    imageAlt: "Политически компас на NewsPoint.bg — Как би гласувал ти в Народното събрание?" }),
 };
 
 export default async function PoliticalCompassPage() {
