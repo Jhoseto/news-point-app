@@ -4,6 +4,7 @@ import { cache } from "react";
 import { and, asc, desc, eq, gt, ilike, inArray, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { articleBody, resolveMediaUrl, type ArticleBody, type FocalPoint, type ImageVariant, focalPointSchema, responsiveImageVariants } from "@newspoint/content";
 import { recommendationTerms, rankArticleRecommendations } from "./article-recommendations";
+import { questionNewsCandidates, recentQuestionNewsMs, selectQuestionNews } from "./question-news";
 import { articleCategories, articleReadCounts, articleViewBoosts, articles, authorProfiles, categories, getDb, hasArticleReadCounts, hasArticleViewBoosts, hasMediaPresentations, mediaAssets, mediaPresentations, publishRequests, staffUsers, storyThemeArticles, storyThemes } from "@newspoint/db";
 import { menuName, visiblePublicMenu } from "./menu";
 import { LATEST_WINDOW_MS } from "./latest-window";
@@ -461,6 +462,24 @@ export async function searchArticles(query: string, limit: number): Promise<Arti
     .orderBy(desc(articles.publishedAt))
     .limit(limit);
   return rows.map(toSummary);
+}
+
+async function findQuestionCoverage(alternatives: string[]): Promise<ArticleSummary[]> {
+  const matches = alternatives.map(searchMatches).filter(terms => terms.length);
+  if (!matches.length) return [];
+  const rows = await (await summaryQuery()).query
+    .where(and(isPublished(), or(...matches.map(terms => and(...terms)))))
+    .orderBy(desc(articles.publishedAt), desc(articles.id))
+    .limit(140);
+  return questionNewsCandidates(rows.map(toSummary), alternatives);
+}
+
+export async function getQuestionNews(terms: string[], context: string[]): Promise<ArticleSummary[]> {
+  const direct = await findQuestionCoverage(terms);
+  const now = Date.now();
+  const selected = selectQuestionNews(direct, [], now);
+  if (selected.length === 8 && selected[7]!.publishedAt.getTime() >= now - recentQuestionNewsMs) return selected;
+  return selectQuestionNews(direct, await findQuestionCoverage(context), now);
 }
 
 /** Search snapshots use the same ordering and public cutoffs as category archives. */

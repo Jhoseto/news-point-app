@@ -1,7 +1,14 @@
+import { localCompassAllowed } from "./app/polit-compass/access";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Old rubric links used ?cursor=. The first page must not read searchParams or ISR returns 500 under load. */
 export function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/polit-compass" || pathname.startsWith("/polit-compass/")) {
+    return localCompassAllowed(request.headers) ? NextResponse.next() : new NextResponse(null, {
+      status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+    });
+  }
   // Preserve historical WordPress shortlinks without making the homepage read
   // searchParams or loading database code on ordinary navigation requests.
   if (request.nextUrl.pathname === "/" && request.nextUrl.searchParams.has("p")) {

@@ -47,7 +47,7 @@ export interface RecommendationOptions {
  * textual evidence than fresh items; sharing a rubric is never sufficient.
  */
 export function rankArticleRecommendations(
-  current: ArticleSummary,
+  current: Pick<ArticleSummary, "id" | "title" | "excerpt"> & Partial<Pick<ArticleSummary, "category">>,
   candidates: ArticleSummary[],
   options: RecommendationOptions = {},
 ): ArticleSummary[] {
@@ -84,11 +84,16 @@ export function rankArticleRecommendations(
     || right.article.publishedAt.getTime() - left.article.publishedAt.getTime()
     || left.article.id.localeCompare(right.article.id));
 
-  const selected: typeof scored = [];
-  for (const candidate of scored) {
-    if (selected.some((item) => similarity(item.titleTerms, candidate.titleTerms) >= 0.72)) continue;
+  return distinctRecommendations(scored, options.limit ?? 8);
+}
+
+export function distinctRecommendations(candidates: { article: ArticleSummary; titleTerms: Set<string> }[], limit: number) {
+  const selected: typeof candidates = [];
+  for (const candidate of candidates) {
+    if (selected.some(item => item.article.id === candidate.article.id ||
+        similarity(item.titleTerms, candidate.titleTerms) >= 0.72)) continue;
     selected.push(candidate);
-    if (selected.length === (options.limit ?? 8)) break;
+    if (selected.length === limit) break;
   }
   return selected.map(({ article }) => article);
 }

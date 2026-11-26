@@ -1,0 +1,4683 @@
+{
+  "id": "bg-parties-2026-11-24-choice-research",
+  "version": "3.0-choice-research",
+  "questionSetVersion": "bg-50-choice-3.0-beta",
+  "comparisonCoreIds": [
+    "E01",
+    "E02",
+    "E03",
+    "E04",
+    "E05",
+    "E06",
+    "E07",
+    "E08",
+    "E09",
+    "E10",
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10",
+    "I01",
+    "I02",
+    "I03",
+    "I04",
+    "I05",
+    "I06",
+    "I07",
+    "I08",
+    "I09",
+    "I10",
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G10",
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08",
+    "D09",
+    "D10"
+  ],
+  "status": "research_incomplete",
+  "asOf": "2026-11-24",
+  "parties": [
+    {
+      "id": "pb-coalition",
+      "name": "Прогресивна България",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E01"
+          ],
+          "candidateEvidenceIds": [
+            "B-E01"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E07"
+          ],
+          "candidateEvidenceIds": [
+            "B-E07"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E06"
+          ],
+          "candidateEvidenceIds": [
+            "B-E06"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E02"
+          ],
+          "candidateEvidenceIds": [
+            "B-E02"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E04"
+          ],
+          "candidateEvidenceIds": [
+            "B-E04"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E03"
+          ],
+          "candidateEvidenceIds": [
+            "B-E03"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E05"
+          ],
+          "candidateEvidenceIds": [
+            "B-E05"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "gerb-sds-coalition",
+      "name": "ГЕРБ СДС",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A001"
+          ],
+          "candidateEvidenceIds": [
+            "A001"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A002"
+          ],
+          "candidateEvidenceIds": [
+            "A002"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A006"
+          ],
+          "candidateEvidenceIds": [
+            "A006"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A007"
+          ],
+          "candidateEvidenceIds": [
+            "A007"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A008"
+          ],
+          "candidateEvidenceIds": [
+            "A008"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A003"
+          ],
+          "candidateEvidenceIds": [
+            "A003"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A005"
+          ],
+          "candidateEvidenceIds": [
+            "A005"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A004"
+          ],
+          "candidateEvidenceIds": [
+            "A004"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "pp-party",
+      "name": "Продължаваме промяната",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A009"
+          ],
+          "candidateEvidenceIds": [
+            "A009"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A013"
+          ],
+          "candidateEvidenceIds": [
+            "A013"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A012"
+          ],
+          "candidateEvidenceIds": [
+            "A012"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A010"
+          ],
+          "candidateEvidenceIds": [
+            "A010"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A011"
+          ],
+          "candidateEvidenceIds": [
+            "A011"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A014"
+          ],
+          "candidateEvidenceIds": [
+            "A014"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "db-alliance",
+      "name": "Демократична България",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "A024"
+          ],
+          "candidateEvidenceIds": [
+            "A024"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "dps-party",
+      "name": "Движение за права и свободи ДПС",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E09"
+          ],
+          "candidateEvidenceIds": [
+            "B-E09"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E12"
+          ],
+          "candidateEvidenceIds": [
+            "B-E12"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E10"
+          ],
+          "candidateEvidenceIds": [
+            "B-E10"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E11"
+          ],
+          "candidateEvidenceIds": [
+            "B-E11"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E14"
+          ],
+          "candidateEvidenceIds": [
+            "B-E14"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E15"
+          ],
+          "candidateEvidenceIds": [
+            "B-E15"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E16"
+          ],
+          "candidateEvidenceIds": [
+            "B-E16"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "vazrazhdane-party",
+      "name": "Възраждане",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E19"
+          ],
+          "candidateEvidenceIds": [
+            "B-E19"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E20"
+          ],
+          "candidateEvidenceIds": [
+            "B-E20"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E23"
+          ],
+          "candidateEvidenceIds": [
+            "B-E23"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E18"
+          ],
+          "candidateEvidenceIds": [
+            "B-E18"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E17"
+          ],
+          "candidateEvidenceIds": [
+            "B-E17"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "B-E22"
+          ],
+          "candidateEvidenceIds": [
+            "B-E22"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "mech-party",
+      "name": "МЕЧ",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "R008"
+          ],
+          "candidateEvidenceIds": [
+            "R008"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "R007"
+          ],
+          "candidateEvidenceIds": [
+            "R007"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "velichie-party",
+      "name": "Величие",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "R009"
+          ],
+          "candidateEvidenceIds": [
+            "R009"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [
+            "R010"
+          ],
+          "candidateEvidenceIds": [
+            "R010"
+          ],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "bsp-ol-coalition",
+      "name": "БСП Обединена левица",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "siyanie-coalition-2026",
+      "name": "Сияние",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    },
+    {
+      "id": "aps-coalition-2026",
+      "name": "Алианс за права и свободи АПС",
+      "positions": {
+        "E01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "E10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "P10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "I10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "G10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D01": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D02": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D03": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D04": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D05": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D06": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D07": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D08": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D09": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        },
+        "D10": {
+          "value": null,
+          "status": "unknown",
+          "evidenceIds": [],
+          "candidateEvidenceIds": [],
+          "reason": "Няма одобрен избор между конкретните отговори на версия3.0. Старите кодове не се пренасят автоматично.",
+          "optionId": null
+        }
+      }
+    }
+  ]
+}

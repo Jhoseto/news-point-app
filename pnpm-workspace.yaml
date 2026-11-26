@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - polit-compass
 allowBuilds:
   esbuild: true
 overrides:

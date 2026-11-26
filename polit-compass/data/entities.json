@@ -1,0 +1,296 @@
+[
+  {
+    "id": "pg-pb",
+    "label": "Прогресивна България",
+    "type": "parliamentary_group",
+    "members": 131,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups/3763",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pg-gerb",
+    "label": "ГЕРБ СДС",
+    "type": "parliamentary_group",
+    "members": 39,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pg-dps",
+    "label": "Движение за права и свободи ДПС",
+    "type": "parliamentary_group",
+    "members": 21,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups/3766",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pg-db",
+    "label": "Демократична България",
+    "type": "parliamentary_group",
+    "members": 21,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pg-pp",
+    "label": "Продължаваме промяната",
+    "type": "parliamentary_group",
+    "members": 16,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pg-vaz",
+    "label": "Възраждане",
+    "type": "parliamentary_group",
+    "members": 12,
+    "asOf": "2026-11-24",
+    "sourceIds": [
+      "S001"
+    ],
+    "officialUrl": "https://www.parliament.bg/bg/parliamentarygroups/3768",
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pb-coalition",
+    "label": "Прогресивна България",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 44.594,
+    "seatsAtElection": 131,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true,
+    "officialSite": "https://progresivnabulgaria.com",
+    "identitySourceIds": [
+      "B-S06",
+      "B-S07",
+      "S002",
+      "S004"
+    ],
+    "identityNotes": "Коалицията е регистрирана за изборите на 19.04.2026. Не е установявана юридическата идентичност на евентуална по-късна едноименна партия. Програмните записи са само за коалицията, а не автоматично за съставните партии, ПГ или правителството.",
+    "membersAtRegistration": [
+      "Политическо движение Социалдемократи",
+      "Социалдемократическа партия",
+      "Движение Нашият народ"
+    ]
+  },
+  {
+    "id": "gerb-sds-coalition",
+    "label": "ГЕРБ СДС",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 13.387,
+    "seatsAtElection": 39,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "ppdb-coalition-2026",
+    "label": "Продължаваме промяната Демократична България",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 12.618,
+    "seatsAtElection": 37,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "dps-party",
+    "label": "Движение за права и свободи ДПС",
+    "type": "party",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 7.12,
+    "seatsAtElection": 21,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true,
+    "officialSite": "https://www.dps.bg",
+    "identitySourceIds": [
+      "B-S03",
+      "B-S08",
+      "S002",
+      "S004"
+    ],
+    "identityNotes": "Да не се смесва с по-старото изборно/парламентарно означение ДПС – Ново начало или с други отцепили се формации. Архивът съдържа и стари заглавия в странична навигация; те не променят субекта на програмата."
+  },
+  {
+    "id": "vazrazhdane-party",
+    "label": "Възраждане",
+    "type": "party",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 4.257,
+    "seatsAtElection": 12,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true,
+    "officialSite": "https://vazrazhdane.bg",
+    "identitySourceIds": [
+      "B-S04",
+      "B-S09",
+      "S002",
+      "S004"
+    ],
+    "identityNotes": "Партията и парламентарната група са отделни актьори. Статията от 07.04.2026 е партийна публикация, не поименно парламентарно гласуване."
+  },
+  {
+    "id": "mech-party",
+    "label": "МЕЧ",
+    "type": "party",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 3.225,
+    "seatsAtElection": 0,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "velichie-party",
+    "label": "Величие",
+    "type": "party",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 3.104,
+    "seatsAtElection": 0,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "bsp-ol-coalition",
+    "label": "БСП Обединена левица",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 3.017,
+    "seatsAtElection": 0,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "siyanie-coalition-2026",
+    "label": "Сияние",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 2.887,
+    "seatsAtElection": 0,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "aps-coalition-2026",
+    "label": "Алианс за права и свободи АПС",
+    "type": "electoral_coalition",
+    "electionDate": "2026-04-19",
+    "voteSharePct": 1.567,
+    "seatsAtElection": 0,
+    "sourceIds": [
+      "S002",
+      "S004"
+    ],
+    "comparisonEligibleScope": true
+  },
+  {
+    "id": "pp-party",
+    "label": "Продължаваме промяната",
+    "type": "party",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "S004"
+    ],
+    "identityStatus": "confirm_exact_subject_per_source"
+  },
+  {
+    "id": "gerb-party",
+    "label": "ГЕРБ",
+    "type": "party",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "S004"
+    ],
+    "identityStatus": "confirm_exact_subject_per_source"
+  },
+  {
+    "id": "db-alliance",
+    "label": "Демократична България",
+    "type": "political_alliance",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "S004"
+    ],
+    "identityStatus": "confirm_exact_subject_per_source"
+  },
+  {
+    "id": "bsp-party",
+    "label": "Българска социалистическа партия",
+    "type": "party",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "S004"
+    ],
+    "identityStatus": "confirm_exact_subject_per_source"
+  },
+  {
+    "id": "aps-party",
+    "label": "Алианс за права и свободи",
+    "type": "party",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "S004"
+    ],
+    "identityStatus": "confirm_exact_subject_per_source"
+  },
+  {
+    "id": "da-bulgaria-party",
+    "label": "Движение Да, България!",
+    "type": "party",
+    "comparisonEligibleScope": true,
+    "sourceIds": [
+      "SA04",
+      "SA05"
+    ],
+    "identityStatus": "official_publisher_and_cover_logo_checked",
+    "officialUrl": "https://dabulgaria.bg/",
+    "scopeNote": "Съставната партия е отделна от политическия съюз ДБ, парламентарната група ДБ и изборната коалиция ПП–ДБ."
+  }
+]

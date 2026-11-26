@@ -1,0 +1,13 @@
+{
+  "name": "@newspoint/polit-compass",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "editor:login": "node scripts/editor-login.mjs",
+    "editor:account": "node scripts/editor-account.mjs"
+  },
+  "devDependencies": {
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

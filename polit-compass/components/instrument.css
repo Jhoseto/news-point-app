@@ -1,0 +1,85 @@
+.cmp-instrument {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 600 / 460;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cmp-instrument__terrain {
+  color: #527e77;
+  opacity: .58;
+}
+
+.cmp-instrument__inner-terrain {
+  color: #71968b;
+  opacity: .32;
+}
+
+.cmp-instrument__cardinal {
+  font-family: var(--font-sans, "Segoe UI", Arial, sans-serif);
+  font-size: 20px;
+  font-weight: 520;
+}
+
+.cmp-instrument__degree {
+  font-family: var(--font-mono, Consolas, "Courier New", monospace);
+  font-size: 9.5px;
+  letter-spacing: .065em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cmp-instrument__needle,
+.cmp-instrument__survey {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+.cmp-instrument__needle {
+  transform: rotate(39deg);
+  animation: cmp-needle-drift 10s ease-in-out infinite;
+}
+
+.cmp-instrument__survey {
+  animation: cmp-survey-drift 18s ease-in-out infinite alternate;
+}
+
+@keyframes cmp-needle-drift {
+  0%, 100% { transform: rotate(39deg); }
+  26% { transform: rotate(41.8deg); }
+  58% { transform: rotate(37.3deg); }
+  78% { transform: rotate(39.8deg); }
+}
+
+@keyframes cmp-survey-drift {
+  from { transform: rotate(-4deg); }
+  to { transform: rotate(14deg); }
+}
+
+html[data-motion="off"] .cmp-instrument__needle,
+html[data-motion="off"] .cmp-instrument__survey {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmp-instrument__needle,
+  .cmp-instrument__survey {
+    animation: none;
+  }
+}
+
+.cmp-instrument__terrain { color: #6788e1 }
+.cmp-instrument__inner-terrain { color: #8da5dc }
+.cmp-instrument__orbit { transform-origin: 0 0; animation: cmp-orbit 44s linear infinite }
+@keyframes cmp-orbit { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-motion="off"]):not([data-reduced-motion="true"]) .cmp-instrument__response {
+    transform: rotate(var(--cmp-deflection, 0deg));
+    transition: transform 520ms cubic-bezier(.2,.75,.2,1);
+  }
+}
+.cmp-instrument[data-visible="false"] :is(.cmp-instrument__needle,.cmp-instrument__survey,.cmp-instrument__orbit),
+html:is([data-motion="off"],[data-reduced-motion="true"]) .cmp-instrument :is(.cmp-instrument__needle,.cmp-instrument__survey,.cmp-instrument__orbit) { animation-play-state: paused }
+@media (prefers-reduced-motion: reduce) { .cmp-instrument__orbit { animation:none } }

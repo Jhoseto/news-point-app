@@ -1,0 +1,301 @@
+{
+  "schemaVersion": "1.0.0",
+  "id": "bg-compass-descriptive-v2-choice",
+  "questionSetVersion": "bg-50-choice-3.0-beta",
+  "status": "descriptive_beta_not_psychometrically_validated",
+  "sections": [
+    "E",
+    "P",
+    "I",
+    "G",
+    "D"
+  ],
+  "allQuestionIds": [
+    "E01",
+    "E02",
+    "E03",
+    "E04",
+    "E05",
+    "E06",
+    "E07",
+    "E08",
+    "E09",
+    "E10",
+    "P01",
+    "P02",
+    "P03",
+    "P04",
+    "P05",
+    "P06",
+    "P07",
+    "P08",
+    "P09",
+    "P10",
+    "I01",
+    "I02",
+    "I03",
+    "I04",
+    "I05",
+    "I06",
+    "I07",
+    "I08",
+    "I09",
+    "I10",
+    "G01",
+    "G02",
+    "G03",
+    "G04",
+    "G05",
+    "G06",
+    "G07",
+    "G08",
+    "G09",
+    "G10",
+    "D01",
+    "D02",
+    "D03",
+    "D04",
+    "D05",
+    "D06",
+    "D07",
+    "D08",
+    "D09",
+    "D10"
+  ],
+  "answerValues": [
+    -2,
+    -1,
+    0,
+    1,
+    2
+  ],
+  "axes": [
+    {
+      "id": "redistribution",
+      "label": "Данъчно финансиране и преразпределение",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "E01",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "E02",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "E07",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "state_role",
+      "label": "Държавно участие в стопанските решения",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "E04",
+          "sign": -1,
+          "weight": 1
+        },
+        {
+          "questionId": "E05",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "E06",
+          "sign": -1,
+          "weight": 1
+        },
+        {
+          "questionId": "E09",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "personal_autonomy",
+      "label": "Личен избор",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "P01",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "P02",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "P03",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "civil_liberties",
+      "label": "Граждански свободи и публичен контрол",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "P05",
+          "sign": -1,
+          "weight": 1
+        },
+        {
+          "questionId": "P06",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "P08",
+          "sign": -1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "institutional_checks",
+      "label": "Самостоятелни институции и контрол върху мнозинствата",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "I01",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "I02",
+          "sign": -1,
+          "weight": 1
+        },
+        {
+          "questionId": "I04",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "eu_integration",
+      "label": "Общи решения на Европейския съюз",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "G01",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "G02",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "G03",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "G08",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "energy_transition",
+      "label": "Ограничаване на въглищата и подкрепа за ВЕИ",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "D02",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "D07",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "D09",
+          "sign": -1,
+          "weight": 1
+        }
+      ]
+    },
+    {
+      "id": "environment",
+      "label": "Правила за опазване на природата и местната среда",
+      "minAnswered": 3,
+      "bindings": [
+        {
+          "questionId": "D03",
+          "sign": -1,
+          "weight": 1
+        },
+        {
+          "questionId": "D05",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "D06",
+          "sign": 1,
+          "weight": 1
+        },
+        {
+          "questionId": "D10",
+          "sign": 1,
+          "weight": 1
+        }
+      ]
+    }
+  ],
+  "profileThresholds": {
+    "nearMiddleBelow": 20,
+    "strongFrom": 60,
+    "maxHeadlineAxes": 3
+  },
+  "importance": {
+    "default": 1,
+    "high": 2,
+    "maxHighItems": null
+  },
+  "partyThresholds": {
+    "minCoreItems": 25,
+    "minCorePerSection": 5,
+    "minAnswered": 25,
+    "minAnsweredPerSection": 5,
+    "minSectionAnswered": 3,
+    "minComparableParties": 2,
+    "tieWidth": 2
+  },
+  "sensitivity": {
+    "method": "leave_one_answer_out",
+    "respectCoverageGates": true,
+    "statisticalConfidenceInterval": false
+  },
+  "policies": {
+    "unknownIsNeutral": false,
+    "profileUsesImportance": false,
+    "partyUsesAxisScores": false,
+    "commonCoreFrozen": true,
+    "comparisonCoreDefault": "all_50",
+    "coreNotChosenFromUserOrPartyResults": true,
+    "choiceIdentityPreserved": true,
+    "partyUsesPublishedChoiceMatrix": true
+  },
+  "responseFormat": "policy-choice",
+  "allAnswersUsedInReport": true
+}

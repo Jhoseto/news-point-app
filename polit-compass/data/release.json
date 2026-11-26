@@ -1,0 +1,28 @@
+{
+  "id": "compass-bg-2026-11-24-beta3-choice",
+  "schemaVersion": "1.0",
+  "questionVersion": "bg-50-choice-3.0-beta",
+  "scoringVersion": "bg-compass-descriptive-v2-choice",
+  "reportVersion": "report-bg-choice-3.0-beta",
+  "sourceSnapshotVersion": "sources-2026-11-24",
+  "partyDatasetVersion": "3.0-choice-research",
+  "publicationStatus": "research_beta",
+  "asOf": "2026-11-24",
+  "personalReportEnabled": true,
+  "partyRankingEnabled": false,
+  "partyRankingDisabledReason": "Събраните доказателства са работни и не образуват одобрена съпоставима матрица.",
+  "counts": {
+    "questions": 50,
+    "sources": 46,
+    "evidenceRecords": 61,
+    "entities": 22,
+    "comparisonEntities": 11,
+    "matrixCells": 550,
+    "approvedPositions": 0,
+    "proposedNumericEvidence": 0,
+    "answerOptions": 134,
+    "legacyNumericCandidates": 14
+  },
+  "responseFormat": "policy-choice",
+  "maxAnswersPerQuestion": 3
+}

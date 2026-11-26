@@ -1,0 +1,550 @@
+[
+  {
+    "id": "S001",
+    "title": "Народно събрание Парламентарни групи",
+    "url": "https://www.parliament.bg/bg/parliamentarygroups",
+    "kind": "official_registry",
+    "use": "Текущи групи и брой членове; отделно от изборните коалиции.",
+    "accessStatus": "search_index_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S002",
+    "title": "ЦИК Резултати от изборите на 19 април 2026",
+    "url": "https://results.cik.bg/pe202604/rezultati/index.html",
+    "kind": "official_election",
+    "use": "Гласове, изборни субекти и мандати; без идеологически оценки.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S003",
+    "title": "ЦИК Отворени данни за изборите през април 2026",
+    "url": "https://results.cik.bg/pe202604/opendata/index.html",
+    "kind": "official_open_data",
+    "use": "CSV и електронни таблици; изтеглят се чрез връзките на страницата.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S004",
+    "title": "ЦИК Регистър на коалициите за 19 април 2026",
+    "url": "https://www.cik.bg/bg/ns19.04.2026/registers/percoal",
+    "kind": "official_registry",
+    "use": "Състав и юридическа идентичност на изборните коалиции.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S005",
+    "title": "ЕЦБ България въвежда еврото",
+    "url": "https://www.ecb.europa.eu/press/pr/date/2026/html/ecb.pr260101~c830245e42.en.html",
+    "kind": "official_fact",
+    "use": "Дата на въвеждане на еврото; фон за актуалността на въпросника.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-01-01",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S006",
+    "title": "ЦИК Решение 53 ПВР от 26 август 2026",
+    "url": "https://www.cik.bg/bg/decisions/53/2026-08-26",
+    "kind": "official_legal_context",
+    "use": "Контекст за I09; описва машинното гласуване и изключения след промени през август.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-08-26",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S007",
+    "title": "Народно събрание Законопроекти",
+    "url": "https://www.parliament.bg/bg/bills",
+    "kind": "discovery_portal",
+    "use": "Намиране на конкретен проект, мотиви, доклади и гласувания; адресът сам по себе си не доказва партийна позиция.",
+    "accessStatus": "dynamic_content_unreadable",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S008",
+    "title": "Народно събрание Конституция",
+    "url": "https://www.parliament.bg/bg/const",
+    "kind": "discovery_portal",
+    "use": "Проверка на актуалния конституционен текст; изисква извличане на самия документ.",
+    "accessStatus": "dynamic_content_unreadable",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S009",
+    "title": "Регламент ЕС 2016 679",
+    "url": "https://eur-lex.europa.eu/eli/reg/2016/679/oj",
+    "kind": "official_legal_context",
+    "use": "Политически мнения и специални категории лични данни; основание, минимизиране и права.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S010",
+    "title": "Chapel Hill Expert Survey Europe",
+    "url": "https://www.chesdata.eu/ches-europe/",
+    "kind": "research_data",
+    "use": "Самостоятелна изследователска база и кодова книга; не се смесва числово с нашите скали.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S011",
+    "title": "EU and I Методология",
+    "url": "https://www.euandi.eu/en/data-research/methodology.html",
+    "kind": "methodology",
+    "use": "Образец за еднакви въпроси и доказателства за партийно кодиране.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S012",
+    "title": "Pew Political Typology 2026 Методология",
+    "url": "https://www.pewresearch.org/politics/2026/06/10/appendix-b-typology-group-creation-and-analysis/",
+    "kind": "methodology",
+    "use": "Образец за емпирично създаване на политически групи; американските групи не се копират.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-06-10",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S013",
+    "title": "Pew Формулиране на анкетни въпроси",
+    "url": "https://www.pewresearch.org/writing-survey-questions/",
+    "kind": "methodology",
+    "use": "Проектиране на въпроси и проверка на ефекта на формулировките.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S020",
+    "title": "Stanford Encyclopedia Liberalism",
+    "url": "https://plato.stanford.edu/entries/liberalism/",
+    "kind": "concept_reference",
+    "use": "Концептуален контекст за класически и социален либерализъм; числовите правила са наши.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S021",
+    "title": "Stanford Encyclopedia Conservatism",
+    "url": "https://plato.stanford.edu/entries/conservatism/",
+    "kind": "concept_reference",
+    "use": "Консерватизмът има различни направления; три обществени въпроса не изчерпват традицията.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S022",
+    "title": "Stanford Encyclopedia Socialism",
+    "url": "https://plato.stanford.edu/entries/socialism/",
+    "kind": "concept_reference",
+    "use": "Социализмът включва въпроси за собственост и контрол; висок данък не е достатъчен критерий.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S023",
+    "title": "Stanford Encyclopedia Libertarianism",
+    "url": "https://plato.stanford.edu/entries/libertarianism/",
+    "kind": "concept_reference",
+    "use": "Контекст за лични и стопански свободи; справочната карта използва изрични собствени критерии.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S024",
+    "title": "Харта на Европейските зелени",
+    "url": "https://europeangreens.eu/charter-of-the-european-greens/",
+    "kind": "primary_political_charter",
+    "use": "Самоописание на зелено политическо семейство; не е общовалиден еталон за всички зелени движения.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S030",
+    "title": "БСП Предизборна програма за 52 Народно събрание",
+    "url": "https://bsp.bg/files/programa_2026.pdf",
+    "kind": "party_programme",
+    "use": "Програма на партия БСП; не се приписва автоматично на всеки член на коалицията.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S031",
+    "title": "МЕЧ Приоритети",
+    "url": "https://www.ppmech.bg/politiki/prioriteti",
+    "kind": "party_programme",
+    "use": "Общи партийни приоритети; множество теми не определят точен отговор на нашия въпрос.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S032",
+    "title": "Величие Предназначение и цели",
+    "url": "https://velichie.bg/bg-BG/Pages/MissionAndGoals",
+    "kind": "party_programme",
+    "use": "Публикация за 20 годишна програма; разграничаване на общи цели от точни инструменти.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-03-27",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S033",
+    "title": "АПС Политическа програма",
+    "url": "https://www.alians.bg/programa/",
+    "kind": "party_programme",
+    "use": "Програма на партия АПС.",
+    "accessStatus": "content_partially_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S034",
+    "title": "АПС Предизборна платформа",
+    "url": "https://www.alians.bg/predizborna-platforma-na-alians-za-prava-i-svobodiaps/",
+    "kind": "party_programme",
+    "use": "Предизборни ангажименти и критерии за отчетност.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S035",
+    "title": "Сияние Официален сайт",
+    "url": "https://siyanie.bg/",
+    "kind": "discovery_portal",
+    "use": "Открит официален източник; текущото извличане е блокирано и не се използва за числова позиция.",
+    "accessStatus": "access_challenge",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S040",
+    "title": "НСИ Национален статистически институт",
+    "url": "https://www.nsi.bg/",
+    "kind": "discovery_portal",
+    "use": "Доходи, неравенства, инфлация, региони; конкретен показател, период, единица и методика.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S041",
+    "title": "Министерство на финансите",
+    "url": "https://www.minfin.bg/",
+    "kind": "discovery_portal",
+    "use": "Бюджетни закони, актуализации и изпълнение; нужен конкретен документ.",
+    "accessStatus": "access_403",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S042",
+    "title": "Министерство на енергетиката",
+    "url": "https://www.me.government.bg/",
+    "kind": "discovery_portal",
+    "use": "Енергийни проекти и официални решения; не се приема автоматично за позиция на всяка управляваща партия.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S043",
+    "title": "Министерство на околната среда и водите",
+    "url": "https://www.moew.government.bg/",
+    "kind": "discovery_portal",
+    "use": "Въздух, защитени територии и стратегически документи.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "S044",
+    "title": "Съвет на ЕС Санкции срещу Русия",
+    "url": "https://www.consilium.europa.eu/bg/policies/sanctions-against-russia/",
+    "kind": "official_policy",
+    "use": "Контекст за G10 и връзки към действащи актове; не определя българска партийна позиция.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "SA01",
+    "title": "Ред. Работа. Растеж. България 2030 — програма ГЕРБ–СДС 2026",
+    "url": "https://gerb.bg/front/media/files/GERB_Presentation_2026.pdf",
+    "kind": "party_manifesto",
+    "publisher": "ГЕРБ; документ с логата ГЕРБ и СДС",
+    "publishedAt": null,
+    "dateNote": "2026 е посочена в документа; PDF metadata creationDate 2026-04-03 не е приета за удостоверена дата на публикуване.",
+    "accessStatus": "original_pdf_selected_pages_visually_checked",
+    "webRefs": [
+      "turn686928224search8"
+    ],
+    "pages": 65,
+    "verification": "Изтеглен оригинален PDF; визуално прочетени физически страници 12, 28, 41, 55 и 58. PDF е сканиран; web open не го извлече заради размер 33.8 MB.",
+    "retrievedAt": "2026-11-24",
+    "sha256": "06279e42e6256230786d2dee5295db93b4e558ddc9b3674531531b41308d66a1"
+  },
+  {
+    "id": "SA02",
+    "title": "Продължаваме Промяната — предизборно издание март–април 2026",
+    "url": "https://promeni.bg/new/wp-content/uploads/2026/03/pp-parlamentarni-2026.pdf",
+    "kind": "party_manifesto",
+    "publisher": "Продължаваме Промяната",
+    "publishedAt": null,
+    "dateNote": "На изданието е отпечатано март–април 2026; няма удостоверена точна дата на публикуване.",
+    "accessStatus": "original_pdf_full_text_checked",
+    "webRefs": [
+      "turn743122806search11"
+    ],
+    "pages": 4,
+    "verification": "Оригиналният четиристраничен PDF е изтеглен и прочетен чрез извлечения пълен текст; web open не го извлече заради размера.",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "SA03",
+    "title": "Промени в няколко ключови области предлага ПП в Закона за предучилищното и училищното образование",
+    "url": "https://promeni.bg/promeni-v-zakona-za-preduchilisthnoto-i-uchilisthnoto-obrazovanie/",
+    "kind": "party_policy_statement",
+    "publisher": "Продължаваме Промяната",
+    "publishedAt": "2025-06-21",
+    "accessStatus": "full_article_checked",
+    "webRefs": [
+      "turn794206923view0"
+    ],
+    "verification": "Прочетен пълният текст, включително абзаца за избираемите конфесионални дисциплини.",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "SA04",
+    "title": "Силна България в силна Европа — изборна програма 2026, публикувана от Да, България",
+    "url": "https://dabulgaria.bg/wp-content/uploads/2026/03/Silna-Balgariya-v-silna-Evropa.pdf?v=2",
+    "kind": "party_manifesto",
+    "publisher": "Движение Да, България!",
+    "publishedAt": null,
+    "dateNote": "Свързана от официалното меню Избори 2026; URL съдържа 2026/03, но точната дата не е потвърдена.",
+    "accessStatus": "original_pdf_full_text_checked",
+    "webRefs": [
+      "turn337775571view0",
+      "turn536171698view3",
+      "turn507912608view2"
+    ],
+    "pages": 53,
+    "verification": "Изтеглен оригинален PDF и извлечен пълен текст; визуално проверена корицата, която носи единствено логото на Да, България. Не се присвоява автоматично на ДБ или ПП–ДБ.",
+    "retrievedAt": "2026-11-24",
+    "sha256": "ac6e261bdf39fd77af98e7f6e4279399f2a0996254478ef28413824cb49a9f08"
+  },
+  {
+    "id": "SA05",
+    "title": "Програма за противодействие и превенция на корупцията и за върховенство на закона",
+    "url": "https://dabulgaria.bg/wp-content/uploads/2026/03/Programa-za-protivodejstvie-i-preventsiya-na-koruptsiyata-i-za-varhovenstvo-na-zakona.pdf?v=2",
+    "kind": "party_policy_programme",
+    "publisher": "Движение Да, България!",
+    "publishedAt": null,
+    "dateNote": "Свързана от официалното меню Избори 2026; точна дата на публикуване не е потвърдена.",
+    "accessStatus": "original_pdf_full_text_checked",
+    "webRefs": [
+      "turn337775571view1",
+      "turn163061120view2"
+    ],
+    "pages": 52,
+    "verification": "Изтеглен оригинален PDF; проверени пълните пасажи за професионалната квота на ВСС. Източникът се отнася консервативно само към публикуващата партия.",
+    "retrievedAt": "2026-11-24",
+    "sha256": "8169486e57713e3eac8fe154468e13c6f75c38e736dc08cf87f5a06882cc14a5"
+  },
+  {
+    "id": "SA06",
+    "title": "Демократична България внесе законопроект за изцяло машинно гласуване",
+    "url": "https://www.dabulgaria.bg/demokratichna-balgariya-vnese-zakonoproekt-za-iztsyalo-mashinno-glasuvane/",
+    "kind": "party_legislative_announcement",
+    "publisher": "Да, България, за парламентарна инициатива на ДБ",
+    "publishedAt": "2026-05-22",
+    "accessStatus": "full_article_checked",
+    "webRefs": [
+      "turn794206923view1"
+    ],
+    "verification": "Прочетен пълен текст с изрично посочените изключения. Това е партийно съобщение за законопроект, не извлечение от поименно гласуване.",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "SA07",
+    "title": "Семейството на първо място — 15 мерки на Демократична България",
+    "url": "https://dabulgaria.bg/semejstvoto-na-parvo-myasto-15-merki-na-demokratichna-balgariya/",
+    "kind": "party_policy_statement",
+    "publisher": "Да, България, за предложения на коалиция ДБ",
+    "publishedAt": "2026-11-19",
+    "accessStatus": "relevant_full_passages_checked",
+    "webRefs": [
+      "turn794206923view2"
+    ],
+    "verification": "Прочетени уводът и конкретните предложения за Бюджет 2027: сметка за новородени, данъчни облекчения, помощи при близнаци.",
+    "retrievedAt": "2026-11-24"
+  },
+  {
+    "id": "B-S01",
+    "title": "Програма на коалиция Прогресивна България — PDF, 143 страници",
+    "url": "https://progresivnabulgaria.com/api/download/program-pdf",
+    "kind": "official_programme",
+    "use": "Програмни позиции на коалицията; не автоматично на партиите членове или на правителството.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn882772262view2",
+      "turn201527309view1",
+      "turn201527309view2"
+    ],
+    "landingPage": "https://progresivnabulgaria.com/programa",
+    "dateNote": "В прочетеното съдържание не е установена точна дата на публикуване.",
+    "accessNote": "Пълният PDF е прочетен през уеб извличане; директното повторно отваряне може да е нестабилно. HTML съдържа само резюме, а не всички подробни мерки."
+  },
+  {
+    "id": "B-S02",
+    "title": "Политическа програма | Прогресивна България",
+    "url": "https://progresivnabulgaria.com/programa",
+    "kind": "official_programme_summary",
+    "use": "Официално HTML резюме на секторните приоритети.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn108676250view2"
+    ]
+  },
+  {
+    "id": "B-S03",
+    "title": "ДПС — Програма 2026 (архив на официалната страница)",
+    "url": "https://web.archive.org/web/20260419071956/https://www.dps.bg/izbori-2026/izborna-programa-2026.html",
+    "kind": "archived_official_programme",
+    "use": "Програма на партия ДПС за изборите през 2026 г.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn882772262view0",
+      "turn201527309view0",
+      "turn282121496view0"
+    ],
+    "originalUrl": "https://www.dps.bg/izbori-2026/izborna-programa-2026.html",
+    "archiveCapturedAt": "2026-04-19T07:19:56Z",
+    "accessNote": "Оригиналният адрес върна 404. Проверено е съдържанието в архив на официалния домейн. Не е установено дали има последваща ревизия.",
+    "dateNote": "Архивната дата не е дата на публикуване; такава не е потвърдена от самата страница."
+  },
+  {
+    "id": "B-S04",
+    "title": "Предизборна програма на Възраждане — текуща HTML страница",
+    "url": "https://vazrazhdane.bg/%D1%86%D0%B5%D0%BB%D0%B8-%D0%B8-%D0%BF%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%B0/",
+    "kind": "official_programme_summary",
+    "use": "Текущо публикувани секторни позиции; страницата препраща и към доктрината България 1400.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn108676250view1",
+      "turn882772262view1"
+    ],
+    "dateNote": "HTML страницата няма видима дата. Не е доказано, че всички секторни абзаци са редактирани през 2026 г.",
+    "accessNote": "Да не се смесва с отделния стар PDF от /2023/08/. Пълният PDF България 1400 е намерен, но не е прочетен поради ограничение за размера."
+  },
+  {
+    "id": "B-S05",
+    "title": "Възраждане: Нужна е самостоятелна армия, а не зависимост от чужди сили",
+    "url": "https://vazrazhdane.bg/vazrazdane-nuzna-e-samostojatelna-armija-a-ne-zavisimost-ot-cuzdi-sili/",
+    "kind": "official_party_policy_article",
+    "use": "Публикация с конкретни предложения от доктрината България 1400.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-04-07",
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn282121496view1"
+    ]
+  },
+  {
+    "id": "B-S06",
+    "title": "ЦИК, Решение № 4528-НС от 3 март 2026 г.",
+    "url": "https://www.cik.bg/bg/decisions/4528/2026-03-03",
+    "kind": "official_registry",
+    "use": "Регистрация и състав на изборната коалиция Прогресивна България.",
+    "accessStatus": "content_checked",
+    "publishedAt": "2026-03-03",
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn182242231search2",
+      "turn158982429view2"
+    ]
+  },
+  {
+    "id": "B-S07",
+    "title": "Народно събрание — ПГ Прогресивна България",
+    "url": "https://www.parliament.bg/bg/parliamentarygroups/3763",
+    "kind": "official_registry",
+    "use": "Идентичност на парламентарната група; отделен субект от изборната коалиция.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn182242231search0",
+      "turn182242231search1"
+    ]
+  },
+  {
+    "id": "B-S08",
+    "title": "Народно събрание — ПГ Движение за права и свободи – ДПС",
+    "url": "https://www.parliament.bg/bg/parliamentarygroups/3766",
+    "kind": "official_registry",
+    "use": "Точно текущо наименование на парламентарната група.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn158982429search0"
+    ]
+  },
+  {
+    "id": "B-S09",
+    "title": "Народно събрание — ПГ ВЪЗРАЖДАНЕ",
+    "url": "https://www.parliament.bg/bg/parliamentarygroups/3768",
+    "kind": "official_registry",
+    "use": "Идентичност на парламентарната група.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn158982429search1"
+    ]
+  },
+  {
+    "id": "B-S10",
+    "title": "Народно събрание — Парламентарни групи",
+    "url": "https://www.parliament.bg/bg/parliamentarygroups",
+    "kind": "official_registry",
+    "use": "Официалният списък показва шест текущи парламентарни групи.",
+    "accessStatus": "content_checked",
+    "publishedAt": null,
+    "retrievedAt": "2026-11-24",
+    "webRefs": [
+      "turn158982429search2"
+    ]
+  }
+]
