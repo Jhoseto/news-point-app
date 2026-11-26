@@ -48,6 +48,7 @@ describe("Actual deployment tar exclusions", () => {
   it("refuses private environment files, runtime output and unsafe paths", () => {
     const report = verifyDeployArchive([...files, "./.env.local", "./logs/web.pid", "../escape", "./apps/web/.next/server/private.js"], directory);
     expect(report.forbidden).toHaveLength(4);
+    expect(verifyDeployArchive([...files, "polit-compass/.compass-local/access.sqlite"], directory).forbidden).toEqual(["polit-compass/.compass-local/access.sqlite"]);
     expect(verifyDeployArchive([...files, ".env.example"], directory).forbidden).toEqual([]);
   });
   it("refuses missing social renderer, bundled Cyrillic font, license or wordmark", () => {

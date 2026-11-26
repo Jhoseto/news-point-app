@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   if (pathname === "/polit-compass" || pathname.startsWith("/polit-compass/")) {
+    if (process.env.NODE_ENV === "production" &&
+        /^\/polit-compass(?:\/(?:compare|news\/[a-z0-9-]+))?\/?$/.test(pathname)) return NextResponse.next();
     return localCompassAllowed(request.headers) ? NextResponse.next() : new NextResponse(null, {
       status: 404, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
     });

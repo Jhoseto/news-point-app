@@ -3,7 +3,6 @@ import { handleApi } from "./server/api.mjs";
 import { openLocalBindings } from "./scripts/local-bindings.mjs";
 import { openLocalAccess, owner, stateDirectory } from "./scripts/local-access.mjs";
 import { createLocalAuth } from "./scripts/local-auth.mjs";
-import { compareRequest } from "./server/comparison.mjs";
 
 const base = "/polit-compass";
 const root = import.meta.dirname;
@@ -26,7 +25,6 @@ export async function serve(request) {
     return new Response(null, { status: 403 });
   }
   const login = path === "/local-logout" || path === "/local-login" || path.startsWith("/local-login/");
-  if (path === "/compare") return compareRequest(request, stateDirectory);
   if (!login && !path.startsWith("/api/")) return new Response(null, { status: 404 });
   services ??= openServices().catch(error => { services = undefined; throw error; });
   const { auth, env } = await services;

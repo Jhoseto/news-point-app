@@ -1,17 +1,17 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { PGlite } from '@electric-sql/pglite';
 import { randomUUID } from 'node:crypto';
 import { compareRequest } from '../server/comparison.mjs';
 
 test('two readers compare immutable reports using codes only', async t => {
-  const directory = await mkdtemp(join(tmpdir(),'compass-comparison-'));
-  t.after(() => rm(directory,{recursive:true,force:true}));
+  const db = new PGlite();
+  t.after(() => db.close());
+  await db.exec(await readFile(new URL('../../packages/db/migrations/52_polit_compass_reports.sql', import.meta.url),'utf8'));
   const call = (body, origin = 'http://localhost:3000') => compareRequest(new Request(origin+'/polit-compass/compare/',{
     method:'POST', headers:{origin,'content-type':'application/json'}, body:JSON.stringify(body),
-  }),directory);
+  }),async (text, values) => (await db.query(text, values)).rows);
   const key = randomUUID();
   const snapshot = {version:1, axes:Array(10).fill(null), parties:Array(6).fill(null)};
   const revised = {...snapshot,axes:Array(10).fill(25)};

@@ -12,7 +12,7 @@ describe("public indexing launch gate", () => {
   it("uses the same explicit opt-in for public headers and HTML metadata", () => {
     expect(publicIndexingEnabled(launch)).toBe(true);
     expect(publicRobotsMetadata(launch)).toEqual({ index: true, follow: true, "max-image-preview": "large" });
-    for (const path of ["/", "/plovdiv/", "/article-slug/", "/sitemap.xml"]) expect(headerFor(path, launch)).toBe("index, follow");
+    for (const path of ["/", "/plovdiv/", "/article-slug/", "/polit-compass/", "/sitemap.xml"]) expect(headerFor(path, launch)).toBe("index, follow");
   });
   it.each([{}, { ...launch, NP_PUBLIC_INDEXING: "0" }, { ...launch, NP_PUBLIC_INDEXING: "true" }, { ...launch, NODE_ENV: "development" }, ...["", "http://newspoint.bg", "https://127.0.0.1", "https://[::1]", "https://localhost", "https://preview.trycloudflare.com", "https://site44159-izdo3c.scloudsite101.com", "https://newspoint.bg/path", "https://user:pass@newspoint.bg", "https://newspoint.bg?x=1"].map(WEB_URL => ({ ...launch, WEB_URL }))])("fails closed for local/preview/missing or invalid configuration", (env) => {
     expect(publicIndexingEnabled(env)).toBe(false);
@@ -24,7 +24,7 @@ describe("public indexing launch gate", () => {
     expect(headerFor("/plovdiv/archive/page-token/", { ...launch, NODE_ENV: "development" })).toBe("noindex, nofollow");
     expect(headerFor("/plovdiv/archive/page-token/", { ...launch, NP_PUBLIC_INDEXING: "0" })).toBe("noindex, nofollow");
   });
-  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/edge-article-cache/v1/desktop/article/", "/edge-article-cache/v1/mobile/article/", "/draft/private-id/", "/settings/", "/search/", "/offline/"])("keeps excluded route %s noindex even at launch", path => {
+  it.each(["/admin/", "/admin/articles/new/", "/api/search/", "/edge-article-cache/v1/desktop/article/", "/edge-article-cache/v1/mobile/article/", "/draft/private-id/", "/polit-compass/compare/", "/polit-compass/news/bg-budget-disclosure/", "/settings/", "/search/", "/offline/"])("keeps excluded route %s noindex even at launch", path => {
     expect(headerFor(path, launch)).toBe("noindex, nofollow");
   });
 });

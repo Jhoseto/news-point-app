@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, type ComponentProps, type MouseEvent } from "react";
-import { useReducedMotion } from "./reader-preferences";
+import { useLayoutEffect, type ComponentProps, type MouseEvent } from "react";
 
 const SCROLL_FLAG = "np-rubric-cards-scroll";
 
@@ -13,31 +12,27 @@ export function isRubricFirstPageUrl(pathname: string, rubricPath: string): bool
   return pathname === normalized || pathname === normalized.slice(0, -1);
 }
 
-export function scrollToRubricTop(reducedMotion: boolean) {
-  const behavior = reducedMotion ? ("instant" as const) : ("smooth" as const);
-  const target = document.getElementById("np-rubric-cards");
-  if (target) target.scrollIntoView({ behavior, block: "start" });
-  else window.scrollTo({ top: 0, behavior });
+export function scrollToRubricTop() {
+  window.scrollTo({ top: 0, behavior: "instant" });
 }
 
 export function handleRubricMenuClick(
   event: MouseEvent<HTMLAnchorElement>,
   rubricPath: string,
   pathname: string,
-  reducedMotion: boolean,
 ) {
-  if (rubricPath === "/") return;
+  if (event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || rubricPath === "/") return;
   if (isRubricFirstPageUrl(pathname, rubricPath)) {
     event.preventDefault();
-    scrollToRubricTop(reducedMotion);
+    scrollToRubricTop();
     return;
   }
-  markRubricArchiveScroll();
+  markRubricArchiveScroll(rubricPath);
 }
 
-export function markRubricArchiveScroll() {
+export function markRubricArchiveScroll(path: string) {
   try {
-    sessionStorage.setItem(SCROLL_FLAG, "1");
+    sessionStorage.setItem(SCROLL_FLAG, path);
   } catch {
     /* private mode */
   }
@@ -49,25 +44,17 @@ export function rubricCardsScrollAnchorProps() {
 
 export function CategoryArchiveScrollOnNavigate() {
   const pathname = usePathname();
-  const reducedMotion = useReducedMotion();
-
-  useEffect(() => {
-    let flagged = false;
+  useLayoutEffect(() => {
     try {
-      flagged = sessionStorage.getItem(SCROLL_FLAG) === "1";
-      if (flagged) sessionStorage.removeItem(SCROLL_FLAG);
-    } catch {
-      flagged = false;
-    }
-    if (!flagged) return;
-    const behavior = reducedMotion ? ("instant" as const) : ("smooth" as const);
-    const run = () => {
-      const target = document.getElementById("np-rubric-cards");
-      if (target) target.scrollIntoView({ behavior, block: "start" });
-      else window.scrollTo({ top: 0, behavior });
-    };
-    requestAnimationFrame(() => requestAnimationFrame(run));
-  }, [pathname, reducedMotion]);
+      const target = sessionStorage.getItem(SCROLL_FLAG);
+      if (!target) return;
+      sessionStorage.removeItem(SCROLL_FLAG);
+      if (!isRubricFirstPageUrl(pathname, target)) return;
+    } catch { return; }
+    scrollToRubricTop();
+    const frame = requestAnimationFrame(scrollToRubricTop);
+    return () => cancelAnimationFrame(frame);
+  }, [pathname]);
 
   return null;
 }
@@ -79,8 +66,10 @@ export function CategoryArchivePageLink({ onClick, ...props }: ArchivePageLinkPr
     <Link
       {...props}
       onClick={(event) => {
-        markRubricArchiveScroll();
         onClick?.(event);
+        if (!event.defaultPrevented && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
+          markRubricArchiveScroll(event.currentTarget.pathname);
+        }
       }}
     />
   );

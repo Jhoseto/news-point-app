@@ -139,7 +139,7 @@ function RubricRow({
       prefetch={false}
       onClick={(event) => {
         if (item.path === "/") scrollHomeIfCurrent(event, item.path, pathname, reducedMotion);
-        else handleRubricMenuClick(event, item.path, pathname, reducedMotion);
+        else handleRubricMenuClick(event, item.path, pathname);
         onNavigate?.();
       }}
       aria-current={active ? "page" : undefined}

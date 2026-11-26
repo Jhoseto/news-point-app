@@ -1,17 +1,33 @@
-import { headers } from "next/headers";
-import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/breadcrumbs";
-import { localCompassAllowed } from "./access";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbList } from "@/lib/jsonld";
+import { PUBLIC_SEO_PAGES, publicMetadata } from "@/lib/public-metadata";
+import { shareOrigin } from "@/lib/share-card";
+import { voteQuestions } from "../../../../polit-compass/data/bg-votes.mjs";
 
-export const dynamic = "force-dynamic";
-export const metadata = { title: "Политически компас", robots: { index: false, follow: false } };
+export const revalidate = 3600;
+const { path, title } = PUBLIC_SEO_PAGES.compass;
+const name = "Политически компас";
+const description = `Отговори на ${voteQuestions.length} въпроса и сравни възгледите си с реални гласувания на партиите в Народното събрание. Безплатен тест без регистрация.`;
+export const metadata = {
+  ...publicMetadata({ path, title, description, imagePath: "/share/page/compass/", imageAlt: title }),
+};
 
 export default async function PoliticalCompassPage() {
-  if (!localCompassAllowed(await headers())) notFound();
   const { default: CompassApp } = await import("../../../../polit-compass/components/CompassApp");
+  const origin = shareOrigin();
+  const url = origin + path;
   return (
     <div className="np-container flex flex-col gap-4 pt-3 pb-10 lg:gap-8 lg:pt-5">
-      <Breadcrumbs items={[{ name: "Политически компас" }]} />
+      <JsonLd id="np-compass-schema" data={[
+        { "@type": "WebPage", "@id": url, url, name: title, description, inLanguage: "bg",
+          isPartOf: { "@id": origin + "/#website" }, mainEntity: { "@id": url + "#app" } },
+        { "@type": "WebApplication", "@id": url + "#app", url, name, description, inLanguage: "bg",
+          isAccessibleForFree: true, operatingSystem: "Web", applicationCategory: "EducationalApplication",
+          author: { "@id": origin + "/#organization" } },
+        breadcrumbList(origin, [{ name: "Начало", path: "/" }, { name, path }]),
+      ]} />
+      <Breadcrumbs items={[{ name }]} />
       <CompassApp />
     </div>
   );

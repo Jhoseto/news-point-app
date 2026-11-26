@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const exclusions = ["node_modules", ".next", ".git", ".turbo", ".pnpm-store", ".env.local", ".env.tunnel", ".cursor", ".claude", ".codex", ".codex-remote-attachments", ".gemini", "AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md", ".playwright-mcp", ".tts-cache", ".tts-voices", ".shots", "coverage", "playwright-report", "test-results", "blob-report", "tests/reports", "docs/references", "docs/review", "*.tsbuildinfo"];
+const exclusions = [".compass-local", "node_modules", ".next", ".git", ".turbo", ".pnpm-store", ".env.local", ".env.tunnel", ".cursor", ".claude", ".codex", ".codex-remote-attachments", ".gemini", "AGENTS.md", "docs/PLAN.md", "docs/NEWSPOINT_2_FACEBOOK_PUBLISHING_PLAN.md", ".playwright-mcp", ".tts-cache", ".tts-voices", ".shots", "coverage", "playwright-report", "test-results", "blob-report", "tests/reports", "docs/references", "docs/review", "*.tsbuildinfo"];
 // libarchive applies --exclude=out to every directory of that name, which drops apps/web/app/moyat-plovdiv/out.
 const rootOmissions = new Set(["logs", "out"]);
 

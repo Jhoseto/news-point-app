@@ -145,7 +145,7 @@ function RefineOrientation({answers, onChange, measuredCount}) {
   </details>;
 }
 
-export default function Report({answers, reportKey, onAnswerChange, onEdit, onRestart}) {
+export default function Report({answers, reportKey, shared, onShared, onAnswerChange, onEdit, onRestart}) {
   const {axes, ranked, answered, institutions, territory, portrait, motionProfile} = useMemo(() => buildWorldProfile(answers), [answers]);
   const measured = axes.filter(axis => axis.score !== null);
   const {examples, difference} = decisionExamples(answers, ranked[0]);
@@ -164,7 +164,7 @@ export default function Report({answers, reportKey, onAnswerChange, onEdit, onRe
       {difference && <p className="pr-sub">По темата „{difference.axis.title}“ поставяш по-силен акцент върху „{difference.axis.poles[Number(difference.axis.score > difference.target)]}“, отколкото предполага моделът за {ranked[0].name.toLocaleLowerCase('bg')}.</p>}
     </header>
     <PartyAffinity answers={answers} onChange={onAnswerChange}/>
-    <ShareReport axes={axes} answers={answers} reportKey={reportKey}/>
+    <ShareReport axes={axes} answers={answers} reportKey={reportKey} shared={shared} onShared={onShared}/>
     {chartAxes.length >= 2 && <div className="pr-charts"><CompassMap axes={chartAxes}/>{ranked.length ? <Traditions ranked={ranked}/> : <section className="pr-card"><h2>Позиции по теми</h2>
       <p className="pr-sub">Отвори тема за разпределението на отговорите ти.</p>
       <div className="pr-axes">{chartAxes.map(axis => <AxisDetails key={axis.id} axis={axis}/>)}</div>

@@ -15,7 +15,7 @@ async function request(body, signal) {
   return response.json();
 }
 
-export function ShareReport({axes, answers, reportKey}) {
+export function ShareReport({axes, answers, reportKey, shared, onShared}) {
   const parties = partyComparison(answers).parties;
   const snapshot = JSON.stringify({ version: 1,
     axes: axisIds.map(id => { const score = axes.find(a => a.id === id)?.score; return score == null ? null : Math.round(score * 100); }),
@@ -25,13 +25,14 @@ export function ShareReport({axes, answers, reportKey}) {
   const [compare, setCompare] = useState(false);
   const [copied, setCopied] = useState('');
   useEffect(() => {
+    if (shared?.snapshot === snapshot) return;
     const controller = new AbortController();
     request({ key: reportKey, snapshot: JSON.parse(snapshot) }, controller.signal)
-      .then(({code}) => { if (!controller.signal.aborted) setSaved({ snapshot, code }); })
+      .then(({code}) => { if (!controller.signal.aborted) onShared(reportKey, { snapshot, code, store: 'newspoint' }); })
       .catch(error => { if (!controller.signal.aborted) setSaved({ snapshot, error: error.message }); });
     return () => controller.abort();
-  }, [reportKey, snapshot, attempt]);
-  const result = saved?.snapshot === snapshot ? saved : null;
+  }, [reportKey, snapshot, attempt, shared, onShared]);
+  const result = shared?.snapshot === snapshot ? shared : saved?.snapshot === snapshot ? saved : null;
   return <section className="pc-sharing"><h2>Твоят код за сравнение</h2>
     <p>Всеки, на когото дадеш кода, може да сравни обобщените ти резултати със своите. Отделните ти отговори остават при теб.</p>
     <div aria-live="polite">{result?.code ? <strong className="pc-code">{result.code}</strong> : result?.error ?

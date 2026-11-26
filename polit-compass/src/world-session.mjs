@@ -43,5 +43,12 @@ export function readWorldSession(raw) {
   const cursor = missing < 0 ? last : missing;
   // Old numeric offsets referred to a different list. IDs and explicit skips still match.
   const index = raw.layout === layout ? Math.min(raw.index, cursor) : cursor;
-  return { layout, index, answers, finished: missing < 0, ...(typeof raw.reportKey === 'string' && /^[a-f\d-]{36}$/i.test(raw.reportKey) ? { reportKey: raw.reportKey } : {}) };
+  const restored = { layout, index, answers, finished: missing < 0 };
+  if (typeof raw.reportKey === 'string' && /^[a-f\d]{8}-(?:[a-f\d]{4}-){3}[a-f\d]{12}$/i.test(raw.reportKey)) {
+    restored.reportKey = raw.reportKey;
+    if (raw.shared?.store === 'newspoint' && /^[A-HJ-NP-Z2-9]{6}$/.test(raw.shared.code) && typeof raw.shared.snapshot === 'string') {
+      restored.shared = { code: raw.shared.code, snapshot: raw.shared.snapshot, store: 'newspoint' };
+    }
+  }
+  return restored;
 }

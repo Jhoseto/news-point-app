@@ -8,6 +8,7 @@ export const SITE_OG_IMAGE_WEBP = "/share/og-site-1200x630.webp";
 export const SITE_OG_IMAGE_ALT = "NewsPoint.bg – Гласът на истината";
 
 export const PUBLIC_SEO_PAGES = {
+  compass: { path: "/polit-compass/", title: "Политически компас за България – тест за политически възгледи", description: "Сравни решенията си с реалните гласувания на партиите в Народното събрание." },
   home: { path: "/", title: "Новини от Пловдив, България и света | NewsPoint.bg", description: "Последни новини от Пловдив и региона, България и света. Актуални събития, местни теми, спорт и култура от NewsPoint.bg." },
   themes: { path: "/temi/", title: "Теми с продължение", description: "Редактирани хронологии от обединени новини по тема — от NewsPoint.bg." },
   podcast: { path: "/livepoint/podcast/", title: "Подкасти на NewsPoint", description: "Всички публикувани подкаст епизоди на NewsPoint с аудио, дата и резюме." },
@@ -52,7 +53,7 @@ export function publicMetadata(input: { path: string; title: string; description
   const image = absoluteMedia(input.imagePath, origin);
   const description = input.description.trim() || input.title;
   const imageAlt = input.imageAlt?.trim() || input.title;
-  const ogMime = input.imagePath.endsWith(".webp") ? "image/webp" : input.imagePath.endsWith(".png") ? "image/png" : "image/jpeg";
+  const ogMime = input.imagePath.endsWith(".webp") ? "image/webp" : input.imagePath.endsWith(".png") || input.imagePath.startsWith("/share/page/") ? "image/png" : "image/jpeg";
   return {
     title: input.title,
     description,

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { markRubricArchiveScroll, scrollToRubricTop } from "./category-archive-pagination";
-import { useReducedMotion } from "./reader-preferences";
 import { MOBILE_RUBRIC_NAVIGATE, MOBILE_RUBRIC_STATUS, mobileRoutePath, mobileRubrics, rubricRoute, type MobileRubric } from "@/lib/mobile-rubric-nav";
 
 export function MobileRubricTabs({ menu }: { menu: MobileRubric[] }) {
@@ -12,7 +11,6 @@ export function MobileRubricTabs({ menu }: { menu: MobileRubric[] }) {
   const route = rubricRoute(pathname, items);
   const row = useRef<HTMLDivElement>(null);
   const [pending, setPending] = useState<string | null>(null);
-  const reducedMotion = useReducedMotion();
   useEffect(() => {
     const status = (event: Event) => setPending((event as CustomEvent<{ pending: string | null }>).detail.pending);
     window.addEventListener(MOBILE_RUBRIC_STATUS, status);
@@ -36,10 +34,10 @@ export function MobileRubricTabs({ menu }: { menu: MobileRubric[] }) {
         if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !matchMedia("(max-width: 63.999rem)").matches) return;
         if (mobileRoutePath(pathname) === item.path && !pending) {
           event.preventDefault();
-          scrollToRubricTop(reducedMotion);
+          scrollToRubricTop();
           return;
         }
-        markRubricArchiveScroll();
+        markRubricArchiveScroll(item.path);
         if (!window.dispatchEvent(new CustomEvent(MOBILE_RUBRIC_NAVIGATE, { detail: item.path, cancelable: true }))) event.preventDefault();
       }}>{item.name}<span aria-hidden="true" className="np-mobile-rubric-tab-line" /></Link>)}</div>
   </nav>;
