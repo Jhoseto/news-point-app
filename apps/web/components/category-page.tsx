@@ -8,7 +8,6 @@ import type { CategoryRef } from "@/lib/queries";
 import { ssrDesktopViewport } from "@/lib/ssr-viewport";
 import { ArticleCard, FeatureCard } from "./article-card";
 import { Breadcrumbs } from "./breadcrumbs";
-import { CategoryChips } from "./lists";
 import { LatestNews24h } from "./latest-news-24h";
 import { ArticleImage, SectionTitle } from "./ui";
 import { PlacementRefresh } from "./placement-refresh";
@@ -26,7 +25,6 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
   const asOfMs = view.asOfMs;
   const archive = view.archive;
   const latest24h = view.latest24h;
-  const menu = view.menu;
   const articles = view.articles;
   const [lead, ...rest] = articles;
   const seo = categorySeo(category);
@@ -74,10 +72,6 @@ export async function CategoryPage({ category, cursor, canonicalPath }: { catego
               <h1 className="text-5xl font-extrabold tracking-tight text-white">{category.name}</h1>
             </div>
           </header>
-
-          <div className="hidden lg:block">
-            <CategoryChips categories={menu} activeId={category.id} title="Други рубрики" />
-          </div>
 
           {archive.anchored ? (
             <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted">

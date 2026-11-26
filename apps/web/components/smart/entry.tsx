@@ -10,8 +10,13 @@ export function SmartEntry(props:{articleId:string;measurementId?:string|undefin
     const check=async()=>{
       if(busy||document.visibilityState==="hidden")return;
       busy=true;controller=new AbortController();const timer=setTimeout(()=>controller?.abort(),5000);
-      try{const response=await fetch("/api/smart/availability/",{cache:"no-store",signal:controller.signal});const result=await response.json();if(!disposed)setEnabled(response.ok&&result.enabled===true);}
-      catch{if(!disposed)setEnabled(false);}
+      try{
+        const response=await fetch("/api/smart/availability/",{cache:"no-store",signal:controller.signal});
+        if(response.ok){
+          const result=await response.json();
+          if(!disposed&&typeof result.enabled==="boolean")setEnabled(result.enabled);
+        }
+      }catch{/* Keep the last confirmed flag while offline. The API checks it on every request. */}
       finally{clearTimeout(timer);busy=false;}
     };
     void check();const timer=setInterval(()=>void check(),15000);

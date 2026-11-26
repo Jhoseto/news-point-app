@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { sql } from "drizzle-orm";
 import { z } from "zod";
-import { SMART_PROMPT_VERSION, normalizeSmartQuestion, freshSmartAnswer, smartEvidenceContains, validateSmartEvidence, type SmartAnswer, type SmartBootstrap, type SmartSource } from "@newspoint/content/smart";
+import { normalizeSmartQuestion, freshSmartAnswer, smartEvidenceContains, validateSmartEvidence, type SmartAnswer, type SmartBootstrap, type SmartSource } from "@newspoint/content/smart";
 import { smartArticleText } from "@newspoint/content/smart-text";
 import { acquireSmartNode, failSmartTurn, finishSmartNode, finishSmartTurn, readSmartSession, reserveSmartTurn, smartArticle, smartHash, smartNodeKey, smartSourcesPublic, SmartError, type SmartArticle, type SmartAsk, type SmartDb } from "./smart";
 import { smartAi, smartJson, smartMiniMaxSearch, type SmartConfig } from "./smart-provider";
@@ -120,12 +120,21 @@ async function researchSources(db: SmartDb, config: SmartConfig, article: SmartA
   finally{controller.abort();}
   return sources;
 }
-export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, article: SmartArticle, question: string, history: {question:string;answer:SmartAnswer|null}[], options: {requireExpansion?:boolean} = {}) {
-  const prepared=await db.execute(sql`select payload from smart_bootstraps where article_id=${article.id}::uuid and revision=${article.revision} and state='ready' and expires_at>now()`);
-  const initialQuestions=((prepared[0]?.payload as SmartBootstrap|undefined)?.questions??[]).map(q=>q.text);
+export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, article: SmartArticle, question: string, history: {question:string;answer:SmartAnswer|null}[], options: {requireExpansion?:boolean; initialQuestionId?:string} = {}) {
+  const prepared=await db.execute(sql`select payload,case when ${Boolean(options.initialQuestionId)} then sources end as sources
+    from smart_bootstraps where article_id=${article.id}::uuid and revision=${article.revision} and state='ready' and expires_at>now()`);
+  const bootstrap=prepared[0]?.payload as SmartBootstrap|undefined;
+  const initialQuestions=(bootstrap?.questions??[]).map(q=>q.text);
   const existingQuestions=[...initialQuestions,...history.flatMap(h=>[h.question,...(h.answer?.followUps.map(q=>q.text)??[])])];
   const memory=history.map(h=>({question:h.question,answer:h.answer?.blocks.map(b=>b.text).join("\n").slice(0,1400)??null}));
   const inherited:SmartSource[]=[];
+  // A verified related card can already cover an initial suggestion. Give its
+  // exact passage to the first drafting call, then search the archive as usual.
+  if(bootstrap?.related&&options.initialQuestionId&&bootstrap.questions.some(q=>q.id===options.initialQuestionId&&q.text===question)){
+    const seed=(prepared[0]?.sources as SmartSource[]|null)?.find(source=>
+      source.kind==="newspoint"&&source.articleId!==article.id&&source.articleId===bootstrap.related!.articleId);
+    if(seed&&await smartSourcesPublic(db,[seed]))inherited.push(seed);
+  }
   const fresh=history.flatMap(previous=>previous.answer&&freshSmartAnswer(previous.answer)?[previous.answer]:[]).reverse();
   const allFreshPublic=await smartSourcesPublic(db,fresh.flatMap(answer=>answer.sources));
   for(const previous of fresh){
@@ -146,7 +155,21 @@ export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, arti
     if(config.answerPlanModel&&!allowedPlanModels.includes(config.answerPlanModel))throw new SmartError("model_config",503,"Невалиден Smart модел.");
     sources.push(...reusable);
     const plannerEvidence=smartEvidenceRegistry(sources);
-    const plan=await smartJson(db,{...config,model:config.answerPlanModel??config.model},article,reusable.length?"answer_context":"retrieval",RULES+DRAFT_RULES+" За всеки релевантен въпрос върни2–4queries по1–4ключови думи за ПЪРВО търсене в наши публикации. Използвай конкретното питане и свързаните лица/места, не само заглавието. Това важи и при наличен отговор в текущата статия или историята. Ако подадените доказателства дават пълен отговор, върни answer с доказателства и needsResearch=false; иначе answer=null,needsResearch=true. При requireExpansion=true не давай преразказ само от текущата статия. Биографичен или друг допълнителен въпрос за свързано лице/събитие е релевантен. Дай researchQuery от3–7ключови думи за точно липсващото и researchAlternative: различна заявка с други подкрепени имена/термини за същия аспект. При чуждестранна биография researchQuery запазва точното пълно име от статията и търси биография/кариера; researchAlternative използва оригиналното пълно име и official biography/career за първичен профил. Не заменяй имената с несигурна механична транслитерация. За актуално развитие включи релевантния период; за исторически въпрос пази неговия период. При relevant=false queries=[] и answer=null. evidenceSourceIds са source.id(s0,s1,…), а blocks.evidence са passage.id(e0,e1,…).",{sources:plannerEvidence.sources,sourceChecks:plannerEvidence.sourceChecks,title:article.title,question,history:memory,existingQuestions,requireExpansion:Boolean(options.requireExpansion),now:new Date().toISOString()},answerPlanSchema.extend({answer:indexedDraftSchema(plannerEvidence).nullable().default(null)}));
+    const stage={...config,model:config.answerPlanModel??config.model};
+    const planInput={sources:plannerEvidence.sources,sourceChecks:plannerEvidence.sourceChecks,title:article.title,question,history:memory,existingQuestions,requireExpansion:Boolean(options.requireExpansion),now:new Date().toISOString()};
+    const discovery=" За релевантен въпрос върни 2–4 кратки queries по 1–4 ключови думи за първо търсене в NewsPoint. Използвай конкретния въпрос, свързаните лица, място и период. При relevant=false върни queries=[]. Дай researchQuery от3–7ключови думи за точно липсващото и researchAlternative: различна заявка с други подкрепени имена/термини за същия аспект. При чуждестранна биография researchQuery запазва точното пълно име от статията и търси биография/кариера; researchAlternative използва оригиналното пълно име и official biography/career за първичен профил. Не заменяй имената с несигурна механична транслитерация. За актуално развитие включи релевантния период; за исторически въпрос пази неговия период.";
+    let plan:z.infer<typeof answerPlanSchema>;
+    if(options.requireExpansion&&!reusable.length){
+      // A first suggestion requires evidence beyond the anchor. Any answer
+      // drafted from the anchor alone would be discarded before verification.
+      const search=await smartJson(db,stage,article,"retrieval",RULES+discovery+" Планирай само търсенето на допълнителен контекст.",planInput,
+        answerPlanSchema.pick({queries:true,relevant:true,researchQuery:true,researchAlternative:true}));
+      plan={...search,answer:null,evidenceSourceIds:[],needsResearch:true};
+    }else{
+      plan=await smartJson(db,stage,article,reusable.length?"answer_context":"retrieval",RULES+DRAFT_RULES+discovery+
+        " Ако подадените доказателства дават пълен отговор, върни answer с доказателства и needsResearch=false; иначе answer=null,needsResearch=true. При requireExpansion=true не давай преразказ само от текущата статия. При relevant=false върни answer=null. evidenceSourceIds са source.id (s0,s1,…), а blocks.evidence са passage.id (e0,e1,…).",
+        planInput,answerPlanSchema.extend({answer:indexedDraftSchema(plannerEvidence).nullable().default(null)}));
+    }
     if(!plan.relevant||plan.answer?.status==="off_topic")earlyAssessment={relevant:false,evidenceSourceIds:[],needsResearch:false,researchQuery:"",researchAlternative:"",explanation:""};
     else {
       if(plan.queries.length<2)throw new SmartError("validation",503,"Контекстът не се зареди. Опитай отново.");
@@ -171,8 +194,7 @@ export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, arti
         }else earlyAssessment={relevant:true,evidenceSourceIds:selected,needsResearch:true,researchQuery:plan.researchQuery||question,researchAlternative:plan.researchAlternative,explanation:""};
       }
     }
-    if(initialResult&&earlyAssessment)assessment=earlyAssessment;
-    else if(earlyAssessment)assessment=earlyAssessment;
+    if(earlyAssessment)assessment=earlyAssessment;
     else {
       const context=await assessContext(sources);
       assessment=context.assessment;initialResult=context.draft;
@@ -190,8 +212,9 @@ export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, arti
     }
     // Suggested expansion must add researched context. A selector cannot
     // silently turn an expansion into a recap of the current article alone.
+    const draftEvidence=initialResult?.blocks.flatMap(block=>block.evidence.map(e=>e.sourceId));
     if(options.requireExpansion&&assessment.relevant&&!assessment.needsResearch&&
-      !contextSources.some(source=>source.kind!=="current"&&assessment.evidenceSourceIds.includes(source.id))){
+      !contextSources.some(source=>source.kind!=="current"&&(draftEvidence??assessment.evidenceSourceIds).includes(source.id))){
       initialResult=null;
       assessment={...assessment,needsResearch:true,researchQuery:assessment.researchQuery||question};
     }
@@ -282,6 +305,10 @@ export async function answerSmartQuestion(db: SmartDb, config: SmartConfig, arti
       if(result.status==="answered"&&!block.evidence.length)errors.push(`Блок ${index+1} няма доказателство.`);
       for(const evidence of block.evidence)if(!smartEvidenceContains(byId.get(evidence.sourceId)?.passage??"",evidence.quote))errors.push(`Блок ${index+1} няма точен цитат от посочения източник.`);
     }
+    if(options.requireExpansion&&result.status==="answered"&&!result.blocks.some(block=>block.evidence.some(e=>{
+      const source=byId.get(e.sourceId);
+      return source&&source.kind!=="current";
+    })))errors.push("Подкрепи допълнителния факт с пасаж отвъд текущата статия или посочи какво остава непотвърдено със status=insufficient.");
     if(attempt===0&&result.status==="insufficient"&&await researchMissingDetails()){
       critique="Първите прочетени материали не отговарят на конкретния въпрос. Добавени са нови източници от алтернативното целево търсене. Използвай само доказаните подробности по питането; не го замествай с преразказ на текущата новина.";
       continue;
@@ -400,7 +427,11 @@ export async function askSmart(db: SmartDb,config:SmartConfig,owner:string,input
       nodeKey=smartNodeKey(article,input.questionId!,parent,`${generation}:${config.provider}:${config.model}`);
       const node=immediate?{answer:immediate,token:null}:await acquireSmartNode(db,nodeKey,article,input.questionId!,input.question,parent);
       if(node.answer){answer=node.answer;cached=true;}
-      else {nodeToken=node.token;answer=await answerSmartQuestion(db,config,article,input.question,history,{requireExpansion:!parent});await finishSmartNode(db,nodeKey,nodeToken!,answer);}
+      else {
+        nodeToken=node.token;
+        answer=await answerSmartQuestion(db,config,article,input.question,history,parent?{}:{requireExpansion:true,initialQuestionId:input.questionId!});
+        await finishSmartNode(db,nodeKey,nodeToken!,answer);
+      }
     } else answer=await answerSmartQuestion(db,config,article,input.question,history);
     if(!await smartSourcesPublic(db,answer.sources,article)) throw new SmartError("changed",409,"Статията е обновена. Възстановете разговора.");
     await finishSmartTurn(db,String(turn.id),answer,cached,nodeKey);

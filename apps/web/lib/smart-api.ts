@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { sql } from "drizzle-orm";
 import { getDb, loadRootEnv } from "@newspoint/db";
-import { SmartError, smartReady, smartRateLimit, readSmartBootstrap, openSmartSession, readSmartSession, reserveSmartTurn, deleteSmartSession } from "@newspoint/db/smart";
+import { SmartError, smartReady, smartRateLimit, readSmartBootstrap, openSmartSession, readSmartSession, reserveSmartTurn, deleteSmartSession, smartTurnStillPending } from "@newspoint/db/smart";
 import { readSmartRuntimeConfig } from "@newspoint/db/smart-settings";
 import {askSmart} from "@newspoint/db/smart-service";
 import {readerSessionWithCards,readerBootstrapWithCards} from "./smart-reader-data";
@@ -85,7 +85,7 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       if(turn?.status==="pending"&&!session.turns.some(t=>t.status==="pending")){
         // The reservation supplies the locked quota snapshot. The first response
         // can show the accepted turn without rereading the entire conversation.
-        const pending={id:String(turn.id),question:input.question,status:"pending" as const,answer:null,cached:false,nodeKey:null};
+        const pending={id:String(turn.id),requestKey:input.requestKey,question:input.question,status:"pending" as const,answer:null,cached:false,nodeKey:null};
         const accepted={...session,usedQuestions:Number(turn.session_used),turns:[...session.turns,pending]};
         return NextResponse.json(await readerSessionWithCards(accepted),{status:202,headers});
       }
@@ -99,9 +99,16 @@ export async function smartApi(request:NextRequest,action:"bootstrap"|"session"|
       return NextResponse.json({ok:true},{headers});
     }
     if(request.method==="DELETE"){await deleteSmartSession(db,resource,owner);return NextResponse.json({ok:true},{headers});}
+    const pendingTurn=request.nextUrl.searchParams.get("pendingTurn");
+    if(pendingTurn){
+      const turnId=id.parse(pendingTurn);
+      // Only the owner can receive this signal. A queued public suggestion
+      // still takes the normal path so a different reader's cache hit can finish it.
+      if(await smartTurnStillPending(db,resource,owner,turnId))return new NextResponse(null,{status:204,headers});
+    }
     let restored=await readSmartSession(db,resource,owner);
     // Readers already waiting when a shared answer became ready also avoid a serial worker queue.
-    const waiting=restored.turns.some(turn=>turn.status==="pending")?await db.execute(sql`select request_key,question,question_id,parent_key from smart_turns where session_id=${resource}::uuid and status='pending' and processor_token is null limit 1`):[];
+    const waiting=restored.turns.some(turn=>turn.status==="pending")?await db.execute(sql`select request_key,question,question_id,parent_key from smart_turns where session_id=${resource}::uuid and status='pending' and processor_token is null and question_id is not null limit 1`):[];
     if(waiting[0]){
       const turn=waiting[0];
       restored=await askSmart(db,config,owner,{sessionId:resource,requestKey:String(turn.request_key),question:String(turn.question),questionId:turn.question_id?String(turn.question_id):undefined,parentKey:turn.parent_key?String(turn.parent_key):undefined},true)??restored;

@@ -15,6 +15,7 @@ import * as smartWeb from "./smart-web";
 import {recoverSmartJobs} from "../../../apps/worker/src/smart-worker";
 import {searchSmartCandidates} from "./smart-retrieval";
 import {packSmartVector,searchSmartVectors,unpackSmartVector} from "./smart-vector";
+import {smartTurnStillPending} from "./smart";
 
 let pg:PGlite, db:SmartDb;
 type RawDb=Pick<ReturnType<typeof drizzle>,"execute"|"transaction">;
@@ -104,7 +105,8 @@ describe("Smart PostgreSQL invariants",()=>{
       for(const [url,options] of network.mock.calls as unknown as [string,RequestInit][]){expect(new URL(url).hostname).toBe("api.minimax.io");expect((options.headers as Record<string,string>).Authorization).toBe("Bearer explicit-qa-not-real");}
       const planning=JSON.parse(String((network.mock.calls as unknown as [string,RequestInit][])[0]![1].body));
       expect(JSON.parse(planning.input).requireExpansion).toBe(true);
-      expect(planning.instructions).toContain('answer=null');
+      const schema=JSON.parse(planning.instructions.split("JSON Schema: ").at(-1));
+      expect(Object.keys(schema.properties).sort()).toEqual(["queries","relevant","researchAlternative","researchQuery"]);
       const rows=await db.execute(sql`select operation,provider,model,status,article_id,amount_usd from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz order by started_at`);
       expect(rows.map(r=>r.operation)).toEqual(["retrieval","research_search","answer","verification"]);expect(rows.every(r=>r.provider==="minimax"&&r.article_id===articleId)).toBe(true);
       expect(rows.filter(r=>r.model==="MiniMax-M3.1-Flash").every(r=>r.status==="known"&&Number(r.amount_usd)>0)).toBe(true);expect(rows.find(r=>r.model==="MiniMax-Web-Search")).toMatchObject({status:"unknown",amount_usd:null});
@@ -495,6 +497,46 @@ describe("Smart PostgreSQL invariants",()=>{
     await readSmartBootstrap(db,id,true);expect((await db.execute(sql`select lease_token from smart_bootstraps where article_id=${id}::uuid`))[0]?.lease_token).toBe(token);
     await db.execute(sql`delete from articles where id=${id}::uuid`);
   });
+  it("polls pending preparation with one read and preserves a publication racing a stale enqueue",async()=>{
+    const id=randomUUID();
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,body,'/qa-bootstrap-race/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    try{
+      await readSmartBootstrap(db,id);
+      const execute=vi.fn(async(query:SQL)=>await db.execute(query));
+      const observed={...db,execute} as unknown as SmartDb;
+      expect((await readSmartBootstrap(observed,id)).status).toBe("preparing");
+      expect(execute).toHaveBeenCalledTimes(1);
+      await db.execute(sql`update smart_bootstraps set state='uncertain' where article_id=${id}::uuid`);
+      execute.mockImplementationOnce(async query=>{
+        const snapshot=await db.execute(query);
+        await db.execute(sql`update smart_bootstraps set state='ready',updated_at=now() where article_id=${id}::uuid`);
+        return snapshot;
+      });
+      await readSmartBootstrap(observed,id,true);
+      expect((await db.execute(sql`select state from smart_bootstraps where article_id=${id}::uuid`))[0]?.state).toBe("ready");
+    }finally{await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
+  it("uses the minimal pending response only for the owner's visible, current work",async()=>{
+    const id=randomUUID(),owner="qa-conditional";
+    await db.execute(sql`insert into articles select ${id}::uuid,title,excerpt,body,'/qa-conditional/',published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    try{
+      const session=await openSmartSession(db,id,owner);
+      const turn=await reserveSmartTurn(db,owner,{sessionId:session,question:"QA awaiting answer",requestKey:randomUUID()});
+      const turnId=String(turn.id),check=()=>smartTurnStillPending(db,session,owner,turnId);
+      expect(await check()).toBe(true);
+      expect(await smartTurnStillPending(db,session,"qa-other",turnId)).toBe(false);
+      expect(await smartTurnStillPending(db,randomUUID(),owner,turnId)).toBe(false);
+      await db.execute(sql`update smart_turns set question_id='qa-public' where id=${turnId}::uuid`);
+      expect(await check()).toBe(false);
+      await db.execute(sql`update smart_turns set processor_token=${randomUUID()}::uuid where id=${turnId}::uuid`);
+      expect(await check()).toBe(true);
+      await db.execute(sql`update articles set is_public=false where id=${id}::uuid`);
+      expect(await check()).toBe(false);
+      await db.execute(sql`update articles set is_public=true where id=${id}::uuid`);
+      await finishSmartTurn(db,turnId,answer,false,null);
+      expect(await check()).toBe(false);
+    }finally{await db.execute(sql`delete from articles where id=${id}::uuid`);}
+  });
   it("repairs rejected starting questions automatically and does not let an optional related card block them",async()=>{
     const config=smartConfig({MINIMAX_API_KEY:'qa-not-real'}),article=await smartArticle(db,articleId),since=new Date().toISOString();
     const draft={questions:['Кои документи липсват за този случай?','Какви са възможните последици за гражданите?','Какъв е следващият проверим етап?'],related:{sourceId:null,reason:'',quote:''}};
@@ -601,6 +643,73 @@ describe("Smart PostgreSQL invariants",()=>{
     const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]}));vi.stubGlobal("fetch",network);
     try{expect((await answerSmartQuestion(db,config,article,"QA contextual question",[])).status).toBe("answered");expect(network).toHaveBeenCalledTimes(3);const rows=await db.execute(sql`select operation from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz order by started_at`);expect(rows.map(r=>r.operation)).toEqual(["retrieval","answer_context","verification"]);}
     finally{vi.unstubAllGlobals();await db.execute(sql`delete from articles where id=${relatedId}::uuid`);await db.execute(sql`delete from ai_operations where article_id=${articleId}::uuid and started_at>=${since}::timestamptz`);}
+  });
+  it("requires actual citations beyond the current article when writing a suggested expansion",async()=>{
+    const id=randomUUID(),relatedId=randomUUID(),config=answerTestConfig("openai");
+    const text="QA: Статията съобщава за подготовка на проект.";
+    for(const [key,body] of [[id,text],[relatedId,"QAExpansionCitation: обявена е среща."]] as const){
+      await db.execute(sql`insert into articles select ${key}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:body}])}::jsonb,${"/qa-"+key+"/"},published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    }
+    const draft={status:"answered",blocks:[{text,evidence:["e0"]}],followUps:["Кой документ описва проекта?"],timeSensitive:false};
+    const values=[
+      {queries:["QAExpansionCitation","NoMatchingQATerm123"]},
+      {relevant:true,evidenceSourceIds:["s1"],needsResearch:false,researchQuery:"",explanation:"",answer:null},
+      draft,
+      {...draft,status:"insufficient",blocks:[{text:"Не е посочен срок.",evidence:[]}]},
+      {valid:true,answerValid:true,factsValid:true,reason:""}
+    ];
+    const network=vi.fn(async()=>Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(values.shift())}]}]}));
+    vi.stubGlobal("fetch",network);
+    try{
+      const result=await answerSmartQuestion(db,config,await smartArticle(db,id),"QA: Какъв е срокът?",[],{requireExpansion:true});
+      expect(result.status).toBe("insufficient");expect(result.blocks[0]?.text).toBe("Не е посочен срок.");
+      const operations=await db.execute(sql`select operation from ai_operations where article_id=${id}::uuid order by started_at`);
+      expect(operations.map(row=>row.operation)).toEqual(["retrieval","answer_context","answer","answer_repair","verification"]);
+    }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id in (${id}::uuid,${relatedId}::uuid)`);}
+  });
+  it.each(answerProviders)("uses an approved related passage to answer a root in two calls and checks archive candidates (%s)",async(provider)=>{
+    const id=randomUUID(),relatedId=randomUUID(),config=answerTestConfig(provider);
+    const passage="QASeedArchive: официалният протокол посочва дата за проверката.";
+    const q={id:randomUUID(),text:"QA: Кога е предвидена проверката?"};
+    for(const [key,body] of [[id,"QA: Обявено е решение."],[relatedId,passage]] as const){
+      await db.execute(sql`insert into articles select ${key}::uuid,title,excerpt,${JSON.stringify([{type:"paragraph",text:body}])}::jsonb,${"/qa-"+key+"/"},published_revision,source_modified_at,true,published_at,updated_at from articles where id=${articleId}::uuid`);
+    }
+    const article=await smartArticle(db,id),related=await smartArticle(db,relatedId);
+    const seed={id:"qa-seed",articleId:relatedId,version:related.revision,title:related.title,url:"https://newspoint.bg"+related.path,kind:"newspoint",publishedAt:related.publishedAt,checkedAt:new Date().toISOString(),passage};
+    const payload={questions:[q],related:{articleId:relatedId}};
+    await db.execute(sql`insert into smart_bootstraps(article_id,revision,state,payload,sources,expires_at) values(${id}::uuid,${article.revision},'ready',${JSON.stringify(payload)}::jsonb,${JSON.stringify([seed])}::jsonb,now()+interval '1 hour')`);
+    const stages:string[]=[];
+    const network=vi.fn(async(_url:unknown,init:RequestInit)=>{
+      const input=JSON.parse(JSON.parse(String(init.body)).input);
+      let value:unknown;
+      if(input.result){
+        stages.push("verify");
+        expect(input.sources.some((s:{passage:string})=>s.passage.includes(passage))).toBe(true);
+        value={valid:true,factsValid:true,answerValid:true,reason:""};
+      }else{
+        const source=input.sources.find((s:{kind:string})=>s.kind==="newspoint");
+        stages.push(input.title?"plan":"assess");
+        const draft=source?{status:"answered",blocks:[{text:passage,evidence:[source.passages[0].id]}],followUps:["Кой документ описва следващата стъпка?"],timeSensitive:false}:null;
+        value={queries:["QASeedArchive","NoMatchingQATerm123"],relevant:true,needsResearch:!source,researchQuery:"",researchAlternative:"",evidenceSourceIds:source?[source.id]:[],explanation:"",answer:draft};
+      }
+      return Response.json({id:randomUUID(),model:config.model,status:"completed",usage:{input_tokens:10,output_tokens:10},output:[{type:"message",content:[{type:"output_text",text:JSON.stringify(value)}]}]});
+    });
+    vi.stubGlobal("fetch",network);
+    try{
+      // The same material is discoverable without reusing the prepared source.
+      const ordinary=await answerSmartQuestion(db,config,article,q.text,[],{requireExpansion:true});
+      expect(ordinary.status).toBe("answered");expect(stages.splice(0)).toEqual(["plan","assess","verify"]);
+      const owner="qa-seed-test",sessionId=await openSmartSession(db,id,owner);
+      const execute=vi.fn((query:SQL)=>db.execute(query));
+      const received=await askSmart({...db,execute} as SmartDb,config,owner,{sessionId,requestKey:randomUUID(),question:q.text,questionId:q.id});
+      expect(received.turns.at(-1)).toMatchObject({cached:false,status:"completed",answer:{status:"answered",blocks:[{text:passage,sourceIds:[seed.id]}]}});
+      expect(stages.splice(0)).toEqual(["plan","verify"]);
+      expect(execute.mock.calls.some(([query])=>new PgDialect().sqlToQuery(query).sql.includes("plainto_tsquery"))).toBe(true);
+      // A revised passage must be obtained from the archive again.
+      await db.execute(sql`update articles set published_revision=published_revision+1 where id=${relatedId}::uuid`);
+      await answerSmartQuestion(db,config,article,q.text,[],{requireExpansion:true,initialQuestionId:q.id});
+      expect(stages).toEqual(["plan","assess","verify"]);
+    }finally{vi.unstubAllGlobals();await db.execute(sql`delete from ai_operations where article_id=${id}::uuid`);await db.execute(sql`delete from articles where id in (${id}::uuid,${relatedId}::uuid)`);}
   });
   it.each(answerProviders)("researches current proof after the reviewer rejects a complete-looking early draft (%s)",async(provider)=>{
     const id=randomUUID(),config=answerTestConfig(provider),url="https://example.org/qa-current-decision";
@@ -755,6 +864,7 @@ describe("Smart PostgreSQL invariants",()=>{
     const sessionId=await openSmartSession(db,articleId,"qa-expiry-batch");
     const old=await reserveSmartTurn(db,"qa-expiry-batch",{sessionId,requestKey:randomUUID(),question:"QA expired"});
     await db.execute(sql`update smart_turns set lease_until=now()-interval '1 minute' where id=${String(old.id)}::uuid`);
+    expect((await readSmartSession(db,sessionId,"qa-expiry-batch")).turns.at(-1)).toMatchObject({id:old.id,requestKey:old.request_key,status:"failed"});
     const next=await reserveSmartTurn(db,"qa-expiry-batch",{sessionId,requestKey:randomUUID(),question:"QA unrelated"});
     expect((await db.execute(sql`select status from smart_turns where id=${String(old.id)}::uuid`))[0]?.status).toBe("failed");
     await finishSmartTurn(db,String(next.id),{...answer,status:"off_topic"},false,null);

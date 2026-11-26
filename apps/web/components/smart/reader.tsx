@@ -19,23 +19,46 @@ async function smartFetch<T>(path:string,init?:RequestInit):Promise<T>{
   const abort=()=>controller.abort();init?.signal?.addEventListener("abort",abort,{once:true});
   if(init?.signal?.aborted)controller.abort();
   const timeout=setTimeout(()=>{timedOut=true;controller.abort();},20000);
-  let response:Response;
-  try{response=await fetch(path,{cache:"no-store",...init,signal:controller.signal});}
+  try{
+    const response=await fetch(path,{cache:"no-store",...init,signal:controller.signal});
+    if(response.status===204)return null as T;
+    const result=await response.json();
+    if(!response.ok) throw Object.assign(new Error(typeof result.error==="string"?result.error:"Връзката е прекъсната. Опитайте отново."),{code:typeof result.code==="string"?result.code:undefined});
+    return result as T;
+  }
   catch(error){if(timedOut)throw new Error("Връзката се забави. Опитай отново след малко.");throw error;}
   finally{clearTimeout(timeout);init?.signal?.removeEventListener("abort",abort);}
-  const result=await response.json();
-  if(!response.ok) throw Object.assign(new Error(typeof result.error==="string"?result.error:"Връзката е прекъсната. Опитайте отново."),{code:typeof result.code==="string"?result.code:undefined});
-  return result as T;
 }
 export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   const consent=useCookieConsent().record?.statistics===true;
   const measuredTurns=useRef(new Set<string>());
+  const wait=useRef<{started:number;turnId?:string}|null>(null);
+  const openedAt=useRef<number|null>(null);
   const impression=useRef(false);
   function track(action:string,extra:Record<string,string|number|boolean>={}){
     const analytics=window as AnalyticsWindow;
     if(demo||!measurementId||currentCookieConsent()?.statistics!==true||analytics.__npAnalyticsLoaded?.kind!=="ga4"||typeof analytics.gtag!=="function")return false;
     analytics.gtag("event",`np_smart_${action}`,{article_id:articleId,...extra,send_to:measurementId});return true;
   }
+  function endWait(outcome:"received"|"collapsed"|"left_page"|"unmounted"|"failed",cached?:boolean){
+    const active=wait.current;
+    if(!active)return;
+    wait.current=null;
+    track("wait_end",{outcome,wait_ms:Math.round(performance.now()-active.started),...(cached===undefined?{}:{cached})});
+  }
+  function endPreparation(outcome:"ready"|"restored"|"asked_custom"|"collapsed"|"left_page"|"unmounted"|"failed"){
+    if(openedAt.current===null)return;
+    const elapsed=performance.now()-openedAt.current;
+    openedAt.current=null;
+    track("prepare_end",{outcome,wait_ms:Math.round(elapsed)});
+  }
+  useEffect(()=>{
+    const path=window.location.pathname;
+    const close=(outcome:"left_page"|"unmounted")=>{endPreparation(outcome);endWait(outcome);};
+    const leave=()=>close("left_page");
+    window.addEventListener("pagehide",leave);
+    return()=>{window.removeEventListener("pagehide",leave);close(window.location.pathname===path?"unmounted":"left_page");};
+  },[articleId,measurementId,demo]);
   const [expanded,setExpanded]=useState(false);
   const [helpOpen,setHelpOpen]=useState(false);
   const [bootstrapRetry,setBootstrapRetry]=useState(0);
@@ -50,6 +73,7 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   const [submitting,setSubmitting]=useState("");
   const [question,setQuestion]=useState("");
   const [error,setError]=useState("");
+  const [bootstrapError,setBootstrapError]=useState("");
   const [loading,setLoading]=useState(false);
   const [clock,setClock]=useState(()=>Date.now());
   const serverOffset=useRef(0);
@@ -61,10 +85,17 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   const used=session?.usedQuestions??0;
   const limit=used>=SMART_QUESTION_LIMIT;
   const pending=session?.turns.some(t=>t.status==="pending")??false;
+  const firstPending=session?.turns.length===1&&session.turns[0]?.status==="pending"?session.turns[0].id:null;
   const answered=session?.turns.filter(t=>t.status==="completed")??[];
   const choices=smartChoices(bootstrap?.questions??[],session?.turns??[],submitting);
   const latest=answered.at(-1);
   const busy=loading||pending||!sessionChecked;
+  useEffect(()=>{
+    if(!expanded)return;
+    if(sessionChecked&&session?.turns.length)endPreparation("restored");
+    else if(bootstrapError||(!sessionChecked&&error)||bootstrap?.status==="unavailable")endPreparation("failed");
+    else if(sessionChecked&&bootstrap?.status==="ready")endPreparation("ready");
+  },[expanded,sessionChecked,session,bootstrap,bootstrapError,error]);
   const remainingSeconds=limit&&session?.quotaResetAt?Math.max(0,Math.ceil((Date.parse(session.quotaResetAt)-clock-serverOffset.current)/1000)):null;
   const countdown=remainingSeconds===null?null:`${Math.floor(remainingSeconds/60)}:${String(remainingSeconds%60).padStart(2,"0")}`;
   async function refreshSession(signal?:AbortSignal){
@@ -103,7 +134,12 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   },[consent,articleId,measurementId]);
   useEffect(()=>{for(const turn of answered)if(!measuredTurns.current.has(turn.id)&&track("answer",{used_questions:used,cached:turn.cached})){measuredTurns.current.add(turn.id);}},[session,consent]);
   useEffect(()=>{
-    if(demo||initial)return;
+    const turn=session?.turns.find(t=>t.id===wait.current?.turnId);
+    if(turn?.status==="completed")endWait("received",turn.cached);
+    else if(turn?.status==="failed")endWait("failed");
+  },[session]);
+  useEffect(()=>{
+    if(expanded||demo||initial)return;
     const controller=new AbortController();
     const observer=new IntersectionObserver(entries=>{if(!entries.some(entry=>entry.isIntersecting))return;observer.disconnect();
       void smartFetch<SmartBootstrap|null>(`${prefix}/bootstrap/?peek=1`,{signal:controller.signal}).then(cached=>{if(!controller.signal.aborted&&cached?.status==="ready"){setBootstrap(cached);setReady(true);}}).catch(()=>{});
@@ -111,21 +147,28 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
     if(root.current)observer.observe(root.current);return()=>{observer.disconnect();controller.abort();};
     // Read cached public suggestions only. This route never queues paid preparation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  },[articleId,demo]);
+  },[articleId,demo,expanded,initial]);
   async function loadBootstrap(signal?:AbortSignal,retry=false){
     if(demo)return;
     try{
-      setError("");const result=await smartFetch<SmartBootstrap>(`${prefix}/bootstrap/${retry?"?retry=1":""}`,{...(signal?{signal}:{})});
+      setBootstrapError("");const result=await smartFetch<SmartBootstrap>(`${prefix}/bootstrap/${retry?"?retry=1":""}`,{...(signal?{signal}:{})});
       if(signal?.aborted)return false;
       setBootstrap(result);setReady(true);
-      if(!restored.current){const previous=await smartFetch<Session|null>(`${prefix}/session/`,{...(signal?{signal}:{})});if(!signal?.aborted){if(previous)setSession(previous);restored.current=true;setSessionChecked(true);}}
       return result.status;
-    }catch(e){if(!signal?.aborted){setError((e as Error).message);setReady(true);}return false;}
+    }catch(e){if(!signal?.aborted){setBootstrapError((e as Error).message);setReady(true);}return false;}
   }
   useEffect(()=>{
     if(!expanded||demo||initial)return;
     const controller=new AbortController();let timer:ReturnType<typeof setTimeout>|undefined;
     const started=Date.now();let first=true;setPreparationSlow(false);if(bootstrap?.status!=="ready"){setBootstrap(null);setReady(false);}
+    if(!restored.current){
+      setError("");
+      void smartFetch<Session|null>(`${prefix}/session/`,{signal:controller.signal}).then(previous=>{
+        if(controller.signal.aborted)return;
+        for(const turn of previous?.turns??[])if(turn.status==="completed")measuredTurns.current.add(turn.id);
+        setSession(previous);restored.current=true;setSessionChecked(true);
+      }).catch(e=>{if(!controller.signal.aborted)setError((e as Error).message);});
+    }
     const tick=async()=>{
       const status=await loadBootstrap(controller.signal,first);first=false;
       if(controller.signal.aborted)return;
@@ -148,27 +191,73 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
   useEffect(()=>{
     if(!expanded||!pending||!session||demo)return;
     const controller=new AbortController();let polling=false;
-    const tick=async()=>{if(polling||controller.signal.aborted)return;polling=true;try{const result=await smartFetch<Session>(`/api/smart/session/${session.id}/`,{signal:controller.signal});if(controller.signal.aborted)return;setSession(result);
+    const tick=async()=>{if(polling||controller.signal.aborted)return;polling=true;try{const result=await smartFetch<Session|null>(`/api/smart/session/${session.id}/${firstPending?`?pendingTurn=${firstPending}`:""}`,{signal:controller.signal});if(controller.signal.aborted)return;setError("");if(!result)return;setSession(result);
       const last=result.turns.at(-1);if(last?.status==="completed"){request.current=null;}if(last?.status==="failed"){setError("Проучването не завърши. Опитайте отново след малко.");request.current=null;}}
-      catch(e){if(!controller.signal.aborted)setError((e as Error).message);}finally{polling=false;}};
+      catch(e){
+        if(controller.signal.aborted)return;
+        if(["session","not_found","disabled"].includes((e as {code?:string}).code??"")){
+          endWait("failed");request.current=null;restored.current=false;
+          setSession(null);setSessionChecked(false);
+        }
+        setError((e as Error).message);
+      }finally{polling=false;}};
     const timer=setInterval(()=>{if(document.visibilityState==="visible")void tick();},1000);void tick();
     return()=>{clearInterval(timer);controller.abort();};
-  },[expanded,pending,session?.id,demo]);
+  },[expanded,pending,firstPending,session?.id,demo]);
   async function ask(choice?:SmartChoice){
     const value=(choice?.text??question).trim();if(!value||busy||limit)return;
     if(demo){setError("Това е преглед на интерфейса, без свързана обработка.");return;}
+    if(!choice)endPreparation("asked_custom");
+    wait.current=currentCookieConsent()?.statistics===true?{started:performance.now()}:null;
+    const questionType=choice?(choice.parentKey?"follow_up":"suggested"):"custom";
     setLoading(true);setSubmitting(value);setError("");
+    let current=session;
     try{
-      let current=session;if(!current){current=await smartFetch<Session>(`${prefix}/session/`,{method:"POST"});setSession(current);}
-      if(current.usedQuestions>=SMART_QUESTION_LIMIT)return;
+      if(!current){current=await smartFetch<Session>(`${prefix}/session/`,{method:"POST"});setSession(current);}
+      if(current.usedQuestions>=SMART_QUESTION_LIMIT){endWait("failed");return;}
       const publicChoice=choice?.public;
       if(!request.current||request.current.question!==value||request.current.questionId!==(publicChoice?choice?.id:undefined)||request.current.parentKey!==(publicChoice?choice?.parentKey??undefined:undefined))request.current={key:crypto.randomUUID(),question:value,...(publicChoice?{questionId:choice!.id}:{}),...(publicChoice&&choice?.parentKey?{parentKey:choice!.parentKey}:{})};
       const result=await smartFetch<Session>(`${prefix}/ask/`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:current.id,requestKey:request.current.key,question:value,questionId:request.current.questionId,parentKey:request.current.parentKey})});
-      setSession(result);setQuestion("");const last=result.turns.at(-1);
-      track("question",{question_type:choice?(choice.parentKey?"follow_up":"suggested"):"custom"});
+      setSession(result);setQuestion("");const last=result.turns.find(t=>t.requestKey===request.current?.key)??result.turns.at(-1);
+      if(wait.current&&last)wait.current.turnId=last.id;
+      track("question",{question_type:questionType});
       if(last&&last.status!=="pending")request.current=null;
       if(last?.status==="failed")setError("Проучването не завърши. Можеш да опиташ отново.");
-    }catch(e){setError((e as Error).message);if((e as {code?:string}).code==="question_limit"){await refreshSession().catch(()=>{});}if((e as {code?:string}).code==="question_changed"&&await loadBootstrap()){setError("Предложенията са обновени. Избери актуален въпрос.");}}finally{setLoading(false);setSubmitting("");}
+    }catch(e){
+      const code=(e as {code?:string}).code;
+      setError((e as Error).message);
+      if(code==="question_changed"){
+        setBootstrap(null);setBootstrapRetry(v=>v+1);
+        setError("Предложенията са обновени. Избери актуален въпрос.");
+      }else if(current&&(!code||code==="busy"||code==="question_limit"||code==="unavailable")){
+        // The POST may have committed before the response was lost. Recover
+        // the accepted turn without creating a second request or reservation.
+        const previous=current;
+        const recovered=await smartFetch<Session>(`/api/smart/session/${previous.id}/`).catch(()=>null);
+        if(recovered){
+          setSession(recovered);
+          const accepted=request.current&&recovered.turns.find(t=>t.requestKey===request.current!.key);
+          if(accepted){
+            track("question",{question_type:questionType});
+            if(wait.current)wait.current.turnId=accepted.id;
+            if(accepted.status==="failed")setError("Проучването не завърши. Можеш да опиташ отново.");
+            else{setQuestion("");setError("");}
+            if(accepted.status!=="pending")request.current=null;
+          }
+        }
+      }
+      if(!wait.current?.turnId)endWait("failed");
+    }finally{setLoading(false);setSubmitting("");}
+  }
+  function activate(){
+    openedAt.current=currentCookieConsent()?.statistics===true?performance.now():null;
+    setBootstrapError("");setError("");
+    if(bootstrap?.status!=="ready")setBootstrap(null);
+    setExpanded(true);requestAnimationFrame(()=>panelHeading.current?.focus({preventScroll:true}));track("activate");
+  }
+  function collapse(){
+    endPreparation("collapsed");endWait("collapsed");setExpanded(false);
+    requestAnimationFrame(()=>activateButton.current?.focus());
   }
   return <section ref={root} className={`np-smart${expanded?" np-smart-expanded":""}`} aria-labelledby={`smart-title-${articleId}`}>
     <div className="np-smart-topline"><span className="np-smart-identity"><span className="np-smart-mark"><SmartMark/></span><span>NewsPoint <strong>Smart</strong></span></span>
@@ -176,11 +265,11 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
       {helpOpen?<div className="np-smart-help-bubble" id={`smart-help-${articleId}`} role="region" aria-label="За NewsPoint Smart"><strong>Новината не свършва с последния ред.</strong><p>NewsPoint Smart ти помага да разбереш повече за тази история. Избери предложен въпрос или задай свой. Системата разглежда темата в контекста на статията, свързаните ни публикации и допълнителна информация.</p><p>Получаваш допълнителен контекст и нови посоки за продължение. Можеш да зададеш до 3 въпроса по новината, след което има пауза от 10 минути. Презареждането на страницата не нулира брояча. Системата не гарантира 100% достоверност. При липсваща или противоречива информация посочва неяснотите.</p><button type="button" onClick={()=>{setHelpOpen(false);helpButton.current?.focus();}}>Разбрах</button></div>:null}</div>
     </div>
     <header className="np-smart-header"><div><h2 ref={panelHeading} tabIndex={-1} id={`smart-title-${articleId}`}>{expanded?"Какво още искаш да разбереш?":"Виж отвъд новината."}</h2><p>{expanded?"Въпрос по въпрос — по-дълбоко в историята.":"Повече контекст. Важните въпроси. По-ясната картина."}</p></div>{expanded&&used>0?<span className="np-smart-count" aria-label={`${used} от ${SMART_QUESTION_LIMIT} въпроса`}>{used}<span>/ {SMART_QUESTION_LIMIT}</span></span>:null}</header>
-    {!expanded?<button ref={activateButton} className="np-smart-activate" type="button" aria-expanded={false} aria-controls={`smart-content-${articleId}`} onClick={()=>{setExpanded(true);requestAnimationFrame(()=>panelHeading.current?.focus({preventScroll:true}));track("activate");}}><SmartMark/><span>Използвай NewsPoint Smart</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg></button>:null}
+    {!expanded?<button ref={activateButton} className="np-smart-activate" type="button" aria-expanded={false} aria-controls={`smart-content-${articleId}`} onClick={activate}><SmartMark/><span>Използвай NewsPoint Smart</span><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m5 8 5 5 5-5"/></svg></button>:null}
     {expanded?<div className="np-smart-content" id={`smart-content-${articleId}`}>
     {demo?<p className="np-smart-notice">Преглед на интерфейса с тестови данни.</p>:null}
     {bootstrap?.related&&!answered.length?<SmartNewsCards cards={[bootstrap.related]}/>:null}
-    {(!ready||bootstrap?.status==="preparing")&&!answered.length&&!error?<div className="np-smart-preparing" role="status" aria-live="polite"><span className={`np-smart-working${preparationSlow?" np-smart-paused":""}`} aria-hidden="true"/><div><strong>{preparationSlow?"Подготовката отнема повече време.":"Намираме трите важни въпроса."}</strong><p>{preparationSlow?"Можеш да опиташ отново или да зададеш свой въпрос.":"Моля, изчакай. Свързваме фактите и подбираме най-полезните посоки."}</p></div>{preparationSlow?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
+    {(!ready||bootstrap?.status==="preparing")&&!answered.length&&!error&&!bootstrapError?<div className="np-smart-preparing" role="status" aria-live="polite"><span className={`np-smart-working${preparationSlow?" np-smart-paused":""}`} aria-hidden="true"/><div><strong>{preparationSlow?"Подготовката отнема повече време.":"Намираме трите важни въпроса."}</strong><p>{preparationSlow?"Можеш да опиташ отново или да зададеш свой въпрос.":"Междувременно можеш да зададеш свой въпрос по статията."}</p></div>{preparationSlow?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
     {bootstrap?.status==="ready"&&!sessionChecked&&!error?<p className="np-smart-status" role="status"><span className="np-smart-working" aria-hidden="true"/>Проверяваме оставащите въпроси…</p>:null}
     {bootstrap?.status==="unavailable"?<div className="np-smart-notice" role="status"><p>{bootstrap.message??"Въпросите не се заредиха. Опитай отново."}</p><button className="np-smart-retry" type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Зареди трите въпроса</button></div>:null}
     {session?.updated?<p className="np-smart-notice">Статията е обновена. Предишните отговори са по версията към момента на въпроса.</p>:null}
@@ -204,8 +293,8 @@ export function SmartReader({articleId,initial,demo=false,measurementId}:Props){
     {used===2&&!limit?<p className="np-smart-remaining">Остава ти 1 въпрос по тази новина.</p>:null}
     {limit?<div className="np-smart-finished"><strong>Използва трите въпроса по тази новина.</strong><p>Можеш да продължиш {countdown?<span>след <time className="np-smart-countdown" aria-label={`Оставащо време: ${countdown}`}>{countdown}</time></span>:"след паузата от 10 минути"}. Отговорите остават в разговора.</p><button className="np-smart-retry" type="button" onClick={()=>void refreshSession().catch(e=>setError((e as Error).message))}>Провери оставащото време</button>{bootstrap?.related&&!answered.some(turn=>turn.cards?.some(card=>card.articleId===bootstrap.related!.articleId))?<SmartNewsCards cards={[bootstrap.related]}/>:null}</div>:<form className="np-smart-form" onSubmit={e=>{e.preventDefault();void ask();}}><label htmlFor={`smart-question-${articleId}`}>Или задай свой въпрос</label><div className="np-smart-input-wrap"><input id={`smart-question-${articleId}`} minLength={3} maxLength={600} placeholder="Попитай нещо по тази история…" value={question} disabled={busy} onChange={e=>setQuestion(e.target.value)}/><button type="submit" disabled={busy||question.trim().length<3}>Попитай<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="M10 15V5m-4 4 4-4 4 4"/></svg></button></div></form>}
     </div>
-    {error?<div className="np-smart-error" role="alert"><p>{error}</p>{!sessionChecked||!bootstrap||bootstrap.status!=="ready"?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
-    <button className="np-smart-collapse" type="button" aria-expanded={true} aria-controls={`smart-content-${articleId}`} onClick={()=>{setExpanded(false);requestAnimationFrame(()=>activateButton.current?.focus());}}>Свий панела</button>
+    {error||bootstrapError?<div className="np-smart-error" role="alert">{error?<p>{error}</p>:null}{bootstrapError?<p>{bootstrapError}</p>:null}{!sessionChecked||bootstrapError?<button type="button" onClick={()=>setBootstrapRetry(v=>v+1)}>Опитай отново</button>:null}</div>:null}
+    <button className="np-smart-collapse" type="button" aria-expanded={true} aria-controls={`smart-content-${articleId}`} onClick={collapse}>Свий панела</button>
     </div>:null}
   </section>;
 }

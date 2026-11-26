@@ -1,9 +1,9 @@
 import {createHmac} from "node:crypto";
 import {NextRequest} from "next/server";
 import {beforeEach,expect,it,vi} from "vitest";
-const mocks=vi.hoisted(()=>({read:vi.fn(),reserve:vi.fn(),cached:vi.fn(),summaries:vi.fn(),key:"explicit-qa-only-key",enabled:true}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),reserve:vi.fn(),cached:vi.fn(),summaries:vi.fn(),pending:vi.fn(),key:"explicit-qa-only-key",enabled:true}));
 vi.mock("@newspoint/db",()=>({loadRootEnv:vi.fn(),getDb:()=>({execute:vi.fn()})}));
-vi.mock("@newspoint/db/smart",async original=>({...await original<typeof import("@newspoint/db/smart")>(),smartReady:async()=>true,smartRateLimit:async()=>{},readSmartSession:mocks.read,reserveSmartTurn:mocks.reserve}));
+vi.mock("@newspoint/db/smart",async original=>({...await original<typeof import("@newspoint/db/smart")>(),smartReady:async()=>true,smartRateLimit:async()=>{},readSmartSession:mocks.read,reserveSmartTurn:mocks.reserve,smartTurnStillPending:mocks.pending}));
 const secret="qa-only-not-a-real-signing-secret-123456";
 vi.mock("@newspoint/db/smart-settings",()=>({readSmartRuntimeConfig:async()=>({enabled:mocks.enabled,key:mocks.key,secret:"qa-only-not-a-real-signing-secret-123456",origin:"https://newspoint.bg"})}));
 vi.mock("./queries",()=>({getSummariesByIds:mocks.summaries}));
@@ -79,4 +79,15 @@ it("rejects a fourth private question using the server reservation even if the t
 it("does not accept a client-provided quota reset or counter",async()=>{
  const request=new NextRequest(`https://newspoint.bg/api/smart/article/${article}/ask/`,{method:"POST",headers:{origin:"https://newspoint.bg",cookie:`np_smart=${cookie()}`,"content-type":"application/json"},body:JSON.stringify({sessionId:article,requestKey:article,question:"Explicit QA",usedQuestions:0,quotaResetAt:"1970-01-01"})});
  expect((await smartApi(request,"ask",article)).status).toBe(400);expect(mocks.reserve).not.toHaveBeenCalled();
+});
+it("returns an empty private poll while processing, then the ordinary session when settled",async()=>{
+ const token=cookie();
+ const poll=()=>smartApi(new NextRequest(`https://newspoint.bg/api/smart/session/${article}/?pendingTurn=${article}`,{headers:{cookie:`np_smart=${token}`}}),"history",article);
+ mocks.pending.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+ const processing=await poll();
+ expect(mocks.pending).toHaveBeenCalledWith(expect.anything(),article,smartOwner(secret,token),article);
+ expect(processing.status).toBe(204);expect(await processing.text()).toBe("");expect(processing.headers.get("cache-control")).toBe("private, no-store");
+ expect(mocks.read).not.toHaveBeenCalled();expect(mocks.cached).not.toHaveBeenCalled();
+ mocks.read.mockResolvedValueOnce({id:article,articleId:article,usedQuestions:1,maxQuestions:3,updated:false,turns:[]});
+ const finished=await poll();expect(finished.status).toBe(200);expect(await finished.json()).toMatchObject({id:article,usedQuestions:1});
 });

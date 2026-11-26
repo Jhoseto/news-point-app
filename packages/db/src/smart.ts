@@ -38,16 +38,27 @@ export async function smartSourcesPublic(db: SmartDb, sources: SmartSource[],cur
 export function readSmartBootstrap(db:SmartDb,articleId:string,retry?:boolean):Promise<SmartBootstrap>;
 export function readSmartBootstrap(db:SmartDb,articleId:string,retry:boolean,cachedOnly:true):Promise<SmartBootstrap|null>;
 export async function readSmartBootstrap(db: SmartDb, articleId: string, retry = false,cachedOnly=false): Promise<SmartBootstrap|null> {
-  const article = await smartArticle(db, articleId);
-  const rows = await db.execute(sql`select payload,sources,state,expires_at,revision from smart_bootstraps where article_id=${articleId}::uuid`);
+  const rows = await db.execute(sql`select a.revision as "articleRevision", b.revision,b.state,b.expires_at,
+    b.updated_at::text as "observedAt",b.payload,b.sources
+    from smart_public_articles a left join smart_bootstraps b on b.article_id=a.id where a.id=${articleId}::uuid`);
   const current=rows[0];
-  if(current?.revision===article.revision&&current.state==='ready'&&(current.payload as SmartBootstrap|null)?.questions?.length===3&&new Date(current.expires_at as string).getTime()>Date.now()&&await smartSourcesPublic(db,current.sources as SmartSource[]))return publicSmartBootstrap(current.payload as SmartBootstrap);
+  if(!current)throw new SmartError("not_found",404,"Тази новина не е достъпна.");
+  const version=String(current.articleRevision);
+  const sameRevision=current.revision===version;
+  if(sameRevision&&current.state==='ready'&&(current.payload as SmartBootstrap|null)?.questions?.length===3&&new Date(current.expires_at as string).getTime()>Date.now()&&await smartSourcesPublic(db,current.sources as SmartSource[]))return publicSmartBootstrap(current.payload as SmartBootstrap);
   if(cachedOnly)return null;
-  if(current?.revision===article.revision&&current.state==='uncertain'&&!retry)return{status:"unavailable",articleId,version:article.revision,questions:[],related:null,message:"Въпросите не се заредиха. Можеш да опиташ отново."};
-  await db.execute(sql`insert into smart_bootstraps(article_id,revision,state) values(${articleId}::uuid,${article.revision},'pending')
-    on conflict(article_id) do update set state='pending',revision=excluded.revision,payload=null,lease_token=null,lease_until=null,updated_at=now()
-    where smart_bootstraps.state<>'pending' or smart_bootstraps.revision<>excluded.revision`);
-  return { status: "preparing", articleId, version: article.revision, questions: [], related: null };
+  if(sameRevision&&current.state==='uncertain'&&!retry)return{status:"unavailable",articleId,version,questions:[],related:null,message:"Въпросите не се заредиха. Можеш да опиташ отново."};
+  if(!sameRevision||current.state!=="pending"){
+    // Only replace the snapshot we inspected. Another reader or worker may
+    // have published fresh suggestions while we were validating old sources.
+    await db.execute(sql`insert into smart_bootstraps(article_id,revision,state)
+      select id,revision,'pending' from smart_public_articles where id=${articleId}::uuid and revision=${version}
+      on conflict(article_id) do update set state='pending',revision=excluded.revision,payload=null,sources='[]'::jsonb,
+        lease_token=null,lease_until=null,updated_at=now()
+      where smart_bootstraps.updated_at=${current.observedAt}::timestamptz and smart_bootstraps.revision=${current.revision}
+        and smart_bootstraps.state=${current.state}`);
+  }
+  return { status: "preparing", articleId, version, questions: [], related: null };
 }
 export async function openSmartSession(db: SmartDb, articleId: string, owner: string) {
   const article = await smartArticle(db, articleId);
@@ -70,7 +81,9 @@ export async function readSmartSession(db: SmartDb, id: string, owner: string) {
     (s.used>=${SMART_QUESTION_LIMIT} and s.updated_at+make_interval(secs=>${SMART_QUESTION_COOLDOWN_SECONDS})<=now()) as quota_expired,
     s.updated_at+make_interval(secs=>${SMART_QUESTION_COOLDOWN_SECONDS}) as "quotaResetAt",
     coalesce((select jsonb_agg(t.item order by t.created_at) from (
-      select created_at,jsonb_build_object('id',id,'question',question,'status',status,'answer',answer,'cached',cached,'nodeKey',node_key) as item
+      select created_at,jsonb_build_object('id',id,'requestKey',request_key,'question',question,
+        'status',case when status='pending' and lease_until<=now() then 'failed' else status end,
+        'answer',answer,'cached',cached,'nodeKey',node_key) as item
       from smart_turns where session_id=s.id and created_at>=s.created_at
       and (status<>'failed' or created_at=(select max(created_at) from smart_turns where session_id=s.id)) order by created_at desc limit 10
     ) t),'[]'::jsonb) as turns
@@ -78,7 +91,7 @@ export async function readSmartSession(db: SmartDb, id: string, owner: string) {
     where s.id=${id}::uuid and s.owner_hash=${owner} and s.expires_at>now() and s.deleted_at is null`);
   const session=rows[0];
   if(!session)throw new SmartError("session",404,"Сесията не е достъпна или е изтекла.");
-  const turns=session.turns as {id:string;question:string;status:SmartTurn["status"];answer:SmartAnswer|null;cached:boolean;nodeKey:string|null}[];
+  const turns=session.turns as (SmartTurn&{requestKey:string;nodeKey:string|null})[];
   const all=turns.flatMap(turn=>turn.answer?.sources??[]);
   // Normal history is checked in one batch. A withdrawn/revised dependency falls
   // back to per-turn checks so unrelated valid answers remain available.
@@ -87,6 +100,14 @@ export async function readSmartSession(db: SmartDb, id: string, owner: string) {
 }
 
 export type SmartAsk = { sessionId: string; requestKey: string; question: string; questionId?: string | undefined; parentKey?: string | undefined };
+export async function smartTurnStillPending(db:SmartDb,sessionId:string,owner:string,turnId:string){
+  const rows=await db.execute(sql`select 1 from smart_turns t join smart_sessions s on s.id=t.session_id
+    join smart_public_articles a on a.id=s.article_id
+    where t.id=${turnId}::uuid and s.id=${sessionId}::uuid and s.owner_hash=${owner}
+      and s.deleted_at is null and s.expires_at>now() and t.created_at>=s.created_at
+      and t.status='pending' and t.lease_until>now() and (t.processor_token is not null or t.question_id is null)`);
+  return rows.length>0;
+}
 export async function reserveSmartTurn(db: SmartDb, owner: string, input: SmartAsk) {
   return db.transaction(async tx=>{
     // Lock the session first. A second statement gets a fresh snapshot after any

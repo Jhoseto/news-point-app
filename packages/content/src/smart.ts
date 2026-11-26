@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const SMART_QUESTION_LIMIT = 3;
 export const SMART_QUESTION_COOLDOWN_SECONDS = 600;
-export const SMART_PROMPT_VERSION = "smart-2026-10-29-v3";
+export const SMART_PROMPT_VERSION = "smart-2026-11-26-v4";
 export const smartOpenAiModelSchema=z.enum(["gpt-6.1-sol","gpt-6-luna"]);
 export const smartProviderSelectionSchema=z.object({provider:z.enum(["minimax","openai"]),openaiModel:smartOpenAiModelSchema.optional(),enabled:z.boolean().optional(),version:z.number().int().min(1)}).strict();
 export type SmartProvider="minimax"|"openai";
@@ -27,7 +27,7 @@ export const smartAnswerSchema = z.object({
 });
 export type SmartAnswer = z.infer<typeof smartAnswerSchema>;
 export type SmartCard = { hero?:{url:string;width:number|null;height:number|null;alt:string;caption:string;credit:string}|null; articleId: string; title: string; path: string; reason: string; publishedAt: string };
-export type SmartTurn = { id: string; question: string; status: "pending" | "completed" | "failed"; answer: SmartAnswer | null; cached: boolean; cards?:SmartCard[] };
+export type SmartTurn = { id: string; requestKey?:string; question: string; status: "pending" | "completed" | "failed"; answer: SmartAnswer | null; cached: boolean; cards?:SmartCard[] };
 export type SmartBootstrap = {
   status: "ready" | "preparing" | "unavailable"; articleId: string; version: string;
   questions: SmartQuestion[]; related: SmartCard | null; message?: string;
